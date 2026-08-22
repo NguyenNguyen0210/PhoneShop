@@ -41,6 +41,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Fix binary permissions
+        run: chmod +x node_modules/.bin/*
+
       - name: Generate Prisma Client
         run: npx prisma generate
 
