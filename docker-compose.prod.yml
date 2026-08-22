@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # Redis
+  # Used for caching, rate limiting, idempotency & background jobs
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: mobile_commerce_redis_prod
+    command: redis-server --appendonly yes
+    restart: always
+    volumes:
+      - redis_data_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal_network
+
+  # ==========================================
+  # Backend - NestJS
+  # ==========================================
+  backend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/backend.Dockerfile
+    container_name: mobile_commerce_backend_prod
+    restart: always
+    env_file:
+      - .env.example # In production, use .env or pass through CI/CD
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - internal_network
+
+  # ==========================================
+  # Frontend - React (served by lightweight Nginx)
+  # ==========================================
+  frontend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/frontend.Dockerfile
+      args:
+        # Pass production API URL (to be resolved by main Nginx proxy)
+        - VITE_API_URL=/api
+    container_name: mobile_commerce_frontend_prod
+    restart: always
+    networks:
+      - internal_network
+
+  # ==========================================
+  # Main Nginx Reverse Proxy
+  # ==========================================
+  nginx:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/nginx.Dockerfile
+    container_name: mobile_commerce_nginx_prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - internal_network
+
+networks:
+  internal_network:
+    driver: bridge
+
+volumes:
+  redis_data_prod:
