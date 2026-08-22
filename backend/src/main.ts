@@ -50,6 +50,12 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   // ============================================================
+  // GLOBAL PREFIX
+  // ============================================================
+
+  app.setGlobalPrefix('api');
+
+  // ============================================================
   // SWAGGER
   // ============================================================
 
@@ -72,7 +78,7 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
 
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api/docs', app, document);
 
   // ============================================================
   // SERVER
@@ -85,11 +91,11 @@ async function bootstrap() {
   await app.listen(port);
 
   console.log(
-    `🚀 MobileCommerce API running on http://localhost:${port}`,
+    `🚀 MobileCommerce API running on http://localhost:${port}/api`,
   );
 
   console.log(
-    `📚 Swagger documentation: http://localhost:${port}/api`,
+    `📚 Swagger documentation: http://localhost:${port}/api/docs`,
   );
 }
 
