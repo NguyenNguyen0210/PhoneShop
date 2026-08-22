@@ -1,0 +1,121 @@
+import { InventoryService } from './inventory.service';
+import { AdjustStockDto, SetReorderLevelDto, ReserveStockDto } from './dto/inventory.dto';
+export declare class InventoryController {
+    private readonly inventoryService;
+    constructor(inventoryService: InventoryService);
+    findAll(): Promise<({
+        variant: {
+            product: {
+                id: string;
+                name: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            isActive: boolean;
+            imageUrl: string | null;
+            sku: string;
+            productId: string;
+            color: string | null;
+            storage: string | null;
+            ram: string | null;
+            price: import("@prisma/client-runtime-utils").Decimal;
+            compareAtPrice: import("@prisma/client-runtime-utils").Decimal | null;
+            costPrice: import("@prisma/client-runtime-utils").Decimal | null;
+            weight: import("@prisma/client-runtime-utils").Decimal | null;
+        };
+    } & {
+        id: string;
+        updatedAt: Date;
+        variantId: string;
+        quantity: number;
+        reservedQty: number;
+        availableQty: number;
+        reorderLevel: number;
+    })[]>;
+    getLowStock(threshold?: number): Promise<({
+        variant: {
+            product: {
+                id: string;
+                name: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            isActive: boolean;
+            imageUrl: string | null;
+            sku: string;
+            productId: string;
+            color: string | null;
+            storage: string | null;
+            ram: string | null;
+            price: import("@prisma/client-runtime-utils").Decimal;
+            compareAtPrice: import("@prisma/client-runtime-utils").Decimal | null;
+            costPrice: import("@prisma/client-runtime-utils").Decimal | null;
+            weight: import("@prisma/client-runtime-utils").Decimal | null;
+        };
+    } & {
+        id: string;
+        updatedAt: Date;
+        variantId: string;
+        quantity: number;
+        reservedQty: number;
+        availableQty: number;
+        reorderLevel: number;
+    })[]>;
+    findOne(variantId: string): Promise<{
+        id: string;
+        updatedAt: Date;
+        variantId: string;
+        quantity: number;
+        reservedQty: number;
+        availableQty: number;
+        reorderLevel: number;
+    }>;
+    checkStock(variantId: string): Promise<{
+        variantId: string;
+        availableQty: number;
+        reservedQty: number;
+        inStock: boolean;
+    }>;
+    adjustStock(variantId: string, dto: AdjustStockDto): Promise<{
+        id: string;
+        updatedAt: Date;
+        variantId: string;
+        quantity: number;
+        reservedQty: number;
+        availableQty: number;
+        reorderLevel: number;
+    }>;
+    reserveStock(variantId: string, dto: ReserveStockDto): Promise<{
+        id: string;
+        updatedAt: Date;
+        variantId: string;
+        quantity: number;
+        reservedQty: number;
+        availableQty: number;
+        reorderLevel: number;
+    }>;
+    releaseStock(variantId: string, dto: ReserveStockDto): Promise<{
+        id: string;
+        updatedAt: Date;
+        variantId: string;
+        quantity: number;
+        reservedQty: number;
+        availableQty: number;
+        reorderLevel: number;
+    }>;
+    setReorderLevel(variantId: string, dto: SetReorderLevelDto): Promise<{
+        id: string;
+        updatedAt: Date;
+        variantId: string;
+        quantity: number;
+        reservedQty: number;
+        availableQty: number;
+        reorderLevel: number;
+    }>;
+}

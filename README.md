@@ -1,6 +1,6 @@
 # MobileCommerce
 
-Hệ thống thương mại điện tử chuyên bán thiết bị di động, xây dựng theo kiến trúc **Modular Monolith / Clean Architecture**, sử dụng **React + ASP.NET Core Web API + Supabase PostgreSQL/Storage**, triển khai trên Web Server chạy 24/7.
+Hệ thống thương mại điện tử chuyên bán thiết bị di động, xây dựng theo kiến trúc **Modular Monolith / Clean Architecture**, sử dụng **React + Node.js + TypeScript + NestJS + Supabase PostgreSQL/Storage**, triển khai trên Web Server chạy 24/7.
 
 > Không tích hợp AI.  
 > Supabase được sử dụng cho PostgreSQL và Storage.  
@@ -61,242 +61,72 @@ MobileCommerce/
 │       └── disaster-recovery.md
 │
 ├── backend/
-│   ├── MobileCommerce.sln
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── nest-cli.json
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   └── migrations/
 │   │
 │   ├── src/
+│   │   ├── main.ts
+│   │   ├── app.module.ts
+│   │   ├── config/
 │   │   │
-│   │   ├── MobileCommerce.API/
-│   │   │   ├── Controllers/
-│   │   │   │   ├── AuthController.cs
-│   │   │   │   ├── UsersController.cs
-│   │   │   │   ├── ProductsController.cs
-│   │   │   │   ├── CategoriesController.cs
-│   │   │   │   ├── BrandsController.cs
-│   │   │   │   ├── CartController.cs
-│   │   │   │   ├── OrdersController.cs
-│   │   │   │   ├── PaymentsController.cs
-│   │   │   │   ├── VouchersController.cs
-│   │   │   │   ├── ReviewsController.cs
-│   │   │   │   ├── WishlistController.cs
-│   │   │   │   ├── InventoryController.cs
-│   │   │   │   ├── ImeiController.cs
-│   │   │   │   ├── SuppliersController.cs
-│   │   │   │   ├── WarrantyController.cs
-│   │   │   │   ├── ReturnsController.cs
-│   │   │   │   ├── ShippingController.cs
-│   │   │   │   ├── NotificationsController.cs
-│   │   │   │   ├── ReportsController.cs
-│   │   │   │   └── AdminController.cs
-│   │   │   │
-│   │   │   ├── Middleware/
-│   │   │   │   ├── ExceptionHandlingMiddleware.cs
-│   │   │   │   ├── RequestLoggingMiddleware.cs
-│   │   │   │   ├── SecurityHeadersMiddleware.cs
-│   │   │   │   ├── RateLimitingMiddleware.cs
-│   │   │   │   └── IdempotencyMiddleware.cs
-│   │   │   │
-│   │   │   ├── Filters/
-│   │   │   ├── Extensions/
-│   │   │   ├── Configurations/
-│   │   │   │
-│   │   │   ├── Health/
-│   │   │   │   ├── HealthController.cs
-│   │   │   │   ├── ReadinessController.cs
-│   │   │   │   └── LivenessController.cs
-│   │   │   │
-│   │   │   ├── Program.cs
-│   │   │   ├── appsettings.json
-│   │   │   ├── appsettings.Development.json
-│   │   │   └── appsettings.Production.json
+│   │   ├── common/
+│   │   │   ├── guards/
+│   │   │   ├── middleware/
+│   │   │   ├── filters/
+│   │   │   ├── interceptors/
+│   │   │   ├── decorators/
+│   │   │   └── pipes/
 │   │   │
-│   │   ├── MobileCommerce.Application/
-│   │   │   ├── Common/
-│   │   │   │   ├── Interfaces/
-│   │   │   │   │   ├── ICacheService.cs
-│   │   │   │   │   ├── IIdempotencyService.cs
-│   │   │   │   │   ├── IImeiReservationService.cs
-│   │   │   │   │   └── IRateLimitService.cs
-│   │   │   │   │
-│   │   │   │   ├── Models/
-│   │   │   │   ├── Exceptions/
-│   │   │   │   └── Constants/
-│   │   │   │       ├── CacheKeys.cs
-│   │   │   │       └── RateLimitPolicies.cs
-│   │   │   │
-│   │   │   ├── Features/
-│   │   │   │   ├── Authentication/
-│   │   │   │   ├── Users/
-│   │   │   │   ├── Products/
-│   │   │   │   ├── Categories/
-│   │   │   │   ├── Brands/
-│   │   │   │   ├── Cart/
-│   │   │   │   ├── Orders/
-│   │   │   │   ├── Payments/
-│   │   │   │   ├── Vouchers/
-│   │   │   │   ├── Reviews/
-│   │   │   │   ├── Wishlist/
-│   │   │   │   ├── Inventory/
-│   │   │   │   ├── IMEI/
-│   │   │   │   ├── Suppliers/
-│   │   │   │   ├── Warranty/
-│   │   │   │   ├── Returns/
-│   │   │   │   ├── Shipping/
-│   │   │   │   ├── Notifications/
-│   │   │   │   └── Reports/
-│   │   │   │
-│   │   │   └── DependencyInjection.cs
+│   │   ├── modules/
+│   │   │   ├── auth/
+│   │   │   ├── users/
+│   │   │   ├── products/
+│   │   │   ├── categories/
+│   │   │   ├── brands/
+│   │   │   ├── cart/
+│   │   │   ├── orders/
+│   │   │   ├── payments/
+│   │   │   ├── vouchers/
+│   │   │   ├── reviews/
+│   │   │   ├── wishlist/
+│   │   │   ├── inventory/
+│   │   │   ├── imei/
+│   │   │   ├── suppliers/
+│   │   │   ├── warranty/
+│   │   │   ├── returns/
+│   │   │   ├── shipping/
+│   │   │   ├── notifications/
+│   │   │   └── reports/
 │   │   │
-│   │   ├── MobileCommerce.Domain/
-│   │   │   ├── Entities/
-│   │   │   │   ├── User.cs
-│   │   │   │   ├── Role.cs
-│   │   │   │   ├── UserRole.cs
-│   │   │   │   ├── Address.cs
-│   │   │   │   ├── Brand.cs
-│   │   │   │   ├── Category.cs
-│   │   │   │   ├── Product.cs
-│   │   │   │   ├── ProductVariant.cs
-│   │   │   │   ├── ProductImage.cs
-│   │   │   │   ├── ProductSpecification.cs
-│   │   │   │   ├── Warehouse.cs
-│   │   │   │   ├── Inventory.cs
-│   │   │   │   ├── ImeiDevice.cs
-│   │   │   │   ├── StockTransaction.cs
-│   │   │   │   ├── Supplier.cs
-│   │   │   │   ├── PurchaseOrder.cs
-│   │   │   │   ├── PurchaseOrderItem.cs
-│   │   │   │   ├── Cart.cs
-│   │   │   │   ├── CartItem.cs
-│   │   │   │   ├── Order.cs
-│   │   │   │   ├── OrderItem.cs
-│   │   │   │   ├── OrderStatusHistory.cs
-│   │   │   │   ├── Payment.cs
-│   │   │   │   ├── IdempotencyRecord.cs
-│   │   │   │   ├── Voucher.cs
-│   │   │   │   ├── VoucherProduct.cs
-│   │   │   │   ├── VoucherCategory.cs
-│   │   │   │   ├── FlashSale.cs
-│   │   │   │   ├── FlashSaleItem.cs
-│   │   │   │   ├── Review.cs
-│   │   │   │   ├── ReviewImage.cs
-│   │   │   │   ├── Wishlist.cs
-│   │   │   │   ├── WishlistItem.cs
-│   │   │   │   ├── Warranty.cs
-│   │   │   │   ├── WarrantyClaim.cs
-│   │   │   │   ├── Return.cs
-│   │   │   │   ├── ReturnItem.cs
-│   │   │   │   ├── Refund.cs
-│   │   │   │   ├── Notification.cs
-│   │   │   │   └── AuditLog.cs
-│   │   │   │
-│   │   │   ├── Enums/
-│   │   │   │   ├── UserRole.cs
-│   │   │   │   ├── ProductStatus.cs
-│   │   │   │   ├── ImeiStatus.cs
-│   │   │   │   ├── OrderStatus.cs
-│   │   │   │   ├── PaymentStatus.cs
-│   │   │   │   ├── PaymentMethod.cs
-│   │   │   │   ├── ReturnStatus.cs
-│   │   │   │   ├── WarrantyStatus.cs
-│   │   │   │   └── StockTransactionType.cs
-│   │   │   │
-│   │   │   ├── ValueObjects/
-│   │   │   ├── Events/
-│   │   │   │   └── ImeiReservationExpiredEvent.cs
-│   │   │   └── Exceptions/
+│   │   ├── infrastructure/
+│   │   │   ├── database/
+│   │   │   │   └── prisma.service.ts
+│   │   │   ├── caching/
+│   │   │   ├── concurrency/
+│   │   │   ├── idempotency/
+│   │   │   ├── rate-limiting/
+│   │   │   ├── observability/
+│   │   │   ├── storage/
+│   │   │   ├── payments/
+│   │   │   ├── email/
+│   │   │   ├── notifications/
+│   │   │   ├── shipping/
+│   │   │   ├── security/
+│   │   │   └── background-jobs/
 │   │   │
-│   │   └── MobileCommerce.Infrastructure/
-│   │       ├── Persistence/
-│   │       │   ├── ApplicationDbContext.cs
-│   │       │   ├── Configurations/
-│   │       │   │   ├── ImeiDeviceConfiguration.cs
-│   │       │   │   └── IdempotencyRecordConfiguration.cs
-│   │       │   ├── Repositories/
-│   │       │   └── Migrations/
-│   │       │
-│   │       ├── Authentication/
-│   │       │   ├── JwtService.cs
-│   │       │   ├── PasswordHasher.cs
-│   │       │   └── RefreshTokenService.cs
-│   │       │
-│   │       ├── Caching/
-│   │       │   ├── RedisCacheService.cs
-│   │       │   ├── CacheKeyBuilder.cs
-│   │       │   ├── CacheInvalidationService.cs
-│   │       │   └── CacheOptions.cs
-│   │       │
-│   │       ├── Concurrency/
-│   │       │   ├── ImeiReservationService.cs
-│   │       │   ├── ImeiConcurrencyService.cs
-│   │       │   └── ConcurrencyOptions.cs
-│   │       │
-│   │       ├── Idempotency/
-│   │       │   ├── IdempotencyService.cs
-│   │       │   ├── IdempotencyStore.cs
-│   │       │   └── IdempotencyOptions.cs
-│   │       │
-│   │       ├── RateLimiting/
-│   │       │   ├── RateLimitService.cs
-│   │       │   ├── RateLimitPolicy.cs
-│   │       │   └── RateLimitOptions.cs
-│   │       │
-│   │       ├── Observability/
-│   │       │   ├── OpenTelemetryExtensions.cs
-│   │       │   ├── MetricsExtensions.cs
-│   │       │   ├── TracingExtensions.cs
-│   │       │   ├── LoggingExtensions.cs
-│   │       │   └── HealthCheckExtensions.cs
-│   │       │
-│   │       ├── Storage/
-│   │       │   ├── SupabaseStorageService.cs
-│   │       │   └── StoragePathBuilder.cs
-│   │       │
-│   │       ├── Payments/
-│   │       │   ├── IVnPayService.cs
-│   │       │   ├── VnPayService.cs
-│   │       │   └── PaymentSignatureService.cs
-│   │       │
-│   │       ├── Email/
-│   │       │   ├── EmailService.cs
-│   │       │   └── EmailTemplates/
-│   │       │
-│   │       ├── Notifications/
-│   │       ├── Shipping/
-│   │       │
-│   │       ├── Security/
-│   │       │   ├── ImeiEncryptionService.cs
-│   │       │   ├── HashService.cs
-│   │       │   └── SecretsProvider.cs
-│   │       │
-│   │       ├── BackgroundJobs/
-│   │       │   ├── OrderCleanupJob.cs
-│   │       │   ├── VoucherExpirationJob.cs
-│   │       │   ├── NotificationJob.cs
-│   │       │   └── ImeiReservationCleanupJob.cs
-│   │       │
-│   │       └── DependencyInjection.cs
+│   │   └── health/
+│   │       ├── health.controller.ts
+│   │       ├── readiness.controller.ts
+│   │       └── liveness.controller.ts
 │   │
-│   └── tests/
-│       ├── MobileCommerce.UnitTests/
-│       │   ├── Domain/
-│       │   │   ├── ImeiConcurrencyTests.cs
-│       │   │   └── OrderTests.cs
-│       │   └── Services/
-│       │       ├── IdempotencyTests.cs
-│       │       └── RateLimitTests.cs
-│       │
-│       ├── MobileCommerce.IntegrationTests/
-│       │   ├── Payments/
-│       │   │   └── IdempotencyTests.cs
-│       │   ├── Inventory/
-│       │   │   └── ImeiConcurrencyTests.cs
-│       │   └── Caching/
-│       │       └── CacheInvalidationTests.cs
-│       │
-│       └── MobileCommerce.ApiTests/
-│           ├── HealthTests.cs
-│           ├── RateLimitTests.cs
-│           └── SecurityTests.cs
+│   └── test/
+│       ├── unit/
+│       ├── integration/
+│       └── e2e/
 │
 ├── frontend/
 │   ├── public/
@@ -414,7 +244,7 @@ MobileCommerce/
                  │                     │
                  ▼                     ▼
               FRONTEND              BACKEND
-               React              ASP.NET Core
+               React              NestJS
                                        │
                        ┌───────────────┼───────────────┐
                        │               │               │
@@ -600,7 +430,7 @@ Thay vào đó:
 Frontend
    │
    ▼
-ASP.NET Core API
+NestJS API
    │
    ├── Authentication
    ├── Authorization
@@ -665,7 +495,54 @@ CI/CD
 
 ---
 
-## 6. Database
+## 6. Backend Technology
+
+Backend sử dụng **Node.js + TypeScript + NestJS** theo hướng modular và Clean Architecture.
+
+```text
+Node.js
+  │
+  ▼
+TypeScript
+  │
+  ▼
+NestJS
+  │
+  ├── Controllers / Guards / Pipes / Interceptors
+  ├── Feature Modules
+  ├── Services / Use Cases
+  └── Infrastructure Services
+          │
+          ▼
+       Prisma ORM
+          │
+          ▼
+Supabase PostgreSQL
+```
+
+### Backend libraries chính
+
+```text
+NestJS              → Backend framework
+TypeScript          → Ngôn ngữ lập trình
+Prisma              → ORM / Database access
+@nestjs/jwt         → JWT authentication
+Passport            → Authentication strategies
+class-validator     → DTO validation
+class-transformer   → DTO transformation
+Redis               → Caching / distributed coordination
+BullMQ               → Background jobs
+OpenTelemetry       → Logs / Metrics / Traces
+Swagger / OpenAPI   → API documentation
+```
+
+### Nguyên tắc tổ chức
+
+Mỗi nghiệp vụ chính được tổ chức thành một NestJS module độc lập, ví dụ `products`, `orders`, `payments`, `inventory`, `imei`, `warranty` và `returns`. Điều này giữ nguyên định hướng **Modular Monolith / Clean Architecture** của project.
+
+---
+
+## 7. Database
 
 Database chính:
 
@@ -676,10 +553,10 @@ Supabase PostgreSQL
 Backend kết nối:
 
 ```text
-ASP.NET Core
+NestJS
       │
       ▼
-Entity Framework Core
+Prisma ORM
       │
       ▼
 Supabase PostgreSQL
@@ -690,7 +567,7 @@ Không chạy PostgreSQL container trong production nếu sử dụng Supabase C
 Redis có thể chạy riêng trên server:
 
 ```text
-ASP.NET Core
+NestJS
       │
       ▼
     Redis
@@ -698,7 +575,7 @@ ASP.NET Core
 
 ---
 
-## 7. Nguyên tắc kiến trúc
+## 8. Nguyên tắc kiến trúc
 
 ### Domain
 
@@ -761,7 +638,7 @@ Health Check
 
 ---
 
-## 8. Không sử dụng
+## 9. Không sử dụng
 
 Project hiện tại **không sử dụng**:
 
@@ -779,7 +656,7 @@ Kiến trúc tập trung vào:
 ```text
 Web Server
 +
-ASP.NET Core
+NestJS
 +
 React
 +

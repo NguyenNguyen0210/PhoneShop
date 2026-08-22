@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2023",
+    "outDir": "./dist",
+
+    "strict": true,
+    "skipLibCheck": true,
+
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    "sourceMap": true,
+    "declaration": true,
+    "removeComments": true,
+
+    "incremental": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "strictPropertyInitialization": false,
+    "noImplicitAny": false
+  }
+}

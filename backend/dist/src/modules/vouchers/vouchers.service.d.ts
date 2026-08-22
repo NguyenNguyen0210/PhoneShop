@@ -1,0 +1,161 @@
+import { PrismaService } from '../../prisma/prisma.service';
+import { CreateVoucherDto, ValidateVoucherDto } from './dto/voucher.dto';
+import { UpdateVoucherDto } from './dto/update-voucher.dto';
+export declare class VouchersService {
+    private prisma;
+    constructor(prisma: PrismaService);
+    create(dto: CreateVoucherDto): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
+        description: string | null;
+        type: import("@prisma/client").$Enums.VoucherType;
+        isActive: boolean;
+        code: string;
+        value: import("@prisma/client-runtime-utils").Decimal;
+        minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
+        maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
+        usageLimit: number | null;
+        usageCount: number;
+        perUserLimit: number | null;
+        startAt: Date;
+        endAt: Date;
+    }>;
+    findAll(activeOnly?: boolean): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
+        description: string | null;
+        type: import("@prisma/client").$Enums.VoucherType;
+        isActive: boolean;
+        code: string;
+        value: import("@prisma/client-runtime-utils").Decimal;
+        minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
+        maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
+        usageLimit: number | null;
+        usageCount: number;
+        perUserLimit: number | null;
+        startAt: Date;
+        endAt: Date;
+    }[]>;
+    findOne(id: string): Promise<{
+        usages: {
+            id: string;
+            userId: string;
+            discountAmount: import("@prisma/client-runtime-utils").Decimal;
+            orderId: string | null;
+            voucherId: string;
+            usedAt: Date;
+        }[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
+        description: string | null;
+        type: import("@prisma/client").$Enums.VoucherType;
+        isActive: boolean;
+        code: string;
+        value: import("@prisma/client-runtime-utils").Decimal;
+        minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
+        maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
+        usageLimit: number | null;
+        usageCount: number;
+        perUserLimit: number | null;
+        startAt: Date;
+        endAt: Date;
+    }>;
+    update(id: string, dto: UpdateVoucherDto): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
+        description: string | null;
+        type: import("@prisma/client").$Enums.VoucherType;
+        isActive: boolean;
+        code: string;
+        value: import("@prisma/client-runtime-utils").Decimal;
+        minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
+        maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
+        usageLimit: number | null;
+        usageCount: number;
+        perUserLimit: number | null;
+        startAt: Date;
+        endAt: Date;
+    }>;
+    remove(id: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
+        description: string | null;
+        type: import("@prisma/client").$Enums.VoucherType;
+        isActive: boolean;
+        code: string;
+        value: import("@prisma/client-runtime-utils").Decimal;
+        minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
+        maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
+        usageLimit: number | null;
+        usageCount: number;
+        perUserLimit: number | null;
+        startAt: Date;
+        endAt: Date;
+    }>;
+    changeStatus(id: string, isActive: boolean): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
+        description: string | null;
+        type: import("@prisma/client").$Enums.VoucherType;
+        isActive: boolean;
+        code: string;
+        value: import("@prisma/client-runtime-utils").Decimal;
+        minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
+        maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
+        usageLimit: number | null;
+        usageCount: number;
+        perUserLimit: number | null;
+        startAt: Date;
+        endAt: Date;
+    }>;
+    validate(userId: string, dto: ValidateVoucherDto): Promise<{
+        valid: boolean;
+        voucher: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            description: string | null;
+            type: import("@prisma/client").$Enums.VoucherType;
+            isActive: boolean;
+            code: string;
+            value: import("@prisma/client-runtime-utils").Decimal;
+            minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
+            maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
+            usageLimit: number | null;
+            usageCount: number;
+            perUserLimit: number | null;
+            startAt: Date;
+            endAt: Date;
+        };
+        discount: number;
+    }>;
+    viewUsage(id: string): Promise<({
+        user: {
+            id: string;
+            email: string;
+            firstName: string | null;
+            lastName: string | null;
+        };
+    } & {
+        id: string;
+        userId: string;
+        discountAmount: import("@prisma/client-runtime-utils").Decimal;
+        orderId: string | null;
+        voucherId: string;
+        usedAt: Date;
+    })[]>;
+}
