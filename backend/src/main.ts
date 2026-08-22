@@ -15,7 +15,9 @@ async function bootstrap() {
   // SECURITY (HELMET & CORS)
   // ============================================================
 
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: false,
+  }));
   app.enableCors({
     origin: '*', // TODO: configure properly in production
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
