@@ -10,11 +10,11 @@ export declare class CartService {
             variant: {
                 product: {
                     id: string;
-                    status: import("@prisma/client").$Enums.ProductStatus;
-                    createdAt: Date;
-                    updatedAt: Date;
                     name: string;
                     description: string | null;
+                    createdAt: Date;
+                    status: import("@prisma/client").$Enums.ProductStatus;
+                    updatedAt: Date;
                     slug: string;
                     brandId: string;
                     categoryId: string;
@@ -34,9 +34,9 @@ export declare class CartService {
                 } | null;
             } & {
                 id: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 isActive: boolean;
                 imageUrl: string | null;
                 sku: string;
@@ -59,8 +59,8 @@ export declare class CartService {
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
         })[];
         id: string;
-        status: import("@prisma/client").$Enums.CartStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.CartStatus;
         updatedAt: Date;
         userId: string;
     }>;
@@ -102,11 +102,11 @@ export declare class CartService {
                 variant: {
                     product: {
                         id: string;
-                        status: import("@prisma/client").$Enums.ProductStatus;
-                        createdAt: Date;
-                        updatedAt: Date;
                         name: string;
                         description: string | null;
+                        createdAt: Date;
+                        status: import("@prisma/client").$Enums.ProductStatus;
+                        updatedAt: Date;
                         slug: string;
                         brandId: string;
                         categoryId: string;
@@ -126,9 +126,9 @@ export declare class CartService {
                     } | null;
                 } & {
                     id: string;
+                    name: string;
                     createdAt: Date;
                     updatedAt: Date;
-                    name: string;
                     isActive: boolean;
                     imageUrl: string | null;
                     sku: string;
@@ -152,8 +152,8 @@ export declare class CartService {
             })[];
         } & {
             id: string;
-            status: import("@prisma/client").$Enums.CartStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.CartStatus;
             updatedAt: Date;
             userId: string;
         };

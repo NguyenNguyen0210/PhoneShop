@@ -12,9 +12,9 @@ export declare class ImeiController {
             };
         } & {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             isActive: boolean;
             imageUrl: string | null;
             sku: string;
@@ -29,8 +29,8 @@ export declare class ImeiController {
         };
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ImeiStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ImeiStatus;
         updatedAt: Date;
         variantId: string;
         imei: string;
@@ -43,11 +43,11 @@ export declare class ImeiController {
         variant: {
             product: {
                 id: string;
-                status: import("@prisma/client").$Enums.ProductStatus;
-                createdAt: Date;
-                updatedAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
+                status: import("@prisma/client").$Enums.ProductStatus;
+                updatedAt: Date;
                 slug: string;
                 brandId: string;
                 categoryId: string;
@@ -58,9 +58,9 @@ export declare class ImeiController {
             };
         } & {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             isActive: boolean;
             imageUrl: string | null;
             sku: string;
@@ -75,8 +75,8 @@ export declare class ImeiController {
         };
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ImeiStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ImeiStatus;
         updatedAt: Date;
         variantId: string;
         imei: string;
@@ -97,9 +97,9 @@ export declare class ImeiController {
     findOne(id: string): Promise<{
         variant: {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             isActive: boolean;
             imageUrl: string | null;
             sku: string;
@@ -114,8 +114,8 @@ export declare class ImeiController {
         };
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ImeiStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ImeiStatus;
         updatedAt: Date;
         variantId: string;
         imei: string;
@@ -126,8 +126,8 @@ export declare class ImeiController {
     }>;
     add(dto: CreateImeiDto): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ImeiStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ImeiStatus;
         updatedAt: Date;
         variantId: string;
         imei: string;
@@ -142,8 +142,8 @@ export declare class ImeiController {
     }>;
     reserve(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ImeiStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ImeiStatus;
         updatedAt: Date;
         variantId: string;
         imei: string;
@@ -154,8 +154,8 @@ export declare class ImeiController {
     }>;
     markSold(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ImeiStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ImeiStatus;
         updatedAt: Date;
         variantId: string;
         imei: string;
@@ -166,8 +166,8 @@ export declare class ImeiController {
     }>;
     returnDevice(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ImeiStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ImeiStatus;
         updatedAt: Date;
         variantId: string;
         imei: string;
@@ -178,8 +178,8 @@ export declare class ImeiController {
     }>;
     block(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ImeiStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ImeiStatus;
         updatedAt: Date;
         variantId: string;
         imei: string;
@@ -190,8 +190,8 @@ export declare class ImeiController {
     }>;
     warranty(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ImeiStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ImeiStatus;
         updatedAt: Date;
         variantId: string;
         imei: string;
@@ -202,8 +202,8 @@ export declare class ImeiController {
     }>;
     updateStatus(id: string, dto: UpdateImeiStatusDto): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ImeiStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ImeiStatus;
         updatedAt: Date;
         variantId: string;
         imei: string;

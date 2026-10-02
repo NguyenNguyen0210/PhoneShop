@@ -1,9 +1,44 @@
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreatePaymentDto, PaymentCallbackDto } from './dto/payment.dto';
+import { VietqrService } from './vietqr.service';
+import { EmailService } from '../../infrastructure/email/email.service';
+import { CreatePaymentDto, CreateVnpayUrlDto, PaymentCallbackDto } from './dto/payment.dto';
 export declare class PaymentsService {
-    private prisma;
-    constructor(prisma: PrismaService);
+    private readonly prisma;
+    private readonly vietqrService;
+    private readonly emailService;
+    private readonly configService;
+    private readonly logger;
+    constructor(prisma: PrismaService, vietqrService: VietqrService, emailService: EmailService, configService: ConfigService);
     private generateTransactionCode;
+    generateVietQr(orderId: string, userId?: string): Promise<{
+        qrUrl: string;
+        bankId: string;
+        accountNo: string;
+        accountName: string;
+        amount: number;
+        orderNumber: string;
+        paymentId: string;
+        orderId: string;
+    }>;
+    createVnpayPaymentUrl(dto: CreateVnpayUrlDto, clientIp?: string): Promise<{
+        paymentUrl: string;
+        orderNumber: string;
+        amount: number;
+    }>;
+    handleVnpayIpn(query: Record<string, any>): Promise<{
+        RspCode: string;
+        Message: string;
+    }>;
+    handleVnpayReturn(query: Record<string, any>): Promise<{
+        success: boolean;
+        isValid: boolean;
+        orderNumber: any;
+        amount: number;
+        responseCode: any;
+        transactionNo: any;
+        message: string;
+    }>;
     create(userId: string, dto: CreatePaymentDto): Promise<{
         id: string;
         status: import("@prisma/client").$Enums.PaymentStatus;
@@ -50,10 +85,10 @@ export declare class PaymentsService {
             status: import("@prisma/client").$Enums.TransactionStatus;
             createdAt: Date;
             updatedAt: Date;
-            type: import("@prisma/client").$Enums.TransactionType;
             amount: import("@prisma/client-runtime-utils").Decimal;
-            transactionCode: string;
             paymentId: string;
+            transactionCode: string;
+            type: import("@prisma/client").$Enums.TransactionType;
             providerReference: string | null;
             responseData: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
@@ -75,10 +110,10 @@ export declare class PaymentsService {
             status: import("@prisma/client").$Enums.TransactionStatus;
             createdAt: Date;
             updatedAt: Date;
-            type: import("@prisma/client").$Enums.TransactionType;
             amount: import("@prisma/client-runtime-utils").Decimal;
-            transactionCode: string;
             paymentId: string;
+            transactionCode: string;
+            type: import("@prisma/client").$Enums.TransactionType;
             providerReference: string | null;
             responseData: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
@@ -97,18 +132,18 @@ export declare class PaymentsService {
     findAll(): Promise<({
         order: {
             id: string;
-            userId: string;
             orderNumber: string;
+            userId: string;
         };
         transactions: {
             id: string;
             status: import("@prisma/client").$Enums.TransactionStatus;
             createdAt: Date;
             updatedAt: Date;
-            type: import("@prisma/client").$Enums.TransactionType;
             amount: import("@prisma/client-runtime-utils").Decimal;
-            transactionCode: string;
             paymentId: string;
+            transactionCode: string;
+            type: import("@prisma/client").$Enums.TransactionType;
             providerReference: string | null;
             responseData: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
@@ -128,25 +163,8 @@ export declare class PaymentsService {
         payment: {
             order: {
                 id: string;
-                status: import("@prisma/client").$Enums.OrderStatus;
-                createdAt: Date;
-                updatedAt: Date;
-                userId: string;
                 orderNumber: string;
-                addressId: string | null;
-                subtotal: import("@prisma/client-runtime-utils").Decimal;
-                discountAmount: import("@prisma/client-runtime-utils").Decimal;
-                shippingFee: import("@prisma/client-runtime-utils").Decimal;
-                taxAmount: import("@prisma/client-runtime-utils").Decimal;
-                totalAmount: import("@prisma/client-runtime-utils").Decimal;
-                voucherCode: string | null;
-                customerNote: string | null;
-                cancelledReason: string | null;
-                confirmedAt: Date | null;
-                shippedAt: Date | null;
-                deliveredAt: Date | null;
-                completedAt: Date | null;
-                cancelledAt: Date | null;
+                userId: string;
             };
         } & {
             id: string;
@@ -165,10 +183,10 @@ export declare class PaymentsService {
         status: import("@prisma/client").$Enums.TransactionStatus;
         createdAt: Date;
         updatedAt: Date;
-        type: import("@prisma/client").$Enums.TransactionType;
         amount: import("@prisma/client-runtime-utils").Decimal;
-        transactionCode: string;
         paymentId: string;
+        transactionCode: string;
+        type: import("@prisma/client").$Enums.TransactionType;
         providerReference: string | null;
         responseData: import("@prisma/client/runtime/client").JsonValue | null;
     })[]>;

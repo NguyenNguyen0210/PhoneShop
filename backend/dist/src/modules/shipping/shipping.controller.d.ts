@@ -5,15 +5,15 @@ export declare class ShippingController {
     constructor(shippingService: ShippingService);
     create(dto: CreateShippingDto): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ShippingStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ShippingStatus;
         updatedAt: Date;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         orderId: string;
-        providerName: string;
         trackingNumber: string | null;
+        providerName: string;
         estimatedDeliveryDate: Date | null;
     }>;
     findAll(): Promise<({
@@ -24,54 +24,54 @@ export declare class ShippingController {
         };
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ShippingStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ShippingStatus;
         updatedAt: Date;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         orderId: string;
-        providerName: string;
         trackingNumber: string | null;
+        providerName: string;
         estimatedDeliveryDate: Date | null;
     })[]>;
     findOne(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ShippingStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ShippingStatus;
         updatedAt: Date;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         orderId: string;
-        providerName: string;
         trackingNumber: string | null;
+        providerName: string;
         estimatedDeliveryDate: Date | null;
     }>;
     findByOrder(orderId: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ShippingStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ShippingStatus;
         updatedAt: Date;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         orderId: string;
-        providerName: string;
         trackingNumber: string | null;
+        providerName: string;
         estimatedDeliveryDate: Date | null;
     }>;
     updateStatus(id: string, dto: UpdateShippingStatusDto): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ShippingStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ShippingStatus;
         updatedAt: Date;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         orderId: string;
-        providerName: string;
         trackingNumber: string | null;
+        providerName: string;
         estimatedDeliveryDate: Date | null;
     }>;
 }

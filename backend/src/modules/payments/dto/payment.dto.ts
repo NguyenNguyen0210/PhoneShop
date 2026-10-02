@@ -12,6 +12,22 @@ export class CreatePaymentDto {
   method: PaymentMethod;
 }
 
+export class CreateVnpayUrlDto {
+  @ApiProperty({ description: 'ID of the order to create VNPay payment for' })
+  @IsUUID()
+  orderId: string;
+
+  @ApiPropertyOptional({ description: 'Client IP address' })
+  @IsOptional()
+  @IsString()
+  ipAddr?: string;
+
+  @ApiPropertyOptional({ description: 'Optional specific bank code, e.g. VNBANK, NCB' })
+  @IsOptional()
+  @IsString()
+  bankCode?: string;
+}
+
 export class PaymentCallbackDto {
   @ApiProperty()
   @IsString()

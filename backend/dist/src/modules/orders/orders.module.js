@@ -8,17 +8,24 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrdersModule = void 0;
 const common_1 = require("@nestjs/common");
+const bullmq_1 = require("@nestjs/bullmq");
 const orders_service_1 = require("./orders.service");
 const orders_controller_1 = require("./orders.controller");
+const orders_processor_1 = require("./orders.processor");
 const prisma_module_1 = require("../../prisma/prisma.module");
 let OrdersModule = class OrdersModule {
 };
 exports.OrdersModule = OrdersModule;
 exports.OrdersModule = OrdersModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule],
+        imports: [
+            prisma_module_1.PrismaModule,
+            bullmq_1.BullModule.registerQueue({
+                name: 'order-queue',
+            }),
+        ],
         controllers: [orders_controller_1.OrdersController],
-        providers: [orders_service_1.OrdersService],
+        providers: [orders_service_1.OrdersService, orders_processor_1.OrdersProcessor],
         exports: [orders_service_1.OrdersService],
     })
 ], OrdersModule);

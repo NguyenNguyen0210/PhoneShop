@@ -8,17 +8,29 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var OrdersService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrdersService = void 0;
 const common_1 = require("@nestjs/common");
+const bullmq_1 = require("@nestjs/bullmq");
+const bullmq_2 = require("bullmq");
 const prisma_service_1 = require("../../prisma/prisma.service");
 const client_1 = require("@prisma/client");
 const crypto_1 = require("crypto");
-const CANCELLABLE_STATUSES = [client_1.OrderStatus.PENDING, client_1.OrderStatus.CONFIRMED];
-let OrdersService = class OrdersService {
+const CANCELLABLE_STATUSES = [
+    client_1.OrderStatus.PENDING,
+    client_1.OrderStatus.CONFIRMED,
+];
+let OrdersService = OrdersService_1 = class OrdersService {
     prisma;
-    constructor(prisma) {
+    orderQueue;
+    logger = new common_1.Logger(OrdersService_1.name);
+    constructor(prisma, orderQueue) {
         this.prisma = prisma;
+        this.orderQueue = orderQueue;
     }
     generateOrderNumber() {
         return `ORD-${Date.now()}-${(0, crypto_1.randomBytes)(3).toString('hex').toUpperCase()}`;
@@ -28,7 +40,11 @@ let OrdersService = class OrdersService {
             where: { userId },
             include: {
                 items: {
-                    include: { variant: { include: { inventory: true } } },
+                    include: {
+                        variant: {
+                            include: { inventory: true, product: { select: { name: true } } },
+                        },
+                    },
                 },
             },
         });
@@ -59,7 +75,7 @@ let OrdersService = class OrdersService {
                             discountAmount = Math.min(discountAmount, Number(voucher.maxDiscountAmount));
                         }
                     }
-                    else if (voucher.type === client_1.VoucherType.FIXED_AMOUNT) {
+                    else if (voucher.type === client_1.VoucherType.FIXED_AMOUNT || voucher.type === client_1.VoucherType.FREE_SHIPPING) {
                         discountAmount = Math.min(Number(voucher.value), subtotal);
                     }
                     voucherUsageData = { voucherId: voucher.id, discountAmount };
@@ -71,8 +87,46 @@ let OrdersService = class OrdersService {
             }
         }
         const shippingFee = 30000;
-        const totalAmount = subtotal - discountAmount + shippingFee;
+        const totalAmount = Math.max(0, subtotal - discountAmount + shippingFee);
+        const holdExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
         const order = await this.prisma.$transaction(async (tx) => {
+            const orderItemsCreateData = [];
+            for (const item of cart.items) {
+                const availableImeis = await tx.imeiDevice.findMany({
+                    where: {
+                        variantId: item.variantId,
+                        status: client_1.ImeiStatus.AVAILABLE,
+                    },
+                    take: item.quantity,
+                });
+                if (availableImeis.length < item.quantity) {
+                    throw new common_1.BadRequestException(`Not enough available IMEIs for ${item.variant.name}`);
+                }
+                const imeiIds = availableImeis.map((imei) => imei.id);
+                await tx.imeiDevice.updateMany({
+                    where: { id: { in: imeiIds } },
+                    data: { status: client_1.ImeiStatus.RESERVED },
+                });
+                for (const imei of availableImeis) {
+                    orderItemsCreateData.push({
+                        variantId: item.variantId,
+                        productName: item.variant.product?.name || item.variant.name,
+                        sku: item.variant.sku,
+                        quantity: 1,
+                        unitPrice: item.unitPrice,
+                        discountAmount: 0,
+                        totalPrice: Number(item.unitPrice),
+                        imeiDeviceId: imei.id,
+                    });
+                }
+                await tx.inventory.update({
+                    where: { variantId: item.variantId },
+                    data: {
+                        reservedQty: { increment: item.quantity },
+                        availableQty: { decrement: item.quantity },
+                    },
+                });
+            }
             const newOrder = await tx.order.create({
                 data: {
                     orderNumber: this.generateOrderNumber(),
@@ -85,16 +139,9 @@ let OrdersService = class OrdersService {
                     totalAmount,
                     voucherCode: dto.voucherCode,
                     customerNote: dto.customerNote,
+                    holdExpiresAt,
                     items: {
-                        create: cart.items.map((item) => ({
-                            variantId: item.variantId,
-                            productName: item.variant.product?.name || item.variant.name,
-                            sku: item.variant.sku,
-                            quantity: item.quantity,
-                            unitPrice: item.unitPrice,
-                            discountAmount: 0,
-                            totalPrice: Number(item.unitPrice) * item.quantity,
-                        })),
+                        create: orderItemsCreateData,
                     },
                 },
                 include: { items: true },
@@ -109,18 +156,16 @@ let OrdersService = class OrdersService {
                     },
                 });
             }
-            for (const item of cart.items) {
-                await tx.inventory.update({
-                    where: { variantId: item.variantId },
-                    data: {
-                        reservedQty: { increment: item.quantity },
-                        availableQty: { decrement: item.quantity },
-                    },
-                });
-            }
             await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
             return newOrder;
         });
+        try {
+            await this.orderQueue.add('expire-order-hold', { orderId: order.id }, { delay: 15 * 60 * 1000 });
+            this.logger.log(`Enqueued 15m hold expiry job for order ${order.id}`);
+        }
+        catch (queueErr) {
+            this.logger.error(`Failed to enqueue expire-order-hold job for order ${order.id}:`, queueErr.message);
+        }
         return order;
     }
     async findMyOrders(userId) {
@@ -176,6 +221,25 @@ let OrdersService = class OrdersService {
         if (!allowed.includes(newStatus)) {
             throw new common_1.BadRequestException(`Cannot transition from ${order.status} to ${newStatus}`);
         }
+        if (newStatus === client_1.OrderStatus.CANCELLED && order.status === client_1.OrderStatus.PENDING) {
+            await this.prisma.$transaction(async (tx) => {
+                for (const item of order.items) {
+                    if (item.imeiDeviceId) {
+                        await tx.imeiDevice.update({
+                            where: { id: item.imeiDeviceId },
+                            data: { status: client_1.ImeiStatus.AVAILABLE },
+                        });
+                    }
+                    await tx.inventory.update({
+                        where: { variantId: item.variantId },
+                        data: {
+                            reservedQty: { decrement: item.quantity },
+                            availableQty: { increment: item.quantity },
+                        },
+                    });
+                }
+            });
+        }
         const data = { status: newStatus };
         const now = new Date();
         if (newStatus === client_1.OrderStatus.CONFIRMED)
@@ -198,26 +262,39 @@ let OrdersService = class OrdersService {
             throw new common_1.BadRequestException('Order cannot be cancelled in its current status');
         }
         const items = await this.prisma.orderItem.findMany({ where: { orderId: id } });
-        await this.prisma.$transaction(items.map((item) => this.prisma.inventory.update({
-            where: { variantId: item.variantId },
-            data: {
-                reservedQty: { decrement: item.quantity },
-                availableQty: { increment: item.quantity },
-            },
-        })));
-        return this.prisma.order.update({
-            where: { id },
-            data: {
-                status: client_1.OrderStatus.CANCELLED,
-                cancelledAt: new Date(),
-                cancelledReason: dto.reason,
-            },
+        await this.prisma.$transaction(async (tx) => {
+            for (const item of items) {
+                if (item.imeiDeviceId) {
+                    await tx.imeiDevice.update({
+                        where: { id: item.imeiDeviceId },
+                        data: { status: client_1.ImeiStatus.AVAILABLE },
+                    });
+                }
+                await tx.inventory.update({
+                    where: { variantId: item.variantId },
+                    data: {
+                        reservedQty: { decrement: item.quantity },
+                        availableQty: { increment: item.quantity },
+                    },
+                });
+            }
+            await tx.order.update({
+                where: { id },
+                data: {
+                    status: client_1.OrderStatus.CANCELLED,
+                    cancelledAt: new Date(),
+                    cancelledReason: dto.reason,
+                },
+            });
         });
+        return this.prisma.order.findUnique({ where: { id } });
     }
 };
 exports.OrdersService = OrdersService;
-exports.OrdersService = OrdersService = __decorate([
+exports.OrdersService = OrdersService = OrdersService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __param(1, (0, bullmq_1.InjectQueue)('order-queue')),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        bullmq_2.Queue])
 ], OrdersService);
 //# sourceMappingURL=orders.service.js.map

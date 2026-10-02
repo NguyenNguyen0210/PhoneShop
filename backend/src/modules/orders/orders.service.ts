@@ -1,14 +1,30 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderDto, CancelOrderDto } from './dto/order.dto';
-import { OrderStatus, VoucherType } from '@prisma/client';
+import { OrderStatus, VoucherType, ImeiStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
 
-const CANCELLABLE_STATUSES: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.CONFIRMED];
+const CANCELLABLE_STATUSES: OrderStatus[] = [
+  OrderStatus.PENDING,
+  OrderStatus.CONFIRMED,
+];
 
 @Injectable()
 export class OrdersService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(OrdersService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue('order-queue') private readonly orderQueue: Queue,
+  ) {}
 
   private generateOrderNumber(): string {
     return `ORD-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
@@ -20,7 +36,11 @@ export class OrdersService {
       where: { userId },
       include: {
         items: {
-          include: { variant: { include: { inventory: true } } },
+          include: {
+            variant: {
+              include: { inventory: true, product: { select: { name: true } } },
+            },
+          },
         },
       },
     });
@@ -41,12 +61,13 @@ export class OrdersService {
 
     // 3. Calculate subtotal
     const subtotal = cart.items.reduce(
-      (acc, item) => acc + Number(item.unitPrice) * item.quantity, 0,
+      (acc, item) => acc + Number(item.unitPrice) * item.quantity,
+      0,
     );
 
     // 4. Apply voucher
     let discountAmount = 0;
-    let voucherUsageData: any = null;
+    let voucherUsageData: { voucherId: string; discountAmount: number } | null = null;
 
     if (dto.voucherCode) {
       const voucher = await this.prisma.voucher.findUnique({
@@ -60,7 +81,7 @@ export class OrdersService {
             if (voucher.maxDiscountAmount) {
               discountAmount = Math.min(discountAmount, Number(voucher.maxDiscountAmount));
             }
-          } else if (voucher.type === VoucherType.FIXED_AMOUNT) {
+          } else if (voucher.type === VoucherType.FIXED_AMOUNT || voucher.type === VoucherType.FREE_SHIPPING) {
             discountAmount = Math.min(Number(voucher.value), subtotal);
           }
           voucherUsageData = { voucherId: voucher.id, discountAmount };
@@ -73,10 +94,70 @@ export class OrdersService {
     }
 
     const shippingFee = 30000; // 30,000 VND flat rate
-    const totalAmount = subtotal - discountAmount + shippingFee;
+    const totalAmount = Math.max(0, subtotal - discountAmount + shippingFee);
+    const holdExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes hold
 
-    // 5. Create order in transaction
+    // 5. Atomic transaction with IMEI reservation
     const order = await this.prisma.$transaction(async (tx) => {
+      const orderItemsCreateData: Array<{
+        variantId: string;
+        productName: string;
+        sku: string;
+        quantity: number;
+        unitPrice: any;
+        discountAmount: number;
+        totalPrice: number;
+        imeiDeviceId: string;
+      }> = [];
+
+      for (const item of cart.items) {
+        // Find available IMEIs for this variant
+        const availableImeis = await tx.imeiDevice.findMany({
+          where: {
+            variantId: item.variantId,
+            status: ImeiStatus.AVAILABLE,
+          },
+          take: item.quantity,
+        });
+
+        if (availableImeis.length < item.quantity) {
+          throw new BadRequestException(
+            `Not enough available IMEIs for ${item.variant.name}`,
+          );
+        }
+
+        // Mark those IMEIs as RESERVED
+        const imeiIds = availableImeis.map((imei) => imei.id);
+        await tx.imeiDevice.updateMany({
+          where: { id: { in: imeiIds } },
+          data: { status: ImeiStatus.RESERVED },
+        });
+
+        // Link reserved IMEIs to order items
+        for (const imei of availableImeis) {
+          orderItemsCreateData.push({
+            variantId: item.variantId,
+            productName: (item.variant as any).product?.name || item.variant.name,
+            sku: item.variant.sku,
+            quantity: 1,
+            unitPrice: item.unitPrice,
+            discountAmount: 0,
+            totalPrice: Number(item.unitPrice),
+            imeiDeviceId: imei.id,
+          });
+        }
+
+        // Adjust inventory
+        await tx.inventory.update({
+          where: { variantId: item.variantId },
+          data: {
+            reservedQty: { increment: item.quantity },
+            availableQty: { decrement: item.quantity },
+          },
+        });
+      }
+
+      // Create Order
       const newOrder = await tx.order.create({
         data: {
           orderNumber: this.generateOrderNumber(),
@@ -89,16 +170,9 @@ export class OrdersService {
           totalAmount,
           voucherCode: dto.voucherCode,
           customerNote: dto.customerNote,
+          holdExpiresAt,
           items: {
-            create: cart.items.map((item) => ({
-              variantId: item.variantId,
-              productName: (item.variant as any).product?.name || item.variant.name,
-              sku: item.variant.sku,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              discountAmount: 0,
-              totalPrice: Number(item.unitPrice) * item.quantity,
-            })),
+            create: orderItemsCreateData,
           },
         },
         include: { items: true },
@@ -116,22 +190,26 @@ export class OrdersService {
         });
       }
 
-      // Reserve stock
-      for (const item of cart.items) {
-        await tx.inventory.update({
-          where: { variantId: item.variantId },
-          data: {
-            reservedQty: { increment: item.quantity },
-            availableQty: { decrement: item.quantity },
-          },
-        });
-      }
-
       // Clear cart
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
       return newOrder;
     });
+
+    // 6. Push BullMQ job for 15-minute hold auto-release
+    try {
+      await this.orderQueue.add(
+        'expire-order-hold',
+        { orderId: order.id },
+        { delay: 15 * 60 * 1000 },
+      );
+      this.logger.log(`Enqueued 15m hold expiry job for order ${order.id}`);
+    } catch (queueErr) {
+      this.logger.error(
+        `Failed to enqueue expire-order-hold job for order ${order.id}:`,
+        (queueErr as Error).message,
+      );
+    }
 
     return order;
   }
@@ -196,6 +274,27 @@ export class OrdersService {
       );
     }
 
+    // If transitioning to CANCELLED, release reserved IMEIs and restore inventory
+    if (newStatus === OrderStatus.CANCELLED && order.status === OrderStatus.PENDING) {
+      await this.prisma.$transaction(async (tx) => {
+        for (const item of order.items) {
+          if (item.imeiDeviceId) {
+            await tx.imeiDevice.update({
+              where: { id: item.imeiDeviceId },
+              data: { status: ImeiStatus.AVAILABLE },
+            });
+          }
+          await tx.inventory.update({
+            where: { variantId: item.variantId },
+            data: {
+              reservedQty: { decrement: item.quantity },
+              availableQty: { increment: item.quantity },
+            },
+          });
+        }
+      });
+    }
+
     const data: any = { status: newStatus };
     const now = new Date();
     if (newStatus === OrderStatus.CONFIRMED)  data.confirmedAt  = now;
@@ -215,27 +314,35 @@ export class OrdersService {
       throw new BadRequestException('Order cannot be cancelled in its current status');
     }
 
-    // Release reserved stock
+    // Release reserved stock & IMEIs
     const items = await this.prisma.orderItem.findMany({ where: { orderId: id } });
-    await this.prisma.$transaction(
-      items.map((item) =>
-        this.prisma.inventory.update({
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of items) {
+        if (item.imeiDeviceId) {
+          await tx.imeiDevice.update({
+            where: { id: item.imeiDeviceId },
+            data: { status: ImeiStatus.AVAILABLE },
+          });
+        }
+        await tx.inventory.update({
           where: { variantId: item.variantId },
           data: {
             reservedQty: { decrement: item.quantity },
             availableQty: { increment: item.quantity },
           },
-        }),
-      ),
-    );
+        });
+      }
 
-    return this.prisma.order.update({
-      where: { id },
-      data: {
-        status: OrderStatus.CANCELLED,
-        cancelledAt: new Date(),
-        cancelledReason: dto.reason,
-      },
+      await tx.order.update({
+        where: { id },
+        data: {
+          status: OrderStatus.CANCELLED,
+          cancelledAt: new Date(),
+          cancelledReason: dto.reason,
+        },
+      });
     });
+
+    return this.prisma.order.findUnique({ where: { id } });
   }
 }

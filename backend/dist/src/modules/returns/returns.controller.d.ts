@@ -4,6 +4,29 @@ export declare class ReturnsController {
     private readonly returnsService;
     constructor(returnsService: ReturnsService);
     createReturn(user: any, dto: CreateReturnDto): Promise<{
+        order: {
+            id: string;
+            createdAt: Date;
+            status: import("@prisma/client").$Enums.OrderStatus;
+            updatedAt: Date;
+            userId: string;
+            orderNumber: string;
+            subtotal: import("@prisma/client-runtime-utils").Decimal;
+            discountAmount: import("@prisma/client-runtime-utils").Decimal;
+            shippingFee: import("@prisma/client-runtime-utils").Decimal;
+            taxAmount: import("@prisma/client-runtime-utils").Decimal;
+            totalAmount: import("@prisma/client-runtime-utils").Decimal;
+            voucherCode: string | null;
+            customerNote: string | null;
+            cancelledReason: string | null;
+            holdExpiresAt: Date | null;
+            confirmedAt: Date | null;
+            shippedAt: Date | null;
+            deliveredAt: Date | null;
+            completedAt: Date | null;
+            cancelledAt: Date | null;
+            addressId: string | null;
+        };
         items: {
             id: string;
             createdAt: Date;
@@ -13,32 +36,10 @@ export declare class ReturnsController {
             reason: string | null;
             returnId: string;
         }[];
-        order: {
-            id: string;
-            status: import("@prisma/client").$Enums.OrderStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            userId: string;
-            orderNumber: string;
-            addressId: string | null;
-            subtotal: import("@prisma/client-runtime-utils").Decimal;
-            discountAmount: import("@prisma/client-runtime-utils").Decimal;
-            shippingFee: import("@prisma/client-runtime-utils").Decimal;
-            taxAmount: import("@prisma/client-runtime-utils").Decimal;
-            totalAmount: import("@prisma/client-runtime-utils").Decimal;
-            voucherCode: string | null;
-            customerNote: string | null;
-            cancelledReason: string | null;
-            confirmedAt: Date | null;
-            shippedAt: Date | null;
-            deliveredAt: Date | null;
-            completedAt: Date | null;
-            cancelledAt: Date | null;
-        };
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ReturnStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReturnStatus;
         updatedAt: Date;
         userId: string;
         customerNote: string | null;
@@ -52,6 +53,29 @@ export declare class ReturnsController {
         receivedAt: Date | null;
     }>;
     getMyReturns(user: any): Promise<({
+        order: {
+            id: string;
+            createdAt: Date;
+            status: import("@prisma/client").$Enums.OrderStatus;
+            updatedAt: Date;
+            userId: string;
+            orderNumber: string;
+            subtotal: import("@prisma/client-runtime-utils").Decimal;
+            discountAmount: import("@prisma/client-runtime-utils").Decimal;
+            shippingFee: import("@prisma/client-runtime-utils").Decimal;
+            taxAmount: import("@prisma/client-runtime-utils").Decimal;
+            totalAmount: import("@prisma/client-runtime-utils").Decimal;
+            voucherCode: string | null;
+            customerNote: string | null;
+            cancelledReason: string | null;
+            holdExpiresAt: Date | null;
+            confirmedAt: Date | null;
+            shippedAt: Date | null;
+            deliveredAt: Date | null;
+            completedAt: Date | null;
+            cancelledAt: Date | null;
+            addressId: string | null;
+        };
         items: {
             id: string;
             createdAt: Date;
@@ -61,45 +85,23 @@ export declare class ReturnsController {
             reason: string | null;
             returnId: string;
         }[];
-        order: {
-            id: string;
-            status: import("@prisma/client").$Enums.OrderStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            userId: string;
-            orderNumber: string;
-            addressId: string | null;
-            subtotal: import("@prisma/client-runtime-utils").Decimal;
-            discountAmount: import("@prisma/client-runtime-utils").Decimal;
-            shippingFee: import("@prisma/client-runtime-utils").Decimal;
-            taxAmount: import("@prisma/client-runtime-utils").Decimal;
-            totalAmount: import("@prisma/client-runtime-utils").Decimal;
-            voucherCode: string | null;
-            customerNote: string | null;
-            cancelledReason: string | null;
-            confirmedAt: Date | null;
-            shippedAt: Date | null;
-            deliveredAt: Date | null;
-            completedAt: Date | null;
-            cancelledAt: Date | null;
-        };
         refunds: {
             id: string;
-            status: import("@prisma/client").$Enums.RefundStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.RefundStatus;
             updatedAt: Date;
             amount: import("@prisma/client-runtime-utils").Decimal;
             paymentId: string | null;
             reason: string | null;
-            returnId: string | null;
             refundNumber: string;
             providerRef: string | null;
             processedAt: Date | null;
+            returnId: string | null;
         }[];
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ReturnStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReturnStatus;
         updatedAt: Date;
         userId: string;
         customerNote: string | null;
@@ -113,6 +115,29 @@ export declare class ReturnsController {
         receivedAt: Date | null;
     })[]>;
     getMyReturn(user: any, id: string): Promise<{
+        order: {
+            id: string;
+            createdAt: Date;
+            status: import("@prisma/client").$Enums.OrderStatus;
+            updatedAt: Date;
+            userId: string;
+            orderNumber: string;
+            subtotal: import("@prisma/client-runtime-utils").Decimal;
+            discountAmount: import("@prisma/client-runtime-utils").Decimal;
+            shippingFee: import("@prisma/client-runtime-utils").Decimal;
+            taxAmount: import("@prisma/client-runtime-utils").Decimal;
+            totalAmount: import("@prisma/client-runtime-utils").Decimal;
+            voucherCode: string | null;
+            customerNote: string | null;
+            cancelledReason: string | null;
+            holdExpiresAt: Date | null;
+            confirmedAt: Date | null;
+            shippedAt: Date | null;
+            deliveredAt: Date | null;
+            completedAt: Date | null;
+            cancelledAt: Date | null;
+            addressId: string | null;
+        };
         items: {
             id: string;
             createdAt: Date;
@@ -122,45 +147,23 @@ export declare class ReturnsController {
             reason: string | null;
             returnId: string;
         }[];
-        order: {
-            id: string;
-            status: import("@prisma/client").$Enums.OrderStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            userId: string;
-            orderNumber: string;
-            addressId: string | null;
-            subtotal: import("@prisma/client-runtime-utils").Decimal;
-            discountAmount: import("@prisma/client-runtime-utils").Decimal;
-            shippingFee: import("@prisma/client-runtime-utils").Decimal;
-            taxAmount: import("@prisma/client-runtime-utils").Decimal;
-            totalAmount: import("@prisma/client-runtime-utils").Decimal;
-            voucherCode: string | null;
-            customerNote: string | null;
-            cancelledReason: string | null;
-            confirmedAt: Date | null;
-            shippedAt: Date | null;
-            deliveredAt: Date | null;
-            completedAt: Date | null;
-            cancelledAt: Date | null;
-        };
         refunds: {
             id: string;
-            status: import("@prisma/client").$Enums.RefundStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.RefundStatus;
             updatedAt: Date;
             amount: import("@prisma/client-runtime-utils").Decimal;
             paymentId: string | null;
             reason: string | null;
-            returnId: string | null;
             refundNumber: string;
             providerRef: string | null;
             processedAt: Date | null;
+            returnId: string | null;
         }[];
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ReturnStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReturnStatus;
         updatedAt: Date;
         userId: string;
         customerNote: string | null;
@@ -175,8 +178,8 @@ export declare class ReturnsController {
     }>;
     cancelReturn(user: any, id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ReturnStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReturnStatus;
         updatedAt: Date;
         userId: string;
         customerNote: string | null;
@@ -196,6 +199,29 @@ export declare class ReturnsController {
             firstName: string | null;
             lastName: string | null;
         };
+        order: {
+            id: string;
+            createdAt: Date;
+            status: import("@prisma/client").$Enums.OrderStatus;
+            updatedAt: Date;
+            userId: string;
+            orderNumber: string;
+            subtotal: import("@prisma/client-runtime-utils").Decimal;
+            discountAmount: import("@prisma/client-runtime-utils").Decimal;
+            shippingFee: import("@prisma/client-runtime-utils").Decimal;
+            taxAmount: import("@prisma/client-runtime-utils").Decimal;
+            totalAmount: import("@prisma/client-runtime-utils").Decimal;
+            voucherCode: string | null;
+            customerNote: string | null;
+            cancelledReason: string | null;
+            holdExpiresAt: Date | null;
+            confirmedAt: Date | null;
+            shippedAt: Date | null;
+            deliveredAt: Date | null;
+            completedAt: Date | null;
+            cancelledAt: Date | null;
+            addressId: string | null;
+        };
         items: {
             id: string;
             createdAt: Date;
@@ -205,45 +231,23 @@ export declare class ReturnsController {
             reason: string | null;
             returnId: string;
         }[];
-        order: {
-            id: string;
-            status: import("@prisma/client").$Enums.OrderStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            userId: string;
-            orderNumber: string;
-            addressId: string | null;
-            subtotal: import("@prisma/client-runtime-utils").Decimal;
-            discountAmount: import("@prisma/client-runtime-utils").Decimal;
-            shippingFee: import("@prisma/client-runtime-utils").Decimal;
-            taxAmount: import("@prisma/client-runtime-utils").Decimal;
-            totalAmount: import("@prisma/client-runtime-utils").Decimal;
-            voucherCode: string | null;
-            customerNote: string | null;
-            cancelledReason: string | null;
-            confirmedAt: Date | null;
-            shippedAt: Date | null;
-            deliveredAt: Date | null;
-            completedAt: Date | null;
-            cancelledAt: Date | null;
-        };
         refunds: {
             id: string;
-            status: import("@prisma/client").$Enums.RefundStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.RefundStatus;
             updatedAt: Date;
             amount: import("@prisma/client-runtime-utils").Decimal;
             paymentId: string | null;
             reason: string | null;
-            returnId: string | null;
             refundNumber: string;
             providerRef: string | null;
             processedAt: Date | null;
+            returnId: string | null;
         }[];
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ReturnStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReturnStatus;
         updatedAt: Date;
         userId: string;
         customerNote: string | null;
@@ -263,6 +267,29 @@ export declare class ReturnsController {
             firstName: string | null;
             lastName: string | null;
         };
+        order: {
+            id: string;
+            createdAt: Date;
+            status: import("@prisma/client").$Enums.OrderStatus;
+            updatedAt: Date;
+            userId: string;
+            orderNumber: string;
+            subtotal: import("@prisma/client-runtime-utils").Decimal;
+            discountAmount: import("@prisma/client-runtime-utils").Decimal;
+            shippingFee: import("@prisma/client-runtime-utils").Decimal;
+            taxAmount: import("@prisma/client-runtime-utils").Decimal;
+            totalAmount: import("@prisma/client-runtime-utils").Decimal;
+            voucherCode: string | null;
+            customerNote: string | null;
+            cancelledReason: string | null;
+            holdExpiresAt: Date | null;
+            confirmedAt: Date | null;
+            shippedAt: Date | null;
+            deliveredAt: Date | null;
+            completedAt: Date | null;
+            cancelledAt: Date | null;
+            addressId: string | null;
+        };
         items: {
             id: string;
             createdAt: Date;
@@ -272,45 +299,23 @@ export declare class ReturnsController {
             reason: string | null;
             returnId: string;
         }[];
-        order: {
-            id: string;
-            status: import("@prisma/client").$Enums.OrderStatus;
-            createdAt: Date;
-            updatedAt: Date;
-            userId: string;
-            orderNumber: string;
-            addressId: string | null;
-            subtotal: import("@prisma/client-runtime-utils").Decimal;
-            discountAmount: import("@prisma/client-runtime-utils").Decimal;
-            shippingFee: import("@prisma/client-runtime-utils").Decimal;
-            taxAmount: import("@prisma/client-runtime-utils").Decimal;
-            totalAmount: import("@prisma/client-runtime-utils").Decimal;
-            voucherCode: string | null;
-            customerNote: string | null;
-            cancelledReason: string | null;
-            confirmedAt: Date | null;
-            shippedAt: Date | null;
-            deliveredAt: Date | null;
-            completedAt: Date | null;
-            cancelledAt: Date | null;
-        };
         refunds: {
             id: string;
-            status: import("@prisma/client").$Enums.RefundStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.RefundStatus;
             updatedAt: Date;
             amount: import("@prisma/client-runtime-utils").Decimal;
             paymentId: string | null;
             reason: string | null;
-            returnId: string | null;
             refundNumber: string;
             providerRef: string | null;
             processedAt: Date | null;
+            returnId: string | null;
         }[];
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ReturnStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReturnStatus;
         updatedAt: Date;
         userId: string;
         customerNote: string | null;
@@ -325,8 +330,8 @@ export declare class ReturnsController {
     }>;
     approve(id: string, dto: AdminNoteDto): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ReturnStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReturnStatus;
         updatedAt: Date;
         userId: string;
         customerNote: string | null;
@@ -341,8 +346,8 @@ export declare class ReturnsController {
     }>;
     reject(id: string, dto: AdminNoteDto): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ReturnStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReturnStatus;
         updatedAt: Date;
         userId: string;
         customerNote: string | null;
@@ -357,8 +362,8 @@ export declare class ReturnsController {
     }>;
     markShipping(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ReturnStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReturnStatus;
         updatedAt: Date;
         userId: string;
         customerNote: string | null;
@@ -373,8 +378,8 @@ export declare class ReturnsController {
     }>;
     receive(id: string, dto: AdminNoteDto): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ReturnStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReturnStatus;
         updatedAt: Date;
         userId: string;
         customerNote: string | null;
@@ -389,8 +394,8 @@ export declare class ReturnsController {
     }>;
     inspect(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ReturnStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReturnStatus;
         updatedAt: Date;
         userId: string;
         customerNote: string | null;
@@ -405,8 +410,8 @@ export declare class ReturnsController {
     }>;
     complete(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ReturnStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReturnStatus;
         updatedAt: Date;
         userId: string;
         customerNote: string | null;
@@ -421,53 +426,52 @@ export declare class ReturnsController {
     }>;
     createRefund(dto: CreateRefundDto): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.RefundStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.RefundStatus;
         updatedAt: Date;
         amount: import("@prisma/client-runtime-utils").Decimal;
         paymentId: string | null;
         reason: string | null;
-        returnId: string | null;
         refundNumber: string;
         providerRef: string | null;
         processedAt: Date | null;
+        returnId: string | null;
     }>;
     processRefund(refundId: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.RefundStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.RefundStatus;
         updatedAt: Date;
         amount: import("@prisma/client-runtime-utils").Decimal;
         paymentId: string | null;
         reason: string | null;
-        returnId: string | null;
         refundNumber: string;
         providerRef: string | null;
         processedAt: Date | null;
+        returnId: string | null;
     }>;
     completeRefund(refundId: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.RefundStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.RefundStatus;
         updatedAt: Date;
         amount: import("@prisma/client-runtime-utils").Decimal;
         paymentId: string | null;
         reason: string | null;
-        returnId: string | null;
         refundNumber: string;
         providerRef: string | null;
         processedAt: Date | null;
+        returnId: string | null;
     }>;
     getRefundHistory(): Promise<({
         return: ({
             order: {
                 id: string;
-                status: import("@prisma/client").$Enums.OrderStatus;
                 createdAt: Date;
+                status: import("@prisma/client").$Enums.OrderStatus;
                 updatedAt: Date;
                 userId: string;
                 orderNumber: string;
-                addressId: string | null;
                 subtotal: import("@prisma/client-runtime-utils").Decimal;
                 discountAmount: import("@prisma/client-runtime-utils").Decimal;
                 shippingFee: import("@prisma/client-runtime-utils").Decimal;
@@ -476,16 +480,18 @@ export declare class ReturnsController {
                 voucherCode: string | null;
                 customerNote: string | null;
                 cancelledReason: string | null;
+                holdExpiresAt: Date | null;
                 confirmedAt: Date | null;
                 shippedAt: Date | null;
                 deliveredAt: Date | null;
                 completedAt: Date | null;
                 cancelledAt: Date | null;
+                addressId: string | null;
             };
         } & {
             id: string;
-            status: import("@prisma/client").$Enums.ReturnStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.ReturnStatus;
             updatedAt: Date;
             userId: string;
             customerNote: string | null;
@@ -500,15 +506,15 @@ export declare class ReturnsController {
         }) | null;
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.RefundStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.RefundStatus;
         updatedAt: Date;
         amount: import("@prisma/client-runtime-utils").Decimal;
         paymentId: string | null;
         reason: string | null;
-        returnId: string | null;
         refundNumber: string;
         providerRef: string | null;
         processedAt: Date | null;
+        returnId: string | null;
     })[]>;
 }

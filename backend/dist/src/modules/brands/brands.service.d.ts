@@ -6,10 +6,10 @@ export declare class BrandsService {
     constructor(prisma: PrismaService);
     create(dto: CreateBrandDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;
@@ -17,10 +17,10 @@ export declare class BrandsService {
     }>;
     findAll(search?: string, activeOnly?: boolean): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;
@@ -29,11 +29,11 @@ export declare class BrandsService {
     findOne(id: string): Promise<{
         products: {
             id: string;
-            status: import("@prisma/client").$Enums.ProductStatus;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            status: import("@prisma/client").$Enums.ProductStatus;
+            updatedAt: Date;
             slug: string;
             brandId: string;
             categoryId: string;
@@ -44,10 +44,10 @@ export declare class BrandsService {
         }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;
@@ -55,10 +55,10 @@ export declare class BrandsService {
     }>;
     update(id: string, dto: UpdateBrandDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;
@@ -66,10 +66,10 @@ export declare class BrandsService {
     }>;
     remove(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;
@@ -77,10 +77,10 @@ export declare class BrandsService {
     }>;
     changeStatus(id: string, isActive: boolean): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;

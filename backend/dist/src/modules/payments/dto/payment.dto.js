@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PaymentCallbackDto = exports.CreatePaymentDto = void 0;
+exports.PaymentCallbackDto = exports.CreateVnpayUrlDto = exports.CreatePaymentDto = void 0;
 const class_validator_1 = require("class-validator");
 const swagger_1 = require("@nestjs/swagger");
 const client_1 = require("@prisma/client");
@@ -28,6 +28,29 @@ __decorate([
     (0, class_validator_1.IsEnum)(client_1.PaymentMethod),
     __metadata("design:type", String)
 ], CreatePaymentDto.prototype, "method", void 0);
+class CreateVnpayUrlDto {
+    orderId;
+    ipAddr;
+    bankCode;
+}
+exports.CreateVnpayUrlDto = CreateVnpayUrlDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'ID of the order to create VNPay payment for' }),
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateVnpayUrlDto.prototype, "orderId", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Client IP address' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateVnpayUrlDto.prototype, "ipAddr", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Optional specific bank code, e.g. VNBANK, NCB' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateVnpayUrlDto.prototype, "bankCode", void 0);
 class PaymentCallbackDto {
     provider;
     data;

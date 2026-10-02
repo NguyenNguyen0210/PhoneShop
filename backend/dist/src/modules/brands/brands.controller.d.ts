@@ -6,10 +6,10 @@ export declare class BrandsController {
     constructor(brandsService: BrandsService);
     findAllPublic(search?: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;
@@ -18,11 +18,11 @@ export declare class BrandsController {
     findOne(id: string): Promise<{
         products: {
             id: string;
-            status: import("@prisma/client").$Enums.ProductStatus;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            status: import("@prisma/client").$Enums.ProductStatus;
+            updatedAt: Date;
             slug: string;
             brandId: string;
             categoryId: string;
@@ -33,10 +33,10 @@ export declare class BrandsController {
         }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;
@@ -44,10 +44,10 @@ export declare class BrandsController {
     }>;
     create(dto: CreateBrandDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;
@@ -55,10 +55,10 @@ export declare class BrandsController {
     }>;
     findAllAdmin(search?: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;
@@ -66,10 +66,10 @@ export declare class BrandsController {
     }[]>;
     update(id: string, dto: UpdateBrandDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;
@@ -77,10 +77,10 @@ export declare class BrandsController {
     }>;
     remove(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;
@@ -88,10 +88,10 @@ export declare class BrandsController {
     }>;
     activate(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;
@@ -99,10 +99,10 @@ export declare class BrandsController {
     }>;
     deactivate(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         logoUrl: string | null;
         websiteUrl: string | null;

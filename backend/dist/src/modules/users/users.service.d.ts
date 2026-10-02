@@ -10,9 +10,9 @@ export declare class UsersService {
         roles: ({
             role: {
                 id: string;
-                createdAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
             };
         } & {
             userId: string;
@@ -21,8 +21,8 @@ export declare class UsersService {
         })[];
         addresses: {
             id: string;
-            phone: string;
             createdAt: Date;
+            phone: string;
             updatedAt: Date;
             userId: string;
             type: import("@prisma/client").$Enums.AddressType;
@@ -39,6 +39,7 @@ export declare class UsersService {
         }[];
     } & {
         id: string;
+        createdAt: Date;
         email: string;
         phone: string | null;
         passwordHash: string;
@@ -49,11 +50,11 @@ export declare class UsersService {
         emailVerified: boolean;
         phoneVerified: boolean;
         lastLoginAt: Date | null;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     updateProfile(userId: string, dto: UpdateProfileDto): Promise<{
         id: string;
+        createdAt: Date;
         email: string;
         phone: string | null;
         passwordHash: string;
@@ -64,7 +65,6 @@ export declare class UsersService {
         emailVerified: boolean;
         phoneVerified: boolean;
         lastLoginAt: Date | null;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     changePassword(userId: string, dto: ChangePasswordDto): Promise<{
@@ -74,9 +74,9 @@ export declare class UsersService {
         roles: ({
             role: {
                 id: string;
-                createdAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
             };
         } & {
             userId: string;
@@ -85,6 +85,7 @@ export declare class UsersService {
         })[];
     } & {
         id: string;
+        createdAt: Date;
         email: string;
         phone: string | null;
         passwordHash: string;
@@ -95,16 +96,15 @@ export declare class UsersService {
         emailVerified: boolean;
         phoneVerified: boolean;
         lastLoginAt: Date | null;
-        createdAt: Date;
         updatedAt: Date;
     })[]>;
     findOne(id: string): Promise<{
         roles: ({
             role: {
                 id: string;
-                createdAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
             };
         } & {
             userId: string;
@@ -113,6 +113,7 @@ export declare class UsersService {
         })[];
     } & {
         id: string;
+        createdAt: Date;
         email: string;
         phone: string | null;
         passwordHash: string;
@@ -123,16 +124,15 @@ export declare class UsersService {
         emailVerified: boolean;
         phoneVerified: boolean;
         lastLoginAt: Date | null;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     create(dto: CreateUserDto): Promise<{
         roles: ({
             role: {
                 id: string;
-                createdAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
             };
         } & {
             userId: string;
@@ -141,6 +141,7 @@ export declare class UsersService {
         })[];
     } & {
         id: string;
+        createdAt: Date;
         email: string;
         phone: string | null;
         passwordHash: string;
@@ -151,16 +152,15 @@ export declare class UsersService {
         emailVerified: boolean;
         phoneVerified: boolean;
         lastLoginAt: Date | null;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     update(id: string, dto: UpdateUserDto): Promise<{
         roles: ({
             role: {
                 id: string;
-                createdAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
             };
         } & {
             userId: string;
@@ -169,6 +169,7 @@ export declare class UsersService {
         })[];
     } & {
         id: string;
+        createdAt: Date;
         email: string;
         phone: string | null;
         passwordHash: string;
@@ -179,11 +180,11 @@ export declare class UsersService {
         emailVerified: boolean;
         phoneVerified: boolean;
         lastLoginAt: Date | null;
-        createdAt: Date;
         updatedAt: Date;
     }>;
     changeStatus(id: string, status: 'ACTIVE' | 'INACTIVE' | 'BANNED'): Promise<{
         id: string;
+        createdAt: Date;
         email: string;
         phone: string | null;
         passwordHash: string;
@@ -194,7 +195,6 @@ export declare class UsersService {
         emailVerified: boolean;
         phoneVerified: boolean;
         lastLoginAt: Date | null;
-        createdAt: Date;
         updatedAt: Date;
     }>;
 }

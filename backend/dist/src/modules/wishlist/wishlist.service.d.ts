@@ -8,11 +8,11 @@ export declare class WishlistService {
         items: ({
             product: {
                 id: string;
-                status: import("@prisma/client").$Enums.ProductStatus;
-                createdAt: Date;
-                updatedAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
+                status: import("@prisma/client").$Enums.ProductStatus;
+                updatedAt: Date;
                 slug: string;
                 brandId: string;
                 categoryId: string;
@@ -36,11 +36,11 @@ export declare class WishlistService {
     addProduct(userId: string, dto: AddToWishlistDto): Promise<{
         product: {
             id: string;
-            status: import("@prisma/client").$Enums.ProductStatus;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            status: import("@prisma/client").$Enums.ProductStatus;
+            updatedAt: Date;
             slug: string;
             brandId: string;
             categoryId: string;

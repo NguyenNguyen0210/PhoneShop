@@ -6,13 +6,13 @@ export declare class VouchersController {
     constructor(vouchersService: VouchersService);
     findAllActive(user: any): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
-        type: import("@prisma/client").$Enums.VoucherType;
+        createdAt: Date;
+        updatedAt: Date;
         isActive: boolean;
         code: string;
+        type: import("@prisma/client").$Enums.VoucherType;
         value: import("@prisma/client-runtime-utils").Decimal;
         minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
         maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
@@ -26,13 +26,13 @@ export declare class VouchersController {
         valid: boolean;
         voucher: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
-            type: import("@prisma/client").$Enums.VoucherType;
+            createdAt: Date;
+            updatedAt: Date;
             isActive: boolean;
             code: string;
+            type: import("@prisma/client").$Enums.VoucherType;
             value: import("@prisma/client-runtime-utils").Decimal;
             minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
             maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
@@ -46,13 +46,13 @@ export declare class VouchersController {
     }>;
     create(dto: CreateVoucherDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
-        type: import("@prisma/client").$Enums.VoucherType;
+        createdAt: Date;
+        updatedAt: Date;
         isActive: boolean;
         code: string;
+        type: import("@prisma/client").$Enums.VoucherType;
         value: import("@prisma/client-runtime-utils").Decimal;
         minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
         maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
@@ -73,13 +73,13 @@ export declare class VouchersController {
         }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
-        type: import("@prisma/client").$Enums.VoucherType;
+        createdAt: Date;
+        updatedAt: Date;
         isActive: boolean;
         code: string;
+        type: import("@prisma/client").$Enums.VoucherType;
         value: import("@prisma/client-runtime-utils").Decimal;
         minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
         maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
@@ -91,13 +91,13 @@ export declare class VouchersController {
     }>;
     update(id: string, dto: UpdateVoucherDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
-        type: import("@prisma/client").$Enums.VoucherType;
+        createdAt: Date;
+        updatedAt: Date;
         isActive: boolean;
         code: string;
+        type: import("@prisma/client").$Enums.VoucherType;
         value: import("@prisma/client-runtime-utils").Decimal;
         minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
         maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
@@ -109,13 +109,13 @@ export declare class VouchersController {
     }>;
     remove(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
-        type: import("@prisma/client").$Enums.VoucherType;
+        createdAt: Date;
+        updatedAt: Date;
         isActive: boolean;
         code: string;
+        type: import("@prisma/client").$Enums.VoucherType;
         value: import("@prisma/client-runtime-utils").Decimal;
         minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
         maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
@@ -127,13 +127,13 @@ export declare class VouchersController {
     }>;
     activate(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
-        type: import("@prisma/client").$Enums.VoucherType;
+        createdAt: Date;
+        updatedAt: Date;
         isActive: boolean;
         code: string;
+        type: import("@prisma/client").$Enums.VoucherType;
         value: import("@prisma/client-runtime-utils").Decimal;
         minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
         maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;
@@ -145,13 +145,13 @@ export declare class VouchersController {
     }>;
     deactivate(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
-        type: import("@prisma/client").$Enums.VoucherType;
+        createdAt: Date;
+        updatedAt: Date;
         isActive: boolean;
         code: string;
+        type: import("@prisma/client").$Enums.VoucherType;
         value: import("@prisma/client-runtime-utils").Decimal;
         minOrderValue: import("@prisma/client-runtime-utils").Decimal | null;
         maxDiscountAmount: import("@prisma/client-runtime-utils").Decimal | null;

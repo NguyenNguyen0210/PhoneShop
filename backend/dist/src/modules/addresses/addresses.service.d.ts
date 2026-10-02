@@ -6,8 +6,8 @@ export declare class AddressesService {
     constructor(prisma: PrismaService);
     create(userId: string, dto: CreateAddressDto): Promise<{
         id: string;
-        phone: string;
         createdAt: Date;
+        phone: string;
         updatedAt: Date;
         userId: string;
         type: import("@prisma/client").$Enums.AddressType;
@@ -24,8 +24,8 @@ export declare class AddressesService {
     }>;
     findAll(userId: string): Promise<{
         id: string;
-        phone: string;
         createdAt: Date;
+        phone: string;
         updatedAt: Date;
         userId: string;
         type: import("@prisma/client").$Enums.AddressType;
@@ -42,8 +42,8 @@ export declare class AddressesService {
     }[]>;
     findOne(userId: string, id: string): Promise<{
         id: string;
-        phone: string;
         createdAt: Date;
+        phone: string;
         updatedAt: Date;
         userId: string;
         type: import("@prisma/client").$Enums.AddressType;
@@ -60,8 +60,8 @@ export declare class AddressesService {
     }>;
     update(userId: string, id: string, dto: UpdateAddressDto): Promise<{
         id: string;
-        phone: string;
         createdAt: Date;
+        phone: string;
         updatedAt: Date;
         userId: string;
         type: import("@prisma/client").$Enums.AddressType;
@@ -78,8 +78,8 @@ export declare class AddressesService {
     }>;
     remove(userId: string, id: string): Promise<{
         id: string;
-        phone: string;
         createdAt: Date;
+        phone: string;
         updatedAt: Date;
         userId: string;
         type: import("@prisma/client").$Enums.AddressType;
@@ -96,8 +96,8 @@ export declare class AddressesService {
     }>;
     setDefault(userId: string, id: string): Promise<{
         id: string;
-        phone: string;
         createdAt: Date;
+        phone: string;
         updatedAt: Date;
         userId: string;
         type: import("@prisma/client").$Enums.AddressType;
@@ -122,8 +122,8 @@ export declare class AddressesService {
         };
     } & {
         id: string;
-        phone: string;
         createdAt: Date;
+        phone: string;
         updatedAt: Date;
         userId: string;
         type: import("@prisma/client").$Enums.AddressType;

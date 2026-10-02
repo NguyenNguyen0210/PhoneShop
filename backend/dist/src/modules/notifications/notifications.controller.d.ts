@@ -6,9 +6,9 @@ export declare class NotificationsController {
     getMyNotifications(user: any): Promise<{
         id: string;
         createdAt: Date;
-        data: import("@prisma/client/runtime/client").JsonValue | null;
         userId: string;
         type: import("@prisma/client").$Enums.NotificationType;
+        data: import("@prisma/client/runtime/client").JsonValue | null;
         title: string;
         channel: import("@prisma/client").$Enums.NotificationChannel;
         message: string;
@@ -21,9 +21,9 @@ export declare class NotificationsController {
     markRead(user: any, id: string): Promise<{
         id: string;
         createdAt: Date;
-        data: import("@prisma/client/runtime/client").JsonValue | null;
         userId: string;
         type: import("@prisma/client").$Enums.NotificationType;
+        data: import("@prisma/client/runtime/client").JsonValue | null;
         title: string;
         channel: import("@prisma/client").$Enums.NotificationChannel;
         message: string;
@@ -41,9 +41,9 @@ export declare class NotificationsController {
     } & {
         id: string;
         createdAt: Date;
-        data: import("@prisma/client/runtime/client").JsonValue | null;
         userId: string;
         type: import("@prisma/client").$Enums.NotificationType;
+        data: import("@prisma/client/runtime/client").JsonValue | null;
         title: string;
         channel: import("@prisma/client").$Enums.NotificationChannel;
         message: string;
@@ -53,9 +53,9 @@ export declare class NotificationsController {
     create(dto: CreateNotificationDto): Promise<{
         id: string;
         createdAt: Date;
-        data: import("@prisma/client/runtime/client").JsonValue | null;
         userId: string;
         type: import("@prisma/client").$Enums.NotificationType;
+        data: import("@prisma/client/runtime/client").JsonValue | null;
         title: string;
         channel: import("@prisma/client").$Enums.NotificationChannel;
         message: string;

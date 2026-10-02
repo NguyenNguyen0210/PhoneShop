@@ -6,13 +6,13 @@ export declare class ReviewsService {
     constructor(prisma: PrismaService);
     create(userId: string, dto: CreateReviewDto): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReviewStatus;
         updatedAt: Date;
         userId: string;
         productId: string;
-        rating: number;
         title: string | null;
+        rating: number;
         content: string | null;
         isVerified: boolean;
     }>;
@@ -25,13 +25,13 @@ export declare class ReviewsService {
         };
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReviewStatus;
         updatedAt: Date;
         userId: string;
         productId: string;
-        rating: number;
         title: string | null;
+        rating: number;
         content: string | null;
         isVerified: boolean;
     })[]>;
@@ -48,13 +48,13 @@ export declare class ReviewsService {
         };
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReviewStatus;
         updatedAt: Date;
         userId: string;
         productId: string;
-        rating: number;
         title: string | null;
+        rating: number;
         content: string | null;
         isVerified: boolean;
     })[]>;
@@ -66,73 +66,73 @@ export declare class ReviewsService {
         };
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReviewStatus;
         updatedAt: Date;
         userId: string;
         productId: string;
-        rating: number;
         title: string | null;
+        rating: number;
         content: string | null;
         isVerified: boolean;
     }>;
     update(userId: string, id: string, dto: UpdateReviewDto): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReviewStatus;
         updatedAt: Date;
         userId: string;
         productId: string;
-        rating: number;
         title: string | null;
+        rating: number;
         content: string | null;
         isVerified: boolean;
     }>;
     remove(userId: string, id: string, isAdmin?: boolean): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReviewStatus;
         updatedAt: Date;
         userId: string;
         productId: string;
-        rating: number;
         title: string | null;
+        rating: number;
         content: string | null;
         isVerified: boolean;
     }>;
     approve(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReviewStatus;
         updatedAt: Date;
         userId: string;
         productId: string;
-        rating: number;
         title: string | null;
+        rating: number;
         content: string | null;
         isVerified: boolean;
     }>;
     reject(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReviewStatus;
         updatedAt: Date;
         userId: string;
         productId: string;
-        rating: number;
         title: string | null;
+        rating: number;
         content: string | null;
         isVerified: boolean;
     }>;
     verify(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ReviewStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.ReviewStatus;
         updatedAt: Date;
         userId: string;
         productId: string;
-        rating: number;
         title: string | null;
+        rating: number;
         content: string | null;
         isVerified: boolean;
     }>;

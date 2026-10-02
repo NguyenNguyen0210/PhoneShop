@@ -12,9 +12,9 @@ export declare class InventoryService {
             };
         } & {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             isActive: boolean;
             imageUrl: string | null;
             sku: string;
@@ -59,9 +59,9 @@ export declare class InventoryService {
             };
         } & {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             isActive: boolean;
             imageUrl: string | null;
             sku: string;

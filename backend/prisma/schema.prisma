@@ -400,6 +400,7 @@ model ImeiDevice {
 
   @@index([variantId])
   @@index([status])
+  @@index([status, variantId])
   @@map("imei_devices")
 }
 
@@ -456,6 +457,7 @@ model Order {
   voucherCode     String?     @map("voucher_code") @db.VarChar(50)
   customerNote    String?     @map("customer_note") @db.Text
   cancelledReason String?     @map("cancelled_reason") @db.Text
+  holdExpiresAt   DateTime?   @map("hold_expires_at")
   confirmedAt     DateTime?   @map("confirmed_at")
   shippedAt       DateTime?   @map("shipped_at")
   deliveredAt     DateTime?   @map("delivered_at")

@@ -6,10 +6,10 @@ export declare class CategoriesController {
     constructor(categoriesService: CategoriesService);
     findAllPublic(): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         isActive: boolean;
         parentId: string | null;
@@ -21,10 +21,10 @@ export declare class CategoriesController {
             children: ({
                 children: {
                     id: string;
-                    createdAt: Date;
-                    updatedAt: Date;
                     name: string;
                     description: string | null;
+                    createdAt: Date;
+                    updatedAt: Date;
                     slug: string;
                     isActive: boolean;
                     parentId: string | null;
@@ -33,10 +33,10 @@ export declare class CategoriesController {
                 }[];
             } & {
                 id: string;
-                createdAt: Date;
-                updatedAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
+                updatedAt: Date;
                 slug: string;
                 isActive: boolean;
                 parentId: string | null;
@@ -45,10 +45,10 @@ export declare class CategoriesController {
             })[];
         } & {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             slug: string;
             isActive: boolean;
             parentId: string | null;
@@ -57,10 +57,10 @@ export declare class CategoriesController {
         })[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         isActive: boolean;
         parentId: string | null;
@@ -70,11 +70,11 @@ export declare class CategoriesController {
     findOne(id: string): Promise<{
         products: {
             id: string;
-            status: import("@prisma/client").$Enums.ProductStatus;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            status: import("@prisma/client").$Enums.ProductStatus;
+            updatedAt: Date;
             slug: string;
             brandId: string;
             categoryId: string;
@@ -85,10 +85,10 @@ export declare class CategoriesController {
         }[];
         children: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             slug: string;
             isActive: boolean;
             parentId: string | null;
@@ -97,10 +97,10 @@ export declare class CategoriesController {
         }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         isActive: boolean;
         parentId: string | null;
@@ -109,10 +109,10 @@ export declare class CategoriesController {
     }>;
     create(dto: CreateCategoryDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         isActive: boolean;
         parentId: string | null;
@@ -121,10 +121,10 @@ export declare class CategoriesController {
     }>;
     findAllAdmin(): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         isActive: boolean;
         parentId: string | null;
@@ -136,10 +136,10 @@ export declare class CategoriesController {
             children: ({
                 children: {
                     id: string;
-                    createdAt: Date;
-                    updatedAt: Date;
                     name: string;
                     description: string | null;
+                    createdAt: Date;
+                    updatedAt: Date;
                     slug: string;
                     isActive: boolean;
                     parentId: string | null;
@@ -148,10 +148,10 @@ export declare class CategoriesController {
                 }[];
             } & {
                 id: string;
-                createdAt: Date;
-                updatedAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
+                updatedAt: Date;
                 slug: string;
                 isActive: boolean;
                 parentId: string | null;
@@ -160,10 +160,10 @@ export declare class CategoriesController {
             })[];
         } & {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             slug: string;
             isActive: boolean;
             parentId: string | null;
@@ -172,10 +172,10 @@ export declare class CategoriesController {
         })[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         isActive: boolean;
         parentId: string | null;
@@ -184,10 +184,10 @@ export declare class CategoriesController {
     })[]>;
     update(id: string, dto: UpdateCategoryDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         isActive: boolean;
         parentId: string | null;
@@ -196,10 +196,10 @@ export declare class CategoriesController {
     }>;
     remove(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         slug: string;
         isActive: boolean;
         parentId: string | null;

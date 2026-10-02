@@ -12,6 +12,7 @@ export declare class JwtRefreshStrategy extends JwtRefreshStrategy_base {
     validate(req: Request, payload: any): Promise<{
         refreshToken: any;
         id: string;
+        createdAt: Date;
         email: string;
         phone: string | null;
         passwordHash: string;
@@ -22,7 +23,6 @@ export declare class JwtRefreshStrategy extends JwtRefreshStrategy_base {
         emailVerified: boolean;
         phoneVerified: boolean;
         lastLoginAt: Date | null;
-        createdAt: Date;
         updatedAt: Date;
     }>;
 }

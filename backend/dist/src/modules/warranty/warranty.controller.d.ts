@@ -7,11 +7,11 @@ export declare class WarrantyController {
         productVariant: {
             product: {
                 id: string;
-                status: import("@prisma/client").$Enums.ProductStatus;
-                createdAt: Date;
-                updatedAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
+                status: import("@prisma/client").$Enums.ProductStatus;
+                updatedAt: Date;
                 slug: string;
                 brandId: string;
                 categoryId: string;
@@ -22,9 +22,9 @@ export declare class WarrantyController {
             };
         } & {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             isActive: boolean;
             imageUrl: string | null;
             sku: string;
@@ -39,8 +39,8 @@ export declare class WarrantyController {
         };
         imeiDevice: {
             id: string;
-            status: import("@prisma/client").$Enums.ImeiStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.ImeiStatus;
             updatedAt: Date;
             variantId: string;
             imei: string;
@@ -51,8 +51,8 @@ export declare class WarrantyController {
         } | null;
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.WarrantyStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.WarrantyStatus;
         updatedAt: Date;
         userId: string;
         imeiDeviceId: string | null;
@@ -75,11 +75,11 @@ export declare class WarrantyController {
         productVariant: {
             product: {
                 id: string;
-                status: import("@prisma/client").$Enums.ProductStatus;
-                createdAt: Date;
-                updatedAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
+                status: import("@prisma/client").$Enums.ProductStatus;
+                updatedAt: Date;
                 slug: string;
                 brandId: string;
                 categoryId: string;
@@ -90,9 +90,9 @@ export declare class WarrantyController {
             };
         } & {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             isActive: boolean;
             imageUrl: string | null;
             sku: string;
@@ -107,8 +107,8 @@ export declare class WarrantyController {
         };
         imeiDevice: {
             id: string;
-            status: import("@prisma/client").$Enums.ImeiStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.ImeiStatus;
             updatedAt: Date;
             variantId: string;
             imei: string;
@@ -119,8 +119,8 @@ export declare class WarrantyController {
         } | null;
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.WarrantyStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.WarrantyStatus;
         updatedAt: Date;
         userId: string;
         imeiDeviceId: string | null;
@@ -133,8 +133,8 @@ export declare class WarrantyController {
     }>;
     claimWarranty(user: any, id: string, dto: ClaimWarrantyDto): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.WarrantyStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.WarrantyStatus;
         updatedAt: Date;
         userId: string;
         imeiDeviceId: string | null;
@@ -149,11 +149,11 @@ export declare class WarrantyController {
         productVariant: {
             product: {
                 id: string;
-                status: import("@prisma/client").$Enums.ProductStatus;
-                createdAt: Date;
-                updatedAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
+                status: import("@prisma/client").$Enums.ProductStatus;
+                updatedAt: Date;
                 slug: string;
                 brandId: string;
                 categoryId: string;
@@ -164,9 +164,9 @@ export declare class WarrantyController {
             };
         } & {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             isActive: boolean;
             imageUrl: string | null;
             sku: string;
@@ -181,8 +181,8 @@ export declare class WarrantyController {
         };
         imeiDevice: {
             id: string;
-            status: import("@prisma/client").$Enums.ImeiStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.ImeiStatus;
             updatedAt: Date;
             variantId: string;
             imei: string;
@@ -193,8 +193,8 @@ export declare class WarrantyController {
         } | null;
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.WarrantyStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.WarrantyStatus;
         updatedAt: Date;
         userId: string;
         imeiDeviceId: string | null;
@@ -215,11 +215,11 @@ export declare class WarrantyController {
         productVariant: {
             product: {
                 id: string;
-                status: import("@prisma/client").$Enums.ProductStatus;
-                createdAt: Date;
-                updatedAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
+                status: import("@prisma/client").$Enums.ProductStatus;
+                updatedAt: Date;
                 slug: string;
                 brandId: string;
                 categoryId: string;
@@ -230,9 +230,9 @@ export declare class WarrantyController {
             };
         } & {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             isActive: boolean;
             imageUrl: string | null;
             sku: string;
@@ -251,17 +251,17 @@ export declare class WarrantyController {
             sku: string;
             variantId: string;
             quantity: number;
-            unitPrice: import("@prisma/client-runtime-utils").Decimal;
             discountAmount: import("@prisma/client-runtime-utils").Decimal;
-            orderId: string;
-            imeiDeviceId: string | null;
+            unitPrice: import("@prisma/client-runtime-utils").Decimal;
             productName: string;
             totalPrice: import("@prisma/client-runtime-utils").Decimal;
+            imeiDeviceId: string | null;
+            orderId: string;
         };
         imeiDevice: {
             id: string;
-            status: import("@prisma/client").$Enums.ImeiStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.ImeiStatus;
             updatedAt: Date;
             variantId: string;
             imei: string;
@@ -272,8 +272,8 @@ export declare class WarrantyController {
         } | null;
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.WarrantyStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.WarrantyStatus;
         updatedAt: Date;
         userId: string;
         imeiDeviceId: string | null;
@@ -288,11 +288,11 @@ export declare class WarrantyController {
         productVariant: {
             product: {
                 id: string;
-                status: import("@prisma/client").$Enums.ProductStatus;
-                createdAt: Date;
-                updatedAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
+                status: import("@prisma/client").$Enums.ProductStatus;
+                updatedAt: Date;
                 slug: string;
                 brandId: string;
                 categoryId: string;
@@ -303,9 +303,9 @@ export declare class WarrantyController {
             };
         } & {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             isActive: boolean;
             imageUrl: string | null;
             sku: string;
@@ -324,17 +324,17 @@ export declare class WarrantyController {
             sku: string;
             variantId: string;
             quantity: number;
-            unitPrice: import("@prisma/client-runtime-utils").Decimal;
             discountAmount: import("@prisma/client-runtime-utils").Decimal;
-            orderId: string;
-            imeiDeviceId: string | null;
+            unitPrice: import("@prisma/client-runtime-utils").Decimal;
             productName: string;
             totalPrice: import("@prisma/client-runtime-utils").Decimal;
+            imeiDeviceId: string | null;
+            orderId: string;
         };
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.WarrantyStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.WarrantyStatus;
         updatedAt: Date;
         userId: string;
         imeiDeviceId: string | null;
@@ -347,8 +347,8 @@ export declare class WarrantyController {
     }>;
     voidWarranty(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.WarrantyStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.WarrantyStatus;
         updatedAt: Date;
         userId: string;
         imeiDeviceId: string | null;

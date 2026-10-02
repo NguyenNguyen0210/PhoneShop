@@ -13,7 +13,9 @@ const http_exception_filter_1 = require("./common/filters/http-exception.filter"
 const response_interceptor_1 = require("./common/interceptors/response.interceptor");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
-    app.use((0, helmet_1.default)());
+    app.use((0, helmet_1.default)({
+        contentSecurityPolicy: false,
+    }));
     app.enableCors({
         origin: '*',
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
@@ -29,6 +31,7 @@ async function bootstrap() {
     }));
     app.useGlobalFilters(new http_exception_filter_1.HttpExceptionFilter());
     app.useGlobalInterceptors(new response_interceptor_1.ResponseInterceptor());
+    app.setGlobalPrefix('api');
     const swaggerConfig = new swagger_1.DocumentBuilder()
         .setTitle('MobileCommerce API')
         .setDescription('Backend API for MobileCommerce - Mobile Phone E-Commerce System')
@@ -41,12 +44,12 @@ async function bootstrap() {
     }, 'access-token')
         .build();
     const document = swagger_1.SwaggerModule.createDocument(app, swaggerConfig);
-    swagger_1.SwaggerModule.setup('api', app, document);
+    swagger_1.SwaggerModule.setup('api/docs', app, document);
     const configService = app.get(config_1.ConfigService);
     const port = configService.get('PORT') ?? 3000;
     await app.listen(port);
-    console.log(`🚀 MobileCommerce API running on http://localhost:${port}`);
-    console.log(`📚 Swagger documentation: http://localhost:${port}/api`);
+    console.log(`🚀 MobileCommerce API running on http://localhost:${port}/api`);
+    console.log(`📚 Swagger documentation: http://localhost:${port}/api/docs`);
 }
 bootstrap();
 //# sourceMappingURL=main.js.map

@@ -12,10 +12,10 @@ export declare class ProductsController {
         data: ({
             brand: {
                 id: string;
-                createdAt: Date;
-                updatedAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
+                updatedAt: Date;
                 slug: string;
                 logoUrl: string | null;
                 websiteUrl: string | null;
@@ -23,10 +23,10 @@ export declare class ProductsController {
             };
             category: {
                 id: string;
-                createdAt: Date;
-                updatedAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
+                updatedAt: Date;
                 slug: string;
                 isActive: boolean;
                 parentId: string | null;
@@ -35,9 +35,9 @@ export declare class ProductsController {
             };
             variants: {
                 id: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 isActive: boolean;
                 imageUrl: string | null;
                 sku: string;
@@ -52,11 +52,11 @@ export declare class ProductsController {
             }[];
         } & {
             id: string;
-            status: import("@prisma/client").$Enums.ProductStatus;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            status: import("@prisma/client").$Enums.ProductStatus;
+            updatedAt: Date;
             slug: string;
             brandId: string;
             categoryId: string;
@@ -73,10 +73,10 @@ export declare class ProductsController {
     findOne(id: string): Promise<{
         brand: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             slug: string;
             logoUrl: string | null;
             websiteUrl: string | null;
@@ -84,10 +84,10 @@ export declare class ProductsController {
         };
         category: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             slug: string;
             isActive: boolean;
             parentId: string | null;
@@ -106,9 +106,9 @@ export declare class ProductsController {
             } | null;
         } & {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             isActive: boolean;
             imageUrl: string | null;
             sku: string;
@@ -123,11 +123,11 @@ export declare class ProductsController {
         })[];
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ProductStatus;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        status: import("@prisma/client").$Enums.ProductStatus;
+        updatedAt: Date;
         slug: string;
         brandId: string;
         categoryId: string;
@@ -139,10 +139,10 @@ export declare class ProductsController {
     create(dto: CreateProductDto): Promise<{
         brand: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             slug: string;
             logoUrl: string | null;
             websiteUrl: string | null;
@@ -150,10 +150,10 @@ export declare class ProductsController {
         };
         category: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             slug: string;
             isActive: boolean;
             parentId: string | null;
@@ -162,9 +162,9 @@ export declare class ProductsController {
         };
         variants: {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             isActive: boolean;
             imageUrl: string | null;
             sku: string;
@@ -179,11 +179,11 @@ export declare class ProductsController {
         }[];
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ProductStatus;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        status: import("@prisma/client").$Enums.ProductStatus;
+        updatedAt: Date;
         slug: string;
         brandId: string;
         categoryId: string;
@@ -196,10 +196,10 @@ export declare class ProductsController {
         data: ({
             brand: {
                 id: string;
-                createdAt: Date;
-                updatedAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
+                updatedAt: Date;
                 slug: string;
                 logoUrl: string | null;
                 websiteUrl: string | null;
@@ -207,10 +207,10 @@ export declare class ProductsController {
             };
             category: {
                 id: string;
-                createdAt: Date;
-                updatedAt: Date;
                 name: string;
                 description: string | null;
+                createdAt: Date;
+                updatedAt: Date;
                 slug: string;
                 isActive: boolean;
                 parentId: string | null;
@@ -219,9 +219,9 @@ export declare class ProductsController {
             };
             variants: {
                 id: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 isActive: boolean;
                 imageUrl: string | null;
                 sku: string;
@@ -236,11 +236,11 @@ export declare class ProductsController {
             }[];
         } & {
             id: string;
-            status: import("@prisma/client").$Enums.ProductStatus;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            status: import("@prisma/client").$Enums.ProductStatus;
+            updatedAt: Date;
             slug: string;
             brandId: string;
             categoryId: string;
@@ -257,10 +257,10 @@ export declare class ProductsController {
     update(id: string, dto: UpdateProductDto): Promise<{
         brand: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             slug: string;
             logoUrl: string | null;
             websiteUrl: string | null;
@@ -268,10 +268,10 @@ export declare class ProductsController {
         };
         category: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             description: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             slug: string;
             isActive: boolean;
             parentId: string | null;
@@ -280,9 +280,9 @@ export declare class ProductsController {
         };
         variants: {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             isActive: boolean;
             imageUrl: string | null;
             sku: string;
@@ -297,11 +297,11 @@ export declare class ProductsController {
         }[];
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.ProductStatus;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        status: import("@prisma/client").$Enums.ProductStatus;
+        updatedAt: Date;
         slug: string;
         brandId: string;
         categoryId: string;
@@ -312,11 +312,11 @@ export declare class ProductsController {
     }>;
     remove(id: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ProductStatus;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        status: import("@prisma/client").$Enums.ProductStatus;
+        updatedAt: Date;
         slug: string;
         brandId: string;
         categoryId: string;
@@ -327,11 +327,11 @@ export declare class ProductsController {
     }>;
     changeStatus(id: string, status: ProductStatus): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.ProductStatus;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         description: string | null;
+        createdAt: Date;
+        status: import("@prisma/client").$Enums.ProductStatus;
+        updatedAt: Date;
         slug: string;
         brandId: string;
         categoryId: string;
@@ -342,9 +342,9 @@ export declare class ProductsController {
     }>;
     createVariant(productId: string, dto: CreateVariantDto): Promise<{
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         isActive: boolean;
         imageUrl: string | null;
         sku: string;
@@ -359,9 +359,9 @@ export declare class ProductsController {
     }>;
     updateVariant(productId: string, variantId: string, dto: UpdateVariantDto): Promise<{
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         isActive: boolean;
         imageUrl: string | null;
         sku: string;
@@ -376,9 +376,9 @@ export declare class ProductsController {
     }>;
     removeVariant(productId: string, variantId: string): Promise<{
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         isActive: boolean;
         imageUrl: string | null;
         sku: string;
@@ -393,9 +393,9 @@ export declare class ProductsController {
     }>;
     activateVariant(productId: string, variantId: string): Promise<{
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         isActive: boolean;
         imageUrl: string | null;
         sku: string;
@@ -410,9 +410,9 @@ export declare class ProductsController {
     }>;
     deactivateVariant(productId: string, variantId: string): Promise<{
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         isActive: boolean;
         imageUrl: string | null;
         sku: string;
