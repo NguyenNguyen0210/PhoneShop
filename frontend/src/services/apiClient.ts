@@ -1,9 +1,9 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = '/api';
+const baseURL = import.meta.env.VITE_API_URL || '/api';
 
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -91,7 +91,7 @@ apiClient.interceptors.response.use(
         refreshToken?: string;
         data?: { accessToken: string; refreshToken: string };
       }>(
-        `${API_BASE_URL}/auth/refresh-token`,
+        `${baseURL.replace(/\/$/, '')}/auth/refresh-token`,
         { refreshToken },
         {
           headers: {
