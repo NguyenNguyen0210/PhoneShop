@@ -28,12 +28,6 @@ export class ProductsController {
     return this.productsService.findAll(filter, true);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get product detail (Public)' })
-  findOne(@Param('id') id: string) {
-    return this.productsService.findOne(id);
-  }
-
   // ── MANAGER / ADMIN ──────────────────────────────────
 
   @Post()
@@ -52,6 +46,12 @@ export class ProductsController {
   @ApiOperation({ summary: 'Get all products including drafts (MANAGER/ADMIN)' })
   findAllAdmin(@Query() filter: FilterProductDto) {
     return this.productsService.findAll(filter, false);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get product detail (Public)' })
+  findOne(@Param('id') id: string) {
+    return this.productsService.findOne(id);
   }
 
   @Patch(':id')

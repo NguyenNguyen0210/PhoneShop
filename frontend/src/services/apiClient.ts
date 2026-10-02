@@ -64,6 +64,10 @@ apiClient.interceptors.response.use(
 
     const refreshToken = localStorage.getItem('mobilecommerce_refresh_token');
     if (!refreshToken) {
+      const currentToken = localStorage.getItem('mobilecommerce_access_token');
+      if (currentToken?.startsWith('mock-')) {
+        return Promise.reject(error);
+      }
       localStorage.removeItem('mobilecommerce_access_token');
       localStorage.removeItem('mobilecommerce_user');
       return Promise.reject(error);

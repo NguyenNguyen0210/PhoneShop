@@ -11,11 +11,12 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main.js",
+    "start:prod": "node dist/src/main.js",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "prisma:format": "prisma format",
     "prisma:seed": "prisma db seed",
+    "seed:phones": "tsx prisma/seed_24_phones.ts",
     "test": "jest"
   },
   "prisma": {

@@ -23,7 +23,10 @@ export const ProductDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { addItem } = useCartStore();
 
-  const localInitial = mockProducts.find((p) => p.id === id || p.slug === id) || null;
+  const localInitial =
+    mockProducts.find(
+      (p) => p.id === id || p.slug === id || (id === 'prod-1' && (p.id === 'prod-iphone-16-pro-max' || p.id === mockProducts[0]?.id))
+    ) || null;
   const [product, setProduct] = useState<Product | null>(localInitial);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     localInitial?.variants[0] || null

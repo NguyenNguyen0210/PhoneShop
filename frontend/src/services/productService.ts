@@ -38,10 +38,10 @@ export const productService = {
       };
     }
     return {
-      items: data.items || data.products || [],
-      total: data.total ?? (data.items?.length || 0),
+      items: data.items || data.data || data.products || [],
+      total: data.total ?? (data.items?.length || data.data?.length || 0),
       page: data.page ?? 1,
-      limit: data.limit ?? 20,
+      limit: data.limit ?? 50,
       totalPages: data.totalPages ?? 1,
     };
   },
@@ -54,13 +54,13 @@ export const productService = {
   async getBrands(): Promise<Brand[]> {
     const response = await apiClient.get('/brands');
     const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : data?.items ?? [];
+    return Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
   },
 
   async getCategories(): Promise<Category[]> {
     const response = await apiClient.get('/categories');
     const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : data?.items ?? [];
+    return Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
   },
 
   // Admin APIs
@@ -77,10 +77,10 @@ export const productService = {
       };
     }
     return {
-      items: data.items || [],
-      total: data.total ?? (data.items?.length || 0),
+      items: data.items || data.data || [],
+      total: data.total ?? (data.items?.length || data.data?.length || 0),
       page: data.page ?? 1,
-      limit: data.limit ?? 20,
+      limit: data.limit ?? 50,
       totalPages: data.totalPages ?? 1,
     };
   },
