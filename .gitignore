@@ -12,6 +12,7 @@ build/
 # Testing
 coverage/
 e2e_screenshots/
+.superpowers/
 
 # Environment variables
 .env
