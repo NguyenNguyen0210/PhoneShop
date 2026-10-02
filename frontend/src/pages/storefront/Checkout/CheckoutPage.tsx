@@ -93,26 +93,21 @@ export const CheckoutPage: React.FC = () => {
 
     setLoading(true);
     try {
-      // Create order via API or fallback mock
-      let orderId = `ORD-${Date.now()}`;
-      let orderNumber = `ORD-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const orderRes = await orderService.checkout({
+        customerName,
+        shippingPhone,
+        shippingAddress,
+        notes,
+        paymentMethod,
+        voucherCode: storedVoucher?.code,
+      });
 
-      try {
-        const orderRes = await orderService.checkout({
-          customerName,
-          shippingPhone,
-          shippingAddress,
-          notes,
-          paymentMethod,
-          voucherCode: storedVoucher?.code,
-        });
-        if (orderRes) {
-          orderId = orderRes.id || orderId;
-          orderNumber = orderRes.orderNumber || orderNumber;
-        }
-      } catch (err: any) {
-        console.warn('Backend checkout returned, generating client receipt fallback:', err);
+      if (!orderRes || !orderRes.id) {
+        throw new Error('Không nhận được thông tin xác nhận đơn hàng từ máy chủ.');
       }
+
+      const orderId = orderRes.id;
+      const orderNumber = orderRes.orderNumber || orderId;
 
       // Store current checkout snapshot for receipt page
       sessionStorage.setItem(
@@ -132,13 +127,19 @@ export const CheckoutPage: React.FC = () => {
         })
       );
 
-      // Clear cart after checkout
+      // Clear cart after successful checkout
       clearCart();
       sessionStorage.removeItem('mobilecommerce_voucher');
 
       navigate(`/order-success/${orderId}`);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Không thể tạo đơn hàng. Vui lòng thử lại.');
+      const errorMsg =
+        err.response?.data?.message ||
+        err.message ||
+        'Đặt hàng thất bại. Vui lòng thử lại!';
+      setErrorMessage(
+        Array.isArray(errorMsg) ? errorMsg.join(', ') : errorMsg
+      );
     } finally {
       setLoading(false);
     }
@@ -361,6 +362,16 @@ export const CheckoutPage: React.FC = () => {
                 </label>
               </div>
             </div>
+
+            {errorMessage && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-700 flex items-start gap-3 shadow-xs">
+                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <span className="font-bold text-sm block mb-0.5">Đặt hàng không thành công</span>
+                  <span>{errorMessage}</span>
+                </div>
+              </div>
+            )}
 
             {/* Submit Button */}
             <button

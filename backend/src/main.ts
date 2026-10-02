@@ -22,16 +22,10 @@ async function bootstrap() {
   const allowedOrigins: (string | RegExp)[] = [
     'http://localhost:5173',
     'http://localhost:3000',
-    /^https:\/\/.*\.vercel\.app$/,
-    /^https:\/\/.*\.pages\.dev$/,
-  ];
-
-  if (process.env.FRONTEND_URL) {
-    const customOrigins = process.env.FRONTEND_URL.split(',')
-      .map((url) => url.trim())
-      .filter(Boolean);
-    allowedOrigins.push(...customOrigins);
-  }
+    process.env.FRONTEND_URL || '',
+    /^https:\/\/mobilecommerce(-[a-z0-9-]+)?\.vercel\.app$/,
+    /^https:\/\/mobilecommerce(-[a-z0-9-]+)?\.pages\.dev$/,
+  ].filter(Boolean);
 
   app.enableCors({
     origin: (origin, callback) => {

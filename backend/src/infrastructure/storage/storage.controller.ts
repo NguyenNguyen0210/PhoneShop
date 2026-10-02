@@ -22,8 +22,8 @@ import { Role } from '../../common/enums/role.enum';
 import { StorageService, UploadResult } from './storage.service';
 import { DeleteFileDto } from './dto/upload-response.dto';
 
-const ALLOWED_IMAGE_REGEX = /(jpg|jpeg|png|webp|svg\+xml)$/;
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+export const ALLOWED_IMAGE_REGEX = /(jpg|jpeg|png|webp)$/i;
+export const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 @Controller('storage')
 export class StorageController {
@@ -70,10 +70,18 @@ export class StorageController {
       throw new BadRequestException('At least one file must be provided');
     }
 
-    const uploadPromises = files.map((file) => {
+    for (const file of files) {
       if (file.size > MAX_IMAGE_SIZE) {
         throw new BadRequestException(`File ${file.originalname} exceeds 5MB limit`);
       }
+      if (!file.mimetype || !ALLOWED_IMAGE_REGEX.test(file.mimetype)) {
+        throw new BadRequestException(
+          `File ${file.originalname} has an invalid type. Only JPG, JPEG, PNG, and WebP are allowed`,
+        );
+      }
+    }
+
+    const uploadPromises = files.map((file) => {
       return this.storageService.uploadFile(file.buffer, file.originalname, 'products/gallery', true);
     });
 

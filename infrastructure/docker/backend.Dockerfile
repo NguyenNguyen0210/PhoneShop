@@ -42,4 +42,4 @@ EXPOSE 3000
 USER node
 
 # Start NestJS production server
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]

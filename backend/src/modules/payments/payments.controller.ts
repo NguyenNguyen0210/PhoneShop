@@ -8,9 +8,10 @@ import {
   Put,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { PaymentsService } from './payments.service';
 import {
   CreatePaymentDto,
@@ -60,8 +61,9 @@ export class PaymentsController {
 
   @Get('vnpay/ipn')
   @ApiOperation({ summary: 'VNPay Server-to-Server IPN Webhook (Public)' })
-  handleVnpayIpn(@Query() query: Record<string, any>) {
-    return this.paymentsService.handleVnpayIpn(query);
+  async handleVnpayIpn(@Query() query: any, @Res() res: Response) {
+    const result = await this.paymentsService.handleVnpayIpn(query);
+    return res.status(200).json(result);
   }
 
   @Get('vnpay/return')

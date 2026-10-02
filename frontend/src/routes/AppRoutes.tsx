@@ -27,6 +27,7 @@ import { AdminOrdersPage } from '../pages/Admin/Orders/AdminOrdersPage';
 
 // Route Guards
 import { AdminRoute } from './AdminRoute';
+import { ProtectedRoute } from './ProtectedRoute';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -37,7 +38,14 @@ export const AppRoutes: React.FC = () => {
         <Route path="/products" element={<ProductListingPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/cart" element={<CartPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route
+          path="/checkout"
+          element={
+            <ProtectedRoute>
+              <CheckoutPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/order-success/:id" element={<OrderSuccessPage />} />
         <Route path="/warranty-lookup" element={<WarrantyLookupPage />} />
         <Route path="/profile" element={<ProfilePage />} />

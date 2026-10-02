@@ -31,6 +31,25 @@ export const authService = {
 
   async getProfile(): Promise<User> {
     const response = await apiClient.get('/users/profile');
-    return response.data?.data ?? response.data;
+    const data = response.data?.data ?? response.data;
+    if (data && data.avatarUrl && !data.avatar) {
+      data.avatar = data.avatarUrl;
+    }
+    return data;
+  },
+
+  async updateProfile(data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    avatarUrl?: string;
+  }): Promise<User> {
+    try {
+      const response = await apiClient.put('/users/profile', data);
+      return response.data?.data ?? response.data;
+    } catch {
+      const response = await apiClient.patch('/users/profile', data);
+      return response.data?.data ?? response.data;
+    }
   },
 };

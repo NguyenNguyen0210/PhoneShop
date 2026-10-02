@@ -185,33 +185,14 @@ export const AdminImeiPage: React.FC = () => {
 
     try {
       await imeiService.importImeis(values.variantId, lines);
-    } catch {
-      // Client-side addition fallback
+      message.success(`Đã nhập thành công ${lines.length} thiết bị IMEI vào kho!`);
+      setIsImportModalOpen(false);
+      importForm.resetFields();
+      setValidationReport(null);
+      await loadImeis();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
     }
-
-    const targetVariant = mockProducts
-      .flatMap((p) => p.variants)
-      .find((v) => v.id === values.variantId);
-    const targetProduct = mockProducts.find((p) =>
-      p.variants.some((v) => v.id === values.variantId)
-    );
-
-    const newItems: ImeiDevice[] = lines.map((num: string, idx: number) => ({
-      id: `imei-import-${Date.now()}-${idx}`,
-      imeiNumber: num,
-      variantId: values.variantId,
-      status: 'AVAILABLE',
-      variant: targetVariant
-        ? { ...targetVariant, product: targetProduct }
-        : undefined,
-      createdAt: new Date().toISOString(),
-    }));
-
-    setImeis((prev) => [...newItems, ...prev]);
-    message.success(`Đã nhập thành công ${lines.length} thiết bị IMEI vào kho!`);
-    setIsImportModalOpen(false);
-    importForm.resetFields();
-    setValidationReport(null);
   };
 
   const handleStatusChange = async (
@@ -226,14 +207,13 @@ export const AdminImeiPage: React.FC = () => {
 
     try {
       await imeiService.updateImeiStatus(record.id, action);
-    } catch {
-      // Local update
+      setImeis((prev) =>
+        prev.map((i) => (i.id === record.id ? { ...i, status: nextStatus } : i))
+      );
+      message.info(`Đã cập nhật trạng thái IMEI ${record.imeiNumber} sang ${nextStatus}`);
+    } catch (err: any) {
+      message.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
     }
-
-    setImeis((prev) =>
-      prev.map((i) => (i.id === record.id ? { ...i, status: nextStatus } : i))
-    );
-    message.info(`Đã cập nhật trạng thái IMEI ${record.imeiNumber} sang ${nextStatus}`);
   };
 
   const getImeiTag = (status: ImeiStatus) => {

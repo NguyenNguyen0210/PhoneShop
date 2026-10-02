@@ -2,7 +2,11 @@ import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/useAuthStore';
 
-export const ProtectedRoute: React.FC = () => {
+interface ProtectedRouteProps {
+  children?: React.ReactNode;
+}
+
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, accessToken } = useAuthStore();
   const location = useLocation();
 
@@ -10,5 +14,5 @@ export const ProtectedRoute: React.FC = () => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <Outlet />;
+  return children ? <>{children}</> : <Outlet />;
 };

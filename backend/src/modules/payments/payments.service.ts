@@ -24,6 +24,22 @@ import {
 } from '@prisma/client';
 import { createHmac, randomBytes } from 'crypto';
 
+export function buildVnpaySignData(params: Record<string, any>): string {
+  const sortedKeys = Object.keys(params).sort();
+  return sortedKeys
+    .map(
+      (key) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(String(params[key] ?? '')).replace(/%20/g, '+')}`,
+    )
+    .join('&');
+}
+
+export function hashVnpayParams(params: Record<string, any>, secret: string): string {
+  const signData = buildVnpaySignData(params);
+  const hmac = createHmac('sha512', secret);
+  return hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+}
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -55,6 +71,10 @@ export class PaymentsService {
 
     if (userId && order.userId !== userId) {
       throw new BadRequestException('Unauthorized order access');
+    }
+
+    if (order.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException('Cannot generate payment QR for cancelled order');
     }
 
     const amount = Number(order.totalAmount);
@@ -151,14 +171,8 @@ export class PaymentsService {
       vnpParams['vnp_BankCode'] = dto.bankCode;
     }
 
-    // Sort params alphabetically by key
-    const sortedKeys = Object.keys(vnpParams).sort();
-    const signData = sortedKeys
-      .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(vnpParams[key])}`)
-      .join('&');
-
-    const hmac = createHmac('sha512', hashSecret);
-    const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+    const signData = buildVnpaySignData(vnpParams);
+    const signed = hashVnpayParams(vnpParams, hashSecret);
 
     const paymentUrl = `${vnpUrl}?${signData}&vnp_SecureHash=${signed}`;
 
@@ -185,13 +199,7 @@ export class PaymentsService {
       }
     }
 
-    const sortedKeys = Object.keys(cleanParams).sort();
-    const signData = sortedKeys
-      .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(cleanParams[key])}`)
-      .join('&');
-
-    const hmac = createHmac('sha512', hashSecret);
-    const checkHash = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+    const checkHash = hashVnpayParams(cleanParams, hashSecret);
 
     if (checkHash !== secureHash) {
       this.logger.warn(`VNPay IPN: Invalid checksum (expected: ${checkHash}, received: ${secureHash})`);
@@ -219,6 +227,11 @@ export class PaymentsService {
         `VNPay IPN: Invalid amount (order: ${order.totalAmount}, vnp: ${vnpAmount})`,
       );
       return { RspCode: '04', Message: 'Invalid amount' };
+    }
+
+    if (order.status === OrderStatus.CANCELLED) {
+      this.logger.warn(`VNPay IPN: Order ${orderNumber} already cancelled`);
+      return { RspCode: '02', Message: 'Order already cancelled' };
     }
 
     if (
@@ -372,13 +385,7 @@ export class PaymentsService {
       }
     }
 
-    const sortedKeys = Object.keys(cleanParams).sort();
-    const signData = sortedKeys
-      .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(cleanParams[key])}`)
-      .join('&');
-
-    const hmac = createHmac('sha512', hashSecret);
-    const checkHash = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+    const checkHash = hashVnpayParams(cleanParams, hashSecret);
 
     const isValid = checkHash === secureHash;
     const isSuccess = isValid && query['vnp_ResponseCode'] === '00';

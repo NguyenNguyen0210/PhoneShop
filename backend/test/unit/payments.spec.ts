@@ -1,5 +1,13 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, jest } from '@jest/globals';
 import { VietqrService } from '../../src/modules/payments/vietqr.service';
+import {
+  PaymentsService,
+  buildVnpaySignData,
+  hashVnpayParams,
+} from '../../src/modules/payments/payments.service';
+import { PaymentsController } from '../../src/modules/payments/payments.controller';
+import { OrderStatus } from '@prisma/client';
+import { BadRequestException } from '@nestjs/common';
 import { createHmac } from 'crypto';
 
 describe('Payments Unit Tests', () => {
@@ -81,6 +89,134 @@ describe('Payments Unit Tests', () => {
       const mutatedParams = { ...vnpParams, vnp_Amount: '1000' };
       const mutatedHash = signVnpayParams(mutatedParams);
       expect(mutatedHash).not.toBe(hash);
+    });
+
+    it('should encode spaces as + instead of %20 per VNPay specification', () => {
+      const params = {
+        vnp_OrderInfo: 'Thanh toan don hang ORD-123456',
+        vnp_Amount: '1000000',
+      };
+      const signData = buildVnpaySignData(params);
+      expect(signData).toContain('vnp_OrderInfo=Thanh+toan+don+hang+ORD-123456');
+      expect(signData).not.toContain('%20');
+
+      const hash = hashVnpayParams(params, hashSecret);
+      expect(typeof hash).toBe('string');
+      expect(hash).toHaveLength(128);
+    });
+  });
+
+  describe('VietQR Order Status Check', () => {
+    it('should throw BadRequestException when order is CANCELLED', async () => {
+      const mockPrisma: any = {
+        order: {
+          findUnique: jest.fn().mockImplementation(() =>
+            Promise.resolve({
+              id: 'ord-1',
+              orderNumber: 'ORD-1',
+              totalAmount: 1000000,
+              status: OrderStatus.CANCELLED,
+              userId: 'user-1',
+              payments: [],
+            }),
+          ),
+        },
+      };
+      const mockConfig: any = { get: () => undefined };
+      const mockEmail: any = {};
+      const vietqrService = new VietqrService(mockConfig);
+      const paymentsService = new PaymentsService(
+        mockPrisma,
+        vietqrService,
+        mockEmail,
+        mockConfig,
+      );
+
+      await expect(paymentsService.generateVietQr('ord-1')).rejects.toThrow(
+        new BadRequestException('Cannot generate payment QR for cancelled order'),
+      );
+    });
+  });
+
+  describe('VNPay IPN Handling', () => {
+    it('should reject payment for CANCELLED order with RspCode 02 and not resurrect it', async () => {
+      const hashSecret = 'SANDBOX_SECRET_KEY_1234567890ABCDEF';
+      const mockConfig: any = {
+        get: (key: string, defaultValue?: string) => {
+          if (key === 'VNPAY_HASH_SECRET') return hashSecret;
+          return defaultValue;
+        },
+      };
+      const mockTransaction = jest.fn();
+      const mockPrisma: any = {
+        order: {
+          findUnique: jest.fn().mockImplementation(() =>
+            Promise.resolve({
+              id: 'ord-cancelled-id',
+              orderNumber: 'ORD-CANCELLED',
+              totalAmount: 100000,
+              status: OrderStatus.CANCELLED,
+              items: [],
+              payments: [],
+            }),
+          ),
+        },
+        $transaction: mockTransaction,
+      };
+      const mockEmail: any = { sendOrderConfirmation: jest.fn() };
+      const vietqrService = new VietqrService(mockConfig);
+      const paymentsService = new PaymentsService(
+        mockPrisma,
+        vietqrService,
+        mockEmail,
+        mockConfig,
+      );
+
+      const ipnParams: Record<string, string> = {
+        vnp_Amount: '10000000',
+        vnp_Command: 'pay',
+        vnp_OrderInfo: 'Thanh toan don hang ORD-CANCELLED',
+        vnp_ResponseCode: '00',
+        vnp_TmnCode: 'SANDBOX1',
+        vnp_TxnRef: 'ORD-CANCELLED',
+      };
+      const secureHash = hashVnpayParams(ipnParams, hashSecret);
+      const query = { ...ipnParams, vnp_SecureHash: secureHash };
+
+      const result = await paymentsService.handleVnpayIpn(query);
+
+      expect(result).toEqual({ RspCode: '02', Message: 'Order already cancelled' });
+      expect(mockTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('PaymentsController handleVnpayIpn Direct Response', () => {
+    it('should bypass NestJS response interceptor by sending direct json via res.status(200).json', async () => {
+      const mockPaymentsService: any = {
+        handleVnpayIpn: jest.fn().mockImplementation(() =>
+          Promise.resolve({
+            RspCode: '00',
+            Message: 'Confirm Success',
+          }),
+        ),
+      };
+      const controller = new PaymentsController(mockPaymentsService);
+
+      const mockRes: any = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockImplementation((data) => data),
+      };
+
+      const query = { vnp_TxnRef: 'ORD-123' };
+      const result = await controller.handleVnpayIpn(query, mockRes);
+
+      expect(mockPaymentsService.handleVnpayIpn).toHaveBeenCalledWith(query);
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        RspCode: '00',
+        Message: 'Confirm Success',
+      });
+      expect(result).toEqual({ RspCode: '00', Message: 'Confirm Success' });
     });
   });
 });

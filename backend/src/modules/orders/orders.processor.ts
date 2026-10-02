@@ -44,27 +44,27 @@ export class OrdersProcessor extends WorkerHost {
       return;
     }
 
-    // Order is still PENDING -> Cancel order, release IMEIs, restore inventory
+    // Atomic cancellation and release inside transaction
+    let cancelled = false;
     await this.prisma.$transaction(async (tx) => {
-      // 1. Mark order as CANCELLED
-      await tx.order.update({
-        where: { id: orderId },
+      const affected = await tx.order.updateMany({
+        where: { id: orderId, status: OrderStatus.PENDING },
         data: {
           status: OrderStatus.CANCELLED,
           cancelledAt: new Date(),
           cancelledReason: 'Hold expired (15 minutes)',
         },
       });
+      if (affected.count === 0) return; // Order was already confirmed, paid, or cancelled
+      cancelled = true;
 
-      // 2. Release all reserved IMEIs and restore inventory
       for (const item of order.items) {
         if (item.imeiDeviceId) {
-          await tx.imeiDevice.update({
-            where: { id: item.imeiDeviceId },
+          await tx.imeiDevice.updateMany({
+            where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
             data: { status: ImeiStatus.AVAILABLE },
           });
         }
-
         await tx.inventory.update({
           where: { variantId: item.variantId },
           data: {
@@ -75,8 +75,14 @@ export class OrdersProcessor extends WorkerHost {
       }
     });
 
-    this.logger.log(
-      `Successfully cancelled order ${orderId} and released reserved stock/IMEIs.`,
-    );
+    if (cancelled) {
+      this.logger.log(
+        `Successfully cancelled order ${orderId} and released reserved stock/IMEIs.`,
+      );
+    } else {
+      this.logger.log(
+        `Order ${orderId} was already updated before hold expiry. Skipping hold expiry.`,
+      );
+    }
   }
 }

@@ -178,18 +178,18 @@ export const AdminOrdersPage: React.FC = () => {
     if (nextStatus === 'CANCELLED') action = 'cancel';
 
     try {
-      await orderService.updateOrderStatus(orderId, action);
-    } catch {
-      // Local update
+      const updated = await orderService.updateOrderStatus(orderId, action);
+      const resultingStatus = updated?.status || nextStatus;
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: resultingStatus } : o))
+      );
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder((prev) => (prev ? { ...prev, status: resultingStatus } : null));
+      }
+      message.success(`Đã cập nhật trạng thái đơn sang ${resultingStatus}`);
+    } catch (err: any) {
+      message.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
     }
-
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o))
-    );
-    if (selectedOrder && selectedOrder.id === orderId) {
-      setSelectedOrder((prev) => (prev ? { ...prev, status: nextStatus } : null));
-    }
-    message.success(`Đã cập nhật trạng thái đơn sang ${nextStatus}`);
   };
 
   const formatPrice = (val: number) => {

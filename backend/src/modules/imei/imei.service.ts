@@ -14,14 +14,40 @@ export class ImeiService {
   }
 
   async import(dto: ImportImeiDto) {
-    const created: any[] = [];
-    for (const item of dto.items) {
-      const existing = await this.prisma.imeiDevice.findUnique({ where: { imei: item.imei } });
-      if (!existing) {
-        created.push(await this.prisma.imeiDevice.create({ data: item }));
+    return this.prisma.$transaction(async (tx) => {
+      const created: any[] = [];
+      const variantCountMap = new Map<string, number>();
+
+      for (const item of dto.items) {
+        const existing = await tx.imeiDevice.findUnique({ where: { imei: item.imei } });
+        if (!existing) {
+          const device = await tx.imeiDevice.create({ data: item });
+          created.push(device);
+          variantCountMap.set(
+            item.variantId,
+            (variantCountMap.get(item.variantId) || 0) + 1,
+          );
+        }
       }
-    }
-    return { imported: created.length, total: dto.items.length };
+
+      for (const [variantId, count] of variantCountMap.entries()) {
+        await tx.inventory.upsert({
+          where: { variantId },
+          create: {
+            variantId,
+            quantity: count,
+            availableQty: count,
+            reservedQty: 0,
+          },
+          update: {
+            quantity: { increment: count },
+            availableQty: { increment: count },
+          },
+        });
+      }
+
+      return { imported: created.length, total: dto.items.length };
+    });
   }
 
   async findAll(variantId?: string, status?: ImeiStatus) {

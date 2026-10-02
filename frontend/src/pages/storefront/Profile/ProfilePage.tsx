@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { storageService } from '../../../services/storageService';
+import { apiClient } from '../../../services/apiClient';
 import { Camera, CheckCircle2, User, Mail, Shield, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -29,6 +30,14 @@ export const ProfilePage: React.FC = () => {
 
     try {
       const res = await storageService.uploadAvatar(file);
+
+      // Persist the avatar to the backend via API call
+      try {
+        await apiClient.put('/users/profile', { avatarUrl: res.url });
+      } catch {
+        await apiClient.patch('/users/profile', { avatarUrl: res.url });
+      }
+
       if (user) {
         // Update user state with new avatar
         updateUser({ avatar: res.url });
@@ -37,7 +46,7 @@ export const ProfilePage: React.FC = () => {
     } catch (err: any) {
       setMessage({
         type: 'error',
-        text: err?.response?.data?.message || 'Tải ảnh thất bại. Vui lòng thử lại!',
+        text: err?.response?.data?.message || err?.message || 'Tải ảnh thất bại. Vui lòng thử lại!',
       });
     } finally {
       setUploading(false);
@@ -76,9 +85,9 @@ export const ProfilePage: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16 mb-6">
             <div className="relative group">
               <div className="w-32 h-32 rounded-full border-4 border-white shadow-md overflow-hidden bg-slate-100 flex items-center justify-center">
-                {user.avatar ? (
+                {user.avatar || (user as any).avatarUrl ? (
                   <img
-                    src={user.avatar}
+                    src={user.avatar || (user as any).avatarUrl}
                     alt={user.fullName || 'Avatar'}
                     className="w-full h-full object-cover"
                   />

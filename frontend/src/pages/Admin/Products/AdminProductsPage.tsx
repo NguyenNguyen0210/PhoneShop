@@ -54,67 +54,61 @@ export const AdminProductsPage: React.FC = () => {
 
   const handleCreateProduct = async (values: any) => {
     try {
-      const newProduct: Product = {
-        id: `prod-${Date.now()}`,
+      const created = await productService.createProduct({
         name: values.name,
-        slug: values.name.toLowerCase().replace(/\s+/g, '-'),
-        description: values.description || '',
+        description: values.description,
         brandId: values.brandId,
         categoryId: values.categoryId,
-        brand: mockBrands.find((b) => b.id === values.brandId) || mockBrands[0],
-        category: mockCategories.find((c) => c.id === values.categoryId) || mockCategories[0],
-        thumbnail:
-          values.thumbnail ||
-          'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&w=400&q=80',
-        images: [
-          values.thumbnail ||
-            'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&w=400&q=80',
-        ],
-        status: 'ACTIVE',
-        rating: 5.0,
-        reviewCount: 0,
-        variants: [
-          {
-            id: `var-${Date.now()}-1`,
-            productId: `prod-${Date.now()}`,
-            sku: values.sku || `SKU-${Date.now()}`,
+        thumbnail: values.thumbnail,
+      });
+
+      if (created?.id && values.sku) {
+        try {
+          await productService.addVariant(created.id, {
+            sku: values.sku,
             color: values.variantColor || 'Đen Titan',
             storage: values.variantStorage || '256GB',
             ram: values.variantRam || '8GB',
             price: values.variantPrice || 25000000,
             compareAtPrice: values.variantComparePrice || undefined,
             inventoryQty: values.inventoryQty || 10,
-          },
-        ],
-      };
-
-      try {
-        await productService.createProduct({
-          name: values.name,
-          description: values.description,
-          brandId: values.brandId,
-          categoryId: values.categoryId,
-          thumbnail: values.thumbnail,
-        });
-      } catch {
-        // Backend optional fallback
+          });
+        } catch (vErr) {
+          console.warn('Initial variant creation failed:', vErr);
+        }
       }
 
-      setProducts((prev) => [newProduct, ...prev]);
-      message.success('Thêm sản phẩm và biến thể thành công!');
+      message.success('Thêm sản phẩm thành công!');
       setIsModalOpen(false);
       form.resetFields();
-    } catch {
-      message.error('Không thể tạo sản phẩm.');
+      await loadProducts();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
     }
   };
 
-  const handleToggleStatus = (record: Product, checked: boolean) => {
-    const updated = products.map((p) =>
-      p.id === record.id ? { ...p, status: (checked ? 'ACTIVE' : 'DRAFT') as any } : p
-    );
-    setProducts(updated);
-    message.info(`Đã đổi trạng thái sản phẩm sang ${checked ? 'ĐANG BÁN' : 'TẠM ẨN'}`);
+  const handleToggleStatus = async (record: Product, checked: boolean) => {
+    const nextStatus = checked ? 'ACTIVE' : 'DRAFT';
+    try {
+      await productService.updateProduct(record.id, { status: nextStatus as any });
+      const updated = products.map((p) =>
+        p.id === record.id ? { ...p, status: nextStatus as any } : p
+      );
+      setProducts(updated);
+      message.info(`Đã đổi trạng thái sản phẩm sang ${checked ? 'ĐANG BÁN' : 'TẠM ẨN'}`);
+    } catch (err: any) {
+      message.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
+    }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    try {
+      await productService.deleteProduct(id);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      message.success('Đã xóa sản phẩm thành công!');
+    } catch (err: any) {
+      message.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
+    }
   };
 
   const formatPrice = (val: number) => {
@@ -196,12 +190,17 @@ export const AdminProductsPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'action',
-      render: () => (
+      render: (_, record) => (
         <Space size="middle">
           <Button size="small" icon={<EditOutlined />}>
             Sửa
           </Button>
-          <Button size="small" danger icon={<DeleteOutlined />}>
+          <Button
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteProduct(record.id)}
+          >
             Xóa
           </Button>
         </Space>

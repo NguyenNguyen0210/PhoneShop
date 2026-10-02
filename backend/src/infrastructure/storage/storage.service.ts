@@ -20,6 +20,8 @@ export interface OptimizedImageResult {
   format: string;
 }
 
+export const ALLOWED_IMAGE_REGEX = /(jpg|jpeg|png|webp)$/i;
+
 @Injectable()
 export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
@@ -62,11 +64,6 @@ export class StorageService implements OnModuleInit {
 
       if (!metadata.format) {
         throw new BadRequestException('Invalid image buffer');
-      }
-
-      // If SVG, return as is (scalable vector graphics do not need raster compression)
-      if (metadata.format === 'svg') {
-        return { buffer, mimeType: 'image/svg+xml', format: 'svg' };
       }
 
       const optimized = await pipeline
