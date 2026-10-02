@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Table,
   Button,
@@ -14,9 +14,18 @@ import {
   Typography,
   Image,
   Divider,
+  Card,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SearchOutlined,
+  MobileOutlined,
+  CheckCircleOutlined,
+  EyeInvisibleOutlined,
+} from '@ant-design/icons';
 import { mockProducts, mockBrands, mockCategories } from '../../../data/mockProducts';
 import { productService } from '../../../services/productService';
 import { ImageUploadDragger } from '../../../components/admin/ImageUploadDragger';
@@ -28,6 +37,9 @@ export const AdminProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(mockProducts);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedBrand, setSelectedBrand] = useState<string>('ALL');
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [form] = Form.useForm();
 
   const loadProducts = useCallback(async () => {
@@ -115,6 +127,23 @@ export const AdminProductsPage: React.FC = () => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
   };
 
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      if (selectedBrand !== 'ALL' && p.brandId !== selectedBrand) return false;
+      if (selectedStatus !== 'ALL' && p.status !== selectedStatus) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchName = p.name.toLowerCase().includes(q);
+        const matchBrand = p.brand?.name?.toLowerCase().includes(q);
+        if (!matchName && !matchBrand) return false;
+      }
+      return true;
+    });
+  }, [products, selectedBrand, selectedStatus, searchQuery]);
+
+  const activeCount = useMemo(() => products.filter((p) => p.status === 'ACTIVE').length, [products]);
+  const draftCount = useMemo(() => products.filter((p) => p.status !== 'ACTIVE').length, [products]);
+
   const columns: ColumnsType<Product> = [
     {
       title: 'Hình ảnh',
@@ -122,55 +151,90 @@ export const AdminProductsPage: React.FC = () => {
       key: 'thumbnail',
       width: 80,
       render: (src: string) => (
-        <Image
-          src={src || 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5'}
-          width={50}
-          height={50}
-          style={{ objectFit: 'contain', borderRadius: 8 }}
-          fallback="https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5"
-        />
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 8,
+            overflow: 'hidden',
+            background: '#151d30',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 4,
+          }}
+        >
+          <Image
+            src={src || 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5'}
+            width="100%"
+            height="100%"
+            style={{ objectFit: 'contain' }}
+            fallback="https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5"
+          />
+        </div>
       ),
     },
     {
-      title: 'Tên sản phẩm',
+      title: 'Tên sản phẩm & Thiết bị',
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record) => (
         <div>
-          <Text strong>{name}</Text>
-          <div style={{ fontSize: 11, color: '#64748b' }}>
+          <div style={{ fontWeight: 600, color: '#f8fafc', fontSize: 13 }}>{name}</div>
+          <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace', marginTop: 2 }}>
             ID: {record.id}
           </div>
         </div>
       ),
     },
     {
-      title: 'Hãng',
+      title: 'Thương hiệu',
       dataIndex: 'brand',
       key: 'brand',
       render: (brand, record) => (
-        <Tag color="blue">{brand?.name || record.brandId || 'Chính hãng'}</Tag>
+        <Tag
+          style={{
+            background: 'rgba(99, 102, 241, 0.12)',
+            borderColor: 'rgba(99, 102, 241, 0.3)',
+            color: '#818cf8',
+            fontWeight: 600,
+            borderRadius: 6,
+          }}
+        >
+          {brand?.name || record.brandId || 'Chính hãng'}
+        </Tag>
       ),
     },
     {
-      title: 'Số biến thể',
+      title: 'Biến thể SKU',
       dataIndex: 'variants',
       key: 'variants',
       render: (variants: any[]) => (
-        <Tag color="purple">{variants?.length || 0} biến thể</Tag>
+        <Tag
+          style={{
+            background: 'rgba(56, 189, 248, 0.12)',
+            borderColor: 'rgba(56, 189, 248, 0.3)',
+            color: '#38bdf8',
+            fontWeight: 600,
+            borderRadius: 6,
+          }}
+        >
+          {variants?.length || 0} biến thể
+        </Tag>
       ),
     },
     {
-      title: 'Khoảng giá',
+      title: 'Khoảng giá niêm yết',
       key: 'priceRange',
       render: (_, record) => {
         const prices = record.variants?.map((v) => v.price) || [0];
         const min = Math.min(...prices);
         const max = Math.max(...prices);
         return (
-          <Text strong style={{ color: '#dc2626' }}>
+          <span style={{ fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace', fontSize: 13 }}>
             {min === max ? formatPrice(min) : `${formatPrice(min)} - ${formatPrice(max)}`}
-          </Text>
+          </span>
         );
       },
     },
@@ -184,6 +248,9 @@ export const AdminProductsPage: React.FC = () => {
           onChange={(checked) => handleToggleStatus(record, checked)}
           checkedChildren="Bán"
           unCheckedChildren="Ẩn"
+          style={{
+            backgroundColor: status === 'ACTIVE' ? '#10b981' : 'rgba(255, 255, 255, 0.2)',
+          }}
         />
       ),
     },
@@ -191,8 +258,18 @@ export const AdminProductsPage: React.FC = () => {
       title: 'Thao tác',
       key: 'action',
       render: (_, record) => (
-        <Space size="middle">
-          <Button size="small" icon={<EditOutlined />}>
+        <Space size="small">
+          <Button
+            size="small"
+            icon={<EditOutlined />}
+            style={{
+              background: '#151d30',
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              color: '#94a3b8',
+              fontSize: 12,
+              borderRadius: 6,
+            }}
+          >
             Sửa
           </Button>
           <Button
@@ -200,6 +277,13 @@ export const AdminProductsPage: React.FC = () => {
             danger
             icon={<DeleteOutlined />}
             onClick={() => handleDeleteProduct(record.id)}
+            style={{
+              background: 'rgba(244, 63, 94, 0.1)',
+              borderColor: 'rgba(244, 63, 94, 0.3)',
+              color: '#f43f5e',
+              fontSize: 12,
+              borderRadius: 6,
+            }}
           >
             Xóa
           </Button>
@@ -210,12 +294,36 @@ export const AdminProductsPage: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Page Header */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 16,
+        }}
+      >
         <div>
-          <Title level={3} style={{ margin: 0 }}>
-            Quản lý Sản phẩm & Biến thể
-          </Title>
-          <Text type="secondary">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800, letterSpacing: -0.3 }}>
+              Quản lý Sản phẩm & Biến thể
+            </Title>
+            <span
+              style={{
+                fontSize: 11,
+                padding: '2px 8px',
+                borderRadius: 20,
+                background: 'rgba(99, 102, 241, 0.15)',
+                color: '#818cf8',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                fontWeight: 600,
+              }}
+            >
+              Hardware Catalog
+            </span>
+          </div>
+          <Text type="secondary" style={{ fontSize: 13, marginTop: 4, display: 'block' }}>
             Danh mục các thiết bị di động, quản lý biến thể dung lượng/màu sắc và đồng bộ tồn kho
           </Text>
         </div>
@@ -224,28 +332,156 @@ export const AdminProductsPage: React.FC = () => {
           type="primary"
           icon={<PlusOutlined />}
           size="large"
-          style={{ background: '#2563eb' }}
+          style={{
+            background: '#6366f1',
+            borderColor: '#6366f1',
+            fontWeight: 600,
+            borderRadius: 8,
+            boxShadow: '0 0 15px rgba(99, 102, 241, 0.3)',
+          }}
           onClick={() => setIsModalOpen(true)}
         >
           Thêm sản phẩm mới
         </Button>
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={products}
-        rowKey="id"
-        loading={loading}
-        pagination={{ pageSize: 8 }}
-      />
+      {/* Filter & Metric Pill Bar */}
+      <Card
+        bordered={false}
+        style={{
+          background: '#0e1526',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: 14,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+        }}
+      >
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+          <Input
+            placeholder="Tìm theo tên sản phẩm hoặc thương hiệu..."
+            prefix={<SearchOutlined style={{ color: '#64748b' }} />}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ width: 280, borderRadius: 8, background: '#151d30' }}
+            allowClear
+          />
 
-      {/* Modal: Add Product */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 12, color: '#94a3b8' }}>Thương hiệu:</Text>
+            <Select
+              value={selectedBrand}
+              onChange={setSelectedBrand}
+              style={{ width: 160 }}
+              options={[
+                { value: 'ALL', label: 'Tất cả thương hiệu' },
+                ...mockBrands.map((b) => ({ value: b.id, label: b.name })),
+              ]}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 12, color: '#94a3b8' }}>Trạng thái:</Text>
+            <Select
+              value={selectedStatus}
+              onChange={setSelectedStatus}
+              style={{ width: 140 }}
+              options={[
+                { value: 'ALL', label: 'Tất cả' },
+                { value: 'ACTIVE', label: 'Đang bán' },
+                { value: 'DRAFT', label: 'Tạm ẩn' },
+              ]}
+            />
+          </div>
+
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
+            <Tag
+              color="indigo"
+              style={{
+                borderRadius: 6,
+                padding: '3px 8px',
+                background: 'rgba(99, 102, 241, 0.12)',
+                borderColor: 'rgba(99, 102, 241, 0.3)',
+                color: '#818cf8',
+                fontWeight: 600,
+              }}
+            >
+              <MobileOutlined style={{ marginRight: 4 }} />
+              Tổng: {products.length} sản phẩm
+            </Tag>
+            <Tag
+              color="green"
+              style={{
+                borderRadius: 6,
+                padding: '3px 8px',
+                background: 'rgba(16, 185, 129, 0.12)',
+                borderColor: 'rgba(16, 185, 129, 0.3)',
+                color: '#34d399',
+                fontWeight: 600,
+              }}
+            >
+              <CheckCircleOutlined style={{ marginRight: 4 }} />
+              Đang bán: {activeCount}
+            </Tag>
+            <Tag
+              color="default"
+              style={{
+                borderRadius: 6,
+                padding: '3px 8px',
+                background: 'rgba(148, 163, 184, 0.12)',
+                borderColor: 'rgba(148, 163, 184, 0.2)',
+                color: '#94a3b8',
+                fontWeight: 600,
+              }}
+            >
+              <EyeInvisibleOutlined style={{ marginRight: 4 }} />
+              Tạm ẩn: {draftCount}
+            </Tag>
+          </div>
+        </div>
+      </Card>
+
+      {/* Obsidian Products Table Card */}
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 14,
+          background: '#0e1526',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+        }}
+      >
+        <Table
+          columns={columns}
+          dataSource={filteredProducts}
+          rowKey="id"
+          loading={loading}
+          pagination={{ pageSize: 8 }}
+          style={{ background: 'transparent' }}
+        />
+      </Card>
+
+      {/* Modal: Add Product with ImageUploadDragger */}
       <Modal
-        title="Thêm thiết bị mới vào danh mục"
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: '#6366f1',
+                boxShadow: '0 0 8px #6366f1',
+              }}
+            />
+            <span style={{ color: '#f8fafc', fontWeight: 700, fontSize: 16 }}>
+              Thêm thiết bị mới vào danh mục
+            </span>
+          </div>
+        }
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
         width={720}
+        style={{ top: 20 }}
       >
         <Form
           form={form}
@@ -260,6 +496,7 @@ export const AdminProductsPage: React.FC = () => {
             variantPrice: 28990000,
             inventoryQty: 10,
           }}
+          style={{ marginTop: 16 }}
         >
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Form.Item
@@ -304,7 +541,16 @@ export const AdminProductsPage: React.FC = () => {
             <ImageUploadDragger folder="products" />
           </Form.Item>
 
-          <Divider titlePlacement="start" plain>
+          <Divider
+            titlePlacement="start"
+            plain
+            style={{
+              borderColor: 'rgba(255, 255, 255, 0.08)',
+              color: '#94a3b8',
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
             Khởi tạo Biến thể mặc định đầu tiên
           </Divider>
 
@@ -351,10 +597,19 @@ export const AdminProductsPage: React.FC = () => {
             </Form.Item>
           </div>
 
-          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+          <Form.Item style={{ marginBottom: 0, marginTop: 12, textAlign: 'right' }}>
             <Space>
               <Button onClick={() => setIsModalOpen(false)}>Hủy</Button>
-              <Button type="primary" htmlType="submit" style={{ background: '#2563eb' }}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                style={{
+                  background: '#6366f1',
+                  borderColor: '#6366f1',
+                  fontWeight: 600,
+                  boxShadow: '0 0 10px rgba(99, 102, 241, 0.3)',
+                }}
+              >
                 Lưu sản phẩm
               </Button>
             </Space>
