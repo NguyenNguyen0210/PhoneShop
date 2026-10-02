@@ -1,10 +1,23 @@
-import { Injectable, Logger, OnModuleInit, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  InternalServerErrorException,
+  BadRequestException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import sharp from 'sharp';
 
 export interface UploadResult {
   url: string;
   path: string;
+}
+
+export interface OptimizedImageResult {
+  buffer: Buffer;
+  mimeType: string;
+  format: string;
 }
 
 @Injectable()
@@ -21,7 +34,7 @@ export class StorageService implements OnModuleInit {
     const key = this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY');
     this.bucket = this.config.get<string>('SUPABASE_STORAGE_BUCKET', 'mobile-commerce');
 
-    this.isMock = !url || !key || key === 'your-supabase-service-role-key';
+    this.isMock = !url || !key || key.includes('your-supabase');
 
     if (this.isMock) {
       this.logger.warn(
@@ -35,25 +48,81 @@ export class StorageService implements OnModuleInit {
     this.logger.log(`Supabase Storage initialized (bucket=${this.bucket})`);
   }
 
+  /**
+   * Optimize image buffer: resize large images down to maxWidth and convert to WebP format.
+   */
+  async optimizeImage(
+    buffer: Buffer,
+    maxWidth = 1600,
+    quality = 80,
+  ): Promise<OptimizedImageResult> {
+    try {
+      const pipeline = sharp(buffer);
+      const metadata = await pipeline.metadata();
+
+      if (!metadata.format) {
+        throw new BadRequestException('Invalid image buffer');
+      }
+
+      // If SVG, return as is (scalable vector graphics do not need raster compression)
+      if (metadata.format === 'svg') {
+        return { buffer, mimeType: 'image/svg+xml', format: 'svg' };
+      }
+
+      const optimized = await pipeline
+        .resize({
+          width: maxWidth,
+          withoutEnlargement: true,
+          fit: 'inside',
+        })
+        .webp({ quality })
+        .toBuffer();
+
+      return {
+        buffer: optimized,
+        mimeType: 'image/webp',
+        format: 'webp',
+      };
+    } catch (err: any) {
+      this.logger.error(`Sharp optimization failed: ${err.message}`);
+      throw new BadRequestException(`Cannot process image file: ${err.message}`);
+    }
+  }
+
+  /**
+   * Upload file to Supabase storage with automatic WebP optimization.
+   */
   async uploadFile(
     buffer: Buffer,
-    fileName: string,
-    folder: string = 'uploads',
-    mimeType: string = 'application/octet-stream',
+    originalName: string,
+    folder = 'uploads',
+    shouldOptimize = true,
   ): Promise<UploadResult> {
-    const path = `${folder}/${Date.now()}-${fileName}`;
+    let finalBuffer = buffer;
+    let mimeType = 'image/webp';
+    let ext = 'webp';
+
+    if (shouldOptimize) {
+      const opt = await this.optimizeImage(buffer);
+      finalBuffer = opt.buffer;
+      mimeType = opt.mimeType;
+      ext = opt.format;
+    }
+
+    const baseName = originalName.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const path = `${folder}/${Date.now()}-${baseName}.${ext}`;
 
     if (this.isMock) {
-      this.logger.log(`[STORAGE MOCK] Uploading: ${path} (${mimeType}, ${buffer.length} bytes)`);
+      this.logger.log(`[STORAGE MOCK] Uploading: ${path} (${mimeType}, ${finalBuffer.length} bytes)`);
       return {
-        url: `https://${this.config.get('SUPABASE_URL', 'placeholder.supabase.co')}/storage/v1/object/public/${this.bucket}/${path}`,
+        url: `https://placeholder.supabase.co/storage/v1/object/public/${this.bucket}/${path}`,
         path,
       };
     }
 
     const { error } = await this.supabase.storage
       .from(this.bucket)
-      .upload(path, buffer, {
+      .upload(path, finalBuffer, {
         contentType: mimeType,
         upsert: false,
       });
@@ -64,27 +133,14 @@ export class StorageService implements OnModuleInit {
     }
 
     const { data } = this.supabase.storage.from(this.bucket).getPublicUrl(path);
-    this.logger.log(`File uploaded: ${data.publicUrl}`);
+    this.logger.log(`File uploaded to Supabase: ${data.publicUrl}`);
 
     return { url: data.publicUrl, path };
   }
 
-  async uploadProductImage(buffer: Buffer, fileName: string): Promise<UploadResult> {
-    return this.uploadFile(buffer, fileName, 'products', 'image/jpeg');
-  }
-
-  async uploadAvatarImage(buffer: Buffer, fileName: string): Promise<UploadResult> {
-    return this.uploadFile(buffer, fileName, 'avatars', 'image/jpeg');
-  }
-
-  async uploadBrandLogo(buffer: Buffer, fileName: string): Promise<UploadResult> {
-    return this.uploadFile(buffer, fileName, 'brands', 'image/png');
-  }
-
-  async uploadCategoryImage(buffer: Buffer, fileName: string): Promise<UploadResult> {
-    return this.uploadFile(buffer, fileName, 'categories', 'image/jpeg');
-  }
-
+  /**
+   * Delete asset from Supabase storage by path.
+   */
   async deleteFile(path: string): Promise<void> {
     if (this.isMock) {
       this.logger.log(`[STORAGE MOCK] Deleting: ${path}`);
@@ -96,14 +152,6 @@ export class StorageService implements OnModuleInit {
       this.logger.error(`Delete failed: ${path}`, error.message);
       throw new InternalServerErrorException(`File delete failed: ${error.message}`);
     }
-    this.logger.log(`File deleted: ${path}`);
-  }
-
-  getPublicUrl(path: string): string {
-    if (this.isMock) {
-      return `https://placeholder.supabase.co/storage/v1/object/public/${this.bucket}/${path}`;
-    }
-    const { data } = this.supabase.storage.from(this.bucket).getPublicUrl(path);
-    return data.publicUrl;
+    this.logger.log(`File deleted from Supabase: ${path}`);
   }
 }
