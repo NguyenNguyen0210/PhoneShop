@@ -1,0 +1,73 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'infrastructure/docker/backend.Dockerfile'
+      - 'docker-compose*.yml'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-verify:
+    name: Build & Verify Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./infrastructure/docker/backend.Dockerfile
+          push: false
+          tags: mobilecommerce-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deployment Notification
+        run: |
+          echo "Backend Docker container image successfully built and verified for deployment."
+          echo "Ready for production rollout via Docker Compose / Container Registry."
+
+  deploy:
+    name: Deploy to Production
+    needs: build-and-verify
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Deployment Credentials
+        id: check_credentials
+        run: |
+          if [ -n "${{ secrets.SSH_HOST }}" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Notice: SSH_HOST secret is not configured. Skipping remote server SSH rollout."
+          fi
+
+      - name: Deploy via SSH
+        if: steps.check_credentials.outputs.configured == 'true'
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          echo "Executing automated remote deployment to $SSH_HOST..."
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" "cd /app/mobilecommerce && git pull origin main && docker compose -f docker-compose.prod.yml up -d --build"
