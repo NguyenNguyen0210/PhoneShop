@@ -21,7 +21,7 @@ services:
       - internal_network
 
   # ==========================================
-  # Backend - NestJS
+  # Backend - NestJS (Production Container)
   # ==========================================
   backend:
     build:
@@ -29,6 +29,8 @@ services:
       dockerfile: infrastructure/docker/backend.Dockerfile
     container_name: mobile_commerce_backend_prod
     restart: always
+    ports:
+      - "3000:3000"
     env_file:
       - .env.example # In production, use .env or pass through CI/CD
     environment:
@@ -38,39 +40,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    networks:
-      - internal_network
-
-  # ==========================================
-  # Frontend - React (served by lightweight Nginx)
-  # ==========================================
-  frontend:
-    build:
-      context: .
-      dockerfile: infrastructure/docker/frontend.Dockerfile
-      args:
-        # Pass production API URL (to be resolved by main Nginx proxy)
-        - VITE_API_URL=/api
-    container_name: mobile_commerce_frontend_prod
-    restart: always
-    networks:
-      - internal_network
-
-  # ==========================================
-  # Main Nginx Reverse Proxy
-  # ==========================================
-  nginx:
-    build:
-      context: .
-      dockerfile: infrastructure/docker/nginx.Dockerfile
-    container_name: mobile_commerce_nginx_prod
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - backend
-      - frontend
     networks:
       - internal_network
 
