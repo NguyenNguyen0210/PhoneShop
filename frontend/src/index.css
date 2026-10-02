@@ -1,34 +1,34 @@
 @import "tailwindcss";
 
 @theme {
-  --color-obsidian-void: #07090e;
-  --color-surface-dark: #0e1526;
-  --color-surface-subtle: #151d30;
-  --color-border-subtle: rgba(255, 255, 255, 0.08);
-  --color-border-focus: rgba(99, 102, 241, 0.4);
-  --color-electric-indigo: #6366f1;
-  --color-cyber-sky: #38bdf8;
+  --color-obsidian-void: #f8fafc;
+  --color-surface-dark: #ffffff;
+  --color-surface-subtle: #f1f5f9;
+  --color-border-subtle: #e2e8f0;
+  --color-border-focus: rgba(37, 99, 235, 0.4);
+  --color-electric-indigo: #2563eb;
+  --color-cyber-sky: #0284c7;
   --color-emerald-radar: #10b981;
   --color-amber-hold: #f59e0b;
 }
 
 @layer base {
   :root {
-    --color-obsidian-void: #07090e;
-    --color-surface-dark: #0e1526;
-    --color-surface-subtle: #151d30;
-    --color-border-subtle: rgba(255, 255, 255, 0.08);
-    --color-border-focus: rgba(99, 102, 241, 0.4);
-    --color-electric-indigo: #6366f1;
-    --color-cyber-sky: #38bdf8;
+    --color-obsidian-void: #f8fafc;
+    --color-surface-dark: #ffffff;
+    --color-surface-subtle: #f1f5f9;
+    --color-border-subtle: #e2e8f0;
+    --color-border-focus: rgba(37, 99, 235, 0.4);
+    --color-electric-indigo: #2563eb;
+    --color-cyber-sky: #0284c7;
     --color-emerald-radar: #10b981;
     --color-amber-hold: #f59e0b;
-    color-scheme: dark;
+    color-scheme: light;
   }
 
   html, body {
-    background-color: #07090e;
-    color: #f8fafc;
+    background-color: #f8fafc;
+    color: #0f172a;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -38,54 +38,59 @@
   #root {
     min-height: 100vh;
     width: 100%;
-    background-color: #07090e;
+    background-color: #f8fafc;
+    color: #0f172a;
     overflow-x: hidden;
   }
 
-  /* Custom Obsidian Scrollbar */
+  /* Custom Clean Light Scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #07090e;
+    background: #f8fafc;
   }
   ::-webkit-scrollbar-thumb {
-    background: #1e293b;
+    background: #cbd5e1;
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #334155;
+    background: #94a3b8;
   }
 }
 
-/* Glassmorphism & Glow Utilities */
+/* Glassmorphism & Card Utilities (Clean Light Mode) */
+.light-glass,
 .obsidian-glass {
-  background: rgba(14, 21, 38, 0.75);
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #e2e8f0;
 }
 
+.light-card,
 .obsidian-card {
-  background: #0e1526;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 12px -2px rgba(15, 23, 42, 0.04);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.light-card:hover,
 .obsidian-card:hover {
-  border-color: rgba(99, 102, 241, 0.35);
-  box-shadow: 0 0 25px rgba(99, 102, 241, 0.12);
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.08);
 }
 
 .obsidian-glow-indigo {
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 20px rgba(37, 99, 235, 0.15);
 }
 
 .obsidian-glow-sky {
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.25);
+  box-shadow: 0 0 20px rgba(2, 132, 199, 0.15);
 }
 
 .obsidian-glow-emerald {
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
 }

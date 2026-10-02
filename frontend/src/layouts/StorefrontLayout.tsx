@@ -6,8 +6,8 @@ import { CartDrawer } from '../components/storefront/CartDrawer';
 
 export const StorefrontLayout: React.FC = () => {
   return (
-    <div className="min-h-screen bg-[#07090e] text-slate-100 flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200">
-      {/* Global Floating Glassmorphism Navbar */}
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col selection:bg-blue-500/20 selection:text-blue-900">
+      {/* Global Floating Clean Light Navbar */}
       <Navbar />
 
       {/* Main Page Content */}
@@ -18,7 +18,7 @@ export const StorefrontLayout: React.FC = () => {
       {/* Slide-over Cart Drawer */}
       <CartDrawer />
 
-      {/* Obsidian Dark Architecture Footer */}
+      {/* Clean Light Architecture Footer */}
       <Footer />
     </div>
   );
