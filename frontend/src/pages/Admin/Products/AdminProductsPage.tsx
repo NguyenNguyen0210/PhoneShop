@@ -19,6 +19,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { mockProducts, mockBrands, mockCategories } from '../../../data/mockProducts';
 import { productService } from '../../../services/productService';
+import { ImageUploadDragger } from '../../../components/admin/ImageUploadDragger';
 import type { Product } from '../../../types';
 
 const { Title, Text } = Typography;
@@ -270,12 +271,6 @@ export const AdminProductsPage: React.FC = () => {
               <Input placeholder="Ví dụ: iPhone 16 Pro Max" />
             </Form.Item>
 
-            <Form.Item name="thumbnail" label="URL hình ảnh (Thumbnail)">
-              <Input placeholder="https://example.com/phone.jpg" />
-            </Form.Item>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Form.Item name="brandId" label="Thương hiệu" rules={[{ required: true }]}>
               <Select>
                 {mockBrands.map((b) => (
@@ -285,7 +280,9 @@ export const AdminProductsPage: React.FC = () => {
                 ))}
               </Select>
             </Form.Item>
+          </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Form.Item name="categoryId" label="Danh mục sản phẩm" rules={[{ required: true }]}>
               <Select>
                 {mockCategories.map((c) => (
@@ -295,10 +292,17 @@ export const AdminProductsPage: React.FC = () => {
                 ))}
               </Select>
             </Form.Item>
+
+            <Form.Item name="description" label="Mô tả tóm tắt">
+              <Input placeholder="Thông tin nổi bật, chip vi xử lý, camera..." />
+            </Form.Item>
           </div>
 
-          <Form.Item name="description" label="Mô tả tóm tắt">
-            <Input.TextArea rows={2} placeholder="Thông tin nổi bật, chip vi xử lý, camera..." />
+          <Form.Item
+            name="thumbnail"
+            label="Ảnh đại diện thiết bị (Tự động nén WebP & lưu Supabase CDN)"
+          >
+            <ImageUploadDragger folder="products" />
           </Form.Item>
 
           <Divider titlePlacement="start" plain>
