@@ -157,53 +157,44 @@ export const AdminLayout: React.FC = () => {
               borderBottom: '1px solid #e2e8f0',
             }}
           >
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontWeight: 800,
-                fontSize: 14,
-                letterSpacing: 0.5,
-                flexShrink: 0,
-              }}
-            >
-              MC
-            </div>
-            {!collapsed && (
-              <div style={{ overflow: 'hidden' }}>
-                <div
+            {collapsed ? (
+              <img
+                src="/logo-icon.png"
+                alt="PhoneShop"
+                style={{
+                  width: 32,
+                  height: 32,
+                  objectFit: 'contain',
+                  flexShrink: 0,
+                }}
+              />
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+                <img
+                  src="/logo-horizontal.png"
+                  alt="PhoneShop"
                   style={{
-                    color: '#0f172a',
-                    fontWeight: 700,
-                    fontSize: 14,
-                    letterSpacing: -0.2,
-                    lineHeight: 1.2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
+                    height: 30,
+                    width: 'auto',
+                    objectFit: 'contain',
+                    flexShrink: 0,
                   }}
-                >
-                  MobileCommerce
-                </div>
-                <div
+                />
+                <span
                   style={{
                     color: '#2563eb',
-                    fontSize: 10,
-                    fontWeight: 600,
-                    letterSpacing: 1.2,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: 1,
                     textTransform: 'uppercase',
-                    marginTop: 2,
+                    background: '#eff6ff',
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                    border: '1px solid #dbeafe',
                   }}
                 >
-                  Command Center
-                </div>
+                  Admin
+                </span>
               </div>
             )}
           </div>

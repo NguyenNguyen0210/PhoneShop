@@ -39,7 +39,7 @@ def run_tests():
         # ----------------------------------------------------
         print("\n[TEST 1] Storefront Homepage...")
         page.goto(f"{BASE_URL}/", wait_until="networkidle")
-        assert "MobileCommerce" in page.content(), "Brand name 'MobileCommerce' not found on page"
+        assert "PhoneShop" in page.content() or "MobileCommerce" in page.content(), "Brand name 'PhoneShop' not found on page"
         
         # Verify header elements
         assert page.locator("header").is_visible(), "Header is not visible"

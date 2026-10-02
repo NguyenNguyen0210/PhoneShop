@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Smartphone, Mail, Lock, LogIn, AlertCircle, Shield, User, Loader2, Sparkles } from 'lucide-react';
+import { Mail, Lock, LogIn, AlertCircle, Shield, User, Loader2, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 
 export const LoginPage: React.FC = () => {
@@ -57,11 +57,12 @@ export const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10 space-y-2">
-        <Link to="/" className="inline-flex items-center gap-2.5 group mb-2">
-          <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-xs group-hover:scale-105 transition">
-            <Smartphone className="w-6 h-6" />
-          </div>
-          <span className="text-2xl font-black text-slate-900 tracking-tight">MobileCommerce</span>
+        <Link to="/" className="inline-flex items-center justify-center group mb-2" aria-label="PhoneShop">
+          <img
+            src="/logo-horizontal.png"
+            alt="PhoneShop - Smartphone • Better Life"
+            className="h-10 sm:h-11 w-auto object-contain transition-transform group-hover:scale-105"
+          />
         </Link>
         <div className="flex items-center justify-center gap-2 text-[10px] font-mono uppercase tracking-wider text-blue-600">
           <Sparkles className="w-3 h-3" />

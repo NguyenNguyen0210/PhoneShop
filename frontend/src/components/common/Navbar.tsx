@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Smartphone,
   Search,
   ShoppingCart,
   User as UserIcon,
@@ -98,18 +97,15 @@ export const Navbar: React.FC = () => {
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
-            {/* Glowing Brand Logo */}
-            <Link to="/" className="flex items-center gap-2.5 sm:gap-3 shrink-0 group">
-              <div className="relative">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs group-hover:bg-blue-700 transition duration-200">
-                  <Smartphone className="w-5 h-5 text-white" />
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-lg sm:text-xl font-black tracking-tight text-slate-900 group-hover:text-blue-600 transition">
-                  MobileCommerce
-                </span>
-                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-widest text-blue-600 -mt-1 flex items-center gap-1">
+            {/* Official PhoneShop Brand Logo */}
+            <Link to="/" className="flex items-center gap-2.5 sm:gap-3 shrink-0 group" aria-label="PhoneShop">
+              <img
+                src="/logo-horizontal.png"
+                alt="PhoneShop - Smartphone • Better Life"
+                className="h-8 sm:h-9.5 w-auto object-contain transition-transform duration-200 group-hover:scale-102"
+              />
+              <div className="hidden sm:flex flex-col">
+                <span className="text-[9px] uppercase font-bold tracking-widest text-blue-600 flex items-center gap-1">
                   <span>Chính hãng 100%</span>
                   <Sparkles className="w-2.5 h-2.5 text-blue-500 inline" />
                 </span>

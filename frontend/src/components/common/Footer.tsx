@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Smartphone,
   Truck,
   CheckCircle2,
   RotateCcw,
@@ -97,17 +96,17 @@ export const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 md:grid-cols-4 gap-8">
         <div>
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-xs">
-              <Smartphone className="w-4 h-4" />
-            </div>
-            <span className="text-lg font-black text-slate-900 tracking-tight">MobileCommerce</span>
+            <img
+              src="/logo-horizontal.png"
+              alt="PhoneShop - Smartphone • Better Life"
+              className="h-8 w-auto object-contain"
+            />
           </div>
           <p className="text-slate-600 leading-relaxed mb-4 text-xs">
-            Hệ thống bán lẻ thiết bị di động thông minh hàng đầu Việt Nam. Công nghệ quản lý chuỗi
-            cung ứng và phân phối định danh thiết bị theo chuẩn mã IMEI quốc tế.
+            Hệ thống bán lẻ thiết bị di động thông minh hàng đầu Việt Nam. Phân phối điện thoại Apple, Samsung, Xiaomi, Google Pixel với cam kết chuẩn mã IMEI quốc tế.
           </p>
           <p className="text-slate-500 text-[11px] font-mono">
-            © 2026 MobileCommerce Corp. All rights reserved.
+            © 2026 PhoneShop by MobileCommerce Corp. All rights reserved.
           </p>
         </div>
 
@@ -142,7 +141,7 @@ export const Footer: React.FC = () => {
 
         <div>
           <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4">
-            Về MobileCommerce
+            Về PhoneShop
           </h4>
           <ul className="space-y-2.5">
             <li>
