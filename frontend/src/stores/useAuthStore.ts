@@ -19,6 +19,7 @@ interface AuthState {
   }) => Promise<User>;
   logout: () => Promise<void>;
   fetchProfile: () => Promise<void>;
+  updateUser: (partial: Partial<User>) => void;
   isAdmin: () => boolean;
   isStaffOrAdmin: () => boolean;
 }
@@ -80,6 +81,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ error: msg, isLoading: false });
       throw new Error(msg);
     }
+  },
+
+  updateUser: (partial: Partial<User>) => {
+    const current = get().user;
+    if (!current) return;
+    const updated = { ...current, ...partial };
+    localStorage.setItem('mobilecommerce_user', JSON.stringify(updated));
+    set({ user: updated });
   },
 
   logout: async () => {

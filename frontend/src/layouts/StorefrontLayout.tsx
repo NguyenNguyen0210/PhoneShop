@@ -131,9 +131,17 @@ export const StorefrontLayout: React.FC = () => {
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                     className="flex items-center gap-2 p-1.5 pl-2.5 rounded-full border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 transition text-left"
                   >
-                    <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center">
-                      {user.fullName?.charAt(0) || 'U'}
-                    </div>
+                    {user.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt="Avatar"
+                        className="w-7 h-7 rounded-full object-cover border border-slate-200"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center">
+                        {user.fullName?.charAt(0) || 'U'}
+                      </div>
+                    )}
                     <span className="text-xs font-semibold text-slate-800 max-w-[90px] truncate hidden md:inline">
                       {user.fullName || user.email}
                     </span>
@@ -149,6 +157,15 @@ export const StorefrontLayout: React.FC = () => {
                           {user.role}
                         </span>
                       </div>
+
+                      <Link
+                        to="/profile"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition"
+                      >
+                        <UserIcon className="w-4 h-4 text-blue-600" />
+                        <span>Hồ sơ tài khoản & Avatar</span>
+                      </Link>
 
                       {isStaffOrAdmin() && (
                         <Link

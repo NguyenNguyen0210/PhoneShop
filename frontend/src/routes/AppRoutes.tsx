@@ -13,6 +13,7 @@ import { CartPage } from '../pages/storefront/Cart/CartPage';
 import { CheckoutPage } from '../pages/storefront/Checkout/CheckoutPage';
 import { OrderSuccessPage } from '../pages/storefront/OrderSuccess/OrderSuccessPage';
 import { WarrantyLookupPage } from '../pages/storefront/WarrantyLookup/WarrantyLookupPage';
+import { ProfilePage } from '../pages/storefront/Profile/ProfilePage';
 
 // Auth Pages
 import { LoginPage } from '../pages/Auth/LoginPage';
@@ -39,6 +40,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/order-success/:id" element={<OrderSuccessPage />} />
         <Route path="/warranty-lookup" element={<WarrantyLookupPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
 
       {/* Auth Routes */}
