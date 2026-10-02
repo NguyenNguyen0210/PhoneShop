@@ -210,15 +210,15 @@ export const ProductDetailPage: React.FC = () => {
             </div>
 
             {/* Hardware Authenticity & Guarantee Banner */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2.5 text-xs text-slate-600 shadow-sm">
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-2.5 text-xs text-slate-600 shadow-xs">
               <div className="flex items-center gap-2 font-bold text-slate-900">
-                <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>Cam kết độc quyền tại MobileCommerce:</span>
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Cam kết dịch vụ tại MobileCommerce:</span>
               </div>
-              <ul className="space-y-1.5 pl-5 list-disc text-slate-600 font-mono text-[11px]">
-                <li>Mỗi máy 1 mã IMEI chuẩn Luhn quốc tế, không bán trùng thiết bị</li>
-                <li>Khóa giữ máy tự động 15 phút tại bước thanh toán (Redis BullMQ)</li>
-                <li>Kích hoạt bảo hành điện tử chính hãng 12 tháng tức thì khi nhận máy</li>
+              <ul className="space-y-1.5 pl-5 list-disc text-slate-600 text-xs">
+                <li>Máy mới 100% nguyên seal hộp, kiểm tra máy trước khi nhận hàng</li>
+                <li>Giữ máy 15 phút tại bước thanh toán – Yên tâm không lo mất suất</li>
+                <li>Kích hoạt bảo hành điện tử chính hãng 12 tháng theo số IMEI</li>
                 <li>Đổi mới trong 30 ngày nếu phát sinh bất kỳ lỗi phần cứng</li>
               </ul>
             </div>
@@ -250,16 +250,16 @@ export const ProductDetailPage: React.FC = () => {
               </div>
               <span className="text-slate-300 hidden sm:inline">|</span>
 
-              {/* Live IMEI Radar Indicator */}
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono font-medium">
+              {/* Live Stock Indicator */}
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#059669] opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-[#059669]" />
                 </span>
                 <span>
-                  Radar Kho: Còn{' '}
+                  Tình trạng: Còn{' '}
                   <strong className="text-slate-900 font-bold">{selectedVariant.inventoryQty ?? 18}</strong>{' '}
-                  IMEI sẵn sàng xuất kho
+                  máy sẵn sàng xuất kho
                 </span>
               </div>
             </div>
@@ -280,11 +280,11 @@ export const ProductDetailPage: React.FC = () => {
             </span>
           </div>
 
-          {/* HARDWARE MATRIX SELECTOR 1: Titanium Colors */}
+          {/* SELECTOR 1: Colors */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                1. Chọn màu sắc Titanium:
+                1. Chọn màu sắc:
               </label>
               <span className="text-xs font-mono text-blue-600 font-semibold">
                 {selectedVariant.color}
@@ -317,11 +317,11 @@ export const ProductDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* HARDWARE MATRIX SELECTOR 2: Semiconductor Storage Chips */}
+          {/* SELECTOR 2: Storage */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                2. Chọn Dung Lượng (Hardware Matrix):
+                2. Chọn dung lượng bộ nhớ:
               </label>
               <span className="text-xs font-mono text-blue-600 font-semibold">
                 {selectedVariant.storage} {selectedVariant.ram ? `(${selectedVariant.ram} RAM)` : ''}
@@ -399,26 +399,26 @@ export const ProductDetailPage: React.FC = () => {
               className="py-3.5 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 transition cursor-pointer"
             >
               <Zap className="w-5 h-5 fill-white" />
-              <span>Khóa máy 15:00 (Mua ngay)</span>
+              <span>Mua ngay (Giữ máy 15 phút)</span>
             </button>
           </div>
 
           {/* Value Proposition Micro Grid */}
           <div className="grid grid-cols-3 gap-3 pt-2 text-center text-xs">
-            <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs">
+            <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-xs">
               <Truck className="w-5 h-5 text-blue-600 mx-auto mb-1" />
               <span className="font-semibold block text-slate-900">Giao hoả tốc 2h</span>
-              <span className="text-[10px] text-slate-500">Nội thành HN & HCM</span>
+              <span className="text-[10px] text-slate-500">Miễn phí toàn quốc</span>
             </div>
-            <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs">
+            <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-xs">
               <RotateCcw className="w-5 h-5 text-blue-600 mx-auto mb-1" />
               <span className="font-semibold block text-slate-900">Đổi mới 30 ngày</span>
-              <span className="text-[10px] text-slate-500">Lỗi nhà sản xuất</span>
+              <span className="text-[10px] text-slate-500">Nếu lỗi nhà sản xuất</span>
             </div>
-            <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs">
+            <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-xs">
               <Clock className="w-5 h-5 text-emerald-600 mx-auto mb-1" />
-              <span className="font-semibold block text-slate-900">Khóa máy 15:00</span>
-              <span className="text-[10px] text-slate-500">Giữ IMEI độc quyền</span>
+              <span className="font-semibold block text-slate-900">Giữ máy 15 phút</span>
+              <span className="text-[10px] text-slate-500">An tâm thanh toán</span>
             </div>
           </div>
         </div>
@@ -426,11 +426,11 @@ export const ProductDetailPage: React.FC = () => {
 
       {/* SECTION 2: SPECS ACCORDION & TECHNICAL TABS */}
       <div
-        className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm"
+        className="bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs"
         style={{ boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.04)' }}
       >
         {/* Tabs Bar */}
-        <div className="flex border-b border-slate-200 bg-slate-50 text-xs font-bold overflow-x-auto scrollbar-none">
+        <div className="flex border-b border-slate-200/80 bg-slate-50/60 text-xs font-bold overflow-x-auto scrollbar-none">
           <button
             onClick={() => setActiveTab('specs')}
             className={`py-4 px-6 border-b-2 transition whitespace-nowrap cursor-pointer ${
@@ -439,7 +439,7 @@ export const ProductDetailPage: React.FC = () => {
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            Thông số kỹ thuật phần cứng
+            Thông số kỹ thuật
           </button>
           <button
             onClick={() => setActiveTab('reviews')}
@@ -449,7 +449,7 @@ export const ProductDetailPage: React.FC = () => {
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            Đánh giá xác thực IMEI ({product.reviewCount || 150})
+            Đánh giá khách hàng ({product.reviewCount || 150})
           </button>
           <button
             onClick={() => setActiveTab('imei-policy')}
@@ -459,7 +459,7 @@ export const ProductDetailPage: React.FC = () => {
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            Quy trình Khóa Giữ IMEI 15 Phút & Redis BullMQ
+            Chính sách giữ máy 15 phút & Bảo hành
           </button>
         </div>
 
@@ -488,7 +488,7 @@ export const ProductDetailPage: React.FC = () => {
               {product.description && (
                 <div className="mt-4 pt-4 border-t border-slate-100">
                   <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">
-                    Mô tả kiến trúc sản phẩm
+                    Đặc điểm nổi bật
                   </h4>
                   <p className="text-xs text-slate-600 leading-relaxed">{product.description}</p>
                 </div>
@@ -505,14 +505,13 @@ export const ProductDetailPage: React.FC = () => {
                   </span>
                   <div className="flex text-amber-500 text-sm mt-1">★★★★★</div>
                   <span className="text-[11px] text-slate-500 font-mono block mt-1">
-                    Dựa trên {product.reviewCount || 150} lượt xác thực
+                    Dựa trên {product.reviewCount || 150} khách hàng đã mua
                   </span>
                 </div>
                 <div className="text-xs text-slate-600 space-y-1">
-                  <p className="font-bold text-slate-900">Đánh giá minh bạch 100% từ khách hàng sở hữu máy thật</p>
+                  <p className="font-bold text-slate-900">Đánh giá thực tế từ người dùng sở hữu máy</p>
                   <p className="text-slate-500">
-                    Mỗi bình luận gắn liền với đơn hàng đã thanh toán qua VietQR/VNPay và kích hoạt thành
-                    công chứng chỉ bảo hành điện tử WRT trên hệ thống.
+                    Mọi đánh giá đều được xác thực từ khách hàng đã nhận máy và kích hoạt bảo hành điện tử chính hãng thành công.
                   </p>
                 </div>
               </div>
@@ -521,19 +520,19 @@ export const ProductDetailPage: React.FC = () => {
                 <div className="border-b border-slate-100 pb-4 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-900">Nguyễn Văn Hùng</span>
-                    <span className="text-slate-400 font-mono text-[11px]">3 ngày trước (Đã mua qua VietQR)</span>
+                    <span className="text-slate-400 text-[11px]">3 ngày trước (Đã mua qua VietQR)</span>
                   </div>
                   <div className="text-amber-500 text-xs">★★★★★</div>
                   <p className="text-xs text-slate-600 leading-relaxed">
                     Máy chuẩn nguyên seal, quét mã IMEI trên hệ thống tra cứu bảo hành hiển thị ngay thời
-                    hạn kích hoạt 12 tháng. Quy trình khóa máy 15 phút tại bước checkout rất an tâm!
+                    hạn kích hoạt 12 tháng. Quy trình giữ máy 15 phút tại bước thanh toán rất an tâm!
                   </p>
                 </div>
 
                 <div className="border-b border-slate-100 pb-4 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-900">Trần Thị Bích</span>
-                    <span className="text-slate-400 font-mono text-[11px]">1 tuần trước (Đã mua qua VNPay)</span>
+                    <span className="text-slate-400 text-[11px]">1 tuần trước (Đã mua qua VNPay)</span>
                   </div>
                   <div className="text-amber-500 text-xs">★★★★★</div>
                   <p className="text-xs text-slate-600 leading-relaxed">
@@ -549,23 +548,17 @@ export const ProductDetailPage: React.FC = () => {
             <div className="space-y-4 text-xs text-slate-600 leading-relaxed font-sans">
               <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
                 <Info className="w-5 h-5 text-blue-600 shrink-0" />
-                <span>Kiến trúc quản trị định danh IMEI tự động tại MobileCommerce:</span>
+                <span>Chính sách giữ hàng 15 phút & Bảo hành an tâm tại MobileCommerce:</span>
               </div>
               <ol className="list-decimal pl-6 space-y-3">
                 <li>
-                  <strong className="text-slate-900">Khóa nguyên tử 15 phút (Atomic Concurrency):</strong> Khi bạn nhấn
-                  checkout, hệ thống kích hoạt câu lệnh <code className="text-amber-800 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded font-mono text-[11px]">SELECT ... FOR UPDATE SKIP LOCKED</code> để
-                  cô lập chính xác 1 bản ghi IMEI khả dụng trong PostgreSQL. Đồng hồ đếm ngược 15:00 bắt đầu chạy.
+                  <strong className="text-slate-900">Giữ máy 15 phút chính xác 100%:</strong> Khi bạn bấm tiến hành thanh toán, hệ thống tự động giữ riêng thiết bị cho bạn trong 15 phút. Bạn hoàn toàn yên tâm điền thông tin và thanh toán chuyển khoản mà không sợ bị khách hàng khác mua mất máy.
                 </li>
                 <li>
-                  <strong className="text-slate-900">Giải phóng kho tự động qua Redis BullMQ:</strong> Nếu giao dịch không
-                  hoàn tất trong vòng 15 phút hoặc bạn hủy đơn hàng, hệ thống BullMQ background job sẽ lập tức hoàn trả
-                  IMEI về trạng thái <code className="text-emerald-800 bg-emerald-50 border border-emerald-200 px-1 py-0.5 rounded font-mono text-[11px]">AVAILABLE</code> cho khách hàng tiếp theo.
+                  <strong className="text-slate-900">Tự động hoàn trả kho nếu quá hạn:</strong> Nếu sau 15 phút bạn chưa hoàn tất thanh toán hoặc quyết định hủy đơn, máy sẽ tự động được mở lại trên website cho khách hàng tiếp theo có nhu cầu.
                 </li>
                 <li>
-                  <strong className="text-slate-900">Kích hoạt chứng chỉ bảo hành điện tử WRT:</strong> Sau khi cổng thanh
-                  toán (VietQR/VNPay) gửi Webhook xác nhận giao dịch thành công, máy chuyển sang trạng thái <code className="text-blue-800 bg-blue-50 border border-blue-200 px-1 py-0.5 rounded font-mono text-[11px]">SOLD</code> và
-                  tự động phát hành mã bảo hành có hiệu lực 12 tháng.
+                  <strong className="text-slate-900">Kích hoạt bảo hành điện tử chính hãng 12 tháng:</strong> Ngay sau khi đơn hàng được thanh toán thành công, mã bảo hành điện tử gắn liền với số IMEI của thiết bị sẽ được kích hoạt tức thì. Bạn có thể tra cứu hạn bảo hành bất cứ lúc nào tại trang Tra Cứu Bảo Hành.
                 </li>
               </ol>
             </div>
@@ -618,7 +611,7 @@ export const ProductDetailPage: React.FC = () => {
                   className="py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition cursor-pointer"
                 >
                   <Zap className="w-4 h-4 fill-white" />
-                  <span>Khóa máy 15:00 (Mua ngay)</span>
+                  <span>Mua ngay (Giữ máy 15p)</span>
                 </button>
               </div>
             </div>

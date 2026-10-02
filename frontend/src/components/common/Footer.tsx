@@ -59,7 +59,7 @@ export const Footer: React.FC = () => {
         </div>
       </section>
 
-      {/* Architecture System Status Banner */}
+      {/* Authorized Partners & Secure Payment Banner */}
       <section className="border-b border-slate-200/80 py-4 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -67,27 +67,27 @@ export const Footer: React.FC = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span className="text-[11px] font-mono uppercase tracking-wider text-slate-700 font-semibold">
-              Kiến trúc hệ thống Cloud Native
+            <span className="text-xs uppercase tracking-wider text-slate-800 font-bold">
+              Đối tác phân phối uỷ quyền chính hãng
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono">
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-medium">
             <div className="px-3 py-1 rounded-full bg-slate-50 border border-slate-200 text-slate-700 flex items-center gap-1.5 shadow-2xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span>Supabase CDN</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+              <span>Apple Authorised Reseller</span>
             </div>
             <div className="px-3 py-1 rounded-full bg-slate-50 border border-slate-200 text-slate-700 flex items-center gap-1.5 shadow-2xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-              <span>BullMQ 15m Lock Active</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+              <span>Samsung Premium Store</span>
             </div>
             <div className="px-3 py-1 rounded-full bg-slate-50 border border-slate-200 text-slate-700 flex items-center gap-1.5 shadow-2xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
-              <span>VietQR 2.0</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+              <span>VietQR Napas 247</span>
             </div>
             <div className="px-3 py-1 rounded-full bg-slate-50 border border-slate-200 text-slate-700 flex items-center gap-1.5 shadow-2xs">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-              <span>VNPay Official</span>
+              <span>VNPay Cổng Quốc Gia</span>
             </div>
           </div>
         </div>

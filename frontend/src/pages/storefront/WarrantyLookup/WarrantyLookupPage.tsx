@@ -7,7 +7,7 @@ import {
   Smartphone,
   Info,
   Loader2,
-  Terminal,
+  ShieldCheck,
   AlertTriangle,
   Award,
 } from 'lucide-react';
@@ -88,9 +88,9 @@ export const WarrantyLookupPage: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Terminal Header */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-mono font-bold tracking-wider">
-            <Terminal className="w-3.5 h-3.5 text-blue-600" />
-            <span>[CYBER DIAGNOSTIC TERMINAL v2.6.1]</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold tracking-wide">
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
+            <span>Cổng Tra Cứu Bảo Hành Điện Tử Chính Hãng</span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
@@ -103,15 +103,15 @@ export const WarrantyLookupPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Clean Diagnostic Terminal Card */}
+        {/* Clean Diagnostic Card */}
         <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xs relative overflow-hidden space-y-5">
-          {/* Terminal status bar */}
-          <div className="flex items-center justify-between text-[11px] font-mono pb-2 border-b border-slate-100 text-slate-500">
-            <span className="flex items-center gap-2">
+          {/* Status bar */}
+          <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-100 text-slate-500">
+            <span className="flex items-center gap-2 font-medium">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>DIAGNOSTIC ENGINE: LUHN MODULO-10 & REGISTRY</span>
+              <span>Hệ thống cơ sở dữ liệu uỷ quyền chính hãng 24/7</span>
             </span>
-            <span className="hidden sm:inline text-slate-400">FORMAT: 15-DIGIT IMEI / WRT-CODE</span>
+            <span className="hidden sm:inline text-slate-400">Định dạng: IMEI 15 số hoặc mã WRT</span>
           </div>
 
           {/* Form */}
@@ -146,14 +146,14 @@ export const WarrantyLookupPage: React.FC = () => {
           {is15Digits && (
             <div className="animate-in fade-in duration-200">
               {isLuhnValid ? (
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-mono">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Luhn Checksum: HỢP LỆ (Modulo-10 PASS - Cấu trúc IMEI tiêu chuẩn)</span>
+                  <span>Cấu trúc số IMEI hợp lệ (Chuẩn quốc tế GSMA)</span>
                 </div>
               ) : (
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-mono">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
                   <AlertTriangle className="w-4 h-4 text-amber-600" />
-                  <span>Luhn Checksum: KHÔNG HỢP LỆ (Kiểm tra lại chữ số cuối check digit)</span>
+                  <span>Số IMEI chưa đúng định dạng (Vui lòng kiểm tra lại 15 chữ số)</span>
                 </div>
               )}
             </div>
@@ -192,8 +192,8 @@ export const WarrantyLookupPage: React.FC = () => {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-blue-600 font-bold">
-                      CHỨNG NHẬN KÍCH HOẠT PHẦN CỨNG
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600">
+                      CHỨNG NHẬN BẢO HÀNH CHÍNH HÃNG
                     </span>
                   </div>
                   <h3 className="text-lg sm:text-xl font-black text-slate-900">{result.productName}</h3>

@@ -79,9 +79,9 @@ export const Navbar: React.FC = () => {
           <span>Bảo hành chính hãng 12 tháng đổi mới</span>
         </span>
         <span className="hidden md:inline text-slate-300">|</span>
-        <span className="hidden md:flex items-center gap-1.5 text-slate-500 font-mono text-[11px]">
+        <span className="hidden md:flex items-center gap-1.5 text-slate-600 font-medium text-xs">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-          <span>BullMQ 15m Lock Active</span>
+          <span>Giữ máy 15 phút an tâm thanh toán</span>
         </span>
       </div>
 

@@ -170,9 +170,9 @@ export const CheckoutPage: React.FC = () => {
         {/* Top Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200">
           <div>
-            <div className="flex items-center gap-2 text-xs font-mono text-blue-600 mb-1">
+            <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 mb-1">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>TERMINAL // THANH TOÁN & KHÓA GIỮ IMEI</span>
+              <span>MobileCommerce • Thanh toán bảo mật</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
               Xác nhận Đơn hàng & Thanh toán
@@ -207,21 +207,21 @@ export const CheckoutPage: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-black text-sm uppercase tracking-wide text-slate-900">
-                  Khóa giữ chỗ IMEI độc quyền (Atomic Hold Lock)
+                <span className="font-bold text-sm uppercase tracking-wide text-slate-900">
+                  Đang giữ máy riêng cho bạn
                 </span>
                 <span
-                  className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-md border ${
+                  className={`px-2 py-0.5 text-[10px] font-bold rounded-md border ${
                     secondsRemaining < 180
                       ? 'bg-rose-100 border-rose-200 text-rose-800'
                       : 'bg-blue-100 border-blue-200 text-blue-800'
                   }`}
                 >
-                  15:00 TIMEOUT
+                  Thời gian giữ máy: 15:00
                 </span>
               </div>
               <p className="text-xs mt-1 text-slate-600">
-                Thiết bị IMEI của bạn đang được khóa giữ chỗ trong{' '}
+                Thiết bị đang được giữ an toàn cho bạn trong{' '}
                 <strong
                   className={`font-mono text-sm underline ${
                     secondsRemaining < 180 ? 'text-rose-600 font-black' : 'text-blue-700 font-bold'
@@ -229,7 +229,7 @@ export const CheckoutPage: React.FC = () => {
                 >
                   {timeFormatted}
                 </strong>
-                . Vui lòng hoàn tất đặt hàng để không bị nhả kho cho khách hàng khác!
+                . Bạn hãy an tâm hoàn tất thông tin giao hàng và chuyển khoản!
               </p>
             </div>
           </div>
