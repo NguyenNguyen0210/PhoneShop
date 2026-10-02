@@ -16,8 +16,8 @@ import { WarrantyLookupPage } from '../pages/storefront/WarrantyLookup/WarrantyL
 import { ProfilePage } from '../pages/storefront/Profile/ProfilePage';
 
 // Auth Pages
-import { LoginPage } from '../pages/Auth/LoginPage';
-import { RegisterPage } from '../pages/Auth/RegisterPage';
+import { LoginPage } from '../pages/storefront/Auth/LoginPage';
+import { RegisterPage } from '../pages/storefront/Auth/RegisterPage';
 
 // Admin Pages
 import { AdminDashboard } from '../pages/Admin/Dashboard/AdminDashboard';
