@@ -18,9 +18,49 @@ async function bootstrap() {
   app.use(helmet({
     contentSecurityPolicy: false,
   }));
+
+  const allowedOrigins: (string | RegExp)[] = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    /^https:\/\/.*\.vercel\.app$/,
+    /^https:\/\/.*\.pages\.dev$/,
+  ];
+
+  if (process.env.FRONTEND_URL) {
+    const customOrigins = process.env.FRONTEND_URL.split(',')
+      .map((url) => url.trim())
+      .filter(Boolean);
+    allowedOrigins.push(...customOrigins);
+  }
+
   app.enableCors({
-    origin: '*', // TODO: configure properly in production
+    origin: (origin, callback) => {
+      // Allow requests with no origin (such as mobile apps, curl, server-to-server)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      const isAllowed = allowedOrigins.some((allowed) => {
+        if (typeof allowed === 'string') {
+          return allowed === origin;
+        }
+        return allowed.test(origin);
+      });
+
+      if (isAllowed) {
+        return callback(null, true);
+      }
+
+      return callback(null, false);
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: [
+      'Content-Type',
+      'Accept',
+      'Authorization',
+      'X-Requested-With',
+      'Idempotency-Key',
+    ],
     credentials: true,
   });
 

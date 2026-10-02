@@ -1,4 +1,6 @@
-# Stage 1: Build
+# ============================================================
+# Stage 1: builder
+# ============================================================
 FROM node:22-alpine AS builder
 
 WORKDIR /app
@@ -11,29 +13,33 @@ RUN npm ci
 COPY backend/prisma ./prisma
 RUN npx prisma generate
 
-# Copy source code and build
+# Copy all backend source and compile
 COPY backend/ ./
 RUN npm run build
 
-# Stage 2: Production environment
-FROM node:22-alpine AS production
+# ============================================================
+# Stage 2: runner
+# ============================================================
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 
-# Copy package files and install production dependencies
-COPY backend/package*.json ./
-RUN npm ci --only=production
+ENV NODE_ENV=production
 
-# Copy Prisma client and built application from builder stage
+# Copy package files and install production dependencies only
+COPY backend/package*.json ./
+RUN npm install --omit=dev
+
+# Copy generated Prisma client and compiled dist from builder
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/dist ./dist
 
-# Set user to node for security
-USER node
-
-# Expose port
+# Expose backend service port
 EXPOSE 3000
 
-# Start command
+# Run container as non-root user
+USER node
+
+# Start NestJS production server
 CMD ["node", "dist/main.js"]
