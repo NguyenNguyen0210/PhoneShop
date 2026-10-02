@@ -251,12 +251,12 @@ export declare class WarrantyController {
             sku: string;
             variantId: string;
             quantity: number;
-            discountAmount: import("@prisma/client-runtime-utils").Decimal;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
+            discountAmount: import("@prisma/client-runtime-utils").Decimal;
+            orderId: string;
+            imeiDeviceId: string | null;
             productName: string;
             totalPrice: import("@prisma/client-runtime-utils").Decimal;
-            imeiDeviceId: string | null;
-            orderId: string;
         };
         imeiDevice: {
             id: string;
@@ -324,12 +324,12 @@ export declare class WarrantyController {
             sku: string;
             variantId: string;
             quantity: number;
-            discountAmount: import("@prisma/client-runtime-utils").Decimal;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
+            discountAmount: import("@prisma/client-runtime-utils").Decimal;
+            orderId: string;
+            imeiDeviceId: string | null;
             productName: string;
             totalPrice: import("@prisma/client-runtime-utils").Decimal;
-            imeiDeviceId: string | null;
-            orderId: string;
         };
     } & {
         id: string;

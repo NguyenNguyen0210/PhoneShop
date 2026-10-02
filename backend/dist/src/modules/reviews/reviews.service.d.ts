@@ -11,8 +11,8 @@ export declare class ReviewsService {
         updatedAt: Date;
         userId: string;
         productId: string;
-        title: string | null;
         rating: number;
+        title: string | null;
         content: string | null;
         isVerified: boolean;
     }>;
@@ -30,8 +30,8 @@ export declare class ReviewsService {
         updatedAt: Date;
         userId: string;
         productId: string;
-        title: string | null;
         rating: number;
+        title: string | null;
         content: string | null;
         isVerified: boolean;
     })[]>;
@@ -53,8 +53,8 @@ export declare class ReviewsService {
         updatedAt: Date;
         userId: string;
         productId: string;
-        title: string | null;
         rating: number;
+        title: string | null;
         content: string | null;
         isVerified: boolean;
     })[]>;
@@ -71,8 +71,8 @@ export declare class ReviewsService {
         updatedAt: Date;
         userId: string;
         productId: string;
-        title: string | null;
         rating: number;
+        title: string | null;
         content: string | null;
         isVerified: boolean;
     }>;
@@ -83,8 +83,8 @@ export declare class ReviewsService {
         updatedAt: Date;
         userId: string;
         productId: string;
-        title: string | null;
         rating: number;
+        title: string | null;
         content: string | null;
         isVerified: boolean;
     }>;
@@ -95,8 +95,8 @@ export declare class ReviewsService {
         updatedAt: Date;
         userId: string;
         productId: string;
-        title: string | null;
         rating: number;
+        title: string | null;
         content: string | null;
         isVerified: boolean;
     }>;
@@ -107,8 +107,8 @@ export declare class ReviewsService {
         updatedAt: Date;
         userId: string;
         productId: string;
-        title: string | null;
         rating: number;
+        title: string | null;
         content: string | null;
         isVerified: boolean;
     }>;
@@ -119,8 +119,8 @@ export declare class ReviewsService {
         updatedAt: Date;
         userId: string;
         productId: string;
-        title: string | null;
         rating: number;
+        title: string | null;
         content: string | null;
         isVerified: boolean;
     }>;
@@ -131,8 +131,8 @@ export declare class ReviewsService {
         updatedAt: Date;
         userId: string;
         productId: string;
-        title: string | null;
         rating: number;
+        title: string | null;
         content: string | null;
         isVerified: boolean;
     }>;

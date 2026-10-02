@@ -10,12 +10,12 @@ export declare class OrdersController {
             sku: string;
             variantId: string;
             quantity: number;
-            discountAmount: import("@prisma/client-runtime-utils").Decimal;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
+            discountAmount: import("@prisma/client-runtime-utils").Decimal;
+            orderId: string;
+            imeiDeviceId: string | null;
             productName: string;
             totalPrice: import("@prisma/client-runtime-utils").Decimal;
-            imeiDeviceId: string | null;
-            orderId: string;
         }[];
     } & {
         id: string;
@@ -24,6 +24,7 @@ export declare class OrdersController {
         updatedAt: Date;
         userId: string;
         orderNumber: string;
+        addressId: string | null;
         subtotal: import("@prisma/client-runtime-utils").Decimal;
         discountAmount: import("@prisma/client-runtime-utils").Decimal;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
@@ -32,13 +33,11 @@ export declare class OrdersController {
         voucherCode: string | null;
         customerNote: string | null;
         cancelledReason: string | null;
-        holdExpiresAt: Date | null;
         confirmedAt: Date | null;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         completedAt: Date | null;
         cancelledAt: Date | null;
-        addressId: string | null;
     }>;
     findMyOrders(user: any): Promise<({
         items: {
@@ -47,12 +46,12 @@ export declare class OrdersController {
             sku: string;
             variantId: string;
             quantity: number;
-            discountAmount: import("@prisma/client-runtime-utils").Decimal;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
+            discountAmount: import("@prisma/client-runtime-utils").Decimal;
+            orderId: string;
+            imeiDeviceId: string | null;
             productName: string;
             totalPrice: import("@prisma/client-runtime-utils").Decimal;
-            imeiDeviceId: string | null;
-            orderId: string;
         }[];
         payments: {
             id: string;
@@ -73,6 +72,7 @@ export declare class OrdersController {
         updatedAt: Date;
         userId: string;
         orderNumber: string;
+        addressId: string | null;
         subtotal: import("@prisma/client-runtime-utils").Decimal;
         discountAmount: import("@prisma/client-runtime-utils").Decimal;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
@@ -81,13 +81,11 @@ export declare class OrdersController {
         voucherCode: string | null;
         customerNote: string | null;
         cancelledReason: string | null;
-        holdExpiresAt: Date | null;
         confirmedAt: Date | null;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         completedAt: Date | null;
         cancelledAt: Date | null;
-        addressId: string | null;
     })[]>;
     findMyOrder(user: any, id: string): Promise<{
         address: {
@@ -132,12 +130,12 @@ export declare class OrdersController {
             sku: string;
             variantId: string;
             quantity: number;
-            discountAmount: import("@prisma/client-runtime-utils").Decimal;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
+            discountAmount: import("@prisma/client-runtime-utils").Decimal;
+            orderId: string;
+            imeiDeviceId: string | null;
             productName: string;
             totalPrice: import("@prisma/client-runtime-utils").Decimal;
-            imeiDeviceId: string | null;
-            orderId: string;
         })[];
         payments: {
             id: string;
@@ -158,6 +156,7 @@ export declare class OrdersController {
         updatedAt: Date;
         userId: string;
         orderNumber: string;
+        addressId: string | null;
         subtotal: import("@prisma/client-runtime-utils").Decimal;
         discountAmount: import("@prisma/client-runtime-utils").Decimal;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
@@ -166,13 +165,11 @@ export declare class OrdersController {
         voucherCode: string | null;
         customerNote: string | null;
         cancelledReason: string | null;
-        holdExpiresAt: Date | null;
         confirmedAt: Date | null;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         completedAt: Date | null;
         cancelledAt: Date | null;
-        addressId: string | null;
     }>;
     cancelMyOrder(user: any, id: string, dto: CancelOrderDto): Promise<{
         id: string;
@@ -181,6 +178,7 @@ export declare class OrdersController {
         updatedAt: Date;
         userId: string;
         orderNumber: string;
+        addressId: string | null;
         subtotal: import("@prisma/client-runtime-utils").Decimal;
         discountAmount: import("@prisma/client-runtime-utils").Decimal;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
@@ -189,13 +187,11 @@ export declare class OrdersController {
         voucherCode: string | null;
         customerNote: string | null;
         cancelledReason: string | null;
-        holdExpiresAt: Date | null;
         confirmedAt: Date | null;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         completedAt: Date | null;
         cancelledAt: Date | null;
-        addressId: string | null;
     } | null>;
     findAll(): Promise<({
         user: {
@@ -210,12 +206,12 @@ export declare class OrdersController {
             sku: string;
             variantId: string;
             quantity: number;
-            discountAmount: import("@prisma/client-runtime-utils").Decimal;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
+            discountAmount: import("@prisma/client-runtime-utils").Decimal;
+            orderId: string;
+            imeiDeviceId: string | null;
             productName: string;
             totalPrice: import("@prisma/client-runtime-utils").Decimal;
-            imeiDeviceId: string | null;
-            orderId: string;
         }[];
         payments: {
             id: string;
@@ -236,6 +232,7 @@ export declare class OrdersController {
         updatedAt: Date;
         userId: string;
         orderNumber: string;
+        addressId: string | null;
         subtotal: import("@prisma/client-runtime-utils").Decimal;
         discountAmount: import("@prisma/client-runtime-utils").Decimal;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
@@ -244,13 +241,11 @@ export declare class OrdersController {
         voucherCode: string | null;
         customerNote: string | null;
         cancelledReason: string | null;
-        holdExpiresAt: Date | null;
         confirmedAt: Date | null;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         completedAt: Date | null;
         cancelledAt: Date | null;
-        addressId: string | null;
     })[]>;
     findOne(id: string): Promise<{
         user: {
@@ -317,12 +312,12 @@ export declare class OrdersController {
             sku: string;
             variantId: string;
             quantity: number;
-            discountAmount: import("@prisma/client-runtime-utils").Decimal;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
+            discountAmount: import("@prisma/client-runtime-utils").Decimal;
+            orderId: string;
+            imeiDeviceId: string | null;
             productName: string;
             totalPrice: import("@prisma/client-runtime-utils").Decimal;
-            imeiDeviceId: string | null;
-            orderId: string;
         })[];
         payments: ({
             transactions: {
@@ -332,8 +327,8 @@ export declare class OrdersController {
                 updatedAt: Date;
                 type: import("@prisma/client").$Enums.TransactionType;
                 amount: import("@prisma/client-runtime-utils").Decimal;
-                paymentId: string;
                 transactionCode: string;
+                paymentId: string;
                 providerReference: string | null;
                 responseData: import("@prisma/client/runtime/client").JsonValue | null;
             }[];
@@ -356,6 +351,7 @@ export declare class OrdersController {
         updatedAt: Date;
         userId: string;
         orderNumber: string;
+        addressId: string | null;
         subtotal: import("@prisma/client-runtime-utils").Decimal;
         discountAmount: import("@prisma/client-runtime-utils").Decimal;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
@@ -364,13 +360,11 @@ export declare class OrdersController {
         voucherCode: string | null;
         customerNote: string | null;
         cancelledReason: string | null;
-        holdExpiresAt: Date | null;
         confirmedAt: Date | null;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         completedAt: Date | null;
         cancelledAt: Date | null;
-        addressId: string | null;
     }>;
     confirm(id: string): Promise<{
         id: string;
@@ -379,6 +373,7 @@ export declare class OrdersController {
         updatedAt: Date;
         userId: string;
         orderNumber: string;
+        addressId: string | null;
         subtotal: import("@prisma/client-runtime-utils").Decimal;
         discountAmount: import("@prisma/client-runtime-utils").Decimal;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
@@ -387,13 +382,11 @@ export declare class OrdersController {
         voucherCode: string | null;
         customerNote: string | null;
         cancelledReason: string | null;
-        holdExpiresAt: Date | null;
         confirmedAt: Date | null;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         completedAt: Date | null;
         cancelledAt: Date | null;
-        addressId: string | null;
     }>;
     process(id: string): Promise<{
         id: string;
@@ -402,6 +395,7 @@ export declare class OrdersController {
         updatedAt: Date;
         userId: string;
         orderNumber: string;
+        addressId: string | null;
         subtotal: import("@prisma/client-runtime-utils").Decimal;
         discountAmount: import("@prisma/client-runtime-utils").Decimal;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
@@ -410,13 +404,11 @@ export declare class OrdersController {
         voucherCode: string | null;
         customerNote: string | null;
         cancelledReason: string | null;
-        holdExpiresAt: Date | null;
         confirmedAt: Date | null;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         completedAt: Date | null;
         cancelledAt: Date | null;
-        addressId: string | null;
     }>;
     ship(id: string): Promise<{
         id: string;
@@ -425,6 +417,7 @@ export declare class OrdersController {
         updatedAt: Date;
         userId: string;
         orderNumber: string;
+        addressId: string | null;
         subtotal: import("@prisma/client-runtime-utils").Decimal;
         discountAmount: import("@prisma/client-runtime-utils").Decimal;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
@@ -433,13 +426,11 @@ export declare class OrdersController {
         voucherCode: string | null;
         customerNote: string | null;
         cancelledReason: string | null;
-        holdExpiresAt: Date | null;
         confirmedAt: Date | null;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         completedAt: Date | null;
         cancelledAt: Date | null;
-        addressId: string | null;
     }>;
     deliver(id: string): Promise<{
         id: string;
@@ -448,6 +439,7 @@ export declare class OrdersController {
         updatedAt: Date;
         userId: string;
         orderNumber: string;
+        addressId: string | null;
         subtotal: import("@prisma/client-runtime-utils").Decimal;
         discountAmount: import("@prisma/client-runtime-utils").Decimal;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
@@ -456,13 +448,11 @@ export declare class OrdersController {
         voucherCode: string | null;
         customerNote: string | null;
         cancelledReason: string | null;
-        holdExpiresAt: Date | null;
         confirmedAt: Date | null;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         completedAt: Date | null;
         cancelledAt: Date | null;
-        addressId: string | null;
     }>;
     complete(id: string): Promise<{
         id: string;
@@ -471,6 +461,7 @@ export declare class OrdersController {
         updatedAt: Date;
         userId: string;
         orderNumber: string;
+        addressId: string | null;
         subtotal: import("@prisma/client-runtime-utils").Decimal;
         discountAmount: import("@prisma/client-runtime-utils").Decimal;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
@@ -479,13 +470,11 @@ export declare class OrdersController {
         voucherCode: string | null;
         customerNote: string | null;
         cancelledReason: string | null;
-        holdExpiresAt: Date | null;
         confirmedAt: Date | null;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         completedAt: Date | null;
         cancelledAt: Date | null;
-        addressId: string | null;
     }>;
     cancel(id: string, dto: CancelOrderDto): Promise<{
         id: string;
@@ -494,6 +483,7 @@ export declare class OrdersController {
         updatedAt: Date;
         userId: string;
         orderNumber: string;
+        addressId: string | null;
         subtotal: import("@prisma/client-runtime-utils").Decimal;
         discountAmount: import("@prisma/client-runtime-utils").Decimal;
         shippingFee: import("@prisma/client-runtime-utils").Decimal;
@@ -502,12 +492,10 @@ export declare class OrdersController {
         voucherCode: string | null;
         customerNote: string | null;
         cancelledReason: string | null;
-        holdExpiresAt: Date | null;
         confirmedAt: Date | null;
         shippedAt: Date | null;
         deliveredAt: Date | null;
         completedAt: Date | null;
         cancelledAt: Date | null;
-        addressId: string | null;
     }>;
 }

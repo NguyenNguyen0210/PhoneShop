@@ -41,8 +41,8 @@ export declare class PaymentsService {
     }>;
     create(userId: string, dto: CreatePaymentDto): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.PaymentStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.PaymentStatus;
         updatedAt: Date;
         orderId: string;
         method: import("@prisma/client").$Enums.PaymentMethod;
@@ -57,8 +57,8 @@ export declare class PaymentsService {
     }>;
     confirmPayment(paymentId: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.PaymentStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.PaymentStatus;
         updatedAt: Date;
         orderId: string;
         method: import("@prisma/client").$Enums.PaymentMethod;
@@ -69,8 +69,8 @@ export declare class PaymentsService {
     }>;
     failPayment(paymentId: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.PaymentStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.PaymentStatus;
         updatedAt: Date;
         orderId: string;
         method: import("@prisma/client").$Enums.PaymentMethod;
@@ -82,20 +82,20 @@ export declare class PaymentsService {
     getStatus(paymentId: string): Promise<{
         transactions: {
             id: string;
-            status: import("@prisma/client").$Enums.TransactionStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.TransactionStatus;
             updatedAt: Date;
-            amount: import("@prisma/client-runtime-utils").Decimal;
-            paymentId: string;
-            transactionCode: string;
             type: import("@prisma/client").$Enums.TransactionType;
+            amount: import("@prisma/client-runtime-utils").Decimal;
+            transactionCode: string;
+            paymentId: string;
             providerReference: string | null;
             responseData: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.PaymentStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.PaymentStatus;
         updatedAt: Date;
         orderId: string;
         method: import("@prisma/client").$Enums.PaymentMethod;
@@ -107,20 +107,20 @@ export declare class PaymentsService {
     findByOrder(orderId: string): Promise<({
         transactions: {
             id: string;
-            status: import("@prisma/client").$Enums.TransactionStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.TransactionStatus;
             updatedAt: Date;
-            amount: import("@prisma/client-runtime-utils").Decimal;
-            paymentId: string;
-            transactionCode: string;
             type: import("@prisma/client").$Enums.TransactionType;
+            amount: import("@prisma/client-runtime-utils").Decimal;
+            transactionCode: string;
+            paymentId: string;
             providerReference: string | null;
             responseData: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.PaymentStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.PaymentStatus;
         updatedAt: Date;
         orderId: string;
         method: import("@prisma/client").$Enums.PaymentMethod;
@@ -132,25 +132,25 @@ export declare class PaymentsService {
     findAll(): Promise<({
         order: {
             id: string;
-            orderNumber: string;
             userId: string;
+            orderNumber: string;
         };
         transactions: {
             id: string;
-            status: import("@prisma/client").$Enums.TransactionStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.TransactionStatus;
             updatedAt: Date;
-            amount: import("@prisma/client-runtime-utils").Decimal;
-            paymentId: string;
-            transactionCode: string;
             type: import("@prisma/client").$Enums.TransactionType;
+            amount: import("@prisma/client-runtime-utils").Decimal;
+            transactionCode: string;
+            paymentId: string;
             providerReference: string | null;
             responseData: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.PaymentStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.PaymentStatus;
         updatedAt: Date;
         orderId: string;
         method: import("@prisma/client").$Enums.PaymentMethod;
@@ -163,13 +163,13 @@ export declare class PaymentsService {
         payment: {
             order: {
                 id: string;
-                orderNumber: string;
                 userId: string;
+                orderNumber: string;
             };
         } & {
             id: string;
-            status: import("@prisma/client").$Enums.PaymentStatus;
             createdAt: Date;
+            status: import("@prisma/client").$Enums.PaymentStatus;
             updatedAt: Date;
             orderId: string;
             method: import("@prisma/client").$Enums.PaymentMethod;
@@ -180,13 +180,13 @@ export declare class PaymentsService {
         };
     } & {
         id: string;
-        status: import("@prisma/client").$Enums.TransactionStatus;
         createdAt: Date;
+        status: import("@prisma/client").$Enums.TransactionStatus;
         updatedAt: Date;
-        amount: import("@prisma/client-runtime-utils").Decimal;
-        paymentId: string;
-        transactionCode: string;
         type: import("@prisma/client").$Enums.TransactionType;
+        amount: import("@prisma/client-runtime-utils").Decimal;
+        transactionCode: string;
+        paymentId: string;
         providerReference: string | null;
         responseData: import("@prisma/client/runtime/client").JsonValue | null;
     })[]>;
