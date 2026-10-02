@@ -6,6 +6,8 @@ node_modules/
 # Production / Build
 dist/
 build/
+**/dist/
+**/dist
 
 # Testing
 coverage/
