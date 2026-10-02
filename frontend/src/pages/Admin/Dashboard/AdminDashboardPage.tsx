@@ -143,7 +143,7 @@ export const AdminDashboardPage: React.FC = () => {
       dataIndex: 'orderNumber',
       key: 'orderNumber',
       render: (num: string) => (
-        <Text strong style={{ fontFamily: 'monospace', color: '#38bdf8', letterSpacing: 0.5 }}>
+        <Text strong style={{ fontFamily: 'monospace', color: '#2563eb', letterSpacing: 0.5 }}>
           {num}
         </Text>
       ),
@@ -154,8 +154,8 @@ export const AdminDashboardPage: React.FC = () => {
       key: 'customerName',
       render: (name: string, record) => (
         <div>
-          <div style={{ fontWeight: 600, color: '#f8fafc' }}>{name}</div>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <div style={{ fontWeight: 600, color: '#0f172a' }}>{name}</div>
+          <Text type="secondary" style={{ fontSize: 12, color: '#64748b' }}>
             {record.shippingPhone}
           </Text>
         </div>
@@ -168,9 +168,9 @@ export const AdminDashboardPage: React.FC = () => {
       render: (m: string) => (
         <Tag
           style={{
-            background: 'rgba(99, 102, 241, 0.12)',
-            borderColor: 'rgba(99, 102, 241, 0.3)',
-            color: '#818cf8',
+            background: '#eff6ff',
+            borderColor: '#bfdbfe',
+            color: '#2563eb',
             fontWeight: 600,
             borderRadius: 6,
           }}
@@ -184,7 +184,7 @@ export const AdminDashboardPage: React.FC = () => {
       dataIndex: 'totalAmount',
       key: 'totalAmount',
       render: (val: number) => (
-        <span style={{ fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace' }}>
+        <span style={{ fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>
           {formatPrice(val)}
         </span>
       ),
@@ -204,9 +204,9 @@ export const AdminDashboardPage: React.FC = () => {
             size="small"
             icon={<EyeOutlined />}
             style={{
-              background: '#151d30',
-              borderColor: 'rgba(255, 255, 255, 0.1)',
-              color: '#94a3b8',
+              background: '#f8fafc',
+              borderColor: '#e2e8f0',
+              color: '#475569',
               fontSize: 12,
               borderRadius: 6,
             }}
@@ -224,7 +224,7 @@ export const AdminDashboardPage: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800, letterSpacing: -0.3 }}>
+            <Title level={3} style={{ margin: 0, color: '#0f172a', fontWeight: 800, letterSpacing: -0.3 }}>
               Tổng quan hệ thống
             </Title>
             <span
@@ -232,16 +232,16 @@ export const AdminDashboardPage: React.FC = () => {
                 fontSize: 11,
                 padding: '2px 8px',
                 borderRadius: 20,
-                background: 'rgba(99, 102, 241, 0.15)',
-                color: '#818cf8',
-                border: '1px solid rgba(99, 102, 241, 0.3)',
+                background: '#eff6ff',
+                color: '#2563eb',
+                border: '1px solid #bfdbfe',
                 fontWeight: 600,
               }}
             >
-              Obsidian Dashboard
+              Admin Dashboard
             </span>
           </div>
-          <Text type="secondary" style={{ fontSize: 13, marginTop: 4, display: 'block' }}>
+          <Text style={{ fontSize: 13, color: '#64748b', marginTop: 4, display: 'block' }}>
             Theo dõi tổng doanh thu, lưu lượng đơn hàng và chỉ số giữ chỗ thiết bị IMEI tự động
           </Text>
         </div>
@@ -254,8 +254,9 @@ export const AdminDashboardPage: React.FC = () => {
             gap: 12,
             padding: '8px 14px',
             borderRadius: 10,
-            background: '#0e1526',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -265,30 +266,31 @@ export const AdminDashboardPage: React.FC = () => {
                 height: 8,
                 borderRadius: '50%',
                 background: '#10b981',
-                boxShadow: '0 0 10px #10b981',
+                boxShadow: '0 0 6px rgba(16, 185, 129, 0.4)',
               }}
             />
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#f8fafc' }}>Core Engine</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>Core Engine</span>
           </div>
-          <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>|</span>
-          <span style={{ fontSize: 12, color: '#38bdf8', fontFamily: 'monospace' }}>p99: 14ms</span>
+          <span style={{ color: '#cbd5e1' }}>|</span>
+          <span style={{ fontSize: 12, color: '#2563eb', fontFamily: 'monospace', fontWeight: 600 }}>p99: 14ms</span>
         </div>
       </div>
 
-      {/* Row of 4 Dark KPI Stat Cards with Gradient Borders */}
+      {/* Row of 4 Bento KPI Stat Cards */}
       <Row gutter={[16, 16]}>
         {/* KPI 1: Revenue */}
         <Col xs={24} sm={12} lg={6}>
           <Card
             bordered={false}
             style={{
-              background: '#0e1526',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: 14,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 16,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
               position: 'relative',
               overflow: 'hidden',
             }}
+            styles={{ body: { padding: 20 } }}
           >
             <div
               style={{
@@ -296,33 +298,33 @@ export const AdminDashboardPage: React.FC = () => {
                 top: 0,
                 left: 0,
                 right: 0,
-                height: 2,
-                background: 'linear-gradient(90deg, #6366f1, #38bdf8)',
+                height: 3,
+                background: 'linear-gradient(90deg, #2563eb, #38bdf8)',
               }}
             />
             <Statistic
               title={
-                <span style={{ color: '#94a3b8', fontSize: 13, fontWeight: 500 }}>
+                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
                   Tổng doanh thu
                 </span>
               }
               value={385420000}
               precision={0}
               valueStyle={{
-                color: '#f8fafc',
+                color: '#0f172a',
                 fontWeight: 800,
                 fontFamily: 'monospace',
                 fontSize: 24,
                 letterSpacing: -0.5,
               }}
-              prefix={<DollarOutlined style={{ color: '#6366f1', fontSize: 20, marginRight: 6 }} />}
+              prefix={<DollarOutlined style={{ color: '#2563eb', fontSize: 20, marginRight: 6 }} />}
               suffix={<span style={{ fontSize: 14, color: '#64748b' }}>₫</span>}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-              <span style={{ color: '#10b981', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <span style={{ color: '#059669', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <RiseOutlined /> +18.5%
               </span>
-              <Text type="secondary" style={{ fontSize: 11 }}>
+              <Text style={{ fontSize: 11, color: '#64748b' }}>
                 so với tháng trước
               </Text>
             </div>
@@ -334,13 +336,14 @@ export const AdminDashboardPage: React.FC = () => {
           <Card
             bordered={false}
             style={{
-              background: '#0e1526',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: 14,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 16,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
               position: 'relative',
               overflow: 'hidden',
             }}
+            styles={{ body: { padding: 20 } }}
           >
             <div
               style={{
@@ -348,19 +351,19 @@ export const AdminDashboardPage: React.FC = () => {
                 top: 0,
                 left: 0,
                 right: 0,
-                height: 2,
+                height: 3,
                 background: 'linear-gradient(90deg, #10b981, #34d399)',
               }}
             />
             <Statistic
               title={
-                <span style={{ color: '#94a3b8', fontSize: 13, fontWeight: 500 }}>
+                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
                   Đơn hàng mới trong ngày
                 </span>
               }
               value={24}
               valueStyle={{
-                color: '#f8fafc',
+                color: '#0f172a',
                 fontWeight: 800,
                 fontFamily: 'monospace',
                 fontSize: 24,
@@ -370,10 +373,10 @@ export const AdminDashboardPage: React.FC = () => {
               suffix={<span style={{ fontSize: 14, color: '#64748b' }}>đơn</span>}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-              <span style={{ color: '#f59e0b', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ color: '#d97706', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <LockOutlined /> 5 đơn giữ chỗ 15p
               </span>
-              <Text type="secondary" style={{ fontSize: 11 }}>
+              <Text style={{ fontSize: 11, color: '#64748b' }}>
                 (RESERVED)
               </Text>
             </div>
@@ -385,13 +388,14 @@ export const AdminDashboardPage: React.FC = () => {
           <Card
             bordered={false}
             style={{
-              background: '#0e1526',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: 14,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 16,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
               position: 'relative',
               overflow: 'hidden',
             }}
+            styles={{ body: { padding: 20 } }}
           >
             <div
               style={{
@@ -399,19 +403,19 @@ export const AdminDashboardPage: React.FC = () => {
                 top: 0,
                 left: 0,
                 right: 0,
-                height: 2,
+                height: 3,
                 background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
               }}
             />
             <Statistic
               title={
-                <span style={{ color: '#94a3b8', fontSize: 13, fontWeight: 500 }}>
+                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
                   Cảnh báo tồn kho thấp
                 </span>
               }
               value={4}
               valueStyle={{
-                color: '#f8fafc',
+                color: '#0f172a',
                 fontWeight: 800,
                 fontFamily: 'monospace',
                 fontSize: 24,
@@ -421,7 +425,7 @@ export const AdminDashboardPage: React.FC = () => {
               suffix={<span style={{ fontSize: 14, color: '#64748b' }}>mã SKU</span>}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-              <Text type="secondary" style={{ fontSize: 11, color: '#f87171' }}>
+              <Text style={{ fontSize: 11, color: '#dc2626' }}>
                 Cần nhập thêm lô IMEI mới
               </Text>
             </div>
@@ -433,13 +437,14 @@ export const AdminDashboardPage: React.FC = () => {
           <Card
             bordered={false}
             style={{
-              background: '#0e1526',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: 14,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 16,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
               position: 'relative',
               overflow: 'hidden',
             }}
+            styles={{ body: { padding: 20 } }}
           >
             <div
               style={{
@@ -447,32 +452,32 @@ export const AdminDashboardPage: React.FC = () => {
                 top: 0,
                 left: 0,
                 right: 0,
-                height: 2,
-                background: 'linear-gradient(90deg, #818cf8, #c084fc)',
+                height: 3,
+                background: 'linear-gradient(90deg, #2563eb, #6366f1)',
               }}
             />
             <Statistic
               title={
-                <span style={{ color: '#94a3b8', fontSize: 13, fontWeight: 500 }}>
+                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
                   Khóa giữ chỗ IMEI tức thời
                 </span>
               }
               value={7}
               valueStyle={{
-                color: '#f8fafc',
+                color: '#0f172a',
                 fontWeight: 800,
                 fontFamily: 'monospace',
                 fontSize: 24,
                 letterSpacing: -0.5,
               }}
-              prefix={<BarcodeOutlined style={{ color: '#818cf8', fontSize: 20, marginRight: 6 }} />}
+              prefix={<BarcodeOutlined style={{ color: '#2563eb', fontSize: 20, marginRight: 6 }} />}
               suffix={<span style={{ fontSize: 14, color: '#64748b' }}>máy</span>}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-              <span style={{ color: '#38bdf8', fontSize: 11, fontWeight: 600 }}>
+              <span style={{ color: '#2563eb', fontSize: 11, fontWeight: 600 }}>
                 SKIP LOCKED Active
               </span>
-              <Text type="secondary" style={{ fontSize: 11 }}>
+              <Text style={{ fontSize: 11, color: '#64748b' }}>
                 Concurrency an toàn
               </Text>
             </div>
@@ -484,11 +489,12 @@ export const AdminDashboardPage: React.FC = () => {
       <Card
         bordered={false}
         style={{
-          borderRadius: 14,
-          background: 'linear-gradient(135deg, #0e1526 0%, #151d30 100%)',
-          border: '1px solid rgba(99, 102, 241, 0.25)',
-          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.4)',
+          borderRadius: 16,
+          background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
+          border: '1px solid #dbeafe',
+          boxShadow: '0 2px 8px rgba(37, 99, 235, 0.04)',
         }}
+        styles={{ body: { padding: 24 } }}
       >
         <div
           style={{
@@ -505,7 +511,7 @@ export const AdminDashboardPage: React.FC = () => {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                color: '#38bdf8',
+                color: '#2563eb',
                 fontSize: 11,
                 fontWeight: 700,
                 textTransform: 'uppercase',
@@ -517,7 +523,7 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
             <div
               style={{
-                color: '#f8fafc',
+                color: '#0f172a',
                 fontSize: 18,
                 fontWeight: 700,
                 letterSpacing: -0.2,
@@ -525,7 +531,7 @@ export const AdminDashboardPage: React.FC = () => {
             >
               Nhập lô IMEI hoặc điều phối giao hàng nhanh
             </div>
-            <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>
+            <div style={{ color: '#64748b', fontSize: 12, marginTop: 4 }}>
               Kiểm tra tính hợp lệ thuật toán Luhn 15 số trước khi đưa thiết bị vào trạng thái sẵn sàng xuất kho
             </div>
           </div>
@@ -535,11 +541,11 @@ export const AdminDashboardPage: React.FC = () => {
                 type="primary"
                 size="large"
                 style={{
-                  background: '#6366f1',
-                  borderColor: '#6366f1',
+                  background: '#2563eb',
+                  borderColor: '#2563eb',
                   fontWeight: 600,
                   borderRadius: 8,
-                  boxShadow: '0 0 15px rgba(99, 102, 241, 0.3)',
+                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
                 }}
               >
                 Quản lý kho IMEI
@@ -549,9 +555,9 @@ export const AdminDashboardPage: React.FC = () => {
               <Button
                 size="large"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  borderColor: 'rgba(255, 255, 255, 0.1)',
-                  color: '#f8fafc',
+                  background: '#ffffff',
+                  borderColor: '#e2e8f0',
+                  color: '#0f172a',
                   fontWeight: 600,
                   borderRadius: 8,
                 }}
@@ -566,16 +572,16 @@ export const AdminDashboardPage: React.FC = () => {
       {/* Recent Orders Table Card */}
       <Card
         title={
-          <span style={{ color: '#f8fafc', fontWeight: 700, fontSize: 16 }}>
+          <span style={{ color: '#0f172a', fontWeight: 700, fontSize: 16 }}>
             Đơn hàng phát sinh gần đây
           </span>
         }
         bordered={false}
         style={{
-          borderRadius: 14,
-          background: '#0e1526',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+          borderRadius: 16,
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
         }}
         extra={
           <Link
@@ -585,7 +591,7 @@ export const AdminDashboardPage: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              color: '#818cf8',
+              color: '#2563eb',
               fontWeight: 600,
             }}
           >

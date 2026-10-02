@@ -157,8 +157,8 @@ export const AdminProductsPage: React.FC = () => {
             height: 48,
             borderRadius: 8,
             overflow: 'hidden',
-            background: '#151d30',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -181,7 +181,7 @@ export const AdminProductsPage: React.FC = () => {
       key: 'name',
       render: (name: string, record) => (
         <div>
-          <div style={{ fontWeight: 600, color: '#f8fafc', fontSize: 13 }}>{name}</div>
+          <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{name}</div>
           <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace', marginTop: 2 }}>
             ID: {record.id}
           </div>
@@ -195,9 +195,9 @@ export const AdminProductsPage: React.FC = () => {
       render: (brand, record) => (
         <Tag
           style={{
-            background: 'rgba(99, 102, 241, 0.12)',
-            borderColor: 'rgba(99, 102, 241, 0.3)',
-            color: '#818cf8',
+            background: '#eff6ff',
+            borderColor: '#bfdbfe',
+            color: '#2563eb',
             fontWeight: 600,
             borderRadius: 6,
           }}
@@ -213,9 +213,9 @@ export const AdminProductsPage: React.FC = () => {
       render: (variants: any[]) => (
         <Tag
           style={{
-            background: 'rgba(56, 189, 248, 0.12)',
-            borderColor: 'rgba(56, 189, 248, 0.3)',
-            color: '#38bdf8',
+            background: '#f0fdf4',
+            borderColor: '#bbf7d0',
+            color: '#16a34a',
             fontWeight: 600,
             borderRadius: 6,
           }}
@@ -232,7 +232,7 @@ export const AdminProductsPage: React.FC = () => {
         const min = Math.min(...prices);
         const max = Math.max(...prices);
         return (
-          <span style={{ fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace', fontSize: 13 }}>
+          <span style={{ fontWeight: 700, color: '#0f172a', fontFamily: 'monospace', fontSize: 13 }}>
             {min === max ? formatPrice(min) : `${formatPrice(min)} - ${formatPrice(max)}`}
           </span>
         );
@@ -249,7 +249,7 @@ export const AdminProductsPage: React.FC = () => {
           checkedChildren="Bán"
           unCheckedChildren="Ẩn"
           style={{
-            backgroundColor: status === 'ACTIVE' ? '#10b981' : 'rgba(255, 255, 255, 0.2)',
+            backgroundColor: status === 'ACTIVE' ? '#2563eb' : '#cbd5e1',
           }}
         />
       ),
@@ -263,9 +263,9 @@ export const AdminProductsPage: React.FC = () => {
             size="small"
             icon={<EditOutlined />}
             style={{
-              background: '#151d30',
-              borderColor: 'rgba(255, 255, 255, 0.1)',
-              color: '#94a3b8',
+              background: '#f8fafc',
+              borderColor: '#e2e8f0',
+              color: '#475569',
               fontSize: 12,
               borderRadius: 6,
             }}
@@ -278,9 +278,9 @@ export const AdminProductsPage: React.FC = () => {
             icon={<DeleteOutlined />}
             onClick={() => handleDeleteProduct(record.id)}
             style={{
-              background: 'rgba(244, 63, 94, 0.1)',
-              borderColor: 'rgba(244, 63, 94, 0.3)',
-              color: '#f43f5e',
+              background: '#fff1f2',
+              borderColor: '#fecdd3',
+              color: '#e11d48',
               fontSize: 12,
               borderRadius: 6,
             }}
@@ -306,7 +306,7 @@ export const AdminProductsPage: React.FC = () => {
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800, letterSpacing: -0.3 }}>
+            <Title level={3} style={{ margin: 0, color: '#0f172a', fontWeight: 800, letterSpacing: -0.3 }}>
               Quản lý Sản phẩm & Biến thể
             </Title>
             <span
@@ -314,16 +314,16 @@ export const AdminProductsPage: React.FC = () => {
                 fontSize: 11,
                 padding: '2px 8px',
                 borderRadius: 20,
-                background: 'rgba(99, 102, 241, 0.15)',
-                color: '#818cf8',
-                border: '1px solid rgba(99, 102, 241, 0.3)',
+                background: '#eff6ff',
+                color: '#2563eb',
+                border: '1px solid #bfdbfe',
                 fontWeight: 600,
               }}
             >
               Hardware Catalog
             </span>
           </div>
-          <Text type="secondary" style={{ fontSize: 13, marginTop: 4, display: 'block' }}>
+          <Text style={{ fontSize: 13, color: '#64748b', marginTop: 4, display: 'block' }}>
             Danh mục các thiết bị di động, quản lý biến thể dung lượng/màu sắc và đồng bộ tồn kho
           </Text>
         </div>
@@ -333,11 +333,11 @@ export const AdminProductsPage: React.FC = () => {
           icon={<PlusOutlined />}
           size="large"
           style={{
-            background: '#6366f1',
-            borderColor: '#6366f1',
+            background: '#2563eb',
+            borderColor: '#2563eb',
             fontWeight: 600,
             borderRadius: 8,
-            boxShadow: '0 0 15px rgba(99, 102, 241, 0.3)',
+            boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
           }}
           onClick={() => setIsModalOpen(true)}
         >
@@ -349,10 +349,10 @@ export const AdminProductsPage: React.FC = () => {
       <Card
         bordered={false}
         style={{
-          background: '#0e1526',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: 14,
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: 16,
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
         }}
       >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
@@ -361,12 +361,12 @@ export const AdminProductsPage: React.FC = () => {
             prefix={<SearchOutlined style={{ color: '#64748b' }} />}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: 280, borderRadius: 8, background: '#151d30' }}
+            style={{ width: 280, borderRadius: 8, background: '#ffffff', borderColor: '#e2e8f0' }}
             allowClear
           />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 12, color: '#94a3b8' }}>Thương hiệu:</Text>
+            <Text style={{ fontSize: 12, color: '#475569' }}>Thương hiệu:</Text>
             <Select
               value={selectedBrand}
               onChange={setSelectedBrand}
@@ -379,7 +379,7 @@ export const AdminProductsPage: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 12, color: '#94a3b8' }}>Trạng thái:</Text>
+            <Text style={{ fontSize: 12, color: '#475569' }}>Trạng thái:</Text>
             <Select
               value={selectedStatus}
               onChange={setSelectedStatus}
@@ -394,13 +394,12 @@ export const AdminProductsPage: React.FC = () => {
 
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
             <Tag
-              color="indigo"
               style={{
                 borderRadius: 6,
                 padding: '3px 8px',
-                background: 'rgba(99, 102, 241, 0.12)',
-                borderColor: 'rgba(99, 102, 241, 0.3)',
-                color: '#818cf8',
+                background: '#eff6ff',
+                borderColor: '#bfdbfe',
+                color: '#2563eb',
                 fontWeight: 600,
               }}
             >
@@ -408,13 +407,12 @@ export const AdminProductsPage: React.FC = () => {
               Tổng: {products.length} sản phẩm
             </Tag>
             <Tag
-              color="green"
               style={{
                 borderRadius: 6,
                 padding: '3px 8px',
-                background: 'rgba(16, 185, 129, 0.12)',
-                borderColor: 'rgba(16, 185, 129, 0.3)',
-                color: '#34d399',
+                background: '#ecfdf5',
+                borderColor: '#a7f3d0',
+                color: '#059669',
                 fontWeight: 600,
               }}
             >
@@ -422,13 +420,12 @@ export const AdminProductsPage: React.FC = () => {
               Đang bán: {activeCount}
             </Tag>
             <Tag
-              color="default"
               style={{
                 borderRadius: 6,
                 padding: '3px 8px',
-                background: 'rgba(148, 163, 184, 0.12)',
-                borderColor: 'rgba(148, 163, 184, 0.2)',
-                color: '#94a3b8',
+                background: '#f1f5f9',
+                borderColor: '#e2e8f0',
+                color: '#64748b',
                 fontWeight: 600,
               }}
             >
@@ -439,14 +436,14 @@ export const AdminProductsPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Obsidian Products Table Card */}
+      {/* Products Table Card */}
       <Card
         bordered={false}
         style={{
-          borderRadius: 14,
-          background: '#0e1526',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+          borderRadius: 16,
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
         }}
       >
         <Table
@@ -468,11 +465,11 @@ export const AdminProductsPage: React.FC = () => {
                 width: 8,
                 height: 8,
                 borderRadius: '50%',
-                background: '#6366f1',
-                boxShadow: '0 0 8px #6366f1',
+                background: '#2563eb',
+                boxShadow: '0 0 6px rgba(37, 99, 235, 0.4)',
               }}
             />
-            <span style={{ color: '#f8fafc', fontWeight: 700, fontSize: 16 }}>
+            <span style={{ color: '#0f172a', fontWeight: 700, fontSize: 16 }}>
               Thêm thiết bị mới vào danh mục
             </span>
           </div>
@@ -545,8 +542,8 @@ export const AdminProductsPage: React.FC = () => {
             titlePlacement="start"
             plain
             style={{
-              borderColor: 'rgba(255, 255, 255, 0.08)',
-              color: '#94a3b8',
+              borderColor: '#e2e8f0',
+              color: '#475569',
               fontSize: 12,
               fontWeight: 600,
             }}
@@ -604,10 +601,10 @@ export const AdminProductsPage: React.FC = () => {
                 type="primary"
                 htmlType="submit"
                 style={{
-                  background: '#6366f1',
-                  borderColor: '#6366f1',
+                  background: '#2563eb',
+                  borderColor: '#2563eb',
                   fontWeight: 600,
-                  boxShadow: '0 0 10px rgba(99, 102, 241, 0.3)',
+                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
                 }}
               >
                 Lưu sản phẩm

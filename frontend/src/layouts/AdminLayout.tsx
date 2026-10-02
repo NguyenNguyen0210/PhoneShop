@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { Layout, Menu, Button, Dropdown, Avatar, Tag, Breadcrumb, theme, ConfigProvider } from 'antd';
+import { Layout, Menu, Button, Dropdown, Avatar, Tag, Breadcrumb, ConfigProvider } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   DashboardOutlined,
@@ -85,54 +85,55 @@ export const AdminLayout: React.FC = () => {
   return (
     <ConfigProvider
       theme={{
-        algorithm: theme.darkAlgorithm,
         token: {
-          colorBgContainer: '#0e1526',
-          colorBgElevated: '#151d30',
-          colorBgLayout: '#07090e',
-          colorPrimary: '#6366f1',
-          colorBorder: 'rgba(255, 255, 255, 0.08)',
-          colorBorderSecondary: 'rgba(255, 255, 255, 0.05)',
-          colorText: '#f8fafc',
-          colorTextSecondary: '#94a3b8',
-          borderRadius: 10,
+          colorBgContainer: '#ffffff',
+          colorBgElevated: '#ffffff',
+          colorBgLayout: '#f8fafc',
+          colorPrimary: '#2563eb',
+          colorBorder: '#e2e8f0',
+          colorBorderSecondary: '#f1f5f9',
+          colorText: '#0f172a',
+          colorTextSecondary: '#64748b',
+          borderRadius: 12,
           fontFamily:
             'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
         },
         components: {
           Menu: {
-            darkItemBg: '#07090e',
-            darkSubMenuItemBg: '#07090e',
-            darkItemSelectedBg: 'rgba(99, 102, 241, 0.18)',
-            darkItemSelectedColor: '#818cf8',
+            itemBg: '#ffffff',
+            subMenuItemBg: '#ffffff',
+            itemSelectedBg: '#eff6ff',
+            itemSelectedColor: '#2563eb',
+            itemColor: '#475569',
+            itemHoverBg: '#f8fafc',
+            itemHoverColor: '#0f172a',
             itemBorderRadius: 8,
             itemMarginInline: 8,
           },
           Card: {
-            colorBgContainer: '#0e1526',
-            colorBorderSecondary: 'rgba(255, 255, 255, 0.08)',
+            colorBgContainer: '#ffffff',
+            colorBorderSecondary: '#e2e8f0',
           },
           Table: {
-            colorBgContainer: '#0e1526',
-            headerBg: '#151d30',
-            headerColor: '#94a3b8',
-            borderColor: 'rgba(255, 255, 255, 0.08)',
-            rowHoverBg: 'rgba(99, 102, 241, 0.06)',
+            colorBgContainer: '#ffffff',
+            headerBg: '#f8fafc',
+            headerColor: '#475569',
+            borderColor: '#e2e8f0',
+            rowHoverBg: '#f8fafc',
           },
           Modal: {
-            contentBg: '#0e1526',
-            headerBg: '#0e1526',
+            contentBg: '#ffffff',
+            headerBg: '#ffffff',
           },
         },
       }}
     >
-      <Layout style={{ minHeight: '100vh', background: '#07090e' }}>
-        {/* Sider - Obsidian Deep Dark */}
+      <Layout style={{ minHeight: '100vh', background: '#f8fafc' }}>
+        {/* Sider - Clean Light Mode */}
         <Sider
           trigger={null}
           collapsible
           collapsed={collapsed}
-          theme="dark"
           width={250}
           style={{
             overflow: 'auto',
@@ -141,8 +142,8 @@ export const AdminLayout: React.FC = () => {
             top: 0,
             left: 0,
             zIndex: 100,
-            background: '#07090e',
-            borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+            background: '#ffffff',
+            borderRight: '1px solid #e2e8f0',
           }}
         >
           {/* Logo & Brand Header */}
@@ -153,7 +154,7 @@ export const AdminLayout: React.FC = () => {
               alignItems: 'center',
               padding: '0 20px',
               gap: 12,
-              borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+              borderBottom: '1px solid #e2e8f0',
             }}
           >
             <div
@@ -161,8 +162,8 @@ export const AdminLayout: React.FC = () => {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                boxShadow: '0 0 15px rgba(99, 102, 241, 0.4)',
+                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -179,7 +180,7 @@ export const AdminLayout: React.FC = () => {
               <div style={{ overflow: 'hidden' }}>
                 <div
                   style={{
-                    color: '#f8fafc',
+                    color: '#0f172a',
                     fontWeight: 700,
                     fontSize: 14,
                     letterSpacing: -0.2,
@@ -193,7 +194,7 @@ export const AdminLayout: React.FC = () => {
                 </div>
                 <div
                   style={{
-                    color: '#6366f1',
+                    color: '#2563eb',
                     fontSize: 10,
                     fontWeight: 600,
                     letterSpacing: 1.2,
@@ -210,13 +211,12 @@ export const AdminLayout: React.FC = () => {
           {/* Navigation Menu */}
           <div style={{ padding: '12px 0' }}>
             <Menu
-              theme="dark"
               mode="inline"
               selectedKeys={[location.pathname]}
               items={menuItems}
               onClick={handleMenuClick}
               style={{
-                background: 'transparent',
+                background: '#ffffff',
                 borderRight: 'none',
               }}
             />
@@ -232,8 +232,8 @@ export const AdminLayout: React.FC = () => {
                 right: 12,
                 padding: '12px 14px',
                 borderRadius: 10,
-                background: '#0e1526',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -244,11 +244,11 @@ export const AdminLayout: React.FC = () => {
                     height: 7,
                     borderRadius: '50%',
                     background: '#10b981',
-                    boxShadow: '0 0 8px #10b981',
+                    boxShadow: '0 0 6px rgba(16, 185, 129, 0.4)',
                   }}
                 />
-                <span style={{ fontSize: 11, fontWeight: 600, color: '#f8fafc' }}>
-                  Obsidian Engine Active
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#0f172a' }}>
+                  Hệ thống Quản trị
                 </span>
               </div>
               <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
@@ -259,16 +259,16 @@ export const AdminLayout: React.FC = () => {
         </Sider>
 
         {/* Main Layout */}
-        <Layout style={{ background: '#07090e' }}>
+        <Layout style={{ background: '#f8fafc' }}>
           {/* Header */}
           <Header
             style={{
               padding: '0 24px',
-              background: '#0e1526',
+              background: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              borderBottom: '1px solid #e2e8f0',
               position: 'sticky',
               top: 0,
               zIndex: 90,
@@ -284,7 +284,7 @@ export const AdminLayout: React.FC = () => {
                   fontSize: '16px',
                   width: 38,
                   height: 38,
-                  color: '#94a3b8',
+                  color: '#475569',
                   borderRadius: 8,
                 }}
               />
@@ -299,7 +299,7 @@ export const AdminLayout: React.FC = () => {
                   },
                   {
                     title: (
-                      <span style={{ color: '#f8fafc', fontWeight: 500 }}>
+                      <span style={{ color: '#0f172a', fontWeight: 600 }}>
                         {getBreadcrumbTitle()}
                       </span>
                     ),
@@ -318,15 +318,15 @@ export const AdminLayout: React.FC = () => {
                   gap: 6,
                   padding: '4px 10px',
                   borderRadius: 20,
-                  background: 'rgba(16, 185, 129, 0.08)',
-                  border: '1px solid rgba(16, 185, 129, 0.2)',
+                  background: '#ecfdf5',
+                  border: '1px solid #a7f3d0',
                   fontSize: 11,
-                  color: '#34d399',
+                  color: '#059669',
                   fontWeight: 600,
                 }}
                 className="sm:flex"
               >
-                <ThunderboltOutlined style={{ fontSize: 12, color: '#10b981' }} />
+                <ThunderboltOutlined style={{ fontSize: 12, color: '#059669' }} />
                 <span>Luhn & Lock: 100% OK</span>
               </div>
 
@@ -335,10 +335,11 @@ export const AdminLayout: React.FC = () => {
                   icon={<ShopOutlined />}
                   size="small"
                   style={{
-                    background: '#151d30',
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                    color: '#94a3b8',
+                    background: '#f8fafc',
+                    borderColor: '#e2e8f0',
+                    color: '#475569',
                     fontSize: 12,
+                    borderRadius: 8,
                   }}
                 >
                   Storefront
@@ -346,15 +347,14 @@ export const AdminLayout: React.FC = () => {
               </Link>
 
               <Tag
-                color="indigo"
                 style={{
                   margin: 0,
                   fontWeight: 700,
                   fontSize: 10,
                   letterSpacing: 0.5,
-                  background: 'rgba(99, 102, 241, 0.15)',
-                  borderColor: 'rgba(99, 102, 241, 0.3)',
-                  color: '#818cf8',
+                  background: '#eff6ff',
+                  borderColor: '#bfdbfe',
+                  color: '#2563eb',
                   padding: '2px 8px',
                   borderRadius: 6,
                 }}
@@ -376,10 +376,10 @@ export const AdminLayout: React.FC = () => {
                 >
                   <Avatar
                     style={{
-                      backgroundColor: '#6366f1',
+                      backgroundColor: '#2563eb',
                       color: '#ffffff',
                       fontWeight: 'bold',
-                      boxShadow: '0 0 10px rgba(99, 102, 241, 0.3)',
+                      boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
                     }}
                     icon={<UserOutlined />}
                   >
@@ -389,7 +389,7 @@ export const AdminLayout: React.FC = () => {
                     style={{
                       fontSize: 13,
                       fontWeight: 600,
-                      color: '#f8fafc',
+                      color: '#0f172a',
                     }}
                   >
                     {user?.fullName || 'Quản trị viên'}

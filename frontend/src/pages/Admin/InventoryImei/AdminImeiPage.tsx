@@ -228,9 +228,9 @@ export const AdminImeiPage: React.FC = () => {
             color="green"
             icon={<CheckCircleOutlined />}
             style={{
-              background: 'rgba(16, 185, 129, 0.15)',
-              borderColor: 'rgba(16, 185, 129, 0.35)',
-              color: '#34d399',
+              background: '#ecfdf5',
+              borderColor: '#a7f3d0',
+              color: '#059669',
               fontWeight: 700,
               borderRadius: 6,
               padding: '2px 8px',
@@ -245,9 +245,9 @@ export const AdminImeiPage: React.FC = () => {
             color="gold"
             icon={<ClockCircleOutlined />}
             style={{
-              background: 'rgba(245, 158, 11, 0.15)',
-              borderColor: 'rgba(245, 158, 11, 0.35)',
-              color: '#fbbf24',
+              background: '#fffbeb',
+              borderColor: '#fde68a',
+              color: '#d97706',
               fontWeight: 700,
               borderRadius: 6,
               padding: '2px 8px',
@@ -262,9 +262,9 @@ export const AdminImeiPage: React.FC = () => {
             color="default"
             icon={<CheckOutlined />}
             style={{
-              background: 'rgba(100, 116, 139, 0.18)',
-              borderColor: 'rgba(100, 116, 139, 0.35)',
-              color: '#94a3b8',
+              background: '#f1f5f9',
+              borderColor: '#cbd5e1',
+              color: '#475569',
               fontWeight: 700,
               borderRadius: 6,
               padding: '2px 8px',
@@ -278,9 +278,9 @@ export const AdminImeiPage: React.FC = () => {
           <Tag
             color="purple"
             style={{
-              background: 'rgba(168, 85, 247, 0.15)',
-              borderColor: 'rgba(168, 85, 247, 0.35)',
-              color: '#c084fc',
+              background: '#faf5ff',
+              borderColor: '#e9d5ff',
+              color: '#9333ea',
               fontWeight: 700,
               borderRadius: 6,
               padding: '2px 8px',
@@ -313,7 +313,7 @@ export const AdminImeiPage: React.FC = () => {
       key: 'imeiNumber',
       render: (num: string) => (
         <Space size="middle">
-          <Text strong style={{ fontFamily: 'monospace', fontSize: 13, color: '#38bdf8', letterSpacing: 0.5 }}>
+          <Text strong style={{ fontFamily: 'monospace', fontSize: 13, color: '#0f172a', letterSpacing: 0.5 }}>
             {num}
           </Text>
           <Tooltip title="Đạt tiêu chuẩn thuật toán kiểm định Luhn checksum quốc tế">
@@ -321,9 +321,9 @@ export const AdminImeiPage: React.FC = () => {
               style={{
                 fontSize: 10,
                 fontWeight: 700,
-                background: 'rgba(56, 189, 248, 0.12)',
-                borderColor: 'rgba(56, 189, 248, 0.3)',
-                color: '#38bdf8',
+                background: '#eff6ff',
+                borderColor: '#bfdbfe',
+                color: '#2563eb',
                 borderRadius: 4,
               }}
             >
@@ -343,7 +343,7 @@ export const AdminImeiPage: React.FC = () => {
         const sku = record.variant?.sku || '';
         return (
           <div>
-            <Text strong style={{ color: '#f8fafc', fontSize: 13 }}>
+            <Text strong style={{ color: '#0f172a', fontSize: 13 }}>
               {prod}
             </Text>
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
@@ -379,11 +379,12 @@ export const AdminImeiPage: React.FC = () => {
               size="small"
               onClick={() => handleStatusChange(record, 'reserve')}
               style={{
-                background: '#151d30',
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                color: '#f59e0b',
+                background: '#fffbeb',
+                borderColor: '#fde68a',
+                color: '#d97706',
                 fontSize: 12,
                 borderRadius: 6,
+                fontWeight: 500,
               }}
             >
               Khóa giữ chỗ
@@ -396,11 +397,12 @@ export const AdminImeiPage: React.FC = () => {
                 type="primary"
                 onClick={() => handleStatusChange(record, 'sell')}
                 style={{
-                  background: '#10b981',
-                  borderColor: '#10b981',
+                  background: '#059669',
+                  borderColor: '#059669',
                   fontSize: 12,
                   borderRadius: 6,
                   fontWeight: 600,
+                  color: '#ffffff',
                 }}
               >
                 Xác nhận Bán
@@ -410,9 +412,9 @@ export const AdminImeiPage: React.FC = () => {
                 danger
                 onClick={() => handleStatusChange(record, 'return')}
                 style={{
-                  background: 'rgba(244, 63, 94, 0.1)',
-                  borderColor: 'rgba(244, 63, 94, 0.3)',
-                  color: '#f43f5e',
+                  background: '#fff1f2',
+                  borderColor: '#fecdd3',
+                  color: '#e11d48',
                   fontSize: 12,
                   borderRadius: 6,
                 }}
@@ -426,11 +428,12 @@ export const AdminImeiPage: React.FC = () => {
               size="small"
               onClick={() => handleStatusChange(record, 'warranty')}
               style={{
-                background: '#151d30',
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                color: '#c084fc',
+                background: '#faf5ff',
+                borderColor: '#e9d5ff',
+                color: '#9333ea',
                 fontSize: 12,
                 borderRadius: 6,
+                fontWeight: 500,
               }}
             >
               Chuyển Bảo hành
@@ -455,7 +458,7 @@ export const AdminImeiPage: React.FC = () => {
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Title level={3} style={{ margin: 0, color: '#f8fafc', fontWeight: 800, letterSpacing: -0.3 }}>
+            <Title level={3} style={{ margin: 0, color: '#0f172a', fontWeight: 800, letterSpacing: -0.3 }}>
               Quản trị Kho Thiết bị & Quản lý IMEI
             </Title>
             <span
@@ -463,16 +466,16 @@ export const AdminImeiPage: React.FC = () => {
                 fontSize: 11,
                 padding: '2px 8px',
                 borderRadius: 20,
-                background: 'rgba(99, 102, 241, 0.15)',
-                color: '#818cf8',
-                border: '1px solid rgba(99, 102, 241, 0.3)',
+                background: '#ecfdf5',
+                color: '#059669',
+                border: '1px solid #a7f3d0',
                 fontWeight: 600,
               }}
             >
               Luhn Certified
             </span>
           </div>
-          <Text type="secondary" style={{ fontSize: 13, marginTop: 4, display: 'block' }}>
+          <Text style={{ fontSize: 13, color: '#64748b', marginTop: 4, display: 'block' }}>
             Kiểm soát định danh từng chiếc máy, đảm bảo tính duy nhất và khóa concurrency 15 phút
           </Text>
         </div>
@@ -482,11 +485,11 @@ export const AdminImeiPage: React.FC = () => {
           icon={<UploadOutlined />}
           size="large"
           style={{
-            background: '#6366f1',
-            borderColor: '#6366f1',
+            background: '#2563eb',
+            borderColor: '#2563eb',
             fontWeight: 600,
             borderRadius: 8,
-            boxShadow: '0 0 15px rgba(99, 102, 241, 0.3)',
+            boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
           }}
           onClick={() => setIsImportModalOpen(true)}
         >
@@ -498,10 +501,10 @@ export const AdminImeiPage: React.FC = () => {
       <Card
         bordered={false}
         style={{
-          background: '#0e1526',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: 14,
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: 16,
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
         }}
       >
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
@@ -510,12 +513,12 @@ export const AdminImeiPage: React.FC = () => {
             prefix={<SearchOutlined style={{ color: '#64748b' }} />}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: 280, borderRadius: 8, background: '#151d30' }}
+            style={{ width: 280, borderRadius: 8, background: '#ffffff', borderColor: '#e2e8f0' }}
             allowClear
           />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 12, color: '#94a3b8' }}>Lọc trạng thái:</Text>
+            <Text style={{ fontSize: 12, color: '#475569' }}>Lọc trạng thái:</Text>
             <Select
               value={statusFilter}
               onChange={setStatusFilter}
@@ -532,39 +535,36 @@ export const AdminImeiPage: React.FC = () => {
 
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <Tag
-              color="green"
               style={{
                 borderRadius: 6,
                 padding: '3px 8px',
-                background: 'rgba(16, 185, 129, 0.12)',
-                borderColor: 'rgba(16, 185, 129, 0.3)',
-                color: '#34d399',
+                background: '#ecfdf5',
+                borderColor: '#a7f3d0',
+                color: '#059669',
                 fontWeight: 600,
               }}
             >
               Tổng có sẵn: {imeis.filter((i) => i.status === 'AVAILABLE').length}
             </Tag>
             <Tag
-              color="gold"
               style={{
                 borderRadius: 6,
                 padding: '3px 8px',
-                background: 'rgba(245, 158, 11, 0.12)',
-                borderColor: 'rgba(245, 158, 11, 0.3)',
-                color: '#fbbf24',
+                background: '#fffbeb',
+                borderColor: '#fde68a',
+                color: '#d97706',
                 fontWeight: 600,
               }}
             >
               Đang khóa 15p: {imeis.filter((i) => i.status === 'RESERVED').length}
             </Tag>
             <Tag
-              color="default"
               style={{
                 borderRadius: 6,
                 padding: '3px 8px',
-                background: 'rgba(100, 116, 139, 0.12)',
-                borderColor: 'rgba(100, 116, 139, 0.25)',
-                color: '#94a3b8',
+                background: '#f1f5f9',
+                borderColor: '#cbd5e1',
+                color: '#475569',
                 fontWeight: 600,
               }}
             >
@@ -578,10 +578,10 @@ export const AdminImeiPage: React.FC = () => {
       <Card
         bordered={false}
         style={{
-          borderRadius: 14,
-          background: '#0e1526',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+          borderRadius: 16,
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
         }}
       >
         <Table
@@ -598,8 +598,8 @@ export const AdminImeiPage: React.FC = () => {
       <Modal
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <BarcodeOutlined style={{ color: '#6366f1', fontSize: 18 }} />
-            <span style={{ color: '#f8fafc', fontWeight: 700, fontSize: 16 }}>
+            <BarcodeOutlined style={{ color: '#2563eb', fontSize: 18 }} />
+            <span style={{ color: '#0f172a', fontWeight: 700, fontSize: 16 }}>
               Nhập lô mã IMEI (Bulk Batch Import)
             </span>
           </div>
@@ -643,8 +643,9 @@ export const AdminImeiPage: React.FC = () => {
               style={{
                 fontFamily: 'monospace',
                 fontSize: 13,
-                background: '#151d30',
-                color: '#f8fafc',
+                background: '#ffffff',
+                color: '#0f172a',
+                borderColor: '#e2e8f0',
               }}
             />
           </Form.Item>
@@ -658,9 +659,9 @@ export const AdminImeiPage: React.FC = () => {
                   type="success"
                   showIcon
                   style={{
-                    background: 'rgba(16, 185, 129, 0.1)',
-                    borderColor: 'rgba(16, 185, 129, 0.3)',
-                    color: '#34d399',
+                    background: '#ecfdf5',
+                    borderColor: '#a7f3d0',
+                    color: '#065f46',
                     borderRadius: 10,
                   }}
                 />
@@ -670,7 +671,7 @@ export const AdminImeiPage: React.FC = () => {
                   description={
                     <div style={{ fontSize: 12, marginTop: 4 }}>
                       Mã không hợp lệ:{' '}
-                      <Text code style={{ background: '#151d30', color: '#f87171' }}>
+                      <Text code style={{ background: '#fef2f2', color: '#dc2626' }}>
                         {validationReport.invalidLines.slice(0, 3).join(', ')}
                       </Text>
                       {validationReport.invalidLines.length > 3 && '...'}
@@ -679,9 +680,9 @@ export const AdminImeiPage: React.FC = () => {
                   type="warning"
                   showIcon
                   style={{
-                    background: 'rgba(245, 158, 11, 0.1)',
-                    borderColor: 'rgba(245, 158, 11, 0.3)',
-                    color: '#fbbf24',
+                    background: '#fffbeb',
+                    borderColor: '#fde68a',
+                    color: '#92400e',
                     borderRadius: 10,
                   }}
                 />
@@ -696,10 +697,10 @@ export const AdminImeiPage: React.FC = () => {
                 type="primary"
                 htmlType="submit"
                 style={{
-                  background: '#6366f1',
-                  borderColor: '#6366f1',
+                  background: '#2563eb',
+                  borderColor: '#2563eb',
                   fontWeight: 600,
-                  boxShadow: '0 0 10px rgba(99, 102, 241, 0.3)',
+                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
                 }}
               >
                 Xác nhận nhập kho
