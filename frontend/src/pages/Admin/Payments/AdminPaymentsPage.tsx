@@ -19,7 +19,7 @@ export const AdminPaymentsPage: React.FC = () => {
   const activeTab = searchParams.get('tab') || 'payments';
 
   const { user } = useAuthStore();
-  const roles = (user?.roles as any[]) || [];
+  const roles = ((user as any)?.roles as any[]) || [];
   const roleNames = roles.map((r) => (typeof r === 'string' ? r : r?.role?.name || r?.name));
   const canManage =
     user?.role === 'ADMIN' ||

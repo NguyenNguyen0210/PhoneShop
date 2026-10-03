@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -24,7 +23,7 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // ResizeObserver Mock
-global.ResizeObserver = class {
+(globalThis as any).ResizeObserver = class {
   observe() {}
   unobserve() {}
   disconnect() {}
