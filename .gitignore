@@ -27,6 +27,12 @@ e2e_screenshots/
 logs
 *.log
 
+# Git Worktrees
+.worktrees/
+.worktrees
+worktrees/
+worktrees
+
 # OS & IDE
 .DS_Store
 Thumbs.db
