@@ -8,6 +8,7 @@ import {
   BarcodeOutlined,
   OrderedListOutlined,
   CreditCardOutlined,
+  CommentOutlined,
 } from '@ant-design/icons';
 
 const adminMenuItems: MenuProps['items'] = [
@@ -35,6 +36,11 @@ const adminMenuItems: MenuProps['items'] = [
     key: '/admin/installments',
     icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
     label: 'Hồ sơ trả góp',
+  },
+  {
+    key: '/admin/reviews',
+    icon: <CommentOutlined style={{ fontSize: 16 }} />,
+    label: 'Quản lý Đánh giá',
   },
 ];
 

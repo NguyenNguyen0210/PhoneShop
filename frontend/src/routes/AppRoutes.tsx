@@ -30,6 +30,7 @@ import { AdminProductsPage } from '../pages/Admin/Products/AdminProductsPage';
 import { AdminImeiPage } from '../pages/Admin/InventoryImei/AdminImeiPage';
 import { AdminOrdersPage } from '../pages/Admin/Orders/AdminOrdersPage';
 import { AdminInstallmentsPage } from '../pages/Admin/Installments/AdminInstallmentsPage';
+import { AdminReviewsPage } from '../pages/Admin/Reviews/AdminReviewsPage';
 
 // Route Guards
 import { AdminRoute } from './AdminRoute';
@@ -95,6 +96,14 @@ export const AppRoutes: React.FC = () => {
             element={
               <RoleGuard allowedRoles={[ROLES.STAFF, ROLES.ADMIN]}>
                 <AdminInstallmentsPage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/admin/reviews"
+            element={
+              <RoleGuard allowedRoles={[ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN]}>
+                <AdminReviewsPage />
               </RoleGuard>
             }
           />

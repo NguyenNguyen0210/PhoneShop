@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
 import { AdminReviewsPage } from '../AdminReviewsPage';
@@ -22,7 +21,7 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock ResizeObserver for Ant Design components in jsdom
-global.ResizeObserver = class ResizeObserver {
+(globalThis as any).ResizeObserver = class ResizeObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
