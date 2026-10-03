@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -40,13 +40,21 @@ export class ProductsService {
   // ── PRODUCTS ──────────────────────────────────────────
 
   async create(dto: CreateProductDto) {
+    const baseSlug = (dto.slug || dto.name)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+    const slug = dto.slug || `${baseSlug}-${Date.now().toString(36)}`;
+
     const existing = await this.prisma.product.findUnique({
-      where: { slug: dto.slug },
+      where: { slug },
     });
     if (existing) throw new ConflictException('Product slug already exists');
 
     return this.prisma.product.create({
-      data: dto,
+      data: { ...dto, slug },
       include: { brand: true, category: true, variants: true },
     });
   }
@@ -278,6 +286,17 @@ export class ProductsService {
       where: { id: variantId, productId },
     });
     if (!variant) throw new NotFoundException('Variant not found');
+
+    const [orderCount, imeiCount] = await Promise.all([
+      this.prisma.orderItem.count({ where: { variantId } }),
+      this.prisma.imeiDevice.count({ where: { variantId } }),
+    ]);
+    if (orderCount > 0 || imeiCount > 0) {
+      throw new BadRequestException(
+        'Không thể xóa biến thể đã phát sinh đơn hàng hoặc thiết bị IMEI. Vui lòng tắt kích hoạt biến thể thay vì xóa.',
+      );
+    }
+
     return this.prisma.productVariant.delete({ where: { id: variantId } });
   }
 

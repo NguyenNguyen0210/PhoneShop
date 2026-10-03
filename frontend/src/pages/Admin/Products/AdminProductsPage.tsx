@@ -28,6 +28,7 @@ import {
 } from '@ant-design/icons';
 import { productService } from '../../../services/productService';
 import { ImageUploadDragger } from '../../../components/admin/ImageUploadDragger';
+import { ProductEditModal } from './components/ProductEditModal';
 import type { Product, Brand, Category } from '../../../types';
 
 const { Title, Text } = Typography;
@@ -38,6 +39,8 @@ export const AdminProductsPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -101,6 +104,10 @@ export const AdminProductsPage: React.FC = () => {
       setIsModalOpen(false);
       form.resetFields();
       await loadData();
+      if (created?.id) {
+        setEditingProductId(created.id);
+        setIsEditModalOpen(true);
+      }
     } catch (err: any) {
       message.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
     }
@@ -269,6 +276,10 @@ export const AdminProductsPage: React.FC = () => {
           <Button
             size="small"
             icon={<EditOutlined />}
+            onClick={() => {
+              setEditingProductId(record.id);
+              setIsEditModalOpen(true);
+            }}
             style={{
               background: '#f8fafc',
               borderColor: '#e2e8f0',
@@ -620,6 +631,16 @@ export const AdminProductsPage: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+      {/* Modal: Edit Product with 3 tabs */}
+      <ProductEditModal
+        open={isEditModalOpen}
+        productId={editingProductId}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingProductId(null);
+        }}
+        onSuccess={loadData}
+      />
     </div>
   );
 };

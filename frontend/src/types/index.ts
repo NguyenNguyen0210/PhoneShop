@@ -74,12 +74,14 @@ export interface ProductVariant {
   id: string;
   productId: string;
   sku: string;
+  name?: string;
   color: string;
   colorHex?: string;
   storage: string;
   ram?: string;
   price: number;
   compareAtPrice?: number;
+  costPrice?: number;
   inventoryQty?: number;
   inventory?: {
     quantity?: number;
@@ -87,6 +89,7 @@ export interface ProductVariant {
     reservedQty?: number;
   };
   status?: string;
+  isActive?: boolean;
   images?: string[];
   imageUrl?: string;
   product?: {
@@ -97,6 +100,33 @@ export interface ProductVariant {
     brand?: Brand;
     category?: Category;
   };
+}
+
+export interface UpdateVariantDto {
+  sku?: string;
+  name?: string;
+  color?: string;
+  storage?: string;
+  ram?: string;
+  price?: number;
+  compareAtPrice?: number;
+  costPrice?: number;
+  imageUrl?: string;
+  isActive?: boolean;
+}
+
+export interface CreateVariantDto {
+  sku: string;
+  name?: string;
+  color?: string;
+  storage?: string;
+  ram?: string;
+  price: number;
+  compareAtPrice?: number;
+  costPrice?: number;
+  inventoryQty?: number;
+  imageUrl?: string;
+  isActive?: boolean;
 }
 
 export interface Product {
