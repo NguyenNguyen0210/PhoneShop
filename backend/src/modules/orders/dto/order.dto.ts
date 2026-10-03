@@ -63,3 +63,21 @@ export class UpdateOrderStatusDto {
   @IsNotEmpty()
   status: string;
 }
+
+export class ShipOrderDto {
+  @ApiPropertyOptional({ example: 'Giao Hàng Nhanh (GHN)' })
+  @IsOptional()
+  @IsString()
+  providerName?: string;
+
+  @ApiPropertyOptional({ example: 'GHN123456789' })
+  @IsOptional()
+  @IsString()
+  trackingNumber?: string;
+
+  @ApiPropertyOptional({ example: '2026-10-10T00:00:00.000Z' })
+  @IsOptional()
+  @IsString()
+  estimatedDeliveryDate?: string;
+}
+

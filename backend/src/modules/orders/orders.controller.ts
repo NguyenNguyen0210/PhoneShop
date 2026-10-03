@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Param, UseGuards, Put, UseInterceptors, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService, QueryOrdersDto } from './orders.service';
-import { CreateOrderDto, CancelOrderDto } from './dto/order.dto';
+import { CreateOrderDto, CancelOrderDto, ShipOrderDto } from './dto/order.dto';
 
 export { QueryOrdersDto };
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -84,11 +84,18 @@ export class OrdersController {
     return this.ordersService.transitionStatus(id, OrderStatus.PROCESSING);
   }
 
+  @Put(':id/pack')
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Pack order (STAFF/MANAGER/ADMIN)' })
+  pack(@Param('id') id: string) {
+    return this.ordersService.transitionStatus(id, OrderStatus.PACKED);
+  }
+
   @Put(':id/ship')
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Ship order (STAFF/MANAGER/ADMIN)' })
-  ship(@Param('id') id: string) {
-    return this.ordersService.transitionStatus(id, OrderStatus.SHIPPING);
+  ship(@Param('id') id: string, @Body() dto?: ShipOrderDto) {
+    return this.ordersService.transitionStatus(id, OrderStatus.SHIPPING, undefined, undefined, dto);
   }
 
   @Put(':id/deliver')

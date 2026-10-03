@@ -44,6 +44,8 @@ export class QueryOrdersDto extends PaginationQueryDto {
 const CANCELLABLE_STATUSES: OrderStatus[] = [
   OrderStatus.PENDING,
   OrderStatus.CONFIRMED,
+  OrderStatus.PROCESSING,
+  OrderStatus.PACKED,
 ];
 
 @Injectable()
@@ -762,13 +764,15 @@ export class OrdersService {
     newStatus: OrderStatus,
     staffId?: string,
     reason?: string,
+    shippingInfo?: { providerName?: string; trackingNumber?: string; estimatedDeliveryDate?: string },
   ) {
     const order = await this.findOne(id);
 
     const allowedTransitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
       [OrderStatus.PENDING]:    [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
       [OrderStatus.CONFIRMED]:  [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
-      [OrderStatus.PROCESSING]: [OrderStatus.SHIPPING],
+      [OrderStatus.PROCESSING]: [OrderStatus.PACKED, OrderStatus.CANCELLED],
+      [OrderStatus.PACKED]:     [OrderStatus.SHIPPING, OrderStatus.CANCELLED],
       [OrderStatus.SHIPPING]:   [OrderStatus.DELIVERED],
       [OrderStatus.DELIVERED]:  [OrderStatus.COMPLETED, OrderStatus.RETURNED],
     };
@@ -783,6 +787,7 @@ export class OrdersService {
     const data: any = { status: newStatus };
     const now = new Date();
     if (newStatus === OrderStatus.CONFIRMED)  data.confirmedAt  = now;
+    if (newStatus === OrderStatus.PACKED)     data.packedAt     = now;
     if (newStatus === OrderStatus.SHIPPING)   data.shippedAt    = now;
     if (newStatus === OrderStatus.DELIVERED)  data.deliveredAt  = now;
     if (newStatus === OrderStatus.COMPLETED)  data.completedAt  = now;
@@ -792,10 +797,10 @@ export class OrdersService {
     if (newStatus === OrderStatus.CANCELLED && reason) data.cancelledReason = reason;
 
     return this.prisma.$transaction(async (tx) => {
-      // When transitioning from CONFIRMED or PENDING to CANCELLED: release reserved IMEIs back to AVAILABLE and restore inventory availableQty
+      // When transitioning from PENDING, CONFIRMED, PROCESSING, or PACKED to CANCELLED: release reserved IMEIs back to AVAILABLE and restore inventory availableQty
       if (
         newStatus === OrderStatus.CANCELLED &&
-        (order.status === OrderStatus.PENDING || order.status === OrderStatus.CONFIRMED)
+        ([OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.PACKED] as OrderStatus[]).includes(order.status)
       ) {
         if (tx.installmentApplication?.updateMany) {
           await tx.installmentApplication.updateMany({
@@ -927,6 +932,35 @@ export class OrdersService {
             },
           });
         }
+      }
+
+      if (newStatus === OrderStatus.SHIPPING && tx.shipping) {
+        const shippingUpdateData: any = {
+          status: ShippingStatus.READY_TO_SHIP,
+          shippedAt: now,
+        };
+        if (shippingInfo?.providerName) {
+          shippingUpdateData.providerName = shippingInfo.providerName;
+        }
+        if (shippingInfo?.trackingNumber) {
+          shippingUpdateData.trackingNumber = shippingInfo.trackingNumber;
+        }
+        if (shippingInfo?.estimatedDeliveryDate) {
+          shippingUpdateData.estimatedDeliveryDate = new Date(shippingInfo.estimatedDeliveryDate);
+        }
+
+        await tx.shipping.upsert({
+          where: { orderId: id },
+          update: shippingUpdateData,
+          create: {
+            orderId: id,
+            providerName: shippingInfo?.providerName || 'Giao hàng Tiêu chuẩn',
+            trackingNumber: shippingInfo?.trackingNumber,
+            estimatedDeliveryDate: shippingInfo?.estimatedDeliveryDate ? new Date(shippingInfo.estimatedDeliveryDate) : undefined,
+            status: ShippingStatus.READY_TO_SHIP,
+            shippedAt: now,
+          },
+        });
       }
 
       return tx.order.update({ where: { id }, data });
