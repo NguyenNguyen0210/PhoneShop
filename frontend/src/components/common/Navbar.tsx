@@ -15,6 +15,7 @@ import {
   Package,
   Ticket,
   Heart,
+  Bell,
   Settings,
   LayoutDashboard,
   Copy,
@@ -23,6 +24,8 @@ import {
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useCartStore } from '../../stores/useCartStore';
 import { useWishlistStore } from '../../stores/useWishlistStore';
+import { useNotificationStore } from '../../stores/useNotificationStore';
+import { NotificationDropdown } from './NotificationDropdown';
 import { orderService } from '../../services/orderService';
 import { voucherService, type VoucherInfo } from '../../services/voucherService';
 
@@ -32,6 +35,7 @@ export const Navbar: React.FC = () => {
   const { totalCount } = useCartStore();
   const { items: wishlistItems, fetchWishlist } = useWishlistStore();
   const wishlistCount = wishlistItems.length;
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -109,6 +113,17 @@ export const Navbar: React.FC = () => {
       useWishlistStore.getState().clearState();
     }
   }, [user, fetchWishlist]);
+
+  useEffect(() => {
+    if (user) {
+      const cleanupPolling = useNotificationStore.getState().startPolling(60000);
+      return () => {
+        cleanupPolling();
+      };
+    } else {
+      useNotificationStore.getState().clearState();
+    }
+  }, [user]);
 
   // Handle click outside dropdown
   useEffect(() => {
@@ -236,6 +251,9 @@ export const Navbar: React.FC = () => {
                   </span>
                 )}
               </Link>
+
+              {/* Notification Dropdown (Desktop, Logged-in only) */}
+              {user && <NotificationDropdown />}
 
               {/* Cart Page Direct Link */}
               <Link
@@ -563,6 +581,21 @@ export const Navbar: React.FC = () => {
                     {vouchersLoading ? '🎁 Đang tải...' : `🎁 ${availableVouchers.length} Voucher`}
                   </span>
                 </div>
+                <Link
+                  to="/notifications"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-blue-600" />
+                    <span>Thông báo</span>
+                  </span>
+                  {unreadCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px]">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </Link>
                 <Link
                   to="/orders"
                   onClick={() => setMobileMenuOpen(false)}

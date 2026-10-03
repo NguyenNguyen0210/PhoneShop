@@ -7,6 +7,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { NotificationType } from '@prisma/client';
 
 @ApiTags('Notifications')
 @Controller('notifications')
@@ -18,16 +19,20 @@ export class NotificationsController {
   // ── ALL AUTHENTICATED USERS ───────────────────────────
 
   @Get('my')
-  @ApiOperation({ summary: 'Get my notifications (paginated)' })
+  @ApiOperation({ summary: 'Get my notifications (paginated and filtered)' })
   getMyNotifications(
     @CurrentUser() user: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('type') type?: NotificationType,
+    @Query('isRead') isRead?: string,
   ) {
     return this.notificationsService.getMyNotifications(
       user.id,
       parseInt(page || '1', 10),
       parseInt(limit || '20', 10),
+      type,
+      isRead,
     );
   }
 
