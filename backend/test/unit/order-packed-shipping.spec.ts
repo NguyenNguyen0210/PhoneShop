@@ -140,7 +140,7 @@ describe('ShippingService - updateByOrder', () => {
         upsert: jest.fn(),
       },
     };
-    shippingService = new ShippingService(prisma as any);
+    shippingService = new ShippingService(prisma as any, {} as any);
   });
 
   it('should update carrier and tracking number for an existing order', async () => {

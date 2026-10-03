@@ -257,7 +257,14 @@ export interface Order {
   updatedAt?: string;
 }
 
-export type ShippingStatus = 'PENDING' | 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED' | 'RETURNED';
+export type ShippingStatus =
+  | 'PENDING'
+  | 'READY_TO_SHIP'
+  | 'PICKED_UP'
+  | 'IN_TRANSIT'
+  | 'DELIVERED'
+  | 'FAILED'
+  | 'RETURNED';
 
 export interface Shipping {
   id: string;

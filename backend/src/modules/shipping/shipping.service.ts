@@ -1,20 +1,33 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateShippingDto, UpdateShippingStatusDto, UpdateOrderShippingDto, ShippingStatus } from './dto/shipping.dto';
+import {
+  CreateShippingDto,
+  AssignShippingDto,
+  UpdateShippingDto,
+  UpdateShippingStatusDto,
+  UpdateOrderShippingDto,
+  ShippingStatus,
+} from './dto/shipping.dto';
 import { Role } from '../../common/enums/role.enum';
 import { STANDARD_SHIPPING_FEE } from '../../common/constants';
+import { OrdersService } from '../orders/orders.service';
+import { OrderStatus } from '@prisma/client';
 
 const STATUS_TRANSITIONS: Partial<Record<ShippingStatus, ShippingStatus[]>> = {
   [ShippingStatus.PENDING]:       [ShippingStatus.READY_TO_SHIP],
   [ShippingStatus.READY_TO_SHIP]: [ShippingStatus.PICKED_UP],
   [ShippingStatus.PICKED_UP]:     [ShippingStatus.IN_TRANSIT],
-  [ShippingStatus.IN_TRANSIT]:    [ShippingStatus.DELIVERED, ShippingStatus.FAILED],
+  [ShippingStatus.IN_TRANSIT]:    [ShippingStatus.DELIVERED, ShippingStatus.FAILED, ShippingStatus.RETURNED],
   [ShippingStatus.FAILED]:        [ShippingStatus.IN_TRANSIT, ShippingStatus.RETURNED],
 };
 
 @Injectable()
 export class ShippingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => OrdersService))
+    private readonly ordersService: OrdersService,
+  ) {}
 
   /**
    * Calculate shipping fee based on address/weight (placeholder logic).
@@ -22,6 +35,55 @@ export class ShippingService {
    */
   estimateFee(_city?: string, _weight?: number): number {
     return STANDARD_SHIPPING_FEE;
+  }
+
+  async assign(dto: AssignShippingDto) {
+    const order = await this.prisma.order.findUnique({ where: { id: dto.orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+
+    const existing = await this.prisma.shipping.findUnique({ where: { orderId: dto.orderId } });
+
+    if (existing) {
+      return this.prisma.shipping.update({
+        where: { id: existing.id },
+        data: {
+          providerName: dto.providerName,
+          trackingNumber: dto.trackingNumber ?? existing.trackingNumber,
+          shippingFee: dto.shippingFee ?? existing.shippingFee,
+          estimatedDeliveryDate: dto.estimatedDeliveryDate
+            ? new Date(dto.estimatedDeliveryDate)
+            : existing.estimatedDeliveryDate,
+          status:
+            existing.status === ShippingStatus.PENDING
+              ? ShippingStatus.READY_TO_SHIP
+              : existing.status,
+        },
+      });
+    }
+
+    return this.prisma.shipping.create({
+      data: {
+        orderId: dto.orderId,
+        providerName: dto.providerName,
+        trackingNumber: dto.trackingNumber,
+        shippingFee: dto.shippingFee ?? Number(order.shippingFee) ?? this.estimateFee(),
+        estimatedDeliveryDate: dto.estimatedDeliveryDate
+          ? new Date(dto.estimatedDeliveryDate)
+          : undefined,
+        status: ShippingStatus.READY_TO_SHIP,
+      },
+    });
+  }
+
+  async update(id: string, dto: UpdateShippingDto) {
+    await this.findOne(id);
+    const data: any = {
+      ...(dto.providerName && { providerName: dto.providerName }),
+      ...(dto.trackingNumber && { trackingNumber: dto.trackingNumber }),
+      ...(dto.shippingFee !== undefined && { shippingFee: dto.shippingFee }),
+      ...(dto.estimatedDeliveryDate && { estimatedDeliveryDate: new Date(dto.estimatedDeliveryDate) }),
+    };
+    return this.prisma.shipping.update({ where: { id }, data });
   }
 
   async create(dto: CreateShippingDto) {
@@ -110,7 +172,42 @@ export class ShippingService {
     if (dto.status === ShippingStatus.PICKED_UP) data.shippedAt = new Date();
     if (dto.status === ShippingStatus.DELIVERED) data.deliveredAt = new Date();
 
-    return this.prisma.shipping.update({ where: { id }, data });
+    const updated = await this.prisma.shipping.update({ where: { id }, data });
+
+    if (dto.status === ShippingStatus.PICKED_UP || dto.status === ShippingStatus.IN_TRANSIT) {
+      try {
+        const order = await this.prisma.order.findUnique({ where: { id: shipping.orderId } });
+        if (order && (order.status === OrderStatus.CONFIRMED || order.status === OrderStatus.PROCESSING)) {
+          if (order.status === OrderStatus.CONFIRMED) {
+            try {
+              await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.PROCESSING);
+            } catch (err) {
+              console.warn('Auto-sync order to PROCESSING deferred:', err);
+            }
+          }
+          await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.SHIPPING);
+        }
+      } catch (err) {
+        console.warn('Auto-sync order to SHIPPING deferred:', err);
+      }
+    } else if (dto.status === ShippingStatus.DELIVERED) {
+      try {
+        const order = await this.prisma.order.findUnique({ where: { id: shipping.orderId } });
+        if (order && order.status === OrderStatus.SHIPPING) {
+          await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.DELIVERED);
+        }
+      } catch (err) {
+        console.warn('Auto-sync order to DELIVERED deferred:', err);
+      }
+    } else if (dto.status === ShippingStatus.RETURNED) {
+      try {
+        await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.RETURNED);
+      } catch (err) {
+        console.warn('Auto-sync order to RETURNED deferred:', err);
+      }
+    }
+
+    return updated;
   }
 
   async findAll() {

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsDecimal, IsDateString, IsEnum, Length } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsEnum, Length } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 export enum ShippingStatus {
@@ -26,11 +26,36 @@ export class CreateShippingDto {
   @IsString()
   trackingNumber?: string;
 
-  @ApiPropertyOptional({ example: '30000' })
+  @ApiPropertyOptional({ example: 30000 })
   @IsOptional()
   shippingFee?: number;
 
   @ApiPropertyOptional({ example: '2026-08-25T00:00:00.000Z' })
+  @IsOptional()
+  @IsDateString()
+  estimatedDeliveryDate?: string;
+}
+
+export class AssignShippingDto {
+  @ApiProperty({ example: 'uuid-of-order' })
+  @IsString()
+  orderId: string;
+
+  @ApiProperty({ example: 'GHN' })
+  @IsString()
+  @Length(2, 100)
+  providerName: string;
+
+  @ApiPropertyOptional({ example: 'GHN123456789' })
+  @IsOptional()
+  @IsString()
+  trackingNumber?: string;
+
+  @ApiPropertyOptional({ example: 30000 })
+  @IsOptional()
+  shippingFee?: number;
+
+  @ApiPropertyOptional({ example: '2026-10-06T00:00:00.000Z' })
   @IsOptional()
   @IsDateString()
   estimatedDeliveryDate?: string;
