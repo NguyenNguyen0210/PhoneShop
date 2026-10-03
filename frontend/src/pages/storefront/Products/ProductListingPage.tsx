@@ -228,6 +228,7 @@ export const ProductListingPage: React.FC = () => {
             <div className="space-y-2">
               {brands.map((b) => {
                 const checked = selectedBrands.includes(b.name.toLowerCase());
+                const logo = b.logoUrl || b.logo;
                 return (
                   <label
                     key={b.id || b.slug}
@@ -241,6 +242,20 @@ export const ProductListingPage: React.FC = () => {
                     >
                       {checked && <Check className="w-3 h-3 stroke-[3]" />}
                     </div>
+                    <span className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
+                      {logo ? (
+                        <img
+                          src={logo}
+                          alt={b.name}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-500">{b.name.charAt(0)}</span>
+                      )}
+                    </span>
                     <span className="font-medium">{b.name}</span>
                   </label>
                 );

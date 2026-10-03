@@ -9,6 +9,7 @@ import {
   RotateCcw,
   ArrowLeftRight,
   CreditCard,
+  LayoutGrid,
 } from 'lucide-react';
 import { productService } from '../../../services/productService';
 import type { Product, Brand } from '../../../types';
@@ -276,44 +277,50 @@ export const HomePage: React.FC = () => {
             <button
               type="button"
               onClick={() => setSelectedBrand('all')}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-2 ${
                 selectedBrand === 'all'
                   ? 'bg-slate-900 text-white shadow-md'
                   : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
               }`}
             >
-              Tất cả ({products.length})
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Tất cả</span>
             </button>
 
             {brands.map((b) => {
-              const count = products.filter(
-                (p) =>
-                  p.brand?.name.toLowerCase().includes(b.name.toLowerCase()) ||
-                  p.brand?.slug.toLowerCase().includes(b.slug.toLowerCase()) ||
-                  p.brandId?.toLowerCase() === b.id.toLowerCase()
-              ).length;
-
               const isSelected = selectedBrand.toLowerCase() === b.name.toLowerCase();
+              const logo = b.logoUrl || b.logo;
 
               return (
                 <button
                   key={b.id || b.slug}
                   type="button"
                   onClick={() => setSelectedBrand(b.name)}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-2 ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
                     isSelected
                       ? 'bg-slate-900 text-white shadow-md'
                       : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
-                  <span>{b.name}</span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                      isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                    className={`w-5 h-5 rounded-full flex items-center justify-center p-0.5 shrink-0 transition-colors ${
+                      isSelected ? 'bg-white' : 'bg-slate-100'
                     }`}
                   >
-                    {count}
+                    {logo ? (
+                      <img
+                        src={logo}
+                        alt={b.name}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <span className="text-[10px] font-bold text-slate-600">{b.name.charAt(0)}</span>
+                    )}
                   </span>
+                  <span>{b.name}</span>
                 </button>
               );
             })}
