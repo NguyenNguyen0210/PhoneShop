@@ -726,7 +726,7 @@ export async function seedFeedbackAndAftersales(
       createdAt: new Date(Date.now() - 4 * 3600000),
     });
   }
-  if (notificationsToInsert.length > 0) {
+  if (prisma.notification && notificationsToInsert.length > 0) {
     await prisma.notification.createMany({
       data: notificationsToInsert,
       skipDuplicates: true,

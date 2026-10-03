@@ -255,6 +255,11 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
           return Promise.resolve({ count: args.data.length });
         }),
       },
+      notification: {
+        createMany: jest.fn().mockImplementation((args: any) => {
+          return Promise.resolve({ count: args.data.length });
+        }),
+      },
     } as unknown as PrismaClient;
   });
 
