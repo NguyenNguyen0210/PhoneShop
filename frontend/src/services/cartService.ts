@@ -32,4 +32,8 @@ export const cartService = {
   async clearCart(): Promise<void> {
     await apiClient.delete('/cart/clear');
   },
+
+  async removeBulk(itemIds: string[]): Promise<void> {
+    await apiClient.delete('/cart/items/bulk', { data: { itemIds } });
+  },
 };

@@ -5,6 +5,7 @@ import { cartService } from '../services/cartService';
 
 interface CartState {
   items: CartItem[];
+  selectedItemIds: string[];
   isDrawerOpen: boolean;
 
   addItem: (product: Product, variant: ProductVariant, quantity?: number) => void;
@@ -15,12 +16,23 @@ interface CartState {
   toggleDrawer: () => void;
   totalAmount: () => number;
   totalCount: () => number;
+
+  // Selection actions & getters
+  toggleSelectItem: (itemId: string) => void;
+  selectAll: () => void;
+  deselectAll: () => void;
+  removeSelectedItems: () => void;
+  selectedItems: () => CartItem[];
+  selectedSubtotal: () => number;
+  selectedTotalCount: () => number;
+  isAllSelected: () => boolean;
 }
 
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      selectedItemIds: [],
       isDrawerOpen: false,
 
       addItem: (product: Product, variant: ProductVariant, quantity = 1) => {
@@ -49,7 +61,7 @@ export const useCartStore = create<CartState>()(
         set({ items: newItems, isDrawerOpen: true });
 
         // Optionally sync with backend if token exists
-        if (localStorage.getItem('mobilecommerce_access_token')) {
+        if (typeof localStorage !== 'undefined' && localStorage.getItem('mobilecommerce_access_token')) {
           cartService.addToCart(variant.id, quantity).catch(() => {});
         }
       },
@@ -58,9 +70,10 @@ export const useCartStore = create<CartState>()(
         const itemToRemove = get().items.find((i) => i.id === itemId);
         set((state) => ({
           items: state.items.filter((item) => item.id !== itemId),
+          selectedItemIds: state.selectedItemIds.filter((id) => id !== itemId),
         }));
 
-        if (itemToRemove && localStorage.getItem('mobilecommerce_access_token')) {
+        if (itemToRemove && typeof localStorage !== 'undefined' && localStorage.getItem('mobilecommerce_access_token')) {
           cartService.removeFromCart(itemToRemove.variantId).catch(() => {});
         }
       },
@@ -78,14 +91,14 @@ export const useCartStore = create<CartState>()(
         }));
 
         const item = get().items.find((i) => i.id === itemId);
-        if (item && localStorage.getItem('mobilecommerce_access_token')) {
+        if (item && typeof localStorage !== 'undefined' && localStorage.getItem('mobilecommerce_access_token')) {
           cartService.updateCartItem(item.variantId, quantity).catch(() => {});
         }
       },
 
       clearCart: () => {
-        set({ items: [] });
-        if (localStorage.getItem('mobilecommerce_access_token')) {
+        set({ items: [], selectedItemIds: [] });
+        if (typeof localStorage !== 'undefined' && localStorage.getItem('mobilecommerce_access_token')) {
           cartService.clearCart().catch(() => {});
         }
       },
@@ -99,6 +112,56 @@ export const useCartStore = create<CartState>()(
 
       totalCount: () => {
         return get().items.reduce((sum, item) => sum + item.quantity, 0);
+      },
+
+      toggleSelectItem: (itemId: string) => {
+        set((state) => {
+          const exists = state.selectedItemIds.includes(itemId);
+          return {
+            selectedItemIds: exists
+              ? state.selectedItemIds.filter((id) => id !== itemId)
+              : [...state.selectedItemIds, itemId],
+          };
+        });
+      },
+
+      selectAll: () => {
+        set((state) => ({
+          selectedItemIds: state.items.map((i) => i.id),
+        }));
+      },
+
+      deselectAll: () => {
+        set({ selectedItemIds: [] });
+      },
+
+      removeSelectedItems: () => {
+        const selected = get().selectedItemIds;
+        if (selected.length === 0) return;
+        const remainingItems = get().items.filter((i) => !selected.includes(i.id));
+        set({ items: remainingItems, selectedItemIds: [] });
+
+        if (typeof localStorage !== 'undefined' && localStorage.getItem('mobilecommerce_access_token')) {
+          cartService.removeBulk(selected).catch(() => {});
+        }
+      },
+
+      selectedItems: () => {
+        const ids = new Set(get().selectedItemIds);
+        return get().items.filter((i) => ids.has(i.id));
+      },
+
+      selectedSubtotal: () => {
+        return get().selectedItems().reduce((sum, item) => sum + item.price * item.quantity, 0);
+      },
+
+      selectedTotalCount: () => {
+        return get().selectedItems().reduce((sum, item) => sum + item.quantity, 0);
+      },
+
+      isAllSelected: () => {
+        const { items, selectedItemIds } = get();
+        return items.length > 0 && items.every((i) => selectedItemIds.includes(i.id));
       },
     }),
     {
