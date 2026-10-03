@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -33,6 +33,11 @@ export class CategoriesService {
 
     return this.prisma.category.findMany({
       where,
+      include: {
+        _count: {
+          select: { products: true, children: true },
+        },
+      },
       orderBy: { sortOrder: 'asc' },
     });
   }
@@ -46,12 +51,23 @@ export class CategoriesService {
     return this.prisma.category.findMany({
       where,
       include: {
+        _count: {
+          select: { products: true, children: true },
+        },
         children: {
           where: activeOnly ? { isActive: true } : undefined,
           include: {
+            _count: {
+              select: { products: true, children: true },
+            },
             children: {
               where: activeOnly ? { isActive: true } : undefined,
-              include: { children: true },
+              include: {
+                _count: {
+                  select: { products: true, children: true },
+                },
+                children: true,
+              },
             },
           },
           orderBy: { sortOrder: 'asc' },
@@ -64,14 +80,20 @@ export class CategoriesService {
   async findOne(id: string) {
     const category = await this.prisma.category.findUnique({
       where: { id },
-      include: { children: true, products: true },
+      include: {
+        children: true,
+        products: true,
+        _count: {
+          select: { products: true, children: true },
+        },
+      },
     });
     if (!category) throw new NotFoundException('Category not found');
     return category;
   }
 
   async update(id: string, dto: UpdateCategoryDto) {
-    await this.findOne(id); // Check existence
+    await this.findOne(id);
 
     if (dto.slug) {
       const existing = await this.prisma.category.findFirst({
@@ -81,8 +103,22 @@ export class CategoriesService {
     }
 
     if (dto.parentId) {
-      if (dto.parentId === id) throw new ConflictException('Category cannot be its own parent');
-      await this.findOne(dto.parentId);
+      if (dto.parentId === id) {
+        throw new ConflictException('Category cannot be its own parent');
+      }
+
+      // Check if candidate parent is a descendant of this category
+      let currentParentId: string | null = dto.parentId;
+      while (currentParentId) {
+        if (currentParentId === id) {
+          throw new ConflictException('Cannot set parent to a descendant category (cyclic hierarchy)');
+        }
+        const candidateParent = await this.prisma.category.findUnique({
+          where: { id: currentParentId },
+        });
+        if (!candidateParent) break;
+        currentParentId = candidateParent.parentId;
+      }
     }
 
     return this.prisma.category.update({
@@ -91,9 +127,29 @@ export class CategoriesService {
     });
   }
 
+  async changeStatus(id: string, isActive: boolean) {
+    await this.findOne(id);
+    return this.prisma.category.update({
+      where: { id },
+      data: { isActive },
+    });
+  }
+
   async remove(id: string) {
-    await this.findOne(id); // Ensure exists
-    // Depending on logic, you might want to prevent deleting if it has children or products
+    const category = await this.findOne(id);
+
+    if (category.products && category.products.length > 0) {
+      throw new BadRequestException(
+        `Danh mục đang chứa ${category.products.length} sản phẩm liên kết. Vui lòng chuyển sản phẩm sang danh mục khác trước khi xóa.`
+      );
+    }
+
+    if (category.children && category.children.length > 0) {
+      throw new BadRequestException(
+        `Danh mục đang chứa ${category.children.length} danh mục con. Vui lòng xóa hoặc di chuyển danh mục con trước.`
+      );
+    }
+
     return this.prisma.category.delete({
       where: { id },
     });

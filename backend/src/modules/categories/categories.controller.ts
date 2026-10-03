@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Put, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -67,6 +67,24 @@ export class CategoriesController {
   @ApiOperation({ summary: 'Update category (MANAGER/ADMIN)' })
   update(@Param('id') id: string, @Body() dto: UpdateCategoryDto) {
     return this.categoriesService.update(id, dto);
+  }
+
+  @Put(':id/activate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Activate category (MANAGER/ADMIN)' })
+  activate(@Param('id') id: string) {
+    return this.categoriesService.changeStatus(id, true);
+  }
+
+  @Put(':id/deactivate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deactivate category (MANAGER/ADMIN)' })
+  deactivate(@Param('id') id: string) {
+    return this.categoriesService.changeStatus(id, false);
   }
 
   @Delete(':id')
