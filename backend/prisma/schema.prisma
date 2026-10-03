@@ -189,6 +189,14 @@ enum AuditAction {
   OTHER
 }
 
+enum StockMovementType {
+  IMPORT_MANUAL
+  EXPORT_MANUAL
+  EXPORT_ORDER
+  IMPORT_RETURN
+  INITIAL_SETUP
+}
+
 // ============================================================
 // IDENTITY
 // ============================================================
@@ -226,6 +234,7 @@ model User {
   tickets                 Ticket[]                 @relation("UserTickets")
   assignedTickets         Ticket[]                 @relation("StaffAssignedTickets")
   ticketMessages          TicketMessage[]
+  stockMovements          StockMovement[]
 
   refreshTokens RefreshToken[]
   passwordResetTokens PasswordResetToken[]
@@ -382,6 +391,7 @@ model ProductVariant {
   cartItems   CartItem[]
   orderItems  OrderItem[]
   warranties  Warranty[]
+  stockMovements StockMovement[]
 
   @@index([productId])
   @@index([isActive])
@@ -404,6 +414,30 @@ model Inventory {
   variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   @@map("inventories")
+}
+
+model StockMovement {
+  id            String            @id @default(uuid()) @db.Uuid
+  variantId     String            @map("variant_id") @db.Uuid
+  type          StockMovementType
+  quantity      Int
+  balanceBefore Int               @map("balance_before")
+  balanceAfter  Int               @map("balance_after")
+  unitPrice     Decimal           @default(0) @map("unit_price") @db.Decimal(15, 2)
+  totalAmount   Decimal           @default(0) @map("total_amount") @db.Decimal(15, 2)
+  referenceType String?           @map("reference_type") @db.VarChar(50)
+  referenceId   String?           @map("reference_id") @db.VarChar(100)
+  performedBy   String?           @map("performed_by") @db.Uuid
+  note          String?           @db.Text
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  performer User?          @relation(fields: [performedBy], references: [id], onDelete: SetNull)
+
+  @@index([variantId, createdAt])
+  @@index([createdAt])
+  @@index([type, createdAt])
+  @@map("stock_movements")
 }
 
 model ImeiDevice {
