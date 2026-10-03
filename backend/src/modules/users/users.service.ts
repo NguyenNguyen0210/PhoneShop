@@ -85,11 +85,25 @@ export class UsersService {
 
     if (query.search) {
       const s = query.search.trim();
+      const tokens = s.split(/\s+/).filter(Boolean);
       where.OR = [
         { email: { contains: s, mode: 'insensitive' } },
         { firstName: { contains: s, mode: 'insensitive' } },
         { lastName: { contains: s, mode: 'insensitive' } },
         { phone: { contains: s } },
+        // Multi-word matches: either both tokens match across first & last name
+        ...(tokens.length > 1
+          ? [
+              {
+                AND: tokens.map((tok) => ({
+                  OR: [
+                    { firstName: { contains: tok, mode: 'insensitive' } },
+                    { lastName: { contains: tok, mode: 'insensitive' } },
+                  ],
+                })),
+              },
+            ]
+          : []),
       ];
     }
 
@@ -287,9 +301,11 @@ export class UsersService {
     };
   }
 
-  async create(dto: CreateUserDto) {
+  async create(dto: CreateUserDto, currentUser?: any) {
     const existingUser = await this.prisma.user.findFirst({
-      where: { OR: [{ email: dto.email }, { phone: dto.phone }] },
+      where: dto.phone
+        ? { OR: [{ email: dto.email }, { phone: dto.phone }] }
+        : { email: dto.email },
     });
 
     if (existingUser) throw new ConflictException('Email or phone already exists');
@@ -316,17 +332,47 @@ export class UsersService {
       include: { roles: { include: { role: true } } },
     });
 
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          action: 'CREATE',
+          entity: 'User',
+          entityId: user.id,
+          userId: currentUser?.id,
+          newData: { email: user.email, roles: roleNames, status: user.status },
+        },
+      });
+    } catch (err) {
+      console.error('Audit log failed:', err);
+    }
+
     delete (user as any).passwordHash;
     return user;
   }
 
-  async update(id: string, dto: UpdateUserDto) {
+  async update(id: string, dto: UpdateUserDto, currentUser?: any) {
+    if (currentUser && currentUser.id === id) {
+      if (dto.roles && !dto.roles.includes('ADMIN' as any)) {
+        throw new BadRequestException('Không thể tự hạ quyền ADMIN của chính mình');
+      }
+      if (dto.status && dto.status !== 'ACTIVE') {
+        throw new BadRequestException('Không thể tự khóa tài khoản của chính mình');
+      }
+    }
+
     const data: any = { ...dto };
     delete data.password;
     delete data.roles;
 
+    let shouldRevokeTokens = false;
+
     if (dto.password) {
       data.passwordHash = await bcrypt.hash(dto.password, 10);
+      shouldRevokeTokens = true;
+    }
+
+    if (dto.status && dto.status !== 'ACTIVE') {
+      shouldRevokeTokens = true;
     }
 
     if (dto.roles) {
@@ -346,14 +392,69 @@ export class UsersService {
       include: { roles: { include: { role: true } } },
     });
 
+    if (shouldRevokeTokens) {
+      await this.prisma.refreshToken.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          action: 'UPDATE',
+          entity: 'User',
+          entityId: id,
+          userId: currentUser?.id,
+          newData: {
+            ...(dto.firstName !== undefined && { firstName: dto.firstName }),
+            ...(dto.lastName !== undefined && { lastName: dto.lastName }),
+            ...(dto.phone !== undefined && { phone: dto.phone }),
+            ...(dto.status !== undefined && { status: dto.status }),
+            ...(dto.roles !== undefined && { roles: dto.roles }),
+            ...(dto.password ? { passwordChanged: true } : {}),
+          },
+        },
+      });
+    } catch (err) {
+      console.error('Audit log failed:', err);
+    }
+
     delete (user as any).passwordHash;
     return user;
   }
 
-  async changeStatus(id: string, status: 'ACTIVE' | 'INACTIVE' | 'BANNED') {
-    return this.prisma.user.update({
+  async changeStatus(id: string, status: 'ACTIVE' | 'INACTIVE' | 'BANNED', currentUser?: any) {
+    if (currentUser && currentUser.id === id && status !== 'ACTIVE') {
+      throw new BadRequestException('Không thể tự khóa tài khoản của chính mình');
+    }
+
+    const user = await this.prisma.user.update({
       where: { id },
       data: { status },
     });
+
+    if (status !== 'ACTIVE') {
+      await this.prisma.refreshToken.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          action: 'UPDATE',
+          entity: 'User',
+          entityId: id,
+          userId: currentUser?.id,
+          newData: { status },
+        },
+      });
+    } catch (err) {
+      console.error('Audit log failed:', err);
+    }
+
+    return user;
   }
 }

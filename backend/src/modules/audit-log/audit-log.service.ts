@@ -7,11 +7,14 @@ export class AuditLogService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(filter: FilterAuditLogDto) {
-    const { action, entity, userId, page = 1, limit = 50 } = filter;
+    const { action, entity, entityId, userId, page = 1, limit = 50 } = filter;
     const where: any = {};
-    if (action)  where.action  = action;
-    if (entity)  where.entity  = entity;
-    if (userId)  where.userId  = userId;
+    if (action)   where.action = action;
+    if (entity)   where.entity = entity;
+    if (entityId) where.entityId = entityId;
+    if (userId) {
+      where.OR = [{ userId }, { entity: 'User', entityId: userId }];
+    }
 
     const skip = (page - 1) * limit;
     const [total, data] = await Promise.all([
@@ -25,7 +28,7 @@ export class AuditLogService {
       }),
     ]);
 
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) || 1 };
   }
 
   async findOne(id: string) {

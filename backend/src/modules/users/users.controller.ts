@@ -66,35 +66,35 @@ export class UsersController {
   @Post()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Create user (ADMIN)' })
-  create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto);
+  create(@Body() dto: CreateUserDto, @CurrentUser() user: any) {
+    return this.usersService.create(dto, user);
   }
 
   @Patch(':id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Update user (ADMIN)' })
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.usersService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() user: any) {
+    return this.usersService.update(id, dto, user);
   }
 
   @Put(':id/activate')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Activate user (ADMIN)' })
-  activateUser(@Param('id') id: string) {
-    return this.usersService.changeStatus(id, 'ACTIVE');
+  activateUser(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.usersService.changeStatus(id, 'ACTIVE', user);
   }
 
   @Put(':id/deactivate')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Deactivate user (ADMIN)' })
-  deactivateUser(@Param('id') id: string) {
-    return this.usersService.changeStatus(id, 'INACTIVE');
+  deactivateUser(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.usersService.changeStatus(id, 'INACTIVE', user);
   }
 
   @Put(':id/ban')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Ban user (ADMIN)' })
-  banUser(@Param('id') id: string) {
-    return this.usersService.changeStatus(id, 'BANNED');
+  banUser(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.usersService.changeStatus(id, 'BANNED', user);
   }
 }

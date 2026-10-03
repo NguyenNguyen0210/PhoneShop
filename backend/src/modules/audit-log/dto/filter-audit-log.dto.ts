@@ -17,6 +17,11 @@ export class FilterAuditLogDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  entityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   userId?: string;
 
   @ApiPropertyOptional({ type: Number, default: 1 })
