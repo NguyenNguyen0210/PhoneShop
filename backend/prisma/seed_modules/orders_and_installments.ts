@@ -9,6 +9,7 @@ import {
   InstallmentProvider,
   InstallmentStatus,
   ImeiStatus,
+  ShippingMethod,
 } from '@prisma/client';
 import { SeededCustomer } from './customers';
 
@@ -403,7 +404,15 @@ export async function seedOrdersAndInstallments(
       subtotal += Number(v.price);
     }
 
-    const shippingFee = 30000;
+    let shippingMethod: ShippingMethod = ShippingMethod.STANDARD;
+    let shippingFee = subtotal > 500000 ? 0 : 30000;
+    if (i % 7 === 0) {
+      shippingMethod = ShippingMethod.ECONOMY;
+      shippingFee = subtotal > 500000 ? 0 : 15000;
+    } else if (i % 4 === 0) {
+      shippingMethod = ShippingMethod.EXPRESS_2H;
+      shippingFee = subtotal > 500000 ? 30000 : 60000;
+    }
     const discountAmount = 0;
     const taxAmount = 0;
     const totalAmount = subtotal + shippingFee;
@@ -418,6 +427,7 @@ export async function seedOrdersAndInstallments(
         subtotal,
         discountAmount,
         shippingFee,
+        shippingMethod,
         taxAmount,
         totalAmount,
         customerNote: customerNotes[i % customerNotes.length],

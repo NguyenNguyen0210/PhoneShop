@@ -625,6 +625,7 @@ model Review {
   rating     Int
   title      String?      @db.VarChar(255)
   content    String?      @db.Text
+  images     String[]     @default([]) @map("images")
   status     ReviewStatus @default(PENDING)
   isVerified Boolean      @default(false) @map("is_verified")
   createdAt  DateTime     @default(now()) @map("created_at")
