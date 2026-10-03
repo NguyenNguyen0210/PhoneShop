@@ -109,6 +109,41 @@ export class StorageController {
   }
 
   /**
+   * Upload up to 5 review photos by authenticated customers
+   */
+  @Post('upload-review-images')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FilesInterceptor('files', 5))
+  async uploadReviewImages(
+    @UploadedFiles() files: Express.Multer.File[],
+  ): Promise<UploadResult[]> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('At least one file must be provided');
+    }
+
+    if (files.length > 5) {
+      throw new BadRequestException('Maximum 5 images allowed per review');
+    }
+
+    for (const file of files) {
+      if (file.size > MAX_IMAGE_SIZE) {
+        throw new BadRequestException(`File ${file.originalname} exceeds 5MB limit`);
+      }
+      if (!file.mimetype || !ALLOWED_IMAGE_REGEX.test(file.mimetype)) {
+        throw new BadRequestException(
+          `File ${file.originalname} has an invalid type. Only JPG, JPEG, PNG, and WebP are allowed`,
+        );
+      }
+    }
+
+    const uploadPromises = files.map((file) => {
+      return this.storageService.uploadFile(file.buffer, file.originalname, 'reviews', true);
+    });
+
+    return Promise.all(uploadPromises);
+  }
+
+  /**
    * Delete asset from Supabase storage by path
    */
   @Delete('delete')
