@@ -434,3 +434,36 @@ export interface NotificationFilterParams {
   type?: NotificationType;
   isRead?: boolean;
 }
+
+export interface InventoryRecord {
+  id: string;
+  variantId: string;
+  quantity: number;
+  availableQty: number;
+  reservedQty: number;
+  reorderLevel: number;
+  updatedAt?: string;
+  variant: {
+    id: string;
+    sku: string;
+    color: string;
+    storage: string;
+    price: number;
+    compareAtPrice?: number;
+    product: {
+      id: string;
+      name: string;
+      thumbnail?: string;
+    };
+  };
+}
+
+export interface AdjustStockPayload {
+  quantity: number;
+  note?: string;
+}
+
+export interface SetReorderLevelPayload {
+  reorderLevel: number;
+}
+
