@@ -1,7 +1,20 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Put, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Put,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { InventoryService } from './inventory.service';
 import { AdjustStockDto, SetReorderLevelDto, ReserveStockDto } from './dto/inventory.dto';
+import { GetStockLedgerDto } from './dto/stock-movement.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -19,6 +32,43 @@ export class InventoryController {
   @ApiOperation({ summary: 'View all inventory (STAFF/MANAGER/ADMIN)' })
   findAll() {
     return this.inventoryService.findAll();
+  }
+
+  @Get('ledger')
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Get stock ledger movements and financial summary' })
+  getLedger(@Query() query: GetStockLedgerDto) {
+    return this.inventoryService.getLedger(query);
+  }
+
+  @Get('ledger/daily-summary')
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Get daily in/out cash flow and quantity summary' })
+  getDailySummary(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string
+  ) {
+    return this.inventoryService.getDailySummary({ startDate, endDate });
+  }
+
+  @Get('ledger/export')
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Export stock ledger to CSV' })
+  async exportLedger(@Query() query: GetStockLedgerDto, @Res() res: Response) {
+    const csv = await this.inventoryService.exportLedgerCsv(query);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="so-kho-${Date.now()}.csv"`);
+    res.send(csv);
+  }
+
+  @Get('variants/:variantId/ledger')
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Get individual variant stock ledger' })
+  getVariantLedger(
+    @Param('variantId') variantId: string,
+    @Query() query: GetStockLedgerDto
+  ) {
+    return this.inventoryService.getLedger({ ...query, variantId });
   }
 
   @Get('low-stock')
@@ -46,8 +96,12 @@ export class InventoryController {
   @Put(':variantId/adjust')
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Adjust stock +/- (STAFF/MANAGER/ADMIN)' })
-  adjustStock(@Param('variantId') variantId: string, @Body() dto: AdjustStockDto) {
-    return this.inventoryService.adjustStock(variantId, dto);
+  adjustStock(
+    @Param('variantId') variantId: string,
+    @Body() dto: AdjustStockDto,
+    @Req() req: any
+  ) {
+    return this.inventoryService.adjustStock(variantId, dto, req.user?.id);
   }
 
   @Put(':variantId/reserve')

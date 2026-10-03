@@ -8,6 +8,13 @@ export class AdjustStockDto {
   @IsNumber()
   quantity: number;
 
+  @ApiPropertyOptional({ description: 'Unit cost or transaction price in VND' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  unitPrice?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
