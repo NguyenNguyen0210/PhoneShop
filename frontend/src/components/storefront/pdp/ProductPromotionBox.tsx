@@ -1,5 +1,5 @@
 import React from 'react';
-import { Gift, CheckCircle2 } from 'lucide-react';
+import { Gift } from 'lucide-react';
 
 export interface ProductPromotionBoxProps {
   className?: string;
@@ -17,20 +17,22 @@ export const ProductPromotionBox: React.FC<ProductPromotionBoxProps> = ({ classN
     <div
       className={`bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 mt-4 text-xs sm:text-sm shadow-xs ${className}`.trim()}
     >
-      <div className="font-extrabold text-slate-900 tracking-tight text-xs sm:text-sm flex items-center gap-2 pb-2.5 border-b border-slate-100">
-        <div className="w-6 h-6 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+      <div className="font-extrabold tracking-tight text-xs sm:text-sm flex items-center gap-2 pb-2.5 border-b border-slate-100">
+        <div className="w-6 h-6 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-700 shrink-0">
           <Gift className="w-3.5 h-3.5" aria-hidden="true" />
         </div>
-        <span className="font-extrabold text-rose-600 tracking-wide uppercase">
-          Khuyến mại đặc quyền tại PhoneShop
+        <span className="font-black text-red-700 tracking-wide uppercase">
+          🎁 Khuyến mại đặc quyền tại PhoneShop
         </span>
       </div>
 
-      <ul className="mt-3 space-y-2">
+      <ul className="mt-3 space-y-2.5">
         {PROMOTIONS.map((item, index) => (
           <li key={index} className="flex items-start gap-2.5 text-slate-700">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
-            <span className="leading-relaxed text-xs sm:text-[13px]">{item}</span>
+            <span className="w-4.5 h-4.5 rounded-full bg-red-600 text-white text-[11px] font-black flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+              {index + 1}
+            </span>
+            <span className="leading-relaxed text-xs sm:text-[13px] pt-0.5">{item}</span>
           </li>
         ))}
       </ul>

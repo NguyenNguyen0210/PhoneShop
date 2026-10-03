@@ -12,11 +12,13 @@ import {
   Cpu,
   Check,
   CreditCard,
+  PackageCheck,
+  Award,
 } from 'lucide-react';
 import { productService } from '../../../services/productService';
 import type { Product, ProductVariant } from '../../../types';
 import { useCartStore } from '../../../stores/useCartStore';
-import { resolveColorHex } from '../../../utils/colorHelper';
+import { resolveColorStyle } from '../../../utils/colorHelper';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 import {
   ProductPromotionBox,
@@ -156,9 +158,47 @@ export const ProductDetailPage: React.FC = () => {
 
   const fallbackImg = FALLBACK_PRODUCT_IMAGE;
 
-  const imagesList = product.images?.length
-    ? product.images
-    : [product.thumbnail || product.thumbnailUrl || fallbackImg];
+  // Prepare rich gallery views with angle labels
+  const galleryViews = (() => {
+    if (!product) return [];
+
+    // Special curation for HONOR 200 5G
+    if (product.slug === 'honor-200-5g' || product.name.includes('HONOR 200')) {
+      return [
+        {
+          url: 'https://pub-dcd7bf5fa7c74b97a10cdc8dfadc4064.r2.dev/products/honor-200-5g.webp',
+          label: 'Tổng thể',
+        },
+        {
+          url: 'https://fdn2.gsmarena.com/vv/pics/honor/honor-200-1.jpg',
+          label: 'Trước & Sau',
+        },
+        {
+          url: 'https://fdn.gsmarena.com/imgroot/news/24/06/honor-200-hands-on/inline/-1200w5/gsmarena_006.jpg',
+          label: 'Lưng Ánh Trăng',
+        },
+        {
+          url: 'https://fdn.gsmarena.com/imgroot/news/24/06/honor-200-hands-on/inline/-1200w5/gsmarena_004.jpg',
+          label: 'Camera Harcourt',
+        },
+        {
+          url: 'https://fdn2.gsmarena.com/vv/pics/honor/honor-200-2.jpg',
+          label: 'Bộ sưu tập',
+        },
+      ];
+    }
+
+    // Generic fallback if product has multiple images
+    const rawList = product.images?.length
+      ? product.images
+      : [product.thumbnail || product.thumbnailUrl || fallbackImg];
+
+    const LABELS = ['Tổng thể', 'Mặt lưng', 'Camera AI', 'Cạnh viền', 'Mở hộp'];
+    return rawList.map((url, i) => ({
+      url,
+      label: LABELS[i] || `Góc nhìn ${i + 1}`,
+    }));
+  })();
 
   const discountPercent =
     selectedVariant.compareAtPrice && selectedVariant.compareAtPrice > selectedVariant.price
@@ -206,14 +246,14 @@ export const ProductDetailPage: React.FC = () => {
 
               {/* Discount Badge */}
               {discountPercent && (
-                <span className="absolute top-4 right-4 z-10 bg-rose-50 text-rose-600 border border-rose-200 font-extrabold text-xs px-2.5 py-1 rounded-full backdrop-blur-md">
+                <span className="absolute top-4 right-4 z-10 bg-red-600 text-white font-black text-xs px-2.5 py-1 rounded-full shadow-md">
                   -{discountPercent}%
                 </span>
               )}
 
               {/* Main Image */}
               <img
-                src={activeImage || fallbackImg}
+                src={activeImage || galleryViews[0]?.url || fallbackImg}
                 alt={product.name}
                 className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500 z-0"
                 onError={(e) => {
@@ -222,43 +262,90 @@ export const ProductDetailPage: React.FC = () => {
               />
             </div>
 
-            {/* Thumbnail Carousel */}
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
-              {imagesList.map((img, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setActiveImage(img)}
-                  className={`w-20 h-20 rounded-2xl border-2 p-1.5 bg-white shrink-0 overflow-hidden transition-all cursor-pointer ${
-                    activeImage === img
-                      ? 'border-blue-600 shadow-sm ring-2 ring-blue-500/20'
-                      : 'border-slate-200 opacity-70 hover:opacity-100 hover:border-slate-300'
-                  }`}
-                >
-                  <img
-                    src={img}
-                    alt="thumbnail"
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = fallbackImg;
-                    }}
-                  />
-                </button>
-              ))}
+            {/* Thumbnail Carousel with Labels */}
+            <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none">
+              {galleryViews.map((item, idx) => {
+                const isSelected = activeImage === item.url || (!activeImage && idx === 0);
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActiveImage(item.url)}
+                    className={`w-20 h-22 rounded-2xl border-2 p-1.5 bg-white shrink-0 overflow-hidden transition-all cursor-pointer flex flex-col items-center justify-between shadow-xs ${
+                      isSelected
+                        ? 'border-blue-600 ring-2 ring-blue-500/20'
+                        : 'border-slate-200 opacity-70 hover:opacity-100 hover:border-slate-300'
+                    }`}
+                    title={item.label}
+                  >
+                    <div className="w-full h-13 flex items-center justify-center overflow-hidden">
+                      <img
+                        src={item.url}
+                        alt={item.label}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = fallbackImg;
+                        }}
+                      />
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold truncate max-w-full px-1 ${
+                        isSelected ? 'text-blue-600' : 'text-slate-600'
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* PhoneShop Commitment Banner */}
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-2.5 text-xs text-slate-600 shadow-xs">
-              <div className="flex items-center gap-2 font-bold text-slate-900">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Cam kết dịch vụ tại PhoneShop:</span>
+            {/* PhoneShop Commitment Banner - Trust Badges with Specialized Icons */}
+            <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 sm:p-4.5 space-y-3 shadow-xs">
+              <div className="flex items-center gap-2 font-bold text-slate-900 text-xs sm:text-sm pb-1 border-b border-slate-200/70">
+                <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <span>Cam kết dịch vụ độc quyền tại PhoneShop:</span>
               </div>
-              <ul className="space-y-1.5 pl-5 list-disc text-slate-600 text-xs">
-                <li>Máy mới 100% nguyên seal hộp, kiểm tra máy trước khi nhận hàng.</li>
-                <li>Giữ máy 15 phút tại bước thanh toán – Yên tâm không lo mất suất.</li>
-                <li>Kích hoạt bảo hành điện tử chính hãng 12 tháng theo số IMEI.</li>
-                <li>Đổi mới trong 30 ngày nếu phát sinh bất kỳ lỗi phần cứng nào.</li>
-              </ul>
+
+              <div className="space-y-2.5 pt-0.5">
+                <div className="flex items-start gap-2.5 text-xs text-slate-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100/80 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                    <PackageCheck className="w-3 h-3 stroke-[2.5]" />
+                  </div>
+                  <span className="leading-relaxed">
+                    <strong>Máy mới 100% nguyên seal hộp</strong>, kiểm tra máy trước khi nhận hàng.
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-2.5 text-xs text-slate-700">
+                  <div className="w-5 h-5 rounded-full bg-blue-100/80 border border-blue-200 text-blue-700 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                    <Clock className="w-3 h-3 stroke-[2.5]" />
+                  </div>
+                  <span className="leading-relaxed">
+                    <strong>Giữ máy 15 phút</strong> tại bước thanh toán – Yên tâm không lo mất suất.
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-2.5 text-xs text-slate-700">
+                  <div className="w-5 h-5 rounded-full bg-amber-100/80 border border-amber-200 text-amber-700 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                    <Award className="w-3 h-3 stroke-[2.5]" />
+                  </div>
+                  <span className="leading-relaxed">
+                    <strong>Kích hoạt bảo hành điện tử chính hãng 12 tháng</strong> theo số IMEI.
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-2.5 text-xs text-slate-700">
+                  <div className="w-5 h-5 rounded-full bg-indigo-100/80 border border-indigo-200 text-indigo-700 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                    <RotateCcw className="w-3 h-3 stroke-[2.5]" />
+                  </div>
+                  <span className="leading-relaxed">
+                    <strong>1 đổi 1 trong 30 ngày</strong> nếu phát sinh bất kỳ lỗi phần cứng nào.
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -307,24 +394,27 @@ export const ProductDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Commercial Price Box - Clean slate background and soft border */}
-            <div className="bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 sm:p-5 flex flex-wrap items-baseline gap-3.5 shadow-xs">
-              <span className="text-3xl sm:text-4xl font-black text-rose-600 tabular-nums font-mono">
-                {formatPrice(selectedVariant.price)}
-              </span>
-              {selectedVariant.compareAtPrice && selectedVariant.compareAtPrice > selectedVariant.price && (
-                <span className="text-base text-slate-400 line-through tabular-nums font-mono">
-                  {formatPrice(selectedVariant.compareAtPrice)}
+            {/* Commercial Price Box - Modern Grouped Layout */}
+            <div className="bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs">
+              <div className="flex flex-wrap items-baseline gap-3">
+                <span className="text-3xl sm:text-4xl font-black text-red-600 tabular-nums font-mono">
+                  {formatPrice(selectedVariant.price)}
                 </span>
-              )}
-              {discountPercent && (
-                <span className="text-xs font-extrabold px-2 py-0.5 bg-rose-50 text-rose-600 rounded-full border border-rose-200/60">
-                  -{discountPercent}%
-                </span>
-              )}
-              <span className="text-xs px-2.5 py-1 bg-white border border-slate-200 text-slate-600 font-medium rounded-md shadow-xs ml-auto">
-                Đã gồm VAT & Miễn phí vận chuyển
-              </span>
+                {selectedVariant.compareAtPrice &&
+                  selectedVariant.compareAtPrice > selectedVariant.price && (
+                    <span className="text-base sm:text-lg text-slate-400 line-through tabular-nums font-mono">
+                      {formatPrice(selectedVariant.compareAtPrice)}
+                    </span>
+                  )}
+                {discountPercent && (
+                  <span className="text-xs font-black px-2.5 py-0.5 bg-red-600 text-white rounded-full shadow-2xs">
+                    -{discountPercent}%
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-slate-500 font-medium mt-1.5 flex items-center gap-1.5">
+                <span>(Đã bao gồm VAT & Miễn phí vận chuyển toàn quốc)</span>
+              </div>
             </div>
 
             {/* SELECTOR 1: Colors */}
@@ -333,7 +423,7 @@ export const ProductDetailPage: React.FC = () => {
                 <label className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   1. Chọn màu sắc:
                 </label>
-                <span className="text-xs font-semibold text-slate-800">
+                <span className="text-xs font-bold text-slate-900">
                   {selectedVariant.color}
                 </span>
               </div>
@@ -354,15 +444,15 @@ export const ProductDetailPage: React.FC = () => {
                           : 'border-slate-200 bg-white hover:border-slate-300 text-slate-800'
                       }`}
                     >
+                      {/* Swatch Dot with authentic finish & subtle border */}
                       <span
-                        className="w-4 h-4 rounded-full border border-slate-300 shadow-inner shrink-0"
-                        style={{ backgroundColor: resolveColorHex(color, vMatch?.colorHex) }}
+                        className="w-5 h-5 rounded-full border shadow-inner shrink-0"
+                        style={resolveColorStyle(color, vMatch?.colorHex)}
+                        title={color}
                       />
-                      <span>{color}</span>
+                      <span className="font-bold text-slate-900">{color}</span>
                       {isSelected && (
-                        <span className="w-3.5 h-3.5 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 ml-0.5">
-                          <Check className="w-2 h-2 stroke-[3]" />
-                        </span>
+                        <Check className="w-3.5 h-3.5 text-blue-600 stroke-[3] ml-0.5" />
                       )}
                     </button>
                   );
@@ -413,7 +503,7 @@ export const ProductDetailPage: React.FC = () => {
                       </div>
 
                       <div className="mt-1.5">
-                        <div className="text-xs font-black text-rose-600 font-mono">
+                        <div className="text-xs font-black text-red-600 font-mono">
                           {v ? formatPrice(v.price) : 'Liên hệ'}
                         </div>
                       </div>
@@ -426,62 +516,63 @@ export const ProductDetailPage: React.FC = () => {
             {/* Promotion Box (Khuyến mại đặc quyền) */}
             <ProductPromotionBox />
 
-            {/* Action CTAs: Dual-stream (MUA NGAY + TRẢ GÓP 0%) & Quick Cart */}
-            <div className="pt-2 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                {/* MUA NGAY (Red #E11D48) */}
+            {/* Action CTAs: 3-Column Cohesive Bar (Cart + MUA NGAY + TRẢ GÓP 0%) */}
+            <div className="pt-2">
+              <div className="flex items-stretch gap-2.5 sm:gap-3">
+                {/* Cart Button (Outline Button, ~16-18% width) */}
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  className={`w-16 sm:w-20 py-2.5 px-2 rounded-2xl border-2 flex flex-col items-center justify-center transition-all cursor-pointer shrink-0 shadow-xs active:scale-[0.98] ${
+                    justAdded
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
+                      : 'border-red-600 bg-white text-red-600 hover:bg-red-50/80'
+                  }`}
+                  title="Thêm vào giỏ hàng"
+                >
+                  {justAdded ? (
+                    <>
+                      <Check className="w-5 h-5 text-emerald-600" />
+                      <span className="text-[10px] font-bold mt-0.5">Đã thêm</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="w-5 h-5 text-red-600" />
+                      <span className="text-[10px] font-bold mt-0.5 leading-tight">Thêm giỏ</span>
+                    </>
+                  )}
+                </button>
+
+                {/* MUA NGAY (Red #E11D48 / red-600) */}
                 <button
                   type="button"
                   onClick={handleBuyNow}
-                  className="sm:col-span-6 bg-rose-600 hover:bg-rose-700 text-white p-3.5 rounded-2xl flex flex-col items-center justify-center shadow-md shadow-rose-600/20 transition cursor-pointer group active:scale-[0.99]"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white p-3 rounded-2xl flex flex-col items-center justify-center shadow-md shadow-red-600/20 transition-all cursor-pointer group active:scale-[0.99]"
                 >
-                  <span className="font-extrabold text-sm sm:text-base leading-tight tracking-wide flex items-center gap-1.5">
+                  <span className="font-black text-sm sm:text-base leading-tight tracking-wide flex items-center gap-1.5">
                     <Zap className="w-4 h-4 fill-white" />
                     MUA NGAY
                   </span>
-                  <span className="text-[11px] text-rose-100 font-medium mt-0.5">
+                  <span className="text-[10.5px] sm:text-[11px] text-red-100 font-medium mt-0.5 line-clamp-1">
                     Giao tận nơi hoặc nhận tại cửa hàng
                   </span>
                 </button>
 
-                {/* TRẢ GÓP 0% (Blue #2563eb) */}
+                {/* TRẢ GÓP 0% (Blue #2563eb / blue-600) */}
                 <button
                   type="button"
                   onClick={() => setIsInstallmentModalOpen(true)}
-                  className="sm:col-span-6 bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-2xl flex flex-col items-center justify-center shadow-md shadow-blue-600/20 transition cursor-pointer group active:scale-[0.99]"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-2xl flex flex-col items-center justify-center shadow-md shadow-blue-600/20 transition-all cursor-pointer group active:scale-[0.99]"
                 >
-                  <span className="font-extrabold text-sm sm:text-base leading-tight tracking-wide flex items-center gap-1.5">
+                  <span className="font-black text-sm sm:text-base leading-tight tracking-wide flex items-center gap-1.5">
                     <CreditCard className="w-4 h-4" />
                     TRẢ GÓP 0%
                   </span>
-                  <span className="text-[11px] text-blue-100 font-medium mt-0.5">
+                  <span className="text-[10.5px] sm:text-[11px] text-blue-100 font-medium mt-0.5 line-clamp-1">
                     Duyệt nhanh qua CCCD / Thẻ tín dụng
                   </span>
                 </button>
               </div>
-
-              {/* Quick Add To Cart Button */}
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                className={`w-full py-3 px-4 border font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition cursor-pointer shadow-xs ${
-                  justAdded
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                    : 'bg-white border-slate-300 text-slate-800 hover:bg-slate-50'
-                }`}
-              >
-                {justAdded ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-600" />
-                    <span>Đã thêm vào giỏ hàng thành công!</span>
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="w-4 h-4 text-slate-600" />
-                    <span>Thêm vào giỏ hàng</span>
-                  </>
-                )}
-              </button>
             </div>
 
             {/* Value Proposition Micro Grid */}
@@ -544,7 +635,7 @@ export const ProductDetailPage: React.FC = () => {
 
             <div className="flex items-center gap-4 shrink-0">
               <div className="text-right hidden sm:block">
-                <div className="text-rose-600 font-black text-base sm:text-lg tabular-nums font-mono">
+                <div className="text-red-600 font-black text-base sm:text-lg tabular-nums font-mono">
                   {formatPrice(selectedVariant.price)}
                 </div>
                 {selectedVariant.compareAtPrice &&
@@ -559,10 +650,14 @@ export const ProductDetailPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddToCart}
-                  className="py-2.5 px-3.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                  className={`py-2 px-3 sm:px-3.5 rounded-xl border-2 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs ${
+                    justAdded
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
+                      : 'border-red-600 bg-white hover:bg-red-50 text-red-600'
+                  }`}
                 >
                   <ShoppingCart className="w-4 h-4" />
-                  <span className="hidden sm:inline">Giỏ hàng</span>
+                  <span className="hidden sm:inline">{justAdded ? 'Đã thêm' : 'Thêm giỏ'}</span>
                 </button>
                 <button
                   type="button"
@@ -575,7 +670,7 @@ export const ProductDetailPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleBuyNow}
-                  className="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-rose-600/20 transition cursor-pointer"
+                  className="py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-red-600/20 transition cursor-pointer"
                 >
                   <Zap className="w-4 h-4 fill-white" />
                   <span>Mua ngay</span>

@@ -186,6 +186,43 @@ export function resolveColorHex(colorName?: string | null, existingHex?: string 
 }
 
 /**
+ * Returns a CSS style object with realistic texture/gradient for special smartphone finishes
+ */
+export function resolveColorStyle(colorName?: string | null, existingHex?: string | null): React.CSSProperties {
+  const hex = resolveColorHex(colorName, existingHex);
+  const normalized = (colorName || '').trim().toLowerCase();
+
+  if (normalized.includes('trắng ánh trăng') || normalized.includes('moonlight') || normalized.includes('bạc ánh trăng')) {
+    return {
+      background: 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 45%, #f8fafc 70%, #ffffff 100%)',
+      borderColor: '#cbd5e1',
+      boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)',
+    };
+  }
+
+  if (normalized.includes('ánh ngọc') || normalized.includes('ngọc trai')) {
+    return {
+      background: 'linear-gradient(135deg, #fff5f7 0%, #fce7f3 50%, #ffffff 100%)',
+      borderColor: '#fbcfe8',
+      boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)',
+    };
+  }
+
+  if (normalized.includes('trắng') || normalized.includes('white') || normalized.includes('bạc') || normalized.includes('silver')) {
+    return {
+      background: hex === '#ffffff' || hex === '#f8fafc' ? '#f8fafc' : hex,
+      borderColor: '#cbd5e1',
+      boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)',
+    };
+  }
+
+  return {
+    backgroundColor: hex,
+    borderColor: 'rgba(0, 0, 0, 0.15)',
+  };
+}
+
+/**
  * Extracts distinct, deduplicated color options from a product's variants list
  */
 export function getDistinctColors(variants?: Array<{ color?: string | null; colorHex?: string | null }>): ColorSwatch[] {
