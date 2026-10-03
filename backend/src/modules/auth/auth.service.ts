@@ -5,9 +5,12 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../../infrastructure/email/email.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 // M8: precomputed bcrypt hash used for dummy compares on the login
 // not-found/inactive path, so response timing does not reveal whether an
@@ -21,6 +24,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private emailService: EmailService,
   ) {}
   async register(dto: RegisterDto) {
     const existingUser = await this.prisma.user.findFirst({
@@ -381,6 +385,141 @@ export class AuthService {
         roles,
       },
     };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const normalizedEmail = dto.email.toLowerCase().trim();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user) {
+      return {
+        success: true,
+        message:
+          'Nếu địa chỉ email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi đến hộp thư của bạn.',
+      };
+    }
+
+    // Invalidate existing unused tokens for this user
+    await this.prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    // Generate cryptographically secure random token (32 bytes hex)
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+    const resetLink = `${frontendUrl.replace(/\/$/, '')}/reset-password?token=${rawToken}`;
+    const recipientName = user.firstName
+      ? `${user.firstName} ${user.lastName || ''}`.trim()
+      : undefined;
+
+    await this.emailService.sendPasswordResetEmail(user.email, resetLink, recipientName);
+
+    return {
+      success: true,
+      message:
+        'Nếu địa chỉ email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi đến hộp thư của bạn.',
+    };
+  }
+
+  async verifyResetToken(token: string) {
+    if (!token || typeof token !== 'string') {
+      throw new BadRequestException('Token không hợp lệ');
+    }
+
+    const tokenHash = this.hashToken(token);
+    const resetTokenRecord = await this.prisma.passwordResetToken.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!resetTokenRecord || !resetTokenRecord.user) {
+      throw new BadRequestException(
+        'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn',
+      );
+    }
+
+    const maskedEmail = this.maskEmail(resetTokenRecord.user.email);
+    return {
+      valid: true,
+      email: maskedEmail,
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    if (!dto.token || typeof dto.token !== 'string') {
+      throw new BadRequestException('Token không hợp lệ');
+    }
+
+    const tokenHash = this.hashToken(dto.token);
+    const resetTokenRecord = await this.prisma.passwordResetToken.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!resetTokenRecord) {
+      throw new BadRequestException('Liên kết đã hết hạn hoặc không hợp lệ');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    // Update user's password
+    await this.prisma.user.update({
+      where: { id: resetTokenRecord.userId },
+      data: { passwordHash },
+    });
+
+    // Mark the reset token as used
+    await this.prisma.passwordResetToken.update({
+      where: { id: resetTokenRecord.id },
+      data: { usedAt: new Date() },
+    });
+
+    // Revoke all active refresh tokens for the user
+    await this.prisma.refreshToken.updateMany({
+      where: {
+        userId: resetTokenRecord.userId,
+        revokedAt: null,
+      },
+      data: { revokedAt: new Date() },
+    });
+
+    return {
+      success: true,
+      message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.',
+    };
+  }
+
+  private maskEmail(email: string): string {
+    const [localPart, domain] = email.split('@');
+    if (!localPart || !domain) return email;
+    if (localPart.length <= 2) {
+      return `${localPart[0]}***@${domain}`;
+    }
+    return `${localPart.slice(0, 2)}***@${domain}`;
   }
 
   private hashToken(token: string): string {

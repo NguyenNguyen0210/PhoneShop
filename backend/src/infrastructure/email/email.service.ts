@@ -100,9 +100,36 @@ export class EmailService implements OnModuleInit {
     });
   }
 
-  // NOTE: password-reset / email-verification senders were removed (dead
-  // code — no auth flow ever called them). When those flows are built, they
-  // need hashed single-use tokens with 15–30 min expiry (see audit notes).
+  async sendPasswordResetEmail(
+    to: string,
+    resetLink: string,
+    recipientName?: string,
+  ): Promise<void> {
+    const greeting = recipientName ? `Xin chào <strong>${escapeHtml(recipientName)}</strong>,` : 'Xin chào bạn,';
+    if (this.isMock) {
+      this.logger.log(`[EMAIL MOCK] Password reset link for ${to}: ${resetLink}`);
+    }
+    await this.send({
+      to,
+      subject: '[PhoneShop] Yêu cầu đặt lại mật khẩu',
+      html: `
+        <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:16px">
+          <h2 style="color:#2563eb;margin-bottom:16px">🔐 Đặt lại mật khẩu tài khoản PhoneShop</h2>
+          <p>${greeting}</p>
+          <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản liên kết với địa chỉ email này.</p>
+          <div style="margin:28px 0;text-align:center">
+            <a href="${resetLink}" style="background-color:#2563eb;color:#ffffff;padding:12px 24px;font-weight:bold;text-decoration:none;border-radius:10px;display:inline-block">
+              Đặt lại mật khẩu
+            </a>
+          </div>
+          <p style="font-size:13px;color:#64748b">Liên kết này có hiệu lực trong <strong>15 phút</strong> và chỉ sử dụng được 01 lần duy nhất.</p>
+          <p style="font-size:12px;color:#94a3b8">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email. Mật khẩu hiện tại của bạn vẫn an toàn tuyệt đối.</p>
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0"/>
+          <small style="color:#94a3b8">PhoneShop — Hệ thống bán lẻ thiết bị di động chính hãng</small>
+        </div>
+      `,
+    });
+  }
 
   async sendShippingNotification(
     to: string,
