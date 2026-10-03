@@ -32,6 +32,22 @@ export class ReportsController {
     return this.reportsService.getRevenueReport(from, to);
   }
 
+  @Get('brand-sales')
+  @ApiOperation({ summary: 'Get brand sales distribution report (Admin)' })
+  @ApiQuery({ name: 'from', required: false, example: '2026-01-01' })
+  @ApiQuery({ name: 'to', required: false, example: '2026-12-31' })
+  getBrandSales(@Query('from') from?: string, @Query('to') to?: string) {
+    if ((from && !to) || (!from && to)) {
+      throw new BadRequestException('Both "from" and "to" must be provided');
+    }
+    if (from && to) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+        throw new BadRequestException('Invalid date format (expected YYYY-MM-DD)');
+      }
+    }
+    return this.reportsService.getBrandSalesReport(from, to);
+  }
+
   @Get('top-products')
   @ApiOperation({ summary: 'Get top selling products (Admin)' })
   @ApiQuery({ name: 'limit', required: false, type: Number })

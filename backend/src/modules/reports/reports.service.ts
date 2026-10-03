@@ -2,6 +2,22 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OrderStatus, PaymentStatus, RefundStatus } from '@prisma/client';
 
+export interface BrandSalesItem {
+  brandId: string;
+  brandName: string;
+  logoUrl: string | null;
+  quantitySold: number;
+  revenue: number;
+  percentage: number;
+}
+
+export interface BrandSalesReport {
+  from?: string;
+  to?: string;
+  totalRevenue: number;
+  brands: BrandSalesItem[];
+}
+
 // M11: all money figures in this service are NET (paid minus completed
 // refunds) and day buckets follow Asia/Ho_Chi_Minh — never UTC.
 const VN_TIME_ZONE = 'Asia/Ho_Chi_Minh';
@@ -120,6 +136,97 @@ export class ReportsService {
       netRevenue: totalRevenue - refundedTotal,
       dailyBreakdown: Object.entries(byDate).map(([date, revenue]) => ({ date, revenue })),
       paymentCount: payments.length,
+    };
+  }
+
+  async getBrandSalesReport(fromInput?: string, toInput?: string): Promise<BrandSalesReport> {
+    const from = fromInput?.trim();
+    const to = toInput?.trim();
+    let fromDate: Date | undefined;
+    let toDate: Date | undefined;
+
+    if (from || to) {
+      if (!from || !to) {
+        throw new BadRequestException('Both "from" and "to" must be provided');
+      }
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(from) || !dateRegex.test(to)) {
+        throw new BadRequestException('Invalid date format (expected YYYY-MM-DD)');
+      }
+      fromDate = new Date(`${from}T00:00:00+07:00`);
+      toDate = new Date(`${to}T23:59:59.999+07:00`);
+      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+        throw new BadRequestException('Invalid date range (expected YYYY-MM-DD)');
+      }
+      if (fromDate > toDate) {
+        throw new BadRequestException('"from" must not be after "to"');
+      }
+    }
+
+    const rows: Array<{
+      brandId: string;
+      brandName: string;
+      logoUrl: string | null;
+      quantitySold: number;
+      revenue: number | string;
+    }> =
+      fromDate && toDate
+        ? await this.prisma.$queryRaw`
+            SELECT
+              b.id AS "brandId",
+              b.name AS "brandName",
+              b.logo_url AS "logoUrl",
+              SUM(oi.quantity)::int AS "quantitySold",
+              SUM(oi.total_price)::numeric AS revenue
+            FROM brands b
+            JOIN products p ON p.brand_id = b.id
+            JOIN product_variants pv ON pv.product_id = p.id
+            JOIN order_items oi ON oi.variant_id = pv.id
+            JOIN orders o ON o.id = oi.order_id
+            WHERE o.status <> 'CANCELLED'
+              AND o.created_at >= ${fromDate}
+              AND o.created_at <= ${toDate}
+            GROUP BY b.id, b.name, b.logo_url
+            ORDER BY revenue DESC
+          `
+        : await this.prisma.$queryRaw`
+            SELECT
+              b.id AS "brandId",
+              b.name AS "brandName",
+              b.logo_url AS "logoUrl",
+              SUM(oi.quantity)::int AS "quantitySold",
+              SUM(oi.total_price)::numeric AS revenue
+            FROM brands b
+            JOIN products p ON p.brand_id = b.id
+            JOIN product_variants pv ON pv.product_id = p.id
+            JOIN order_items oi ON oi.variant_id = pv.id
+            JOIN orders o ON o.id = oi.order_id
+            WHERE o.status <> 'CANCELLED'
+            GROUP BY b.id, b.name, b.logo_url
+            ORDER BY revenue DESC
+          `;
+
+    const totalRevenue = rows.reduce((acc, r) => acc + Number(r.revenue ?? 0), 0);
+
+    const brands: BrandSalesItem[] = rows.map((r) => {
+      const rev = Number(r.revenue ?? 0);
+      const percentage =
+        totalRevenue > 0 ? Number(((rev / totalRevenue) * 100).toFixed(1)) : 0;
+      return {
+        brandId: r.brandId,
+        brandName: r.brandName,
+        logoUrl: r.logoUrl ?? null,
+        quantitySold: Number(r.quantitySold ?? 0),
+        revenue: rev,
+        percentage,
+      };
+    });
+
+    return {
+      from: from || undefined,
+      to: to || undefined,
+      totalRevenue,
+      brands,
     };
   }
 
