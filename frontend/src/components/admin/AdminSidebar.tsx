@@ -12,6 +12,7 @@ import {
   CommentOutlined,
   UserOutlined,
   CustomerServiceOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 
 const adminMenuItems: MenuProps['items'] = [
@@ -49,6 +50,11 @@ const adminMenuItems: MenuProps['items'] = [
     key: '/admin/customers',
     icon: <UserOutlined style={{ fontSize: 16 }} />,
     label: 'Khách hàng (360°)',
+  },
+  {
+    key: '/admin/users',
+    icon: <TeamOutlined style={{ fontSize: 16 }} />,
+    label: 'Quản lý Người dùng',
   },
   {
     key: '/admin/tickets',

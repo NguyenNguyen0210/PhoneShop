@@ -529,3 +529,5 @@ export interface SetReorderLevelPayload {
   reorderLevel: number;
 }
 
+export * from './userManagement';
+

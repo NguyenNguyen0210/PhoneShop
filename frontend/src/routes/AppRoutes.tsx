@@ -37,6 +37,7 @@ import { AdminCustomersPage } from '../pages/Admin/Customers/AdminCustomersPage'
 import { AdminCustomer360Page } from '../pages/Admin/Customers/AdminCustomer360Page';
 import { AdminTicketsPage } from '../pages/Admin/Tickets/AdminTicketsPage';
 import { AdminTicketDetailPage } from '../pages/Admin/Tickets/AdminTicketDetailPage';
+import { AdminUsersPage } from '../pages/Admin/Users/AdminUsersPage';
 
 // Route Guards
 import { AdminRoute } from './AdminRoute';
@@ -132,6 +133,14 @@ export const AppRoutes: React.FC = () => {
           />
           <Route path="/admin/customers" element={<AdminCustomersPage />} />
           <Route path="/admin/customers/:id" element={<AdminCustomer360Page />} />
+          <Route
+            path="/admin/users"
+            element={
+              <RoleGuard allowedRoles={[ROLES.ADMIN]}>
+                <AdminUsersPage />
+              </RoleGuard>
+            }
+          />
           <Route path="/admin/tickets" element={<AdminTicketsPage />} />
           <Route path="/admin/tickets/:id" element={<AdminTicketDetailPage />} />
         </Route>
