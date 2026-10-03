@@ -293,6 +293,27 @@ export interface ReturnItem {
   orderItem?: OrderItem;
 }
 
+export type RefundStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+
+export interface ReturnUser {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface RefundItem {
+  id: string;
+  returnId: string;
+  refundNumber: string;
+  amount: number;
+  status: RefundStatus;
+  reason?: string;
+  providerRef?: string;
+  processedAt?: string;
+  createdAt: string;
+}
+
 export interface ReturnRequest {
   id: string;
   orderId: string;
@@ -306,8 +327,12 @@ export interface ReturnRequest {
   approvedAt?: string;
   receivedAt?: string;
   completedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
   items: ReturnItem[];
   order?: Order;
+  user?: ReturnUser;
+  refunds?: RefundItem[];
 }
 
 export type ImeiStatus = 'AVAILABLE' | 'RESERVED' | 'SOLD' | 'WARRANTY' | 'DEFECTIVE';
