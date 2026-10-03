@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ShieldCheck,
@@ -10,11 +10,16 @@ import {
   ArrowLeftRight,
   CreditCard,
   LayoutGrid,
+  Smartphone,
+  X,
+  Filter,
 } from 'lucide-react';
 import { productService } from '../../../services/productService';
 import type { Product, Brand } from '../../../types';
 import { ProductCard } from '../../../components/storefront/ProductCard';
 import { BrandLogo } from '../../../components/common/BrandLogo';
+import { ProductFilterSidebar } from '../../../components/storefront/ProductFilterSidebar';
+import { ProductSortToolbar } from '../../../components/storefront/ProductSortToolbar';
 import { FALLBACK_PRODUCT_IMAGE, r2Url } from '../../../utils/imageFallback';
 
 export const HomePage: React.FC = () => {
@@ -22,6 +27,29 @@ export const HomePage: React.FC = () => {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
+
+  // Advanced Filter & Sort states
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000000]);
+  const [selectedStorages, setSelectedStorages] = useState<string[]>([]);
+  const [selectedRams, setSelectedRams] = useState<string[]>([]);
+  const [inStockOnly, setInStockOnly] = useState<boolean>(false);
+  const [onSaleOnly, setOnSaleOnly] = useState<boolean>(false);
+  const [minRating, setMinRating] = useState<number | null>(null);
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc' | 'rating' | 'newest'>('default');
+  const [showMobileFilter, setShowMobileFilter] = useState<boolean>(false);
+
+  // Lock body scroll when mobile filter drawer is open
+  useEffect(() => {
+    if (showMobileFilter) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showMobileFilter]);
 
   // Featured flagship showcase index
   const [heroIndex, setHeroIndex] = useState(0);
@@ -99,15 +127,148 @@ export const HomePage: React.FC = () => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
   };
 
-  // Filter products by brand
-  const filteredProducts =
-    selectedBrand === 'all'
-      ? products
-      : products.filter(
-          (p) =>
-            p.brand?.name.toLowerCase().includes(selectedBrand.toLowerCase()) ||
-            p.brandId?.toLowerCase().includes(selectedBrand.toLowerCase())
+  const toggleStorage = (storage: string) => {
+    setSelectedStorages((prev) =>
+      prev.includes(storage) ? prev.filter((s) => s !== storage) : [...prev, storage]
+    );
+  };
+
+  const toggleRam = (ram: string) => {
+    setSelectedRams((prev) =>
+      prev.includes(ram) ? prev.filter((r) => r !== ram) : [...prev, ram]
+    );
+  };
+
+  const hasActiveFilters =
+    selectedBrand !== 'all' ||
+    priceRange[0] > 0 ||
+    priceRange[1] < 50000000 ||
+    selectedStorages.length > 0 ||
+    selectedRams.length > 0 ||
+    inStockOnly ||
+    onSaleOnly ||
+    minRating !== null ||
+    searchKeyword.trim() !== '';
+
+  const resetFilters = () => {
+    setSelectedBrand('all');
+    setPriceRange([0, 50000000]);
+    setSelectedStorages([]);
+    setSelectedRams([]);
+    setInStockOnly(false);
+    setOnSaleOnly(false);
+    setMinRating(null);
+    setSearchKeyword('');
+    setSortBy('default');
+  };
+
+  const getMinVariantPrice = (p: Product): number => {
+    if (!p.variants || p.variants.length === 0) return 0;
+    const prices = p.variants
+      .map((v) => v.price)
+      .filter((pr) => typeof pr === 'number' && !isNaN(pr));
+    return prices.length > 0 ? Math.min(...prices) : 0;
+  };
+
+  // Filter & Sort products memo
+  const filteredProducts = useMemo(() => {
+    const kw = searchKeyword.trim().toLowerCase();
+
+    const filtered = products.filter((p) => {
+      // Brand filter
+      if (selectedBrand !== 'all') {
+        const brandMatch =
+          p.brand?.name?.toLowerCase() === selectedBrand.toLowerCase() ||
+          (p.brandId && p.brandId.toLowerCase() === selectedBrand.toLowerCase());
+        if (!brandMatch) return false;
+      }
+
+      // Search keyword filter
+      if (kw) {
+        const nameMatch = p.name?.toLowerCase().includes(kw);
+        const brandMatch = p.brand?.name?.toLowerCase().includes(kw);
+        if (!nameMatch && !brandMatch) return false;
+      }
+
+      // Dual-range price filter
+      const minPrice = getMinVariantPrice(p);
+      if (minPrice < priceRange[0] || minPrice > priceRange[1]) {
+        return false;
+      }
+
+      // Storage filter
+      if (selectedStorages.length > 0) {
+        const matchesStorage = p.variants?.some((v) =>
+          selectedStorages.some(
+            (s) => v.storage?.trim().toLowerCase() === s.trim().toLowerCase()
+          )
         );
+        if (!matchesStorage) return false;
+      }
+
+      // RAM filter
+      if (selectedRams.length > 0) {
+        const matchesRam = p.variants?.some((v) =>
+          selectedRams.some(
+            (r) => v.ram?.trim().toLowerCase() === r.trim().toLowerCase()
+          )
+        );
+        if (!matchesRam) return false;
+      }
+
+      // In stock only filter
+      if (inStockOnly) {
+        const inStock = p.variants?.some(
+          (v) => (v.inventoryQty ?? v.inventory?.availableQty ?? 0) > 0
+        );
+        if (!inStock) return false;
+      }
+
+      // On sale only filter
+      if (onSaleOnly) {
+        const onSale = p.variants?.some(
+          (v) => typeof v.compareAtPrice === 'number' && v.compareAtPrice > v.price
+        );
+        if (!onSale) return false;
+      }
+
+      // Rating filter
+      if (minRating !== null) {
+        if ((p.rating ?? 0) < minRating) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Sort logic
+    if (sortBy === 'price-asc') {
+      filtered.sort((a, b) => getMinVariantPrice(a) - getMinVariantPrice(b));
+    } else if (sortBy === 'price-desc') {
+      filtered.sort((a, b) => getMinVariantPrice(b) - getMinVariantPrice(a));
+    } else if (sortBy === 'rating') {
+      filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sortBy === 'newest') {
+      filtered.sort(
+        (a, b) =>
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
+    }
+
+    return filtered;
+  }, [
+    products,
+    selectedBrand,
+    searchKeyword,
+    priceRange,
+    selectedStorages,
+    selectedRams,
+    inStockOnly,
+    onSaleOnly,
+    minRating,
+    sortBy,
+  ]);
 
   return (
     <div className="space-y-12 sm:space-y-16 pb-20 bg-[#F8FAFC] text-slate-800 min-h-screen">
@@ -315,31 +476,148 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
 
-        {/* 4-column balanced grid */}
-        {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-2xl border border-slate-200/80 p-4 h-80 animate-pulse flex flex-col justify-between"
-              >
-                <div className="w-full aspect-square bg-slate-100 rounded-xl mb-3" />
-                <div className="space-y-2">
-                  <div className="h-4 bg-slate-200 rounded-md w-3/4" />
-                  <div className="h-3 bg-slate-100 rounded-md w-1/2" />
-                  <div className="h-5 bg-slate-200 rounded-md w-2/3 mt-2" />
-                </div>
+        {/* 2-Column Responsive Layout: Sidebar Filter + Main Products Column */}
+        <div className="flex flex-col lg:flex-row items-start gap-6 pt-2">
+          {/* Left Column: Filter Sidebar (Desktop) */}
+          <div className="hidden lg:block w-72 shrink-0 sticky top-24 self-start">
+            <ProductFilterSidebar
+              showBrands={false}
+              priceRange={priceRange}
+              onPriceRangeChange={setPriceRange}
+              selectedStorages={selectedStorages}
+              onToggleStorage={toggleStorage}
+              selectedRams={selectedRams}
+              onToggleRam={toggleRam}
+              inStockOnly={inStockOnly}
+              onToggleInStock={setInStockOnly}
+              onSaleOnly={onSaleOnly}
+              onToggleOnSale={setOnSaleOnly}
+              minRating={minRating}
+              onSelectMinRating={setMinRating}
+              hasActiveFilters={hasActiveFilters}
+              onResetFilters={resetFilters}
+            />
+          </div>
+
+          {/* Right Column: Sort Toolbar + Product Grid */}
+          <div className="flex-1 w-full min-w-0 space-y-5">
+            <ProductSortToolbar
+              searchKeyword={searchKeyword}
+              onSearchChange={setSearchKeyword}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              totalCount={filteredProducts.length}
+              onToggleMobileFilter={() => setShowMobileFilter(true)}
+            />
+
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-2xl border border-slate-200/80 p-4 h-80 animate-pulse flex flex-col justify-between"
+                  >
+                    <div className="w-full aspect-square bg-slate-100 rounded-xl mb-3" />
+                    <div className="space-y-2">
+                      <div className="h-4 bg-slate-200 rounded-md w-3/4" />
+                      <div className="h-3 bg-slate-100 rounded-md w-1/2" />
+                      <div className="h-5 bg-slate-200 rounded-md w-2/3 mt-2" />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : filteredProducts.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4 shadow-xs">
+                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                  <Smartphone className="w-8 h-8" />
+                </div>
+                <div className="space-y-1 max-w-md">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                    Không tìm thấy điện thoại nào phù hợp
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-500">
+                    Rất tiếc, không có sản phẩm nào khớp với tiêu chí lọc hoặc từ khóa tìm kiếm của bạn. Hãy thử thay đổi hoặc xóa bớt bộ lọc.
+                  </p>
+                </div>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-xl transition cursor-pointer shadow-sm shadow-blue-500/20"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Xóa tất cả bộ lọc</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        )}
+        </div>
       </section>
+
+      {/* Mobile Filter Modal / Drawer */}
+      {showMobileFilter && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex justify-end lg:hidden">
+          <div
+            className="absolute inset-0"
+            onClick={() => setShowMobileFilter(false)}
+            aria-hidden="true"
+          />
+          <div className="relative w-full max-w-xs sm:max-w-sm h-full bg-white flex flex-col shadow-2xl z-10 animate-in slide-in-from-right duration-300">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-blue-600" />
+                <h3 className="font-bold text-slate-900 text-base">Bộ lọc tìm kiếm</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMobileFilter(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                aria-label="Đóng bộ lọc"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              <ProductFilterSidebar
+                showBrands={false}
+                priceRange={priceRange}
+                onPriceRangeChange={setPriceRange}
+                selectedStorages={selectedStorages}
+                onToggleStorage={toggleStorage}
+                selectedRams={selectedRams}
+                onToggleRam={toggleRam}
+                inStockOnly={inStockOnly}
+                onToggleInStock={setInStockOnly}
+                onSaleOnly={onSaleOnly}
+                onToggleOnSale={setOnSaleOnly}
+                minRating={minRating}
+                onSelectMinRating={setMinRating}
+                hasActiveFilters={hasActiveFilters}
+                onResetFilters={resetFilters}
+                className="border-0 shadow-none p-0"
+              />
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50">
+              <button
+                type="button"
+                onClick={() => setShowMobileFilter(false)}
+                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition cursor-pointer shadow-sm text-center text-sm"
+              >
+                Áp dụng ({filteredProducts.length} sản phẩm)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
