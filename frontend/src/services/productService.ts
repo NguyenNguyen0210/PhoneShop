@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import type { Product, Brand, Category, ProductVariant } from '../types';
+import type { Product, Brand, Category, ProductVariant, UpdateVariantDto, CreateVariantDto } from '../types';
 import { FALLBACK_PRODUCT_IMAGE } from '../utils/imageFallback';
 
 export interface ProductFilterParams {
@@ -157,7 +157,7 @@ export const productService = {
 
   async addVariant(
     productId: string,
-    dto: {
+    dto: CreateVariantDto | {
       sku: string;
       color: string;
       storage: string;
@@ -168,6 +168,34 @@ export const productService = {
     }
   ): Promise<ProductVariant> {
     const response = await apiClient.post(`/products/${productId}/variants`, dto);
+    return response.data?.data ?? response.data;
+  },
+
+  async updateVariant(
+    productId: string,
+    variantId: string,
+    dto: UpdateVariantDto
+  ): Promise<ProductVariant> {
+    const response = await apiClient.patch(
+      `/products/${productId}/variants/${variantId}`,
+      dto
+    );
+    return response.data?.data ?? response.data;
+  },
+
+  async deleteVariant(productId: string, variantId: string): Promise<void> {
+    await apiClient.delete(`/products/${productId}/variants/${variantId}`);
+  },
+
+  async toggleVariantStatus(
+    productId: string,
+    variantId: string,
+    isActive: boolean
+  ): Promise<ProductVariant> {
+    const response = await apiClient.patch(
+      `/products/${productId}/variants/${variantId}`,
+      { isActive }
+    );
     return response.data?.data ?? response.data;
   },
 };
