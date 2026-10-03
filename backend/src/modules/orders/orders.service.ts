@@ -23,6 +23,7 @@ import {
   InstallmentStatus,
   ShippingMethod,
   ShippingStatus,
+  StockMovementType,
 } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PaginationQueryDto, PaginatedResponse } from '../../common/dto/pagination.dto';
@@ -861,6 +862,43 @@ export class OrdersService {
       // VNPay IPN, so without this they would ship with no warranty rows and
       // customers could not claim. End date follows product.warrantyMonths.
       if (newStatus === OrderStatus.DELIVERED || newStatus === OrderStatus.COMPLETED) {
+        // Decrement physical stock & reservedQty, record EXPORT_ORDER movement
+        // Avoid duplicate deduction if already DELIVERED when transitioning to COMPLETED
+        if (order.status !== OrderStatus.DELIVERED && tx.inventory) {
+          for (const item of order.items) {
+            await tx.inventory.update({
+              where: { variantId: item.variantId },
+              data: {
+                quantity: { decrement: item.quantity },
+                reservedQty: { decrement: item.quantity },
+              },
+            });
+
+            const inv = await tx.inventory.findUnique({ where: { variantId: item.variantId } });
+            const balanceAfter = inv ? inv.quantity : 0;
+            const balanceBefore = balanceAfter + item.quantity;
+            const unitPrice = Number(item.unitPrice || 0);
+            const totalAmount = item.quantity * unitPrice;
+
+            if (tx.stockMovement) {
+              await tx.stockMovement.create({
+                data: {
+                  variantId: item.variantId,
+                  type: StockMovementType.EXPORT_ORDER,
+                  quantity: -item.quantity,
+                  balanceBefore,
+                  balanceAfter,
+                  unitPrice,
+                  totalAmount,
+                  referenceType: 'ORDER',
+                  referenceId: order.orderNumber,
+                  note: `Xuất kho giao đơn hàng #${order.orderNumber}`,
+                },
+              });
+            }
+          }
+        }
+
         const imeiIds = order.items
           .map((item) => item.imeiDeviceId)
           .filter((imeiId): imeiId is string => Boolean(imeiId));

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateReturnDto, AdminNoteDto, CreateRefundDto } from './dto/return.dto';
-import { ReturnStatus, RefundStatus, OrderStatus, ImeiStatus } from '@prisma/client';
+import { ReturnStatus, RefundStatus, OrderStatus, ImeiStatus, StockMovementType } from '@prisma/client';
 import { randomBytes } from 'crypto';
 
 @Injectable()
@@ -187,10 +187,11 @@ export class ReturnsService {
         const orderItems = orderItemIds.length > 0
           ? await tx.orderItem.findMany({
               where: { id: { in: orderItemIds } },
-              select: { id: true, variantId: true, quantity: true, imeiDeviceId: true },
+              select: { id: true, variantId: true, quantity: true, imeiDeviceId: true, unitPrice: true },
             })
           : [];
         const byId = new Map(orderItems.map((oi) => [oi.id, oi]));
+        const returnId = id;
 
         for (const ri of items) {
           const oi = byId.get(ri.orderItemId);
@@ -206,14 +207,38 @@ export class ReturnsService {
               data: { status: ImeiStatus.AVAILABLE, soldAt: null },
             });
           }
-          await tx.inventory.upsert({
-            where: { variantId: oi.variantId },
-            create: { variantId: oi.variantId, quantity: ri.quantity, availableQty: ri.quantity, reservedQty: 0 },
-            update: {
-              quantity: { increment: ri.quantity },
-              availableQty: { increment: ri.quantity },
-            },
-          });
+          if (tx.inventory) {
+            await tx.inventory.update({
+              where: { variantId: oi.variantId },
+              data: {
+                quantity: { increment: ri.quantity },
+                availableQty: { increment: ri.quantity },
+              },
+            });
+
+            const inv = await tx.inventory.findUnique({ where: { variantId: oi.variantId } });
+            const balanceAfter = inv ? inv.quantity : 0;
+            const balanceBefore = balanceAfter - ri.quantity;
+            const unitPrice = Number(oi.unitPrice || 0);
+            const totalAmount = ri.quantity * unitPrice;
+
+            if (tx.stockMovement) {
+              await tx.stockMovement.create({
+                data: {
+                  variantId: oi.variantId,
+                  type: StockMovementType.IMPORT_RETURN,
+                  quantity: ri.quantity,
+                  balanceBefore,
+                  balanceAfter,
+                  unitPrice,
+                  totalAmount,
+                  referenceType: 'RETURN',
+                  referenceId: returnId,
+                  note: `Nhập lại kho từ đơn hoàn trả #${returnId}`,
+                },
+              });
+            }
+          }
         }
         return tx.return.update({ where: { id }, data });
       });
