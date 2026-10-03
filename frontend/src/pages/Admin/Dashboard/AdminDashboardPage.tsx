@@ -1,207 +1,123 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Row, Col, Card, Statistic, Table, Tag, Typography, Button, Space } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Typography, Row, Col, Card, Space, Button, message } from 'antd';
 import {
-  DollarOutlined,
-  ShoppingOutlined,
-  AlertOutlined,
-  BarcodeOutlined,
-  EyeOutlined,
-  ArrowRightOutlined,
   ThunderboltOutlined,
-  RiseOutlined,
-  LockOutlined,
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
+import { reportService } from '../../../services/reportService';
 import { orderService } from '../../../services/orderService';
-import { imeiService } from '../../../services/imeiService';
-import { productService } from '../../../services/productService';
-import type { Order, ImeiDevice } from '../../../types';
+import type { Order } from '../../../types';
+import type {
+  DashboardSummary,
+  RevenueReport,
+  TopProductItem,
+  OrderStatusItem,
+  BrandSalesReport,
+  LowStockItem,
+  DatePresetKey,
+} from '../../../types/report';
+import {
+  DashboardFilterBar,
+  DashboardKpiCards,
+  RevenueChartCard,
+  OrderStatusChartCard,
+  BrandSalesChartCard,
+  TopProductsChartCard,
+  DashboardAlertsAndOrders,
+} from './components';
 
 const { Title, Text } = Typography;
 
 export const AdminDashboardPage: React.FC = () => {
+  const [preset, setPreset] = useState<DatePresetKey>('30_DAYS');
+  const [dateRange, setDateRange] = useState<[string, string]>(() => {
+    const initial = reportService.getDatePresetRange('30_DAYS');
+    return [initial.from, initial.to];
+  });
+
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [revenueData, setRevenueData] = useState<RevenueReport | null>(null);
+  const [orderStatusData, setOrderStatusData] = useState<OrderStatusItem[]>([]);
+  const [brandSalesData, setBrandSalesData] = useState<BrandSalesReport | null>(null);
+  const [topProducts, setTopProducts] = useState<TopProductItem[]>([]);
+  const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [imeis, setImeis] = useState<ImeiDevice[]>([]);
-  const [productsCount, setProductsCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    Promise.all([
-      orderService.getAllOrdersAdmin(),
-      imeiService.getAllImeis(),
-      productService.getAllProductsAdmin(),
-    ])
-      .then(([ordersData, imeisData, prodsData]) => {
-        if (Array.isArray(ordersData)) {
-          setOrders(ordersData);
-        }
-        if (Array.isArray(imeisData)) {
-          setImeis(imeisData);
-        }
-        if (prodsData?.total) {
-          setProductsCount(prodsData.total);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load dashboard data from database API:', err);
-      })
-      .finally(() => setLoading(false));
+  const fetchDashboardData = useCallback(async (from: string, to: string) => {
+    setLoading(true);
+    try {
+      const [
+        summaryRes,
+        revenueRes,
+        statusRes,
+        brandRes,
+        topProdsRes,
+        lowStockRes,
+        ordersRes,
+      ] = await Promise.allSettled([
+        reportService.getDashboardSummary(),
+        reportService.getRevenueReport(from, to),
+        reportService.getOrderStatusReport(),
+        reportService.getBrandSalesReport(from, to),
+        reportService.getTopSellingProducts(10),
+        reportService.getLowStockReport(),
+        orderService.getAllOrdersAdmin(),
+      ]);
+
+      if (summaryRes.status === 'fulfilled') setSummary(summaryRes.value);
+      if (revenueRes.status === 'fulfilled') setRevenueData(revenueRes.value);
+      if (statusRes.status === 'fulfilled') setOrderStatusData(statusRes.value);
+      if (brandRes.status === 'fulfilled') setBrandSalesData(brandRes.value);
+      if (topProdsRes.status === 'fulfilled') setTopProducts(topProdsRes.value);
+      if (lowStockRes.status === 'fulfilled') setLowStock(lowStockRes.value);
+      if (ordersRes.status === 'fulfilled' && Array.isArray(ordersRes.value)) {
+        setOrders(ordersRes.value);
+      }
+    } catch (err) {
+      console.error('Failed to load dashboard analytics data:', err);
+      message.error('Không thể tải toàn bộ dữ liệu báo cáo, vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const totalRevenue = useMemo(() => {
-    return orders
-      .filter((o) => o.status !== 'CANCELLED')
-      .reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
-  }, [orders]);
+  useEffect(() => {
+    fetchDashboardData(dateRange[0], dateRange[1]);
+  }, [dateRange, fetchDashboardData]);
 
-  const availableImeisCount = useMemo(() => {
-    return imeis.filter((i) => i.status === 'AVAILABLE').length;
-  }, [imeis]);
-
-  const reservedImeisCount = useMemo(() => {
-    return imeis.filter((i) => i.status === 'RESERVED').length;
-  }, [imeis]);
-
-  const soldImeisCount = useMemo(() => {
-    return imeis.filter((i) => i.status === 'SOLD').length;
-  }, [imeis]);
-
-  const formatPrice = (val: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
-  };
-
-  const getStatusTag = (status: string) => {
-    switch (status) {
-      case 'CONFIRMED':
-        return (
-          <Tag color="cyan" style={{ borderRadius: 6, fontWeight: 600 }}>
-            ĐÃ XÁC NHẬN
-          </Tag>
-        );
-      case 'PROCESSING':
-        return (
-          <Tag color="blue" style={{ borderRadius: 6, fontWeight: 600 }}>
-            ĐANG ĐÓNG GÓI
-          </Tag>
-        );
-      case 'SHIPPING':
-        return (
-          <Tag color="geekblue" style={{ borderRadius: 6, fontWeight: 600 }}>
-            ĐANG GIAO HÀNG
-          </Tag>
-        );
-      case 'DELIVERED':
-      case 'COMPLETED':
-        return (
-          <Tag color="green" style={{ borderRadius: 6, fontWeight: 600 }}>
-            HOÀN TẤT
-          </Tag>
-        );
-      case 'CANCELLED':
-        return (
-          <Tag color="error" style={{ borderRadius: 6, fontWeight: 600 }}>
-            ĐÃ HỦY
-          </Tag>
-        );
-      default:
-        return (
-          <Tag color="warning" style={{ borderRadius: 6, fontWeight: 600 }}>
-            CHỜ XỬ LÝ
-          </Tag>
-        );
+  const handlePresetChange = (newPreset: DatePresetKey) => {
+    setPreset(newPreset);
+    if (newPreset !== 'CUSTOM') {
+      const range = reportService.getDatePresetRange(newPreset);
+      setDateRange([range.from, range.to]);
     }
   };
 
-  const columns: ColumnsType<Order> = [
-    {
-      title: 'Mã đơn',
-      dataIndex: 'orderNumber',
-      key: 'orderNumber',
-      render: (num: string) => (
-        <Text strong style={{ fontFamily: 'monospace', color: '#2563eb', letterSpacing: 0.5 }}>
-          {num}
-        </Text>
-      ),
-    },
-    {
-      title: 'Khách hàng',
-      dataIndex: 'customerName',
-      key: 'customerName',
-      render: (name: string, record) => (
-        <div>
-          <div style={{ fontWeight: 600, color: '#0f172a' }}>{name}</div>
-          <Text type="secondary" style={{ fontSize: 12, color: '#64748b' }}>
-            {record.shippingPhone}
-          </Text>
-        </div>
-      ),
-    },
-    {
-      title: 'Phương thức',
-      dataIndex: 'paymentMethod',
-      key: 'paymentMethod',
-      render: (m: string) => (
-        <Tag
-          style={{
-            background: '#eff6ff',
-            borderColor: '#bfdbfe',
-            color: '#2563eb',
-            fontWeight: 600,
-            borderRadius: 6,
-          }}
-        >
-          {m}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Tổng tiền',
-      dataIndex: 'totalAmount',
-      key: 'totalAmount',
-      render: (val: number) => (
-        <span style={{ fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>
-          {formatPrice(val)}
-        </span>
-      ),
-    },
-    {
-      title: 'Trạng thái đơn',
-      dataIndex: 'status',
-      key: 'status',
-      render: (s: string) => getStatusTag(s),
-    },
-    {
-      title: 'Thao tác',
-      key: 'actions',
-      render: () => (
-        <Link to="/admin/orders">
-          <Button
-            size="small"
-            icon={<EyeOutlined />}
-            style={{
-              background: '#f8fafc',
-              borderColor: '#e2e8f0',
-              color: '#475569',
-              fontSize: 12,
-              borderRadius: 6,
-            }}
-          >
-            Xem chi tiết
-          </Button>
-        </Link>
-      ),
-    },
-  ];
+  const handleCustomRangeChange = (from: string, to: string) => {
+    setDateRange([from, to]);
+  };
+
+  const handleRefresh = () => {
+    fetchDashboardData(dateRange[0], dateRange[1]);
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Title level={3} style={{ margin: 0, color: '#0f172a', fontWeight: 800, letterSpacing: -0.3 }}>
-              Tổng quan hệ thống
+              Trung tâm Báo cáo &amp; Phân tích
             </Title>
             <span
               style={{
@@ -214,11 +130,11 @@ export const AdminDashboardPage: React.FC = () => {
                 fontWeight: 600,
               }}
             >
-              Admin Dashboard
+              Executive Analytics Hub
             </span>
           </div>
           <Text style={{ fontSize: 13, color: '#64748b', marginTop: 4, display: 'block' }}>
-            Theo dõi tổng doanh thu, lưu lượng đơn hàng và chỉ số giữ chỗ thiết bị IMEI tự động
+            Theo dõi doanh thu thuần, biến động tăng trưởng, thị phần thương hiệu và tình trạng vận hành kho thiết bị
           </Text>
         </div>
 
@@ -245,223 +161,49 @@ export const AdminDashboardPage: React.FC = () => {
                 boxShadow: '0 0 6px rgba(16, 185, 129, 0.4)',
               }}
             />
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>Core Engine</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>Live Engine</span>
           </div>
           <span style={{ color: '#cbd5e1' }}>|</span>
-          <span style={{ fontSize: 12, color: '#2563eb', fontFamily: 'monospace', fontWeight: 600 }}>p99: 14ms</span>
+          <span style={{ fontSize: 12, color: '#2563eb', fontFamily: 'monospace', fontWeight: 600 }}>
+            Asia/Ho_Chi_Minh
+          </span>
         </div>
       </div>
 
-      {/* Row of 4 Bento KPI Stat Cards */}
+      {/* Time Range Filter Bar */}
+      <DashboardFilterBar
+        preset={preset}
+        dateRange={dateRange}
+        onPresetChange={handlePresetChange}
+        onCustomRangeChange={handleCustomRangeChange}
+        onRefresh={handleRefresh}
+        loading={loading}
+      />
+
+      {/* 4 Bento KPI Metric Cards */}
+      <DashboardKpiCards summary={summary} loading={loading} />
+
+      {/* Charts Grid Row 1: Daily Revenue Area Chart + Order Status Donut */}
       <Row gutter={[16, 16]}>
-        {/* KPI 1: Revenue */}
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            bordered={false}
-            style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              borderRadius: 16,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-            styles={{ body: { padding: 20 } }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 3,
-                background: 'linear-gradient(90deg, #2563eb, #38bdf8)',
-              }}
-            />
-            <Statistic
-              title={
-                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
-                  Tổng doanh thu
-                </span>
-              }
-              value={totalRevenue}
-              precision={0}
-              valueStyle={{
-                color: '#0f172a',
-                fontWeight: 800,
-                fontFamily: 'monospace',
-                fontSize: 24,
-                letterSpacing: -0.5,
-              }}
-              prefix={<DollarOutlined style={{ color: '#2563eb', fontSize: 20, marginRight: 6 }} />}
-              suffix={<span style={{ fontSize: 14, color: '#64748b' }}>₫</span>}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-              <span style={{ color: '#059669', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <RiseOutlined /> Thực tế
-              </span>
-              <Text style={{ fontSize: 11, color: '#64748b' }}>
-                từ {orders.filter((o) => o.status !== 'CANCELLED').length} đơn hàng
-              </Text>
-            </div>
-          </Card>
+        <Col xs={24} lg={15}>
+          <RevenueChartCard data={revenueData} loading={loading} />
         </Col>
-
-        {/* KPI 2: Orders */}
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            bordered={false}
-            style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              borderRadius: 16,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-            styles={{ body: { padding: 20 } }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 3,
-                background: 'linear-gradient(90deg, #10b981, #34d399)',
-              }}
-            />
-            <Statistic
-              title={
-                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
-                  Tổng số đơn hàng
-                </span>
-              }
-              value={orders.length}
-              valueStyle={{
-                color: '#0f172a',
-                fontWeight: 800,
-                fontFamily: 'monospace',
-                fontSize: 24,
-                letterSpacing: -0.5,
-              }}
-              prefix={<ShoppingOutlined style={{ color: '#10b981', fontSize: 20, marginRight: 6 }} />}
-              suffix={<span style={{ fontSize: 14, color: '#64748b' }}>đơn</span>}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-              <span style={{ color: '#d97706', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <LockOutlined /> {reservedImeisCount} đơn giữ chỗ 15p
-              </span>
-              <Text style={{ fontSize: 11, color: '#64748b' }}>
-                (RESERVED)
-              </Text>
-            </div>
-          </Card>
-        </Col>
-
-        {/* KPI 3: Available Inventory Devices */}
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            bordered={false}
-            style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              borderRadius: 16,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-            styles={{ body: { padding: 20 } }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 3,
-                background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
-              }}
-            />
-            <Statistic
-              title={
-                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
-                  Thiết bị sẵn sàng xuất kho
-                </span>
-              }
-              value={availableImeisCount}
-              valueStyle={{
-                color: '#0f172a',
-                fontWeight: 800,
-                fontFamily: 'monospace',
-                fontSize: 24,
-                letterSpacing: -0.5,
-              }}
-              prefix={<AlertOutlined style={{ color: '#f59e0b', fontSize: 20, marginRight: 6 }} />}
-              suffix={<span style={{ fontSize: 14, color: '#64748b' }}>máy</span>}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-              <Text style={{ fontSize: 11, color: '#059669' }}>
-                {productsCount} sản phẩm, {imeis.length} IMEI định danh
-              </Text>
-            </div>
-          </Card>
-        </Col>
-
-        {/* KPI 4: Concurrency Locks & Sold Devices */}
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            bordered={false}
-            style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              borderRadius: 16,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-            styles={{ body: { padding: 20 } }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 3,
-                background: 'linear-gradient(90deg, #2563eb, #6366f1)',
-              }}
-            />
-            <Statistic
-              title={
-                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
-                  Thiết bị đã xuất bán
-                </span>
-              }
-              value={soldImeisCount}
-              valueStyle={{
-                color: '#0f172a',
-                fontWeight: 800,
-                fontFamily: 'monospace',
-                fontSize: 24,
-                letterSpacing: -0.5,
-              }}
-              prefix={<BarcodeOutlined style={{ color: '#2563eb', fontSize: 20, marginRight: 6 }} />}
-              suffix={<span style={{ fontSize: 14, color: '#64748b' }}>máy</span>}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-              <span style={{ color: '#2563eb', fontSize: 11, fontWeight: 600 }}>
-                Đang giữ chỗ giỏ hàng
-              </span>
-              <Text style={{ fontSize: 11, color: '#64748b' }}>
-                {reservedImeisCount} máy chờ thanh toán
-              </Text>
-            </div>
-          </Card>
+        <Col xs={24} lg={9}>
+          <OrderStatusChartCard data={orderStatusData} loading={loading} />
         </Col>
       </Row>
 
-      {/* Quick Action Shortcuts Banner */}
+      {/* Charts Grid Row 2: Top Selling Products Bar Chart + Brand Sales Donut */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={14}>
+          <TopProductsChartCard data={topProducts} loading={loading} />
+        </Col>
+        <Col xs={24} lg={10}>
+          <BrandSalesChartCard data={brandSalesData} loading={loading} />
+        </Col>
+      </Row>
+
+      {/* Operational Shortcuts Banner */}
       <Card
         bordered={false}
         style={{
@@ -470,7 +212,7 @@ export const AdminDashboardPage: React.FC = () => {
           border: '1px solid #dbeafe',
           boxShadow: '0 2px 8px rgba(37, 99, 235, 0.04)',
         }}
-        styles={{ body: { padding: 24 } }}
+        styles={{ body: { padding: 20 } }}
       >
         <div
           style={{
@@ -492,98 +234,47 @@ export const AdminDashboardPage: React.FC = () => {
                 fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: 1.2,
-                marginBottom: 6,
+                marginBottom: 4,
               }}
             >
-              <ThunderboltOutlined /> Quy trình quản lý kho &amp; Thiết bị chính hãng
+              <ThunderboltOutlined /> Điều phối kho &amp; Quản trị chuỗi cung ứng
             </div>
-            <div
-              style={{
-                color: '#0f172a',
-                fontSize: 18,
-                fontWeight: 700,
-                letterSpacing: -0.2,
-              }}
-            >
-              Nhập lô IMEI hoặc điều phối giao hàng nhanh
+            <div style={{ color: '#0f172a', fontSize: 16, fontWeight: 700 }}>
+              Quản lý định danh IMEI thiết bị và quy trình đóng gói giao hàng
             </div>
-            <div style={{ color: '#64748b', fontSize: 12, marginTop: 4 }}>
-              Kiểm tra định dạng IMEI chuẩn 15 số quốc tế trước khi đưa thiết bị vào trạng thái sẵn sàng xuất kho
+            <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
+              Đảm bảo tất cả máy bán ra có số IMEI hợp lệ, thời gian bảo hành và trạng thái kho sẵn sàng.
             </div>
           </div>
           <Space size="middle">
-            <Link to="/admin/imei">
+            <Link to="/admin/inventory">
               <Button
                 type="primary"
-                size="large"
                 style={{
                   background: '#2563eb',
                   borderColor: '#2563eb',
                   fontWeight: 600,
                   borderRadius: 8,
-                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
                 }}
               >
                 Quản lý kho IMEI
               </Button>
             </Link>
             <Link to="/admin/orders">
-              <Button
-                size="large"
-                style={{
-                  background: '#ffffff',
-                  borderColor: '#e2e8f0',
-                  color: '#0f172a',
-                  fontWeight: 600,
-                  borderRadius: 8,
-                }}
-              >
-                Xem toàn bộ đơn hàng
+              <Button style={{ borderColor: '#cbd5e1', fontWeight: 600, borderRadius: 8 }}>
+                Tra cứu đơn hàng
               </Button>
             </Link>
           </Space>
         </div>
       </Card>
 
-      {/* Recent Orders Table Card */}
-      <Card
-        title={
-          <span style={{ color: '#0f172a', fontWeight: 700, fontSize: 16 }}>
-            Đơn hàng phát sinh gần đây
-          </span>
-        }
-        bordered={false}
-        style={{
-          borderRadius: 16,
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-        }}
-        extra={
-          <Link
-            to="/admin/orders"
-            style={{
-              fontSize: 12,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              color: '#2563eb',
-              fontWeight: 600,
-            }}
-          >
-            Xem tất cả đơn <ArrowRightOutlined />
-          </Link>
-        }
-      >
-        <Table
-          columns={columns}
-          dataSource={orders}
-          rowKey="id"
-          loading={loading}
-          pagination={false}
-          style={{ background: 'transparent' }}
-        />
-      </Card>
+      {/* Row 3: Alerts & Recent Orders Tabs */}
+      <DashboardAlertsAndOrders
+        orders={orders}
+        lowStockItems={lowStock}
+        loading={loading}
+      />
     </div>
   );
 };

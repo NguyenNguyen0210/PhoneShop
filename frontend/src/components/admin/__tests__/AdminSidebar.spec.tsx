@@ -27,4 +27,13 @@ describe('AdminSidebar', () => {
     );
     expect(screen.getByText('Quản lý Người dùng')).toBeDefined();
   });
+
+  it('should render Nhật ký kiểm toán menu item', () => {
+    render(
+      <BrowserRouter>
+        <AdminSidebar />
+      </BrowserRouter>,
+    );
+    expect(screen.getByText('Nhật ký kiểm toán')).toBeDefined();
+  });
 });

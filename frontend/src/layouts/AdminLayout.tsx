@@ -19,6 +19,7 @@ import {
   CustomerServiceOutlined,
   FolderOpenOutlined,
   TagsOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
 
@@ -91,6 +92,11 @@ export const AdminLayout: React.FC = () => {
       icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
       label: 'Hồ sơ trả góp',
     },
+    {
+      key: '/admin/settings',
+      icon: <SettingOutlined style={{ fontSize: 16 }} />,
+      label: 'Cấu hình Hệ thống',
+    },
   ];
 
   const handleMenuClick: MenuProps['onClick'] = (e) => {
@@ -127,6 +133,7 @@ export const AdminLayout: React.FC = () => {
     if (location.pathname.startsWith('/admin/tickets')) return 'Hệ thống Vé Hỗ trợ & Khiếu nại';
     if (location.pathname === '/admin/installments') return 'Quản lý Hồ sơ trả góp & Thẩm định';
     if (location.pathname === '/admin/reviews') return 'Quản lý Đánh giá & Phản hồi';
+    if (location.pathname === '/admin/settings') return 'Cấu hình & Tham số Hệ thống';
     return 'Tổng quan hệ thống (Dashboard)';
   };
 

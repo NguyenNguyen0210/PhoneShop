@@ -13,6 +13,8 @@ import {
   UserOutlined,
   CustomerServiceOutlined,
   TeamOutlined,
+  SettingOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 
 const adminMenuItems: MenuProps['items'] = [
@@ -57,6 +59,11 @@ const adminMenuItems: MenuProps['items'] = [
     label: 'Quản lý Người dùng',
   },
   {
+    key: '/admin/audit-logs',
+    icon: <SafetyCertificateOutlined style={{ fontSize: 16 }} />,
+    label: 'Nhật ký kiểm toán',
+  },
+  {
     key: '/admin/tickets',
     icon: <CustomerServiceOutlined style={{ fontSize: 16 }} />,
     label: 'Hỗ trợ khách hàng',
@@ -65,6 +72,11 @@ const adminMenuItems: MenuProps['items'] = [
     key: '/admin/reviews',
     icon: <CommentOutlined style={{ fontSize: 16 }} />,
     label: 'Quản lý Đánh giá',
+  },
+  {
+    key: '/admin/settings',
+    icon: <SettingOutlined style={{ fontSize: 16 }} />,
+    label: 'Cấu hình Hệ thống',
   },
 ];
 
