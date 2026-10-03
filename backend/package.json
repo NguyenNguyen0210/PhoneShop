@@ -18,6 +18,7 @@
     "prisma:seed": "prisma db seed",
     "seed:catalog": "tsx prisma/seed.ts",
     "seed:phones": "tsx prisma/seed.ts",
+    "stock:backfill": "tsx prisma/scripts/backfill-stock-movements.ts",
     "test": "jest"
   },
   "prisma": {

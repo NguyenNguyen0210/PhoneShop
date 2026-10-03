@@ -7,11 +7,13 @@ import {
   EditOutlined,
   SettingOutlined,
   WarningOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 import type { InventoryRecord } from '../../../../types';
 import { useAuthStore } from '../../../../stores/useAuthStore';
 import { StockAdjustmentModal } from './StockAdjustmentModal';
 import { ReorderLevelModal } from './ReorderLevelModal';
+import { ProductStockLedgerDrawer } from './ProductStockLedgerDrawer';
 
 const { Text } = Typography;
 
@@ -36,6 +38,7 @@ export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
   const [search, setSearch] = useState('');
   const [adjustItem, setAdjustItem] = useState<InventoryRecord | null>(null);
   const [reorderItem, setReorderItem] = useState<InventoryRecord | null>(null);
+  const [selectedLedgerVariant, setSelectedLedgerVariant] = useState<InventoryRecord | null>(null);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -154,7 +157,7 @@ export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
     {
       title: 'Thao tác',
       key: 'action',
-      width: 180,
+      width: 220,
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -165,6 +168,13 @@ export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
           >
             Điều chỉnh
           </Button>
+          <Tooltip title="Xem thẻ kho">
+            <Button
+              size="small"
+              icon={<HistoryOutlined />}
+              onClick={() => setSelectedLedgerVariant(record)}
+            />
+          </Tooltip>
           {isManagerOrAdmin && (
             <Tooltip title="Thiết lập ngưỡng cảnh báo (Reorder Level)">
               <Button
@@ -235,6 +245,12 @@ export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
         item={reorderItem}
         onClose={() => setReorderItem(null)}
         onSuccess={onRefresh}
+      />
+
+      <ProductStockLedgerDrawer
+        open={!!selectedLedgerVariant}
+        item={selectedLedgerVariant}
+        onClose={() => setSelectedLedgerVariant(null)}
       />
     </div>
   );

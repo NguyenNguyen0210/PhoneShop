@@ -610,11 +610,81 @@ export interface InventoryRecord {
 
 export interface AdjustStockPayload {
   quantity: number;
+  unitPrice?: number;
   note?: string;
 }
 
 export interface SetReorderLevelPayload {
   reorderLevel: number;
+}
+
+export type StockMovementType =
+  | 'IMPORT_MANUAL'
+  | 'EXPORT_MANUAL'
+  | 'EXPORT_ORDER'
+  | 'IMPORT_RETURN'
+  | 'INITIAL_SETUP';
+
+export interface StockMovement {
+  id: string;
+  variantId: string;
+  type: StockMovementType;
+  quantity: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  unitPrice: number;
+  totalAmount: number;
+  referenceType?: string | null;
+  referenceId?: string | null;
+  performedBy?: string | null;
+  note?: string | null;
+  createdAt: string;
+  performer?: {
+    id: string;
+    fullName?: string;
+    email?: string;
+  } | null;
+  variant?: {
+    id: string;
+    sku: string;
+    color?: string;
+    storage?: string;
+    price: number;
+    costPrice?: number;
+    product: {
+      id: string;
+      name: string;
+      thumbnail?: string;
+    };
+  };
+}
+
+export interface StockLedgerSummary {
+  totalInQuantity: number;
+  totalOutQuantity: number;
+  totalInAmount: number;
+  totalOutAmount: number;
+  netAmount: number;
+  totalTransactions: number;
+}
+
+export interface StockLedgerResponse {
+  items: StockMovement[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  summary: StockLedgerSummary;
+}
+
+export interface DailyLedgerSummary {
+  date: string;
+  inQty: number;
+  outQty: number;
+  inAmount: number;
+  outAmount: number;
 }
 
 export * from './userManagement';
