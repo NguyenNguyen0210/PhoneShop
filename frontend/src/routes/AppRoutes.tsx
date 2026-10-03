@@ -30,6 +30,10 @@ import { AdminProductsPage } from '../pages/Admin/Products/AdminProductsPage';
 import { AdminInventoryPage } from '../pages/Admin/Inventory/AdminInventoryPage';
 import { AdminOrdersPage } from '../pages/Admin/Orders/AdminOrdersPage';
 import { AdminInstallmentsPage } from '../pages/Admin/Installments/AdminInstallmentsPage';
+import { AdminCustomersPage } from '../pages/Admin/Customers/AdminCustomersPage';
+import { AdminCustomer360Page } from '../pages/Admin/Customers/AdminCustomer360Page';
+import { AdminTicketsPage } from '../pages/Admin/Tickets/AdminTicketsPage';
+import { AdminTicketDetailPage } from '../pages/Admin/Tickets/AdminTicketDetailPage';
 
 // Route Guards
 import { AdminRoute } from './AdminRoute';
@@ -99,6 +103,10 @@ export const AppRoutes: React.FC = () => {
               </RoleGuard>
             }
           />
+          <Route path="/admin/customers" element={<AdminCustomersPage />} />
+          <Route path="/admin/customers/:id" element={<AdminCustomer360Page />} />
+          <Route path="/admin/tickets" element={<AdminTicketsPage />} />
+          <Route path="/admin/tickets/:id" element={<AdminTicketDetailPage />} />
         </Route>
       </Route>
 
