@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Param, Delete, UseGuards, Patch } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CartService } from './cart.service';
-import { AddCartItemDto, UpdateCartItemDto } from './dto/cart.dto';
+import { AddCartItemDto, BulkDeleteCartItemsDto, UpdateCartItemDto } from './dto/cart.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -38,6 +38,13 @@ export class CartController {
     @Body() dto: UpdateCartItemDto,
   ) {
     return this.cartService.updateItem(user.id, itemId, dto);
+  }
+
+  @Delete('items/bulk')
+  @Roles(Role.USER, Role.ADMIN)
+  @ApiOperation({ summary: 'Remove multiple items from cart' })
+  removeItemsBulk(@CurrentUser() user: any, @Body() dto: BulkDeleteCartItemsDto) {
+    return this.cartService.removeItemsBulk(user.id, dto.itemIds);
   }
 
   @Delete('items/:itemId')
