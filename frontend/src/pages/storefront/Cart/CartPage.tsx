@@ -19,8 +19,9 @@ import {
 } from 'lucide-react';
 import { useCartStore } from '../../../stores/useCartStore';
 import { voucherService, type VoucherInfo } from '../../../services/voucherService';
+import { flashSaleService } from '../../../services/flashSaleService';
 import { productService } from '../../../services/productService';
-import type { Product } from '../../../types';
+import type { Product, FlashSaleCampaign } from '../../../types';
 import { resolveColorHex } from '../../../utils/colorHelper';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 
@@ -44,6 +45,7 @@ export const CartPage: React.FC = () => {
 
   const [voucherCode, setVoucherCode] = useState('');
   const [availableVouchers, setAvailableVouchers] = useState<VoucherInfo[]>([]);
+  const [activeFlashSale, setActiveFlashSale] = useState<FlashSaleCampaign | null>(null);
   const [appliedVoucher, setAppliedVoucher] = useState<{
     code: string;
     discount: number;
@@ -74,6 +76,18 @@ export const CartPage: React.FC = () => {
         console.warn('Failed to load active vouchers:', err);
       });
 
+    // 1.5. Fetch active flash sale campaign
+    flashSaleService
+      .getActiveCampaign()
+      .then((data) => {
+        if (data) {
+          setActiveFlashSale(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load active flash sale campaign in cart:', err);
+      });
+
     // 2. Fetch suggested phones from database API for cross-selling & empty state
     productService
       .getProducts({ limit: 4 })
@@ -102,6 +116,14 @@ export const CartPage: React.FC = () => {
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+  };
+
+  const isItemFlashSale = (item: any) => {
+    if (item.isFlashSale) return true;
+    if (item.originalPrice && item.price < item.originalPrice) return true;
+    if (item.variant?.price && item.price < item.variant.price) return true;
+    if (activeFlashSale?.items?.some((fi) => fi.variantId === item.variantId)) return true;
+    return false;
   };
 
   const handleApplyVoucher = async (e?: React.FormEvent, directCode?: string) => {
@@ -464,6 +486,8 @@ export const CartPage: React.FC = () => {
                     item.product?.thumbnail ||
                     item.product?.thumbnailUrl ||
                     FALLBACK_PRODUCT_IMAGE;
+                  const isFlash = isItemFlashSale(item);
+                  const origPrice = item.originalPrice || item.variant?.price || item.price;
 
                   return (
                     <div
@@ -499,11 +523,16 @@ export const CartPage: React.FC = () => {
                         </Link>
 
                         <div className="space-y-1.5 flex-1 min-w-0">
-                          {/* Brand Tag */}
-                          <div className="flex items-center gap-2">
+                          {/* Brand Tag & Badges */}
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
                               {item.product?.brand?.name || 'Chính hãng'}
                             </span>
+                            {isFlash && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
+                                ⚡ Flash Sale
+                              </span>
+                            )}
                             <span className="text-[10px] font-mono text-slate-400">
                               SKU: {item.variant?.sku}
                             </span>
@@ -569,9 +598,14 @@ export const CartPage: React.FC = () => {
 
                         {/* Price Breakdown for this item */}
                         <div className="text-right min-w-[110px]">
-                          <div className="text-sm sm:text-base font-black text-blue-600 font-mono tabular-nums">
+                          <div className={`text-sm sm:text-base font-black font-mono tabular-nums ${isFlash ? 'text-rose-600' : 'text-blue-600'}`}>
                             {formatPrice(item.price * item.quantity)}
                           </div>
+                          {isFlash && origPrice > item.price && (
+                            <div className="text-[10px] font-mono text-slate-400 line-through tabular-nums">
+                              {formatPrice(origPrice * item.quantity)}
+                            </div>
+                          )}
                           {item.quantity > 1 && (
                             <div className="text-[10px] text-slate-400 font-mono">
                               {formatPrice(item.price)} / máy

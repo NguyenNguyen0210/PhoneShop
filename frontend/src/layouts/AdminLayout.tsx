@@ -19,6 +19,7 @@ import {
   CommentOutlined,
   CustomerServiceOutlined,
   FolderOpenOutlined,
+  TagOutlined,
   TagsOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
@@ -69,9 +70,16 @@ export const AdminLayout: React.FC = () => {
       label: 'Quản lý Đơn hàng',
     },
     {
+    {
+      key: '/admin/promotions',
+      icon: <TagOutlined style={{ fontSize: 16 }} />,
+      label: 'Khuyến mãi & Flash Sale',
+    },
+    {
       key: '/admin/payments',
       icon: <DollarOutlined style={{ fontSize: 16 }} />,
       label: 'Quản lý Thanh toán',
+    },
     },
     {
       key: '/admin/returns',
@@ -134,6 +142,7 @@ export const AdminLayout: React.FC = () => {
     if (location.pathname === '/admin/brands') return 'Quản lý Thương hiệu Smartphone';
     if (location.pathname === '/admin/imei') return 'Quản trị Kho Thiết bị & Quản lý IMEI';
     if (location.pathname === '/admin/orders') return 'Quản lý Đơn hàng & Điều phối';
+    if (location.pathname.startsWith('/admin/promotions')) return 'Quản lý Khuyến mãi & Flash Sale';
     if (location.pathname === '/admin/payments') return 'Quản lý Thanh toán & Đối soát';
     if (location.pathname === '/admin/returns') return 'Quản lý Đổi trả & Hoàn tiền';
     if (location.pathname.startsWith('/admin/customers')) return 'Hồ sơ Khách hàng Customer 360°';

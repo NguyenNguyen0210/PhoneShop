@@ -15,8 +15,10 @@ import {
   Filter,
 } from 'lucide-react';
 import { productService } from '../../../services/productService';
-import type { Product, Brand } from '../../../types';
+import { flashSaleService } from '../../../services/flashSaleService';
+import type { Product, Brand, FlashSaleCampaign } from '../../../types';
 import { ProductCard } from '../../../components/storefront/ProductCard';
+import { FlashSaleSection } from '../../../components/storefront/FlashSaleSection';
 import { BrandLogo } from '../../../components/common/BrandLogo';
 import { ProductFilterSidebar } from '../../../components/storefront/ProductFilterSidebar';
 import { ProductSortToolbar } from '../../../components/storefront/ProductSortToolbar';
@@ -33,6 +35,7 @@ export const HomePage: React.FC = () => {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [activeFlashSale, setActiveFlashSale] = useState<FlashSaleCampaign | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
 
@@ -114,13 +117,17 @@ export const HomePage: React.FC = () => {
     Promise.all([
       productService.getProducts({ limit: 100 }),
       productService.getBrands(),
+      flashSaleService.getActiveCampaign().catch(() => null),
     ])
-      .then(([prodRes, brandsRes]) => {
+      .then(([prodRes, brandsRes, flashSaleRes]) => {
         if (prodRes.items) {
           setProducts(prodRes.items);
         }
         if (Array.isArray(brandsRes) && brandsRes.length > 0) {
           setBrands(brandsRes);
+        }
+        if (flashSaleRes) {
+          setActiveFlashSale(flashSaleRes);
         }
       })
       .catch((err) => {
@@ -508,6 +515,11 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* ─────────────────────────────────────────────────────────────
+          1.5. FLASH SALE CAMPAIGN SECTION
+          ───────────────────────────────────────────────────────────── */}
+      {activeFlashSale && <FlashSaleSection campaign={activeFlashSale} />}
 
       {/* ─────────────────────────────────────────────────────────────
           2. UNIFIED CATEGORY & BRAND FILTER SECTION

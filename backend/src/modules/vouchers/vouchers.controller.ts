@@ -52,6 +52,15 @@ export class VouchersController {
     return this.vouchersService.create(dto);
   }
 
+  @Get('analytics/summary')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Thống kê tổng quan voucher (MANAGER/ADMIN)' })
+  getSummaryAnalytics() {
+    return this.vouchersService.getSummaryAnalytics();
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.MANAGER, Role.ADMIN)

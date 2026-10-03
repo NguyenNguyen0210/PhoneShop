@@ -100,6 +100,10 @@ export class OrdersService {
     return new Date(time + 2 * 24 * 60 * 60 * 1000);
   }
 
+  async createOrder(userId: string, dto: CreateOrderDto) {
+    return this.checkout(userId, dto);
+  }
+
   async checkout(userId: string, dto: CreateOrderDto) {
     // 1. Get cart
     const cart = await this.prisma.cart.findUnique({
@@ -191,6 +195,7 @@ export class OrdersService {
         select: { id: true, price: true },
       });
       const priceByVariant = new Map(freshVariants.map((v) => [v.id, Number(v.price)]));
+      const now = new Date();
       for (const item of itemsToCheckout) {
         const fresh = priceByVariant.get(item.variantId);
         if (fresh === undefined || !item.variant.isActive) {
@@ -198,13 +203,52 @@ export class OrdersService {
             `Variant ${item.variant?.name || item.variantId} is no longer available`,
           );
         }
-        if (fresh !== Number(item.unitPrice)) {
+
+        let effectiveUnitPrice = fresh;
+
+        // Dynamic Price Engine: Check if variant is in an active flash sale campaign
+        const activeFlashItem = tx.flashSaleItem?.findFirst
+          ? await tx.flashSaleItem.findFirst({
+              where: {
+                variantId: item.variantId,
+                campaign: {
+                  isActive: true,
+                  startAt: { lte: now },
+                  endAt: { gte: now },
+                },
+              },
+            })
+          : null;
+
+        if (activeFlashItem && tx.flashSaleItem?.updateMany) {
+          // Atomically increment soldCount if within stockLimit
+          const reserved = await tx.flashSaleItem.updateMany({
+            where: {
+              id: activeFlashItem.id,
+              soldCount: { lte: activeFlashItem.stockLimit - item.quantity },
+            },
+            data: {
+              soldCount: { increment: item.quantity },
+            },
+          });
+
+          if (reserved.count === 0) {
+            const variantName = (item.variant as any).product?.name || item.variant?.name || item.variantId;
+            throw new BadRequestException(
+              `Sản phẩm ${variantName} đã hết suất ưu đãi Flash Sale. Vui lòng cập nhật lại giỏ hàng.`,
+            );
+          }
+
+          effectiveUnitPrice = Number(activeFlashItem.flashPrice);
+        }
+
+        if (item.id && effectiveUnitPrice !== Number(item.unitPrice)) {
           await tx.cartItem.update({
             where: { id: item.id },
-            data: { unitPrice: fresh },
+            data: { unitPrice: effectiveUnitPrice },
           });
-          (item as any).unitPrice = fresh;
         }
+        (item as any).unitPrice = effectiveUnitPrice;
       }
       const subtotal = itemsToCheckout.reduce(
         (acc, item) => acc + Number(item.unitPrice) * item.quantity,

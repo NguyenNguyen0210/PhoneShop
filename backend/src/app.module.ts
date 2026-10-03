@@ -26,6 +26,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { ImeiModule } from './modules/imei/imei.module';
 import { CartModule } from './modules/cart/cart.module';
 import { VouchersModule } from './modules/vouchers/vouchers.module';
+import { FlashSalesModule } from './modules/flash-sales/flash-sales.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { InstallmentsModule } from './modules/installments/installments.module';
 import { PaymentsModule } from './modules/payments/payments.module';
@@ -74,6 +75,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     ImeiModule,
     CartModule,
     VouchersModule,
+    FlashSalesModule,
     OrdersModule,
     InstallmentsModule,
     PaymentsModule,

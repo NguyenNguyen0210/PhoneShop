@@ -843,35 +843,53 @@ export const CheckoutPage: React.FC = () => {
 
               {/* Items list */}
               <div className="space-y-3.5 max-h-72 overflow-y-auto pr-1">
-                {checkoutItems.map((it) => (
-                  <div key={it.id} className="flex gap-3 items-center text-xs">
-                    <div className="w-14 h-14 rounded-xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center shrink-0">
-                      <img
-                        src={
-                          it.variant.images?.[0] ||
-                          (it.variant as any).imageUrl ||
-                          it.product.thumbnail ||
-                          (it.product as any).thumbnailUrl ||
-                          FALLBACK_PRODUCT_IMAGE
-                        }
-                        alt={it.product.name}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
-                        }}
-                      />
+                {checkoutItems.map((it) => {
+                  const isFlash = (it as any).isFlashSale || (it.variant && it.price < it.variant.price);
+                  const origPrice = (it as any).originalPrice || it.variant?.price || it.price;
+                  return (
+                    <div key={it.id} className="flex gap-3 items-center text-xs">
+                      <div className="w-14 h-14 rounded-xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center shrink-0">
+                        <img
+                          src={
+                            it.variant.images?.[0] ||
+                            (it.variant as any).imageUrl ||
+                            it.product.thumbnail ||
+                            (it.product as any).thumbnailUrl ||
+                            FALLBACK_PRODUCT_IMAGE
+                          }
+                          alt={it.product.name}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-bold text-slate-900 truncate">{it.product.name}</p>
+                          {isFlash && (
+                            <span className="text-[9px] font-black uppercase text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded shrink-0">
+                              ⚡ Flash Sale
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-slate-500 text-[11px]">
+                          {it.variant.color} - {it.variant.storage} (x{it.quantity})
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className={`font-mono font-bold tabular-nums ${isFlash ? 'text-rose-600' : 'text-blue-600'}`}>
+                          {formatPrice(it.price * it.quantity)}
+                        </span>
+                        {isFlash && origPrice > it.price && (
+                          <div className="text-[10px] font-mono text-slate-400 line-through tabular-nums">
+                            {formatPrice(origPrice * it.quantity)}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-900 truncate">{it.product.name}</p>
-                      <p className="text-slate-500 text-[11px]">
-                        {it.variant.color} - {it.variant.storage} (x{it.quantity})
-                      </p>
-                    </div>
-                    <span className="font-mono font-bold text-blue-600 tabular-nums shrink-0">
-                      {formatPrice(it.price * it.quantity)}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Coupon / Voucher Section */}

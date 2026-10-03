@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { message } from 'antd';
 import { productService } from '../../../services/productService';
-import type { Product, ProductVariant } from '../../../types';
+import { flashSaleService } from '../../../services/flashSaleService';
+import type { Product, ProductVariant, FlashSaleCampaign } from '../../../types';
 import { useCartStore } from '../../../stores/useCartStore';
 import { useWishlistStore } from '../../../stores/useWishlistStore';
 import { resolveColorStyle } from '../../../utils/colorHelper';
@@ -45,9 +46,46 @@ export const ProductDetailPage: React.FC = () => {
   const [justAdded, setJustAdded] = useState(false);
   const [isInstallmentModalOpen, setIsInstallmentModalOpen] = useState(false);
   const [isSpecsModalOpen, setIsSpecsModalOpen] = useState(false);
+  const [activeFlashSale, setActiveFlashSale] = useState<FlashSaleCampaign | null>(null);
+  const [flashTimeLeft, setFlashTimeLeft] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
 
   const isInWishlist = useWishlistStore((state) => state.isInWishlist(product?.id || ''));
   const toggleWishlist = useWishlistStore((state) => state.toggleWishlist);
+
+  useEffect(() => {
+    // Fetch active flash sale campaign
+    flashSaleService
+      .getActiveCampaign()
+      .then((campaign) => {
+        if (campaign) {
+          setActiveFlashSale(campaign);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load active flash sale in PDP:', err);
+      });
+  }, []);
+
+  // Flash Sale countdown timer
+  useEffect(() => {
+    if (!activeFlashSale?.endAt) return;
+
+    const updateTimer = () => {
+      const diff = new Date(activeFlashSale.endAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setFlashTimeLeft(null);
+      } else {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        setFlashTimeLeft({ hours, minutes, seconds });
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [activeFlashSale?.endAt]);
 
   useEffect(() => {
     if (!id) return;
@@ -144,15 +182,53 @@ export const ProductDetailPage: React.FC = () => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
   };
 
+  // Flash sale matching item & active status
+  const matchingFlashItem = activeFlashSale?.items?.find(
+    (item) => item.variantId === selectedVariant.id
+  );
+  const flashQuotaLeft = matchingFlashItem
+    ? Math.max(0, matchingFlashItem.stockLimit - matchingFlashItem.soldCount)
+    : 0;
+  const isFlashSaleActive =
+    !!matchingFlashItem &&
+    !!flashTimeLeft &&
+    flashQuotaLeft > 0;
+
+  const flashCountdownFormatted = flashTimeLeft
+    ? `${String(flashTimeLeft.hours).padStart(2, '0')}:${String(
+        flashTimeLeft.minutes
+      ).padStart(2, '0')}:${String(flashTimeLeft.seconds).padStart(2, '0')}`
+    : '00:00:00';
+
+  const currentPrice = isFlashSaleActive
+    ? matchingFlashItem.flashPrice
+    : selectedVariant.price;
+
+  const originalPrice = isFlashSaleActive
+    ? selectedVariant.price
+    : selectedVariant.compareAtPrice;
+
   const handleAddToCart = () => {
-    addItem(product, selectedVariant, 1);
+    addItem(
+      product,
+      selectedVariant,
+      1,
+      isFlashSaleActive ? matchingFlashItem.flashPrice : undefined,
+      isFlashSaleActive
+    );
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1500);
   };
 
   const handleBuyNow = () => {
     if (!product || !selectedVariant) return;
-    addItem(product, selectedVariant, 1);
+    addItem(
+      product,
+      selectedVariant,
+      1,
+      isFlashSaleActive ? matchingFlashItem.flashPrice : undefined,
+      isFlashSaleActive
+    );
     navigate('/checkout');
   };
 
@@ -223,14 +299,19 @@ export const ProductDetailPage: React.FC = () => {
     }));
   })();
 
-  const discountPercent =
-    selectedVariant.compareAtPrice && selectedVariant.compareAtPrice > selectedVariant.price
-      ? Math.round(
-          ((selectedVariant.compareAtPrice - selectedVariant.price) /
-            selectedVariant.compareAtPrice) *
-            100
-        )
-      : null;
+  const discountPercent = isFlashSaleActive
+    ? Math.round(
+        ((selectedVariant.price - matchingFlashItem.flashPrice) / selectedVariant.price) *
+          100
+      )
+    : selectedVariant.compareAtPrice &&
+      selectedVariant.compareAtPrice > selectedVariant.price
+    ? Math.round(
+        ((selectedVariant.compareAtPrice - selectedVariant.price) /
+          selectedVariant.compareAtPrice) *
+          100
+      )
+    : null;
 
   const inventoryAvailable =
     selectedVariant.inventory?.availableQty ?? selectedVariant.inventoryQty ?? 0;
@@ -432,26 +513,55 @@ export const ProductDetailPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Flash Sale Urgency Banner if active for this variant */}
+            {isFlashSaleActive && (
+              <div className="rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 p-3 sm:p-4 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <span className="p-1 rounded-lg bg-white/20 text-amber-300">
+                    <Zap className="w-4 h-4 fill-amber-300" />
+                  </span>
+                  <span className="font-extrabold text-xs sm:text-sm uppercase tracking-wide">
+                    ⚡ FLASH SALE GIÁ SỐC - KẾT THÚC SAU [{flashCountdownFormatted}]
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-amber-200 bg-black/25 px-2.5 py-1 rounded-lg">
+                    🔥 Còn lại {flashQuotaLeft} suất Flash Sale
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Commercial Price Box - Modern Grouped Layout */}
-            <div className="bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs">
+            <div
+              className={`rounded-2xl p-4 sm:p-5 shadow-xs transition-colors ${
+                isFlashSaleActive
+                  ? 'bg-rose-50/70 border-2 border-rose-300/80'
+                  : 'bg-slate-50/80 border border-slate-200/90'
+              }`}
+            >
               <div className="flex flex-wrap items-baseline gap-3">
                 <span className="text-3xl sm:text-4xl font-black text-red-600 tabular-nums font-mono">
-                  {formatPrice(selectedVariant.price)}
+                  {formatPrice(currentPrice)}
                 </span>
-                {selectedVariant.compareAtPrice &&
-                  selectedVariant.compareAtPrice > selectedVariant.price && (
-                    <span className="text-base sm:text-lg text-slate-400 line-through tabular-nums font-mono">
-                      {formatPrice(selectedVariant.compareAtPrice)}
-                    </span>
-                  )}
+                {originalPrice && originalPrice > currentPrice && (
+                  <span className="text-base sm:text-lg text-slate-400 line-through tabular-nums font-mono">
+                    {formatPrice(originalPrice)}
+                  </span>
+                )}
                 {discountPercent && (
                   <span className="text-xs font-black px-2.5 py-0.5 bg-red-600 text-white rounded-full shadow-2xs">
                     -{discountPercent}%
                   </span>
                 )}
               </div>
-              <div className="text-xs text-slate-500 font-medium mt-1.5 flex items-center gap-1.5">
+              <div className="text-xs text-slate-500 font-medium mt-1.5 flex flex-wrap items-center justify-between gap-2">
                 <span>(Đã bao gồm VAT & Miễn phí vận chuyển toàn quốc)</span>
+                {isFlashSaleActive && (
+                  <span className="text-rose-600 font-bold text-[11px] font-mono">
+                    Đã bán: {matchingFlashItem.soldCount}/{matchingFlashItem.stockLimit} suất
+                  </span>
+                )}
               </div>
             </div>
 
@@ -689,14 +799,13 @@ export const ProductDetailPage: React.FC = () => {
             <div className="flex items-center gap-4 shrink-0">
               <div className="text-right hidden sm:block">
                 <div className="text-red-600 font-black text-base sm:text-lg tabular-nums font-mono">
-                  {formatPrice(selectedVariant.price)}
+                  {formatPrice(currentPrice)}
                 </div>
-                {selectedVariant.compareAtPrice &&
-                  selectedVariant.compareAtPrice > selectedVariant.price && (
-                    <div className="text-slate-400 line-through text-xs tabular-nums font-mono">
-                      {formatPrice(selectedVariant.compareAtPrice)}
-                    </div>
-                  )}
+                {originalPrice && originalPrice > currentPrice && (
+                  <div className="text-slate-400 line-through text-xs tabular-nums font-mono">
+                    {formatPrice(originalPrice)}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2">

@@ -134,4 +134,40 @@ export class VouchersService {
       orderBy: { usedAt: 'desc' },
     });
   }
+
+  async getSummaryAnalytics() {
+    const now = new Date();
+    const [totalVouchers, activeVouchers, expiredOrExhausted, totalUsages, discountSum] = await Promise.all([
+      this.prisma.voucher.count(),
+      this.prisma.voucher.count({
+        where: {
+          isActive: true,
+          startAt: { lte: now },
+          endAt: { gte: now },
+        },
+      }),
+      this.prisma.voucher.count({
+        where: {
+          OR: [
+            { isActive: false },
+            { endAt: { lt: now } },
+          ],
+        },
+      }),
+      this.prisma.voucherUsage.count(),
+      this.prisma.voucherUsage.aggregate({
+        _sum: {
+          discountAmount: true,
+        },
+      }),
+    ]);
+
+    return {
+      totalVouchers,
+      activeVouchers,
+      expiredOrExhausted,
+      totalUsages,
+      totalDiscountAmount: Number(discountSum._sum.discountAmount || 0),
+    };
+  }
 }

@@ -13,6 +13,7 @@ import {
   UserOutlined,
   CustomerServiceOutlined,
   TeamOutlined,
+  TagOutlined,
   SettingOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
@@ -37,6 +38,11 @@ const adminMenuItems: MenuProps['items'] = [
     key: '/admin/orders',
     icon: <OrderedListOutlined style={{ fontSize: 16 }} />,
     label: 'Quản lý Đơn hàng',
+  },
+  {
+    key: '/admin/promotions',
+    icon: <TagOutlined style={{ fontSize: 16 }} />,
+    label: 'Khuyến mãi & Flash Sale',
   },
   {
     key: '/admin/returns',
