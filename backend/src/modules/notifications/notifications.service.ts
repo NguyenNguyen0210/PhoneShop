@@ -25,15 +25,28 @@ export class NotificationsService {
     });
   }
 
-  async getMyNotifications(userId: string, page = 1, limit = 20) {
-    // M7(infra): paginate — long-lived accounts would otherwise pull their
-    // entire history on every poll.
+  async getMyNotifications(
+    userId: string,
+    page = 1,
+    limit = 20,
+    type?: NotificationType,
+    isRead?: string,
+  ) {
     const safePage = Math.max(1, page || 1);
     const safeLimit = Math.min(100, Math.max(1, limit || 20));
+
+    const where: any = { userId };
+    if (type) {
+      where.type = type;
+    }
+    if (isRead !== undefined && isRead !== '') {
+      where.isRead = isRead === 'true';
+    }
+
     const [total, data] = await Promise.all([
-      this.prisma.notification.count({ where: { userId } }),
+      this.prisma.notification.count({ where }),
       this.prisma.notification.findMany({
-        where: { userId },
+        where,
         orderBy: { createdAt: 'desc' },
         skip: (safePage - 1) * safeLimit,
         take: safeLimit,
