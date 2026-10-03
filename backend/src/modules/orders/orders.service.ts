@@ -532,7 +532,7 @@ export class OrdersService {
   async findMyOrders(userId: string) {
     return this.prisma.order.findMany({
       where: { userId },
-      include: { items: true, payments: true, installmentApplication: true },
+      include: { items: true, payments: true, installmentApplication: true, shipping: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -541,10 +541,16 @@ export class OrdersService {
     const order = await this.prisma.order.findFirst({
       where: { id, userId },
       include: {
-        items: { include: { variant: true } },
+        items: {
+          include: {
+            variant: { include: { product: true } },
+            imeiDevice: true,
+          },
+        },
         payments: true,
         address: true,
         installmentApplication: true,
+        shipping: true,
       },
     });
     if (!order) throw new NotFoundException('Order not found');
@@ -633,6 +639,7 @@ export class OrdersService {
         payments: { include: { transactions: true } },
         address: true,
         installmentApplication: true,
+        shipping: true,
       },
     });
     if (!order) throw new NotFoundException('Order not found');

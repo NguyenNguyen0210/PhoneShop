@@ -243,6 +243,8 @@ export interface Order {
   installmentApplication?: InstallmentApplication;
   shipping?: Shipping;
   returns?: ReturnRequest[];
+  deliveredAt?: string;
+  completedAt?: string;
   cancelledAt?: string;
   cancelledReason?: string;
   createdAt: string;
