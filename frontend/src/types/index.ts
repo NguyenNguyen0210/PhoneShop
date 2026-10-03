@@ -285,3 +285,20 @@ export interface ApiResponse<T> {
   message?: string;
   data: T;
 }
+
+export interface WishlistItem {
+  id: string;
+  wishlistId: string;
+  productId: string;
+  createdAt: string;
+  product: Product;
+}
+
+export interface WishlistResponse {
+  id: string;
+  userId: string;
+  items: WishlistItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
