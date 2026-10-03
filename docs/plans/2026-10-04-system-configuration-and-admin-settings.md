@@ -47,7 +47,7 @@
 **Files:**
 - Modify: `backend/prisma/schema.prisma`
 
-- [ ] **Step 1: Add `SystemSetting` model to `schema.prisma`**
+- [x] **Step 1: Add `SystemSetting` model to `schema.prisma`**
 
 Edit `backend/prisma/schema.prisma` at the bottom of the file:
 ```prisma
@@ -71,7 +71,7 @@ model SystemSetting {
 }
 ```
 
-- [ ] **Step 2: Generate Prisma Client & Push DB Schema**
+- [x] **Step 2: Generate Prisma Client & Push DB Schema**
 
 Run commands in `backend`:
 ```bash
@@ -81,7 +81,7 @@ npx prisma db push
 ```
 Expected output: `The database is already in sync with the Prisma schema` or `Your database is now in sync with your Prisma schema.`
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add backend/prisma/schema.prisma
@@ -97,7 +97,7 @@ git commit -m "feat(backend): add SystemSetting model to prisma schema"
 - Create: `backend/src/modules/settings/settings.service.ts`
 - Test: `backend/src/modules/settings/__tests__/settings.service.spec.ts`
 
-- [ ] **Step 1: Create Settings DTOs**
+- [x] **Step 1: Create Settings DTOs**
 
 Create `backend/src/modules/settings/dto/settings.dto.ts`:
 ```typescript
@@ -170,7 +170,7 @@ export class TestVietQrDto {
 }
 ```
 
-- [ ] **Step 2: Write failing unit tests for `SystemSettingsService`**
+- [x] **Step 2: Write failing unit tests for `SystemSettingsService`**
 
 Create `backend/src/modules/settings/__tests__/settings.service.spec.ts`:
 ```typescript
@@ -278,7 +278,7 @@ describe('SystemSettingsService', () => {
 });
 ```
 
-- [ ] **Step 3: Run unit tests to verify failure**
+- [x] **Step 3: Run unit tests to verify failure**
 
 Run:
 ```bash
@@ -286,7 +286,7 @@ cd backend && npm test -- src/modules/settings/__tests__/settings.service.spec.t
 ```
 Expected: FAIL (Cannot find module `../settings.service`)
 
-- [ ] **Step 4: Implement `SystemSettingsService`**
+- [x] **Step 4: Implement `SystemSettingsService`**
 
 Create `backend/src/modules/settings/settings.service.ts`:
 ```typescript
@@ -538,7 +538,7 @@ export class SystemSettingsService {
 }
 ```
 
-- [ ] **Step 5: Run unit tests to verify they pass**
+- [x] **Step 5: Run unit tests to verify they pass**
 
 Run:
 ```bash
@@ -546,7 +546,7 @@ cd backend && npm test -- src/modules/settings/__tests__/settings.service.spec.t
 ```
 Expected: PASS (all 5 test suites pass)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/src/modules/settings/
@@ -562,7 +562,7 @@ git commit -m "feat(backend): implement SystemSettingsService with caching, fall
 - Create: `backend/src/modules/settings/settings.module.ts`
 - Modify: `backend/src/app.module.ts`
 
-- [ ] **Step 1: Create `SettingsController`**
+- [x] **Step 1: Create `SettingsController`**
 
 Create `backend/src/modules/settings/settings.controller.ts`:
 ```typescript
@@ -650,7 +650,7 @@ export class SettingsController {
 }
 ```
 
-- [ ] **Step 2: Create `SettingsModule`**
+- [x] **Step 2: Create `SettingsModule`**
 
 Create `backend/src/modules/settings/settings.module.ts`:
 ```typescript
@@ -667,12 +667,12 @@ import { SettingsController } from './settings.controller';
 export class SettingsModule {}
 ```
 
-- [ ] **Step 3: Register `SettingsModule` in `backend/src/app.module.ts`**
+- [x] **Step 3: Register `SettingsModule` in `backend/src/app.module.ts`**
 
 Edit `backend/src/app.module.ts`:
 Import `SettingsModule` from `'./modules/settings/settings.module'` and add `SettingsModule` to imports list.
 
-- [ ] **Step 4: Verify backend compilation**
+- [x] **Step 4: Verify backend compilation**
 
 Run:
 ```bash
@@ -680,7 +680,7 @@ cd backend && npm run build
 ```
 Expected output: Nest build completes without errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/src/modules/settings/ backend/src/app.module.ts
@@ -695,7 +695,7 @@ git commit -m "feat(backend): add SettingsController and register SettingsModule
 - Modify: `backend/src/modules/payments/payments.service.ts`
 - Modify: `backend/src/modules/payments/vietqr.service.ts`
 
-- [ ] **Step 1: Refactor `VietqrService` to use dynamic settings**
+- [x] **Step 1: Refactor `VietqrService` to use dynamic settings**
 
 Edit `backend/src/modules/payments/vietqr.service.ts`:
 Inject `SystemSettingsService`:
@@ -726,7 +726,7 @@ async generateQrAsync(
 }
 ```
 
-- [ ] **Step 2: Refactor `PaymentsService` VNPay creation**
+- [x] **Step 2: Refactor `PaymentsService` VNPay creation**
 
 Edit `backend/src/modules/payments/payments.service.ts`:
 Inject `SystemSettingsService`:
@@ -737,7 +737,7 @@ In `createVnpayPaymentUrl`:
 In verify return url:
 Fetch `hashSecret` with `await this.settingsService.get('VNPAY_HASH_SECRET')`.
 
-- [ ] **Step 3: Run backend tests**
+- [x] **Step 3: Run backend tests**
 
 Run:
 ```bash
@@ -745,7 +745,7 @@ cd backend && npm test
 ```
 Expected output: All tests pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add backend/src/modules/payments/
@@ -759,7 +759,7 @@ git commit -m "refactor(backend): use dynamic SystemSettingsService in VNPay and
 **Files:**
 - Create: `frontend/src/services/settingsService.ts`
 
-- [ ] **Step 1: Create `settingsService.ts`**
+- [x] **Step 1: Create `settingsService.ts`**
 
 Create `frontend/src/services/settingsService.ts`:
 ```typescript
@@ -822,7 +822,7 @@ export const settingsService = {
 };
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add frontend/src/services/settingsService.ts
@@ -840,7 +840,7 @@ git commit -m "feat(frontend): add settingsService API client"
 - Create: `frontend/src/pages/Admin/Settings/components/EmailSettingsTab.tsx`
 - Create: `frontend/src/pages/Admin/Settings/components/GeneralSettingsTab.tsx`
 
-- [ ] **Step 1: Create `VietQRTestModal.tsx`**
+- [x] **Step 1: Create `VietQRTestModal.tsx`**
 
 Create `frontend/src/pages/Admin/Settings/components/VietQRTestModal.tsx`:
 ```tsx
@@ -894,7 +894,7 @@ export const VietQRTestModal: React.FC<VietQRTestModalProps> = ({ visible, qrUrl
 };
 ```
 
-- [ ] **Step 2: Create `PaymentSettingsTab.tsx`**
+- [x] **Step 2: Create `PaymentSettingsTab.tsx`**
 
 Create `frontend/src/pages/Admin/Settings/components/PaymentSettingsTab.tsx`:
 Form cards for VNPay & VietQR, including:
@@ -902,28 +902,28 @@ Form cards for VNPay & VietQR, including:
 - Switch `PAYMENT_VIETQR_ENABLED`, Select Bank (VCB, Vietinbank, MB, Techcombank, etc.), Input `VIETQR_ACCOUNT_NO`, Input `VIETQR_ACCOUNT_NAME`, Select Template.
 - "Tạo QR Test" button calling `settingsService.testVietQr` and opening `VietQRTestModal`.
 
-- [ ] **Step 3: Create `StorageSettingsTab.tsx`**
+- [x] **Step 3: Create `StorageSettingsTab.tsx`**
 
 Create `frontend/src/pages/Admin/Settings/components/StorageSettingsTab.tsx`:
 Card for Cloudflare R2:
 - Inputs: `CLOUDFLARE_R2_ACCOUNT_ID`, `CLOUDFLARE_R2_BUCKET`, `CLOUDFLARE_R2_ACCESS_KEY_ID`, Password Input `CLOUDFLARE_R2_SECRET_ACCESS_KEY`, Input `CLOUDFLARE_R2_PUBLIC_URL`.
 - Button "Kiểm tra kết nối R2" with loading state calling `settingsService.testStorage`.
 
-- [ ] **Step 4: Create `EmailSettingsTab.tsx`**
+- [x] **Step 4: Create `EmailSettingsTab.tsx`**
 
 Create `frontend/src/pages/Admin/Settings/components/EmailSettingsTab.tsx`:
 Card for SMTP:
 - Inputs: `EMAIL_HOST`, `EMAIL_PORT`, Switch `EMAIL_SECURE`, Input `EMAIL_USER`, Password Input `EMAIL_PASS`, Input `EMAIL_FROM`.
 - Button "Gửi email kiểm tra" with modal prompting for target email (defaults to admin email) calling `settingsService.testEmail`.
 
-- [ ] **Step 5: Create `GeneralSettingsTab.tsx`**
+- [x] **Step 5: Create `GeneralSettingsTab.tsx`**
 
 Create `frontend/src/pages/Admin/Settings/components/GeneralSettingsTab.tsx`:
 Card for Store info and maintenance:
 - Inputs: `STORE_NAME`, `STORE_HOTLINE`, `STORE_EMAIL`, `STORE_ADDRESS`.
 - Switch `MAINTENANCE_MODE` (with warning alert when turned on).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/pages/Admin/Settings/components/
@@ -940,7 +940,7 @@ git commit -m "feat(frontend): create tab components and VietQR test modal for A
 - Modify: `frontend/src/layouts/AdminLayout.tsx`
 - Modify: `frontend/src/routes/AppRoutes.tsx`
 
-- [ ] **Step 1: Create `AdminSettingsPage.tsx`**
+- [x] **Step 1: Create `AdminSettingsPage.tsx`**
 
 Create `frontend/src/pages/Admin/Settings/AdminSettingsPage.tsx`:
 - State for `settings` loaded from `settingsService.getAdminSettings()`.
@@ -951,14 +951,14 @@ Create `frontend/src/pages/Admin/Settings/AdminSettingsPage.tsx`:
 - Save handler: transforms form values into `SettingItem[]` array and calls `settingsService.updateAdminSettings`.
 - Skeleton loader on initial load.
 
-- [ ] **Step 2: Update `AdminSidebar.tsx` & `AdminLayout.tsx`**
+- [x] **Step 2: Update `AdminSidebar.tsx` & `AdminLayout.tsx`**
 
 Edit `frontend/src/components/admin/AdminSidebar.tsx`:
 Add `{ key: '/admin/settings', icon: <SettingOutlined style={{ fontSize: 16 }} />, label: 'Cấu hình Hệ thống' }` to menu list.
 Edit `frontend/src/layouts/AdminLayout.tsx`:
 Add menu item and breadcrumb mapping: `if (location.pathname === '/admin/settings') return 'Cấu hình & Tham số Hệ thống';`.
 
-- [ ] **Step 3: Register route in `AppRoutes.tsx`**
+- [x] **Step 3: Register route in `AppRoutes.tsx`**
 
 Edit `frontend/src/routes/AppRoutes.tsx`:
 Import `AdminSettingsPage`.
@@ -974,7 +974,7 @@ Add protected route:
 />
 ```
 
-- [ ] **Step 4: Verify frontend build**
+- [x] **Step 4: Verify frontend build**
 
 Run:
 ```bash
@@ -982,7 +982,7 @@ cd frontend && npm run build
 ```
 Expected output: Vite build succeeds with 0 errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/pages/Admin/Settings/ frontend/src/components/admin/AdminSidebar.tsx frontend/src/layouts/AdminLayout.tsx frontend/src/routes/AppRoutes.tsx
@@ -996,7 +996,7 @@ git commit -m "feat(frontend): assemble AdminSettingsPage and integrate navigati
 **Files:**
 - Create: `frontend/src/pages/Admin/Settings/__tests__/AdminSettingsPage.spec.tsx`
 
-- [ ] **Step 1: Write component test for `AdminSettingsPage`**
+- [x] **Step 1: Write component test for `AdminSettingsPage`**
 
 Create `frontend/src/pages/Admin/Settings/__tests__/AdminSettingsPage.spec.tsx`:
 - Mock `settingsService.getAdminSettings` and `settingsService.updateAdminSettings`.
@@ -1004,7 +1004,7 @@ Create `frontend/src/pages/Admin/Settings/__tests__/AdminSettingsPage.spec.tsx`:
 - Test changing an input activates the Save button.
 - Test clicking Save calls `updateAdminSettings`.
 
-- [ ] **Step 2: Run frontend vitest test suite**
+- [x] **Step 2: Run frontend vitest test suite**
 
 Run:
 ```bash
@@ -1012,7 +1012,7 @@ cd frontend && npm test -- AdminSettingsPage
 ```
 Expected output: PASS.
 
-- [ ] **Step 3: Run backend jest test suite**
+- [x] **Step 3: Run backend jest test suite**
 
 Run:
 ```bash
@@ -1020,7 +1020,7 @@ cd backend && npm test
 ```
 Expected output: All backend tests pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/pages/Admin/Settings/__tests__/
