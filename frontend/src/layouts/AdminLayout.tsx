@@ -14,6 +14,7 @@ import {
   MenuFoldOutlined,
   ThunderboltOutlined,
   CreditCardOutlined,
+  DollarOutlined,
   UndoOutlined,
   CommentOutlined,
   CustomerServiceOutlined,
@@ -59,6 +60,11 @@ export const AdminLayout: React.FC = () => {
       key: '/admin/orders',
       icon: <OrderedListOutlined style={{ fontSize: 16 }} />,
       label: 'Quản lý Đơn hàng',
+    },
+    {
+      key: '/admin/payments',
+      icon: <DollarOutlined style={{ fontSize: 16 }} />,
+      label: 'Quản lý Thanh toán',
     },
     {
       key: '/admin/returns',
@@ -115,6 +121,7 @@ export const AdminLayout: React.FC = () => {
     if (location.pathname === '/admin/categories') return 'Quản lý Danh mục Smartphone';
     if (location.pathname === '/admin/imei') return 'Quản trị Kho Thiết bị & Quản lý IMEI';
     if (location.pathname === '/admin/orders') return 'Quản lý Đơn hàng & Điều phối';
+    if (location.pathname === '/admin/payments') return 'Quản lý Thanh toán & Đối soát';
     if (location.pathname === '/admin/returns') return 'Quản lý Đổi trả & Hoàn tiền';
     if (location.pathname.startsWith('/admin/customers')) return 'Hồ sơ Khách hàng Customer 360°';
     if (location.pathname.startsWith('/admin/tickets')) return 'Hệ thống Vé Hỗ trợ & Khiếu nại';
