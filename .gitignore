@@ -52,3 +52,6 @@ worktrees
 Thumbs.db
 .vscode/
 .idea/
+
+# Generated R2 upload mapping (local only)
+backend/scripts/r2-mapping.json
