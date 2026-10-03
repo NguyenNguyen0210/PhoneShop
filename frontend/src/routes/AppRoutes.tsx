@@ -20,6 +20,7 @@ import { ProfilePage } from '../pages/storefront/Profile/ProfilePage';
 import { LoginPage } from '../pages/storefront/Auth/LoginPage';
 import { RegisterPage } from '../pages/storefront/Auth/RegisterPage';
 import { OAuthCallbackPage } from '../pages/storefront/Auth/OAuthCallbackPage';
+import { ResetPasswordPage } from '../pages/storefront/Auth/ResetPasswordPage';
 
 // Admin Pages
 import { AdminDashboard } from '../pages/Admin/Dashboard/AdminDashboard';
@@ -61,6 +62,7 @@ export const AppRoutes: React.FC = () => {
       {/* Auth Routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/auth/oauth/callback" element={<OAuthCallbackPage />} />
 
       {/* Admin Portal Routes (Protected) */}
