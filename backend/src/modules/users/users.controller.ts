@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards, Put } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { QueryUserDto } from './dto/query-user.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -39,20 +40,27 @@ export class UsersController {
     return this.usersService.changePassword(user.id, dto);
   }
 
-  // --- ADMIN ENDPOINTS ---
+  // --- ADMIN & STAFF ENDPOINTS ---
 
   @Get()
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Get all users (ADMIN)' })
-  findAll() {
-    return this.usersService.findAll();
+  @Roles(Role.ADMIN, Role.STAFF)
+  @ApiOperation({ summary: 'Get all users (ADMIN or STAFF for customers)' })
+  findAll(@Query() query: QueryUserDto, @CurrentUser() user: any) {
+    return this.usersService.findAll(query, user);
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Get user detail (ADMIN)' })
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  @Roles(Role.ADMIN, Role.STAFF)
+  @ApiOperation({ summary: 'Get user detail (ADMIN or STAFF for customers)' })
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.usersService.findOne(id, user);
+  }
+
+  @Get(':id/customer-360')
+  @Roles(Role.ADMIN, Role.STAFF)
+  @ApiOperation({ summary: 'Get Customer 360 overview (ADMIN and STAFF)' })
+  getCustomer360(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.usersService.getCustomer360(id, user);
   }
 
   @Post()

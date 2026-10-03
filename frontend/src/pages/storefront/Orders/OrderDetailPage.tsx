@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Package,
   Calendar,
@@ -22,6 +22,7 @@ import {
   Check,
   Star,
   Edit3,
+  Headphones,
 } from 'lucide-react';
 import { orderService } from '../../../services/orderService';
 import { installmentService } from '../../../services/installmentService';
@@ -37,6 +38,7 @@ import { reorderOrderItems } from './utils/reorderHelper';
 
 export const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [order, setOrder] = useState<Order | null>(null);
   const [installment, setInstallment] = useState<InstallmentApplication | null>(null);
   const [loading, setLoading] = useState(() => Boolean(id));
@@ -267,6 +269,15 @@ export const OrderDetailPage: React.FC = () => {
                 <span>Yêu cầu đổi trả</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => navigate(`/profile?tab=tickets&orderId=${order.id}#tickets`)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl border border-indigo-200 transition cursor-pointer"
+            >
+              <Headphones className="w-3.5 h-3.5" />
+              <span>Cần hỗ trợ về đơn này?</span>
+            </button>
           </div>
         </div>
 

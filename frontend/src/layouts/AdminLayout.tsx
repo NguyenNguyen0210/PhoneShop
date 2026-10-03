@@ -16,6 +16,7 @@ import {
   CreditCardOutlined,
   UndoOutlined,
   CommentOutlined,
+  CustomerServiceOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
 
@@ -59,14 +60,24 @@ export const AdminLayout: React.FC = () => {
       label: 'Quản lý Đổi trả',
     },
     {
-      key: '/admin/installments',
-      icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
-      label: 'Hồ sơ trả góp',
+      key: '/admin/customers',
+      icon: <UserOutlined style={{ fontSize: 16 }} />,
+      label: 'Khách hàng (360°)',
+    },
+    {
+      key: '/admin/tickets',
+      icon: <CustomerServiceOutlined style={{ fontSize: 16 }} />,
+      label: 'Hỗ trợ khách hàng',
     },
     {
       key: '/admin/reviews',
       icon: <CommentOutlined style={{ fontSize: 16 }} />,
       label: 'Quản lý Đánh giá',
+    },
+    {
+      key: '/admin/installments',
+      icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
+      label: 'Hồ sơ trả góp',
     },
   ];
 
@@ -98,6 +109,8 @@ export const AdminLayout: React.FC = () => {
     if (location.pathname === '/admin/imei') return 'Quản trị Kho Thiết bị & Quản lý IMEI';
     if (location.pathname === '/admin/orders') return 'Quản lý Đơn hàng & Điều phối';
     if (location.pathname === '/admin/returns') return 'Quản lý Đổi trả & Hoàn tiền';
+    if (location.pathname.startsWith('/admin/customers')) return 'Hồ sơ Khách hàng Customer 360°';
+    if (location.pathname.startsWith('/admin/tickets')) return 'Hệ thống Vé Hỗ trợ & Khiếu nại';
     if (location.pathname === '/admin/installments') return 'Quản lý Hồ sơ trả góp & Thẩm định';
     if (location.pathname === '/admin/reviews') return 'Quản lý Đánh giá & Phản hồi';
     return 'Tổng quan hệ thống (Dashboard)';

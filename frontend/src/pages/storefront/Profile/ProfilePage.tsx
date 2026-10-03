@@ -22,9 +22,11 @@ import {
   RotateCcw,
   Ban,
   Undo2,
+  Headphones,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChangePasswordCard } from './components/ChangePasswordCard';
+import { CustomerTicketsTab } from './components/CustomerTicketsTab';
 
 export const ProfilePage: React.FC = () => {
   const { user, updateUser, fetchProfile } = useAuthStore();
@@ -47,8 +49,12 @@ export const ProfilePage: React.FC = () => {
       setTimeout(() => {
         document.getElementById('returns-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 200);
+    } else if (location.hash === '#tickets' || location.search.includes('tab=tickets')) {
+      setTimeout(() => {
+        document.getElementById('tickets-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
     }
-  }, [location.pathname, location.hash]);
+  }, [location.pathname, location.hash, location.search]);
 
   useEffect(() => {
     fetchProfile().catch(() => {});
@@ -478,6 +484,17 @@ export const ProfilePage: React.FC = () => {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Support Tickets Section */}
+        <div id="tickets-section" className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs scroll-mt-24 space-y-4">
+          <div className="flex items-center gap-2 pb-3 border-b border-slate-200">
+            <Headphones className="w-5 h-5 text-blue-600" />
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 uppercase tracking-wider">
+              Trung tâm Hỗ trợ & Khiếu nại (CSKH)
+            </h3>
+          </div>
+          <CustomerTicketsTab initialOrderId={new URLSearchParams(location.search).get('orderId')} />
         </div>
 
         {/* Cancel Modal */}

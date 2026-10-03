@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { QueryUserDto } from './dto/query-user.dto';
+import { Customer360Metrics, Customer360Response } from './dto/customer-360.dto';
 
 @Injectable()
 export class UsersService {
@@ -56,26 +58,233 @@ export class UsersService {
     return { success: true };
   }
 
-  // --- ADMIN FUNCTIONS ---
+  // --- ADMIN & STAFF FUNCTIONS ---
 
-  async findAll() {
-    const users = await this.prisma.user.findMany({
-      include: { roles: { include: { role: true } } },
-    });
-    return users.map((u) => {
+  async findAll(query: QueryUserDto = {}, currentUser?: any) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const roles: string[] = Array.isArray(currentUser?.roles)
+      ? currentUser.roles.map((r: any) => (typeof r === 'string' ? r : r.name || r.role?.name))
+      : [];
+    const isOnlyStaff = roles.includes('STAFF') && !roles.includes('ADMIN');
+
+    const where: any = {};
+
+    // Staff is strictly scoped to role 'USER'
+    if (isOnlyStaff) {
+      where.roles = { some: { role: { name: 'USER' } } };
+    } else if (query.role) {
+      where.roles = { some: { role: { name: query.role } } };
+    }
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.search) {
+      const s = query.search.trim();
+      where.OR = [
+        { email: { contains: s, mode: 'insensitive' } },
+        { firstName: { contains: s, mode: 'insensitive' } },
+        { lastName: { contains: s, mode: 'insensitive' } },
+        { phone: { contains: s } },
+      ];
+    }
+
+    const [total, users] = await Promise.all([
+      this.prisma.user.count({ where }),
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { roles: { include: { role: true } } },
+      }),
+    ]);
+
+    const sanitizedUsers = users.map((u) => {
       delete (u as any).passwordHash;
       return u;
     });
+
+    return {
+      data: sanitizedUsers,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, currentUser?: any) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: { roles: { include: { role: true } } },
+      include: {
+        roles: { include: { role: true } },
+        addresses: true,
+      },
     });
     if (!user) throw new NotFoundException('User not found');
+
+    if (currentUser) {
+      const roles: string[] = Array.isArray(currentUser.roles)
+        ? currentUser.roles.map((r: any) => (typeof r === 'string' ? r : r.name || r.role?.name))
+        : [];
+      const isOnlyStaff = roles.includes('STAFF') && !roles.includes('ADMIN');
+      const targetIsUser = user.roles?.some((r: any) => r.role?.name === 'USER' || r.name === 'USER' || r === 'USER');
+      if (isOnlyStaff && !targetIsUser) {
+        throw new ForbiddenException('Staff chỉ có quyền xem thông tin khách hàng');
+      }
+    }
+
     delete (user as any).passwordHash;
     return user;
+  }
+
+  async getCustomer360(id: string, currentUser: any): Promise<Customer360Response> {
+    const user = await this.findOne(id, currentUser);
+
+    const [orders, warranties, installments, tickets] = await Promise.all([
+      this.prisma.order.findMany({
+        where: { userId: id },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          totalAmount: true,
+          createdAt: true,
+          payments: {
+            take: 1,
+            select: {
+              id: true,
+              status: true,
+              method: true,
+              amount: true,
+            },
+          },
+          items: {
+            take: 3,
+            select: {
+              id: true,
+              productName: true,
+              quantity: true,
+              unitPrice: true,
+              totalPrice: true,
+            },
+          },
+        },
+      }),
+      this.prisma.warranty.findMany({
+        where: { userId: id },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          orderItem: {
+            select: {
+              productName: true,
+              variant: { select: { sku: true, color: true, storage: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.installmentApplication.findMany({
+        where: { userId: id },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          status: true,
+          termMonths: true,
+          monthlyAmount: true,
+          createdAt: true,
+          order: { select: { id: true, orderNumber: true, totalAmount: true } },
+        },
+      }),
+      this.prisma.ticket.findMany({
+        where: { userId: id },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          category: true,
+          priority: true,
+          status: true,
+          createdAt: true,
+          lastRepliedAt: true,
+        },
+      }),
+    ]);
+
+    // Aggregate metrics across all user orders
+    const allUserOrders = await this.prisma.order.findMany({
+      where: { userId: id },
+      select: {
+        status: true,
+        totalAmount: true,
+        payments: { select: { status: true } },
+      },
+    });
+
+    const totalSpent = allUserOrders
+      .filter((o: any) => {
+        const isPaid = o.paymentStatus === 'PAID' || o.payments?.some((p: any) => p.status === 'PAID');
+        return isPaid || o.status === 'COMPLETED';
+      })
+      .reduce((sum, o: any) => sum + Number(o.totalAmount || 0), 0);
+
+    const metrics: Customer360Metrics = {
+      totalSpent,
+      totalOrders: allUserOrders.length,
+      completedOrders: allUserOrders.filter((o: any) => o.status === 'COMPLETED').length,
+      processingOrders: allUserOrders.filter((o: any) =>
+        ['PENDING', 'CONFIRMED', 'PROCESSING', 'PACKED', 'SHIPPING'].includes(o.status),
+      ).length,
+      cancelledOrders: allUserOrders.filter((o: any) => o.status === 'CANCELLED').length,
+      totalTickets: tickets.length,
+      openTickets: tickets.filter((t: any) => ['OPEN', 'IN_PROGRESS'].includes(t.status)).length,
+      activeWarranties: warranties.filter((w: any) => w.status === 'ACTIVE').length,
+      totalInstallments: installments.length,
+      approvedInstallments: installments.filter((i: any) => i.status === 'APPROVED').length,
+    };
+
+    const recentOrders = orders.map((o: any) => ({
+      ...o,
+      paymentStatus: o.paymentStatus || o.payments?.[0]?.status || 'PENDING',
+      items:
+        o.items?.map((it: any) => ({
+          ...it,
+          price: it.price ?? it.unitPrice,
+        })) || [],
+    }));
+
+    const mappedInstallments = installments.map((i: any) => ({
+      ...i,
+      monthlyPayment: i.monthlyPayment ?? i.monthlyAmount,
+    }));
+
+    return {
+      customer: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        avatarUrl: user.avatarUrl,
+        status: user.status,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
+      },
+      metrics,
+      addresses: user.addresses || [],
+      recentOrders,
+      warranties,
+      installments: mappedInstallments,
+      tickets,
+    };
   }
 
   async create(dto: CreateUserDto) {
