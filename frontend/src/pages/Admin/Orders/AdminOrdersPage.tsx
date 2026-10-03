@@ -22,9 +22,12 @@ import {
   CarOutlined,
   BarcodeOutlined,
   SearchOutlined,
+  InboxOutlined,
+  CopyOutlined,
 } from '@ant-design/icons';
 import { orderService } from '../../../services/orderService';
 import type { Order, OrderStatus } from '../../../types';
+import { ShippingModal } from './components/ShippingModal';
 
 const { Title, Text } = Typography;
 
@@ -33,6 +36,9 @@ export const AdminOrdersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
+  const [shippingModalOrder, setShippingModalOrder] = useState<Order | null>(null);
+  const [isShippingTransition, setIsShippingTransition] = useState(false);
 
   // Server-side pagination & filter states
   const [page, setPage] = useState<number>(1);
@@ -68,11 +74,23 @@ export const AdminOrdersPage: React.FC = () => {
     void loadOrders();
   }, [loadOrders]);
 
-  const handleUpdateStatus = async (orderId: string, nextStatus: OrderStatus) => {
-    let action: 'confirm' | 'process' | 'ship' | 'deliver' | 'complete' | 'cancel' = 'confirm';
+  const handleUpdateStatus = async (
+    orderId: string,
+    nextStatus: OrderStatus,
+    record?: Order
+  ) => {
+    if (nextStatus === 'SHIPPING') {
+      const targetOrder = record || orders.find((o) => o.id === orderId) || selectedOrder;
+      setShippingModalOrder(targetOrder || null);
+      setIsShippingTransition(true);
+      setIsShippingModalOpen(true);
+      return;
+    }
+
+    let action: 'confirm' | 'process' | 'pack' | 'ship' | 'deliver' | 'complete' | 'cancel' = 'confirm';
     if (nextStatus === 'CONFIRMED') action = 'confirm';
     if (nextStatus === 'PROCESSING') action = 'process';
-    if (nextStatus === 'SHIPPING') action = 'ship';
+    if (nextStatus === 'PACKED') action = 'pack';
     if (nextStatus === 'DELIVERED') action = 'deliver';
     if (nextStatus === 'COMPLETED') action = 'complete';
     if (nextStatus === 'CANCELLED') action = 'cancel';
@@ -102,7 +120,9 @@ export const AdminOrdersPage: React.FC = () => {
       case 'CONFIRMED':
         return <Tag color="blue" icon={<CheckCircleOutlined />}>ĐÃ XÁC NHẬN</Tag>;
       case 'PROCESSING':
-        return <Tag color="cyan" icon={<SyncOutlined spin />}>ĐANG ĐÓNG GÓI</Tag>;
+        return <Tag color="cyan" icon={<SyncOutlined spin />}>ĐANG CHUẨN BỊ</Tag>;
+      case 'PACKED':
+        return <Tag color="purple" icon={<InboxOutlined />}>ĐÃ ĐÓNG GÓI</Tag>;
       case 'SHIPPING':
         return <Tag color="orange" icon={<CarOutlined />}>ĐANG GIAO HÀNG</Tag>;
       case 'DELIVERED':
@@ -178,11 +198,12 @@ export const AdminOrdersPage: React.FC = () => {
           value={record.status}
           size="small"
           style={{ width: 140 }}
-          onChange={(val) => handleUpdateStatus(record.id, val as OrderStatus)}
+          onChange={(val) => handleUpdateStatus(record.id, val as OrderStatus, record)}
           options={[
             { value: 'PENDING', label: 'Chờ xử lý' },
             { value: 'CONFIRMED', label: 'Đã xác nhận' },
-            { value: 'PROCESSING', label: 'Đang đóng gói' },
+            { value: 'PROCESSING', label: 'Đang chuẩn bị hàng' },
+            { value: 'PACKED', label: 'Đã đóng gói' },
             { value: 'SHIPPING', label: 'Đang giao hàng' },
             { value: 'DELIVERED', label: 'Đã giao (Hoàn tất)' },
             { value: 'CANCELLED', label: 'Hủy đơn (Nhả IMEI)' },
@@ -212,7 +233,8 @@ export const AdminOrdersPage: React.FC = () => {
     { key: 'ALL', label: 'Tất cả đơn hàng' },
     { key: 'PENDING', label: 'Chờ xử lý' },
     { key: 'CONFIRMED', label: 'Đã xác nhận' },
-    { key: 'PROCESSING', label: 'Đang đóng gói' },
+    { key: 'PROCESSING', label: 'Đang chuẩn bị' },
+    { key: 'PACKED', label: 'Đã đóng gói' },
     { key: 'SHIPPING', label: 'Đang giao hàng' },
     { key: 'DELIVERED', label: 'Đã giao' },
     { key: 'COMPLETED', label: 'Hoàn tất' },
@@ -338,6 +360,89 @@ export const AdminOrdersPage: React.FC = () => {
             </Descriptions>
 
             <Divider titlePlacement="start" plain>
+              Thông tin Vận chuyển & Giao nhận
+            </Divider>
+
+            <Card
+              size="small"
+              style={{ borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0' }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  flexWrap: 'wrap',
+                  gap: 12,
+                }}
+              >
+                <Space direction="vertical" size={6}>
+                  <div>
+                    <Text type="secondary" style={{ fontSize: 13 }}>
+                      Đơn vị vận chuyển:{' '}
+                    </Text>
+                    <Text strong style={{ fontSize: 13 }}>
+                      {selectedOrder.shipping?.providerName || 'Chưa gán'}
+                    </Text>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>
+                      Mã vận đơn:{' '}
+                    </Text>
+                    {selectedOrder.shipping?.trackingNumber ? (
+                      <Space size={4}>
+                        <Text code strong style={{ fontSize: 13, color: '#1d4ed8' }}>
+                          {selectedOrder.shipping.trackingNumber}
+                        </Text>
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<CopyOutlined style={{ fontSize: 12 }} />}
+                          title="Sao chép mã vận đơn"
+                          onClick={() => {
+                            if (selectedOrder.shipping?.trackingNumber) {
+                              void navigator.clipboard.writeText(
+                                selectedOrder.shipping.trackingNumber
+                              );
+                              message.success('Đã sao chép mã vận đơn');
+                            }
+                          }}
+                        />
+                      </Space>
+                    ) : (
+                      <Text type="secondary" italic>
+                        Chưa có
+                      </Text>
+                    )}
+                  </div>
+                  {selectedOrder.shipping?.estimatedDeliveryDate && (
+                    <div>
+                      <Text type="secondary" style={{ fontSize: 13 }}>
+                        Dự kiến giao hàng:{' '}
+                      </Text>
+                      <Text strong style={{ fontSize: 13 }}>
+                        {new Date(
+                          selectedOrder.shipping.estimatedDeliveryDate
+                        ).toLocaleDateString('vi-VN')}
+                      </Text>
+                    </div>
+                  )}
+                </Space>
+
+                <Button
+                  icon={<CarOutlined />}
+                  onClick={() => {
+                    setShippingModalOrder(selectedOrder);
+                    setIsShippingTransition(false);
+                    setIsShippingModalOpen(true);
+                  }}
+                >
+                  Cập nhật vận đơn
+                </Button>
+              </div>
+            </Card>
+
+            <Divider titlePlacement="start" plain>
               Danh sách thiết bị & Mã IMEI định danh đã khóa
             </Divider>
 
@@ -414,6 +519,24 @@ export const AdminOrdersPage: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      <ShippingModal
+        open={isShippingModalOpen}
+        order={shippingModalOrder}
+        isShippingAction={isShippingTransition}
+        onClose={() => {
+          setIsShippingModalOpen(false);
+          setShippingModalOrder(null);
+        }}
+        onSuccess={() => {
+          void loadOrders();
+          if (selectedOrder && shippingModalOrder && selectedOrder.id === shippingModalOrder.id) {
+            void orderService.getOrderById(selectedOrder.id).then((fresh) => {
+              if (fresh) setSelectedOrder(fresh);
+            });
+          }
+        }}
+      />
     </div>
   );
 };
