@@ -1,6 +1,20 @@
-import React from 'react';
-import { Star, CheckCircle2, MessageSquare, Sparkles } from 'lucide-react';
-import { isShopReply, type Product } from '../../../types';
+import React, { useState, useEffect } from 'react';
+import {
+  Star,
+  CheckCircle2,
+  MessageSquare,
+  Sparkles,
+  Edit3,
+  Trash2,
+  PlusCircle,
+  X,
+  Clock,
+} from 'lucide-react';
+import { isShopReply, type Product, type Review } from '../../../types';
+import { reviewService, type MyReviewStatusResponse } from '../../../services/reviewService';
+import { useAuthStore } from '../../../stores/useAuthStore';
+import { ReviewModal, ReviewDeleteDialog } from '../reviews';
+import { apiClient } from '../../../services/apiClient';
 
 export interface ProductHighlightsSectionProps {
   product: Product;
@@ -92,17 +106,54 @@ export const ProductHighlightsSection: React.FC<ProductHighlightsSectionProps> =
     },
   ];
 
+  // Review State & Management
+  const { user } = useAuthStore();
+  const [reviewsList, setReviewsList] = useState<Review[]>(product.reviews || []);
+  const [myReviewStatus, setMyReviewStatus] = useState<MyReviewStatusResponse | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalInitialData, setModalInitialData] = useState<Review | null>(null);
+  const [deleteReviewId, setDeleteReviewId] = useState<string | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
+  const fetchReviewsAndStatus = async () => {
+    try {
+      if (user) {
+        const status = await reviewService.getMyReviewStatus(product.id);
+        setMyReviewStatus(status);
+      } else {
+        setMyReviewStatus(null);
+      }
+      const res = await apiClient.get<Review[]>('/reviews', { params: { productId: product.id } });
+      if (Array.isArray(res.data)) {
+        setReviewsList(res.data);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    setReviewsList(product.reviews || []);
+    if (product.id) {
+      fetchReviewsAndStatus();
+    }
+  }, [product.id, user]);
+
+  const myReview = myReviewStatus?.myReview;
+  // If myReview is already approved, remove it from otherReviews to avoid duplicating it
+  const otherReviews = reviewsList.filter((r) => r.id !== myReview?.id);
+  const displayReviews = myReview ? [myReview, ...otherReviews] : reviewsList;
+
   // Ratings calculation
   const numericRating =
-    product.rating != null
+    displayReviews.length > 0
+      ? displayReviews.reduce((acc, r) => acc + r.rating, 0) / displayReviews.length
+      : product.rating != null
       ? Number(product.rating)
-      : product.reviews && product.reviews.length > 0
-      ? product.reviews.reduce((acc, r) => acc + r.rating, 0) / product.reviews.length
       : 5.0;
 
   const formattedRating = numericRating.toFixed(1);
-  const totalReviews = product.reviewCount ?? product.reviews?.length ?? 0;
-  const reviewsList = product.reviews || [];
+  const totalReviews = displayReviews.length;
 
   return (
     <div className={`space-y-6 ${className}`.trim()}>
@@ -157,10 +208,43 @@ export const ProductHighlightsSection: React.FC<ProductHighlightsSectionProps> =
         className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-5 sm:p-7 shadow-xs space-y-6"
         style={{ boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.04)' }}
       >
-        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <Star className="w-5 h-5 text-amber-500 fill-amber-500 shrink-0" aria-hidden="true" />
-          <span>Đánh giá từ khách hàng đã mua</span>
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <Star className="w-5 h-5 text-amber-500 fill-amber-500 shrink-0" aria-hidden="true" />
+            <span>Đánh giá từ khách hàng đã mua</span>
+          </h2>
+
+          {/* Action trigger button */}
+          {myReviewStatus?.canReview ? (
+            <button
+              type="button"
+              onClick={() => {
+                setModalInitialData(null);
+                setIsModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Viết đánh giá</span>
+            </button>
+          ) : myReview ? (
+            <button
+              type="button"
+              onClick={() => {
+                setModalInitialData(myReview);
+                setIsModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+              <span>Xem / Sửa đánh giá của bạn</span>
+            </button>
+          ) : !user ? (
+            <span className="text-[11px] text-slate-400">
+              Đăng nhập để đánh giá sau khi mua hàng
+            </span>
+          ) : null}
+        </div>
 
         {/* Score and summary badge */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 bg-slate-50/70 border border-slate-200/80 rounded-2xl">
@@ -200,10 +284,13 @@ export const ProductHighlightsSection: React.FC<ProductHighlightsSectionProps> =
         </div>
 
         {/* Reviews List */}
-        {reviewsList.length > 0 ? (
+        {displayReviews.length > 0 ? (
           <div className="space-y-5 divide-y divide-slate-100">
-            {reviewsList.map((rev) => {
-              const reviewerName = rev.user
+            {displayReviews.map((rev) => {
+              const isCurrentUserReview = myReview?.id === rev.id;
+              const reviewerName = isCurrentUserReview
+                ? 'Đánh giá của bạn'
+                : rev.user
                 ? `${rev.user.lastName || ''} ${rev.user.firstName || ''}`.trim() ||
                   'Khách hàng PhoneShop'
                 : 'Khách hàng PhoneShop';
@@ -215,10 +302,23 @@ export const ProductHighlightsSection: React.FC<ProductHighlightsSectionProps> =
               const replies = Array.isArray(rev.replies) ? rev.replies : [];
 
               return (
-                <div key={rev.id} className="pt-4 first:pt-0 space-y-2">
+                <div
+                  key={rev.id}
+                  className={`pt-4 first:pt-0 space-y-2.5 rounded-2xl ${
+                    isCurrentUserReview
+                      ? 'p-4 bg-amber-50/30 border border-amber-200/60 shadow-2xs'
+                      : ''
+                  }`}
+                >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-slate-900">{reviewerName}</span>
+                      {isCurrentUserReview && rev.status === 'PENDING' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-300">
+                          <Clock className="w-3 h-3 text-amber-700" aria-hidden="true" />
+                          <span>Đang chờ quản trị viên duyệt</span>
+                        </span>
+                      )}
                       {rev.isVerified && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
                           <CheckCircle2 className="w-3 h-3 text-emerald-600" aria-hidden="true" />
@@ -226,9 +326,37 @@ export const ProductHighlightsSection: React.FC<ProductHighlightsSectionProps> =
                         </span>
                       )}
                     </div>
-                    {reviewDate && (
-                      <span className="text-[11px] text-slate-400 font-mono">{reviewDate}</span>
-                    )}
+
+                    <div className="flex items-center gap-3">
+                      {reviewDate && (
+                        <span className="text-[11px] text-slate-400 font-mono">{reviewDate}</span>
+                      )}
+                      {isCurrentUserReview && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModalInitialData(rev);
+                              setIsModalOpen(true);
+                            }}
+                            className="p-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-white transition-colors"
+                            title="Chỉnh sửa đánh giá"
+                            aria-label="Chỉnh sửa đánh giá"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteReviewId(rev.id)}
+                            className="p-1 rounded-lg text-slate-500 hover:text-red-600 hover:bg-white transition-colors"
+                            title="Xóa đánh giá"
+                            aria-label="Xóa đánh giá"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Star rating */}
@@ -250,7 +378,30 @@ export const ProductHighlightsSection: React.FC<ProductHighlightsSectionProps> =
                     <h4 className="text-xs font-bold text-slate-900">{rev.title}</h4>
                   )}
                   {rev.content && (
-                    <p className="text-xs text-slate-600 leading-relaxed">{rev.content}</p>
+                    <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-line">
+                      {rev.content}
+                    </p>
+                  )}
+
+                  {/* Review Images Gallery */}
+                  {rev.images && rev.images.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {rev.images.map((imgUrl, imgIdx) => (
+                        <button
+                          key={imgIdx}
+                          type="button"
+                          onClick={() => setLightboxImage(imgUrl)}
+                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-slate-200 bg-white hover:opacity-90 hover:ring-2 hover:ring-blue-500/50 transition-all focus:outline-none"
+                          aria-label={`Xem ảnh đánh giá ${imgIdx + 1}`}
+                        >
+                          <img
+                            src={imgUrl}
+                            alt="Ảnh đính kèm từ khách hàng"
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
                   )}
 
                   {/* Replies from PhoneShop */}
@@ -305,6 +456,53 @@ export const ProductHighlightsSection: React.FC<ProductHighlightsSectionProps> =
           </div>
         )}
       </div>
+
+      {/* Review Modal for Create / Edit */}
+      <ReviewModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        productId={product.id}
+        productName={product.name}
+        productImage={product.thumbnail}
+        initialData={modalInitialData}
+        onSuccess={() => {
+          fetchReviewsAndStatus();
+        }}
+      />
+
+      {/* Review Delete Dialog */}
+      <ReviewDeleteDialog
+        isOpen={Boolean(deleteReviewId)}
+        reviewId={deleteReviewId || ''}
+        onClose={() => setDeleteReviewId(null)}
+        onSuccess={() => {
+          fetchReviewsAndStatus();
+        }}
+      />
+
+      {/* Full Size Image Lightbox */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fadeIn"
+          onClick={() => setLightboxImage(null)}
+        >
+          <div className="relative max-w-3xl max-h-[90vh] p-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setLightboxImage(null)}
+              className="absolute -top-3 -right-3 p-2 bg-white/90 hover:bg-white text-slate-800 rounded-full shadow-lg transition-transform hover:scale-105"
+              aria-label="Đóng"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={lightboxImage}
+              alt="Ảnh phóng to"
+              className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
