@@ -64,6 +64,7 @@ enum OrderStatus {
   PENDING
   CONFIRMED
   PROCESSING
+  PACKED
   SHIPPING
   DELIVERED
   CANCELLED
@@ -478,6 +479,7 @@ model Order {
   cancelledReason String?     @map("cancelled_reason") @db.Text
   holdExpiresAt   DateTime?   @map("hold_expires_at")
   confirmedAt     DateTime?   @map("confirmed_at")
+  packedAt        DateTime?   @map("packed_at")
   shippedAt       DateTime?   @map("shipped_at")
   deliveredAt     DateTime?   @map("delivered_at")
   completedAt     DateTime?   @map("completed_at")

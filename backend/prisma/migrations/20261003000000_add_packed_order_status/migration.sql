@@ -1,0 +1,5 @@
+-- AlterEnum
+ALTER TYPE "OrderStatus" ADD VALUE IF NOT EXISTS 'PACKED';
+
+-- AlterTable
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "packed_at" TIMESTAMP(3);
