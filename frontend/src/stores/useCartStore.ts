@@ -8,7 +8,13 @@ interface CartState {
   selectedItemIds: string[];
   isDrawerOpen: boolean;
 
-  addItem: (product: Product, variant: ProductVariant, quantity?: number) => void;
+  addItem: (
+    product: Product,
+    variant: ProductVariant,
+    quantity?: number,
+    priceOverride?: number,
+    isFlashSale?: boolean
+  ) => void;
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
@@ -35,15 +41,28 @@ export const useCartStore = create<CartState>()(
       selectedItemIds: [],
       isDrawerOpen: false,
 
-      addItem: (product: Product, variant: ProductVariant, quantity = 1) => {
+      addItem: (
+        product: Product,
+        variant: ProductVariant,
+        quantity = 1,
+        priceOverride?: number,
+        isFlashSale?: boolean
+      ) => {
         const currentItems = get().items;
         const existingIndex = currentItems.findIndex((i) => i.variantId === variant.id);
 
+        const finalPrice = priceOverride !== undefined ? priceOverride : variant.price;
         let newItems: CartItem[];
         if (existingIndex > -1) {
           newItems = currentItems.map((item, idx) =>
             idx === existingIndex
-              ? { ...item, quantity: item.quantity + quantity }
+              ? {
+                  ...item,
+                  quantity: item.quantity + quantity,
+                  price: finalPrice,
+                  isFlashSale: isFlashSale ?? item.isFlashSale,
+                  originalPrice: item.originalPrice ?? variant.price,
+                }
               : item
           );
         } else {
@@ -51,9 +70,11 @@ export const useCartStore = create<CartState>()(
             id: `local-${variant.id}-${Date.now()}`,
             variantId: variant.id,
             quantity,
-            price: variant.price,
+            price: finalPrice,
             product,
             variant,
+            isFlashSale: !!isFlashSale,
+            originalPrice: variant.price,
           };
           newItems = [...currentItems, newItem];
         }

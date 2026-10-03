@@ -206,6 +206,8 @@ export interface CartItem {
   price: number;
   product: Product;
   variant: ProductVariant;
+  isFlashSale?: boolean;
+  originalPrice?: number;
 }
 
 export type OrderStatus =

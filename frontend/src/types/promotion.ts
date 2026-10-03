@@ -1,8 +1,10 @@
-export enum VoucherType {
-  PERCENTAGE = 'PERCENTAGE',
-  FIXED_AMOUNT = 'FIXED_AMOUNT',
-  FREE_SHIPPING = 'FREE_SHIPPING',
-}
+export const VoucherType = {
+  PERCENTAGE: 'PERCENTAGE',
+  FIXED_AMOUNT: 'FIXED_AMOUNT',
+  FREE_SHIPPING: 'FREE_SHIPPING',
+} as const;
+
+export type VoucherType = (typeof VoucherType)[keyof typeof VoucherType];
 
 export interface Voucher {
   id: string;
