@@ -560,4 +560,5 @@ export interface SetReorderLevelPayload {
 }
 
 export * from './userManagement';
+export * from './auditLog';
 
