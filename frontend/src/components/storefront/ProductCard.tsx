@@ -78,7 +78,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     const token = localStorage.getItem('mobilecommerce_access_token');
     if (!token) {
       message.warning('Vui lòng đăng nhập để lưu sản phẩm yêu thích!');
-      navigate('/login', { state: { from: location.pathname } });
+      navigate('/login', { state: { from: location } });
       return;
     }
     try {

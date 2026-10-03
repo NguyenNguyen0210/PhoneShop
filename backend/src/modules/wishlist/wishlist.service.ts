@@ -100,30 +100,31 @@ export class WishlistService {
       throw new BadRequestException('Variant is out of stock');
     }
 
-    // Add to cart
-    const cart = await this.prisma.cart.upsert({
-      where: { userId },
-      create: { userId },
-      update: {},
-    });
-
-    const existingCartItem = await this.prisma.cartItem.findUnique({
-      where: { cartId_variantId: { cartId: cart.id, variantId: variant.id } },
-    });
-
-    if (existingCartItem) {
-      await this.prisma.cartItem.update({
-        where: { id: existingCartItem.id },
-        data: { quantity: { increment: 1 } },
+    // Execute cart addition and wishlist deletion atomically in transaction
+    await this.prisma.$transaction(async (tx) => {
+      const cart = await tx.cart.upsert({
+        where: { userId },
+        create: { userId },
+        update: {},
       });
-    } else {
-      await this.prisma.cartItem.create({
-        data: { cartId: cart.id, variantId: variant.id, quantity: 1, unitPrice: variant.price },
-      });
-    }
 
-    // Remove from wishlist
-    await this.prisma.wishlistItem.delete({ where: { id: item.id } });
+      const existingCartItem = await tx.cartItem.findUnique({
+        where: { cartId_variantId: { cartId: cart.id, variantId: variant.id } },
+      });
+
+      if (existingCartItem) {
+        await tx.cartItem.update({
+          where: { id: existingCartItem.id },
+          data: { quantity: { increment: 1 } },
+        });
+      } else {
+        await tx.cartItem.create({
+          data: { cartId: cart.id, variantId: variant.id, quantity: 1, unitPrice: variant.price },
+        });
+      }
+
+      await tx.wishlistItem.delete({ where: { id: item.id } });
+    });
 
     return { success: true, message: 'Product moved to cart' };
   }

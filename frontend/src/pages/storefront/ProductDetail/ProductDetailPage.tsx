@@ -160,7 +160,7 @@ export const ProductDetailPage: React.FC = () => {
     const token = localStorage.getItem('mobilecommerce_access_token');
     if (!token) {
       message.warning('Vui lòng đăng nhập để lưu sản phẩm yêu thích!');
-      navigate('/login', { state: { from: location.pathname } });
+      navigate('/login', { state: { from: location } });
       return;
     }
     if (!product) return;
@@ -703,6 +703,7 @@ export const ProductDetailPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleToggleWishlist}
+                  aria-label={isInWishlist ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
                   className={`py-2 px-2.5 rounded-xl border-2 text-xs font-bold flex items-center justify-center transition cursor-pointer shadow-xs active:scale-95 ${
                     isInWishlist
                       ? 'border-rose-300 bg-rose-50 text-rose-600'

@@ -32,6 +32,7 @@ describe('WishlistService Unit Tests', () => {
         create: jest.fn(),
         update: jest.fn(),
       },
+      $transaction: jest.fn().mockImplementation((cb: any) => cb(mockPrisma)),
     };
 
     service = new WishlistService(mockPrisma as any);

@@ -536,21 +536,23 @@ export const Navbar: React.FC = () => {
                   </span>
                 )}
               </Link>
-              <Link
-                to="/wishlist"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 text-xs font-medium text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition flex items-center justify-between"
-              >
-                <span className="flex items-center gap-2">
-                  <Heart className="w-4 h-4 text-rose-500" />
-                  <span>Sản phẩm yêu thích</span>
-                </span>
-                {wishlistCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px]">
-                    {wishlistCount}
+              {!user && (
+                <Link
+                  to="/wishlist"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 text-xs font-medium text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <Heart className="w-4 h-4 text-rose-500" />
+                    <span>Sản phẩm yêu thích</span>
                   </span>
-                )}
-              </Link>
+                  {wishlistCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px]">
+                      {wishlistCount}
+                    </span>
+                  )}
+                </Link>
+              )}
             </div>
 
             {user ? (

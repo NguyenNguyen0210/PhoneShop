@@ -38,7 +38,13 @@ export const LoginPage: React.FC = () => {
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
 
   // Check redirect location
-  const from = (location.state as any)?.from?.pathname || '/';
+  const fromState = (location.state as any)?.from;
+  const from =
+    typeof fromState === 'string'
+      ? fromState
+    : fromState?.pathname
+    ? `${fromState.pathname}${fromState.search || ''}`
+    : '/';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

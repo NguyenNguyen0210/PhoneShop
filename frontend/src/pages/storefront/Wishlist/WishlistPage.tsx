@@ -342,11 +342,15 @@ export const WishlistPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleMoveToCart(product.id)}
-                      disabled={isMoving || isRemoving}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition cursor-pointer"
+                      disabled={!isInStock || isMoving || isRemoving}
+                      className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl shadow-xs transition ${
+                        !isInStock
+                          ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                          : 'text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
+                      }`}
                     >
                       <ShoppingCart className="w-3.5 h-3.5" />
-                      <span>{isMoving ? 'Đang chuyển...' : 'Chuyển vào giỏ'}</span>
+                      <span>{!isInStock ? 'Hết hàng' : isMoving ? 'Đang chuyển...' : 'Chuyển vào giỏ'}</span>
                     </button>
 
                     {/* Action 2: Bỏ thích */}
