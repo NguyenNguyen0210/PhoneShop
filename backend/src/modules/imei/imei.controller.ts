@@ -18,8 +18,8 @@ export class ImeiController {
   constructor(private readonly imeiService: ImeiService) {}
 
   @Get()
-  @Roles(Role.MANAGER, Role.ADMIN)
-  @ApiOperation({ summary: 'View all IMEI devices (MANAGER/ADMIN)' })
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'View all IMEI devices (STAFF/MANAGER/ADMIN)' })
   findAll(@Query() query: QueryImeiDto) {
     return this.imeiService.findAll(query);
   }
@@ -61,8 +61,8 @@ export class ImeiController {
   }
 
   @Post('import')
-  @Roles(Role.MANAGER, Role.ADMIN)
-  @ApiOperation({ summary: 'Bulk import IMEI devices (MANAGER/ADMIN)' })
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Bulk import IMEI devices (STAFF/MANAGER/ADMIN)' })
   import(@Body() dto: ImportImeiDto) {
     return this.imeiService.import(dto);
   }
