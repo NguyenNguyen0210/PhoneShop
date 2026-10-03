@@ -8,6 +8,8 @@ import {
   BarcodeOutlined,
   OrderedListOutlined,
   CreditCardOutlined,
+  UndoOutlined,
+  CommentOutlined,
 } from '@ant-design/icons';
 
 const adminMenuItems: MenuProps['items'] = [
@@ -32,9 +34,19 @@ const adminMenuItems: MenuProps['items'] = [
     label: 'Quản lý Đơn hàng',
   },
   {
+    key: '/admin/returns',
+    icon: <UndoOutlined style={{ fontSize: 16 }} />,
+    label: 'Quản lý Đổi trả',
+  },
+  {
     key: '/admin/installments',
     icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
     label: 'Hồ sơ trả góp',
+  },
+  {
+    key: '/admin/reviews',
+    icon: <CommentOutlined style={{ fontSize: 16 }} />,
+    label: 'Quản lý Đánh giá',
   },
 ];
 

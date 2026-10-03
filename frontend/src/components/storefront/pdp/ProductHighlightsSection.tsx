@@ -108,12 +108,54 @@ export const ProductHighlightsSection: React.FC<ProductHighlightsSectionProps> =
 
   // Review State & Management
   const { user } = useAuthStore();
+  const isStaff = useAuthStore((s) => s.isStaffOrAdmin());
   const [reviewsList, setReviewsList] = useState<Review[]>(product.reviews || []);
   const [myReviewStatus, setMyReviewStatus] = useState<MyReviewStatusResponse | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalInitialData, setModalInitialData] = useState<Review | null>(null);
   const [deleteReviewId, setDeleteReviewId] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [replyingReviewId, setReplyingReviewId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState<string>('');
+  const [isSubmittingReply, setIsSubmittingReply] = useState<boolean>(false);
+
+  const handleStaffReplySubmit = async (reviewId: string) => {
+    if (!replyText.trim()) return;
+    try {
+      setIsSubmittingReply(true);
+      const newReply = await reviewService.createReply(reviewId, replyText.trim());
+      setReviewsList((prev) =>
+        prev.map((r) => {
+          if (r.id === reviewId) {
+            return {
+              ...r,
+              replies: [...(r.replies || []), newReply],
+            };
+          }
+          return r;
+        })
+      );
+      if (myReview?.id === reviewId) {
+        setMyReviewStatus((prev) =>
+          prev && prev.myReview
+            ? {
+                ...prev,
+                myReview: {
+                  ...prev.myReview,
+                  replies: [...(prev.myReview.replies || []), newReply],
+                },
+              }
+            : prev
+        );
+      }
+      setReplyingReviewId(null);
+      setReplyText('');
+    } catch {
+      alert('Không thể gửi phản hồi. Vui lòng thử lại!');
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
 
   const fetchReviewsAndStatus = async () => {
     try {
@@ -436,6 +478,61 @@ export const ProductHighlightsSection: React.FC<ProductHighlightsSectionProps> =
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+
+                  {/* Staff Reply Form */}
+                  {isStaff && (
+                    <div className="pt-2">
+                      {replyingReviewId === rev.id ? (
+                        <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200 space-y-2">
+                          <label className="text-xs font-semibold text-blue-900 flex items-center gap-1.5">
+                            <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Trả lời với tư cách PhoneShop CSKH</span>
+                          </label>
+                          <textarea
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            placeholder="Nhập nội dung phản hồi gửi khách hàng..."
+                            rows={2}
+                            className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            disabled={isSubmittingReply}
+                          />
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReplyingReviewId(null);
+                                setReplyText('');
+                              }}
+                              disabled={isSubmittingReply}
+                              className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800 font-medium"
+                            >
+                              Hủy
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleStaffReplySubmit(rev.id)}
+                              disabled={isSubmittingReply || !replyText.trim()}
+                              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 shadow-2xs"
+                            >
+                              {isSubmittingReply ? 'Đang gửi...' : 'Gửi phản hồi'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplyingReviewId(rev.id);
+                            setReplyText('');
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Trả lời đánh giá</span>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
