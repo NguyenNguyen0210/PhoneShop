@@ -38,6 +38,7 @@ import { AdminCustomer360Page } from '../pages/Admin/Customers/AdminCustomer360P
 import { AdminTicketsPage } from '../pages/Admin/Tickets/AdminTicketsPage';
 import { AdminTicketDetailPage } from '../pages/Admin/Tickets/AdminTicketDetailPage';
 import { AdminUsersPage } from '../pages/Admin/Users/AdminUsersPage';
+import { AdminPromotionsPage } from '../pages/Admin/Promotions/AdminPromotionsPage';
 
 // Route Guards
 import { AdminRoute } from './AdminRoute';
@@ -107,6 +108,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/admin/inventory" element={<AdminInventoryPage />} />
           <Route path="/admin/imei" element={<Navigate to="/admin/inventory?tab=imei" replace />} />
           <Route path="/admin/orders" element={<AdminOrdersPage />} />
+          <Route path="/admin/promotions" element={<AdminPromotionsPage />} />
           <Route
             path="/admin/returns"
             element={

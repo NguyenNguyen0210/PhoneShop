@@ -18,6 +18,7 @@ import {
   CommentOutlined,
   CustomerServiceOutlined,
   FolderOpenOutlined,
+  TagOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
 
@@ -59,6 +60,11 @@ export const AdminLayout: React.FC = () => {
       key: '/admin/orders',
       icon: <OrderedListOutlined style={{ fontSize: 16 }} />,
       label: 'Quản lý Đơn hàng',
+    },
+    {
+      key: '/admin/promotions',
+      icon: <TagOutlined style={{ fontSize: 16 }} />,
+      label: 'Khuyến mãi & Flash Sale',
     },
     {
       key: '/admin/returns',
@@ -115,6 +121,7 @@ export const AdminLayout: React.FC = () => {
     if (location.pathname === '/admin/categories') return 'Quản lý Danh mục Smartphone';
     if (location.pathname === '/admin/imei') return 'Quản trị Kho Thiết bị & Quản lý IMEI';
     if (location.pathname === '/admin/orders') return 'Quản lý Đơn hàng & Điều phối';
+    if (location.pathname.startsWith('/admin/promotions')) return 'Quản lý Khuyến mãi & Flash Sale';
     if (location.pathname === '/admin/returns') return 'Quản lý Đổi trả & Hoàn tiền';
     if (location.pathname.startsWith('/admin/customers')) return 'Hồ sơ Khách hàng Customer 360°';
     if (location.pathname.startsWith('/admin/tickets')) return 'Hệ thống Vé Hỗ trợ & Khiếu nại';
