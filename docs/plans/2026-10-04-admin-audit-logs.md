@@ -1,6 +1,6 @@
 # Admin Audit Logs (`/admin/audit-logs`) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development (recommended) or executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development (recommended) or executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Build an enterprise-ready Audit Logs management page (`/admin/audit-logs`) with full-stack support: backend date-range/fuzzy search/statistics query, and frontend Ant Design dashboard with overview metrics, filters, data table, JSON diff drawer, and UTF-8 CSV export.
 
@@ -36,7 +36,7 @@
 
 ## Tasks Overview
 
-- [ ] **Task 1: Backend DTO & Query Enhancement**
+- [x] **Task 1: Backend DTO & Query Enhancement**
 
 ### Task 1: Backend DTO & Query Enhancement
 
@@ -45,7 +45,7 @@
 - Modify: `backend/src/modules/audit-log/audit-log.service.ts`
 - Test: `backend/test/unit/audit-log.spec.ts`
 
-- [ ] **Step 1: Write failing unit test for AuditLogService query filtering & stats**
+- [x] **Step 1: Write failing unit test for AuditLogService query filtering & stats**
 
 Create `backend/test/unit/audit-log.spec.ts`:
 ```typescript
@@ -143,12 +143,12 @@ describe('AuditLogService', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm --prefix backend test -- test/unit/audit-log.spec.ts`
 Expected: FAIL (getStats is not a function / query fields missing)
 
-- [ ] **Step 3: Update FilterAuditLogDto**
+- [x] **Step 3: Update FilterAuditLogDto**
 
 Edit `backend/src/modules/audit-log/dto/filter-audit-log.dto.ts`:
 ```typescript
@@ -209,7 +209,7 @@ export class FilterAuditLogDto {
 }
 ```
 
-- [ ] **Step 4: Update AuditLogService implementation**
+- [x] **Step 4: Update AuditLogService implementation**
 
 Edit `backend/src/modules/audit-log/audit-log.service.ts`:
 ```typescript
@@ -317,18 +317,18 @@ export class AuditLogService {
 }
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `npm --prefix backend test -- test/unit/audit-log.spec.ts`
 Expected: PASS
 
-- [ ] **Step 6: Commit backend service changes**
+- [x] **Step 6: Commit backend service changes**
 
 ```bash
 git add backend/src/modules/audit-log/dto/filter-audit-log.dto.ts backend/src/modules/audit-log/audit-log.service.ts backend/test/unit/audit-log.spec.ts
 git commit -m "feat(audit-log): add date range, search filters and stats query"
 ```
-- [ ] **Task 2: Backend Controller Stats Endpoint & Unit Tests**
+- [x] **Task 2: Backend Controller Stats Endpoint & Unit Tests**
 
 ### Task 2: Backend Controller Stats Endpoint & Unit Tests
 
@@ -336,7 +336,7 @@ git commit -m "feat(audit-log): add date range, search filters and stats query"
 - Modify: `backend/src/modules/audit-log/audit-log.controller.ts`
 - Modify: `backend/test/unit/audit-log.spec.ts`
 
-- [ ] **Step 1: Add Controller tests to audit-log.spec.ts**
+- [x] **Step 1: Add Controller tests to audit-log.spec.ts**
 
 Append to `backend/test/unit/audit-log.spec.ts`:
 ```typescript
@@ -376,12 +376,12 @@ describe('AuditLogController', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm --prefix backend test -- test/unit/audit-log.spec.ts`
 Expected: FAIL (`controller.getStats is not a function`)
 
-- [ ] **Step 3: Update AuditLogController**
+- [x] **Step 3: Update AuditLogController**
 
 Edit `backend/src/modules/audit-log/audit-log.controller.ts`:
 ```typescript
@@ -423,18 +423,18 @@ export class AuditLogController {
 ```
 *Note: `@Get('stats')` is declared before `@Get(':id')` so `stats` is not treated as a dynamic `:id` param.*
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npm --prefix backend test -- test/unit/audit-log.spec.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit controller changes**
+- [x] **Step 5: Commit controller changes**
 
 ```bash
 git add backend/src/modules/audit-log/audit-log.controller.ts backend/test/unit/audit-log.spec.ts
 git commit -m "feat(audit-log): expose GET /audit-logs/stats for admin dashboard metrics"
 ```
-- [ ] **Task 3: Frontend Types & AuditLogService**
+- [x] **Task 3: Frontend Types & AuditLogService**
 
 ### Task 3: Frontend Types & AuditLogService
 
@@ -443,7 +443,7 @@ git commit -m "feat(audit-log): expose GET /audit-logs/stats for admin dashboard
 - Create: `frontend/src/services/auditLogService.ts`
 - Create: `frontend/src/services/__tests__/auditLogService.spec.ts`
 
-- [ ] **Step 1: Write failing unit test for auditLogService**
+- [x] **Step 1: Write failing unit test for auditLogService**
 
 Create `frontend/src/services/__tests__/auditLogService.spec.ts`:
 ```typescript
@@ -499,12 +499,12 @@ describe('auditLogService', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm --prefix frontend test -- src/services/__tests__/auditLogService.spec.ts`
 Expected: FAIL (Cannot find module '../auditLogService')
 
-- [ ] **Step 3: Create types definition frontend/src/types/auditLog.ts**
+- [x] **Step 3: Create types definition frontend/src/types/auditLog.ts**
 
 Create `frontend/src/types/auditLog.ts`:
 ```typescript
@@ -569,7 +569,7 @@ export interface PaginatedAuditLogsResponse {
 }
 ```
 
-- [ ] **Step 4: Create service frontend/src/services/auditLogService.ts**
+- [x] **Step 4: Create service frontend/src/services/auditLogService.ts**
 
 Create `frontend/src/services/auditLogService.ts`:
 ```typescript
@@ -627,25 +627,25 @@ export const auditLogService = {
 };
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `npm --prefix frontend test -- src/services/__tests__/auditLogService.spec.ts`
 Expected: PASS
 
-- [ ] **Step 6: Commit frontend types & service**
+- [x] **Step 6: Commit frontend types & service**
 
 ```bash
 git add frontend/src/types/auditLog.ts frontend/src/services/auditLogService.ts frontend/src/services/__tests__/auditLogService.spec.ts
 git commit -m "feat(frontend): add auditLog types, service with stats and CSV export"
 ```
-- [ ] **Task 4: Frontend Detail Drawer with JSON Diff Viewer**
+- [x] **Task 4: Frontend Detail Drawer with JSON Diff Viewer**
 
 ### Task 4: Frontend Detail Drawer with JSON Diff Viewer
 
 **Files:**
 - Create: `frontend/src/pages/Admin/AuditLogs/components/AuditLogDetailDrawer.tsx`
 
-- [ ] **Step 1: Write AuditLogDetailDrawer component skeleton and implementation**
+- [x] **Step 1: Write AuditLogDetailDrawer component skeleton and implementation**
 
 Create `frontend/src/pages/Admin/AuditLogs/components/AuditLogDetailDrawer.tsx`:
 ```tsx
@@ -1000,20 +1000,20 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
 };
 ```
 
-- [ ] **Step 2: Commit AuditLogDetailDrawer component**
+- [x] **Step 2: Commit AuditLogDetailDrawer component**
 
 ```bash
 git add frontend/src/pages/Admin/AuditLogs/components/AuditLogDetailDrawer.tsx
 git commit -m "feat(frontend): create AuditLogDetailDrawer with JSON diff and raw tabs"
 ```
-- [ ] **Task 5: Frontend AdminAuditLogsPage**
+- [x] **Task 5: Frontend AdminAuditLogsPage**
 
 ### Task 5: Frontend AdminAuditLogsPage
 
 **Files:**
 - Create: `frontend/src/pages/Admin/AuditLogs/AdminAuditLogsPage.tsx`
 
-- [ ] **Step 1: Create AdminAuditLogsPage component with metrics, filters, and table**
+- [x] **Step 1: Create AdminAuditLogsPage component with metrics, filters, and table**
 
 Create `frontend/src/pages/Admin/AuditLogs/AdminAuditLogsPage.tsx`:
 ```tsx
@@ -1473,13 +1473,13 @@ export const AdminAuditLogsPage: React.FC = () => {
 export default AdminAuditLogsPage;
 ```
 
-- [ ] **Step 2: Commit AdminAuditLogsPage component**
+- [x] **Step 2: Commit AdminAuditLogsPage component**
 
 ```bash
 git add frontend/src/pages/Admin/AuditLogs/AdminAuditLogsPage.tsx
 git commit -m "feat(frontend): create AdminAuditLogsPage with metrics, filters, and logs table"
 ```
-- [ ] **Task 6: Routing & Admin Sidebar Integration**
+- [x] **Task 6: Routing & Admin Sidebar Integration**
 
 ### Task 6: Routing & Admin Sidebar Integration
 
@@ -1487,7 +1487,7 @@ git commit -m "feat(frontend): create AdminAuditLogsPage with metrics, filters, 
 - Modify: `frontend/src/routes/AppRoutes.tsx`
 - Modify: `frontend/src/components/admin/AdminSidebar.tsx`
 
-- [ ] **Step 1: Register route in AppRoutes.tsx**
+- [x] **Step 1: Register route in AppRoutes.tsx**
 
 Edit `frontend/src/routes/AppRoutes.tsx`:
 Add import:
@@ -1506,7 +1506,7 @@ Add Route inside the `<Route element={<AdminLayout />}>` block (restricted to `A
           />
 ```
 
-- [ ] **Step 2: Add Audit Logs to AdminSidebar.tsx**
+- [x] **Step 2: Add Audit Logs to AdminSidebar.tsx**
 
 Edit `frontend/src/components/admin/AdminSidebar.tsx`:
 Add icon import `SafetyCertificateOutlined`:
@@ -1535,7 +1535,7 @@ Add item to `adminMenuItems`:
 ```
 (Place right after `key: '/admin/users'`).
 
-- [ ] **Step 3: Commit routing & sidebar changes**
+- [x] **Step 3: Commit routing & sidebar changes**
 
 ```bash
 git add frontend/src/routes/AppRoutes.tsx frontend/src/components/admin/AdminSidebar.tsx
@@ -1544,7 +1544,7 @@ git commit -m "feat(frontend): integrate /admin/audit-logs route and admin sideb
 
 ---
 
-- [ ] **Task 7: Component Tests & End-to-End Build Verification**
+- [x] **Task 7: Component Tests & End-to-End Build Verification**
 
 ### Task 7: Component Tests & End-to-End Build Verification
 
@@ -1552,7 +1552,7 @@ git commit -m "feat(frontend): integrate /admin/audit-logs route and admin sideb
 - Modify: `frontend/src/components/admin/__tests__/AdminSidebar.spec.tsx`
 - Create: `frontend/src/pages/Admin/AuditLogs/__tests__/AdminAuditLogsPage.spec.tsx`
 
-- [ ] **Step 1: Update AdminSidebar.spec.tsx to verify 'Nhật ký kiểm toán' item**
+- [x] **Step 1: Update AdminSidebar.spec.tsx to verify 'Nhật ký kiểm toán' item**
 
 Edit `frontend/src/components/admin/__tests__/AdminSidebar.spec.tsx`:
 Add test assertion:
@@ -1567,7 +1567,7 @@ Add test assertion:
   });
 ```
 
-- [ ] **Step 2: Create unit/component test for AdminAuditLogsPage**
+- [x] **Step 2: Create unit/component test for AdminAuditLogsPage**
 
 Create `frontend/src/pages/Admin/AuditLogs/__tests__/AdminAuditLogsPage.spec.tsx`:
 ```tsx
@@ -1649,7 +1649,7 @@ describe('AdminAuditLogsPage', () => {
 });
 ```
 
-- [ ] **Step 3: Run Vitest tests to verify all tests pass**
+- [x] **Step 3: Run Vitest tests to verify all tests pass**
 
 Run:
 ```bash
@@ -1657,7 +1657,7 @@ npm --prefix frontend test -- src/components/admin/__tests__/AdminSidebar.spec.t
 ```
 Expected: PASS
 
-- [ ] **Step 4: Run backend Jest tests**
+- [x] **Step 4: Run backend Jest tests**
 
 Run:
 ```bash
@@ -1665,7 +1665,7 @@ npm --prefix backend test -- test/unit/audit-log.spec.ts
 ```
 Expected: PASS
 
-- [ ] **Step 5: Run TypeScript build check across frontend and backend**
+- [x] **Step 5: Run TypeScript build check across frontend and backend**
 
 Run:
 ```bash
@@ -1674,7 +1674,7 @@ npm --prefix backend run build
 ```
 Expected: TypeScript compile passes without errors
 
-- [ ] **Step 6: Commit all tests and plan completion**
+- [x] **Step 6: Commit all tests and plan completion**
 
 ```bash
 git add frontend/src/components/admin/__tests__/AdminSidebar.spec.tsx frontend/src/pages/Admin/AuditLogs/__tests__/AdminAuditLogsPage.spec.tsx
