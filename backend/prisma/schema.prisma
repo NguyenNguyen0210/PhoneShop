@@ -165,6 +165,7 @@ enum NotificationType {
   SYSTEM
   WARRANTY
   RETURN
+  SUPPORT
 }
 
 enum NotificationChannel {
@@ -221,6 +222,10 @@ model User {
   returns       Return[]
   installmentApplications InstallmentApplication[]
   reviewedInstallments    InstallmentApplication[] @relation("StaffReviewedInstallments")
+
+  tickets                 Ticket[]                 @relation("UserTickets")
+  assignedTickets         Ticket[]                 @relation("StaffAssignedTickets")
+  ticketMessages          TicketMessage[]
 
   refreshTokens RefreshToken[]
   passwordResetTokens PasswordResetToken[]
@@ -495,6 +500,7 @@ model Order {
   returns  Return[]
   shipping Shipping?
   installmentApplication InstallmentApplication?
+  tickets  Ticket[]
 
   @@index([userId])
   @@index([status])
@@ -1011,3 +1017,80 @@ model InstallmentApplication {
   @@index([citizenId])
   @@map("installment_applications")
 }
+
+// ============================================================
+// CUSTOMER SUPPORT & TICKETS
+// ============================================================
+
+enum TicketCategory {
+  ORDER_INQUIRY
+  PRODUCT_INQUIRY
+  WARRANTY_SUPPORT
+  RETURN_REFUND
+  PAYMENT_INSTALLMENT
+  ACCOUNT_GENERAL
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Ticket {
+  id            String          @id @default(uuid()) @db.Uuid
+  code          String          @unique @db.VarChar(30)
+  title         String          @db.VarChar(255)
+  category      TicketCategory  @default(ACCOUNT_GENERAL)
+  priority      TicketPriority  @default(MEDIUM)
+  status        TicketStatus    @default(OPEN)
+  
+  userId        String          @map("user_id") @db.Uuid
+  user          User            @relation("UserTickets", fields: [userId], references: [id], onDelete: Cascade)
+  
+  orderId       String?         @map("order_id") @db.Uuid
+  order         Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  
+  assignedToId  String?         @map("assigned_to_id") @db.Uuid
+  assignedTo    User?           @relation("StaffAssignedTickets", fields: [assignedToId], references: [id], onDelete: SetNull)
+  
+  lastRepliedAt DateTime?       @map("last_replied_at")
+  resolvedAt    DateTime?       @map("resolved_at")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  messages      TicketMessage[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([createdAt])
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id              String        @id @default(uuid()) @db.Uuid
+  ticketId        String        @map("ticket_id") @db.Uuid
+  ticket          Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  senderId        String        @map("sender_id") @db.Uuid
+  sender          User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  
+  message         String        @db.Text
+  attachments     String[]      @default([])
+  isInternalNote  Boolean       @default(false) @map("is_internal_note")
+  
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@index([ticketId])
+  @@map("ticket_messages")
+}
+
