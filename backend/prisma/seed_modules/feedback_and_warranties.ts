@@ -700,5 +700,39 @@ export async function seedFeedbackAndAftersales(
   }
   console.log(`    + Seeded Wishlists with items for ${wishlistCustomers.length} customers.`);
 
+  console.log('  6. Seeding realistic Notifications for customer engagement...');
+  const notifCustomers = customerList.slice(0, 30);
+  const notificationsToInsert: any[] = [];
+  for (const user of notifCustomers) {
+    notificationsToInsert.push({
+      userId: user.id,
+      type: 'SYSTEM',
+      channel: 'IN_APP',
+      title: 'Chào mừng bạn đến với PhoneShop',
+      message: `Xin chào ${user.firstName || 'bạn'}, cảm ơn bạn đã gia nhập PhoneShop! Trải nghiệm mua sắm đồ công nghệ chính hãng hàng đầu.`,
+      data: { welcome: true },
+      isRead: true,
+      readAt: new Date(Date.now() - 7 * 86400000),
+      createdAt: new Date(Date.now() - 7 * 86400000),
+    });
+    notificationsToInsert.push({
+      userId: user.id,
+      type: 'PROMOTION',
+      channel: 'IN_APP',
+      title: '🎁 Ưu đãi đặc quyền: Giảm 200.000đ cho đơn hàng tiếp theo',
+      message: 'Áp dụng mã PHONENEW khi thanh toán đơn hàng từ 5.000.000đ. Số lượng có hạn!',
+      data: { couponCode: 'PHONENEW', discountAmount: 200000 },
+      isRead: false,
+      createdAt: new Date(Date.now() - 4 * 3600000),
+    });
+  }
+  if (notificationsToInsert.length > 0) {
+    await prisma.notification.createMany({
+      data: notificationsToInsert,
+      skipDuplicates: true,
+    });
+  }
+  console.log(`    + Seeded ${notificationsToInsert.length} notifications for ${notifCustomers.length} customers.`);
+
   console.log('✅ Feedback and aftersales seed module completed successfully.\n');
 }
