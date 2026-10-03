@@ -9,7 +9,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderDto, CancelOrderDto } from './dto/order.dto';
-import { OrderStatus, VoucherType, ImeiStatus, WarrantyStatus, Prisma, PaymentStatus, PaymentMethod, TransactionStatus, TransactionType, RefundStatus } from '@prisma/client';
+import { OrderStatus, VoucherType, ImeiStatus, WarrantyStatus, Prisma, PaymentStatus, PaymentMethod, TransactionStatus, TransactionType, RefundStatus, InstallmentStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { STANDARD_SHIPPING_FEE } from '../../common/constants';
 
@@ -64,10 +64,31 @@ export class OrdersService {
       }
     }
 
+    const isInstallment = dto.paymentMethod === PaymentMethod.INSTALLMENT;
+    if (isInstallment) {
+      if (!dto.installmentData) {
+        throw new BadRequestException('Thông tin hồ sơ trả góp không được để trống');
+      }
+      const birth = new Date(dto.installmentData.birthDate);
+      if (isNaN(birth.getTime())) {
+        throw new BadRequestException('Ngày sinh không hợp lệ');
+      }
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      if (age < 18) {
+        throw new BadRequestException('Người đăng ký trả góp phải từ 18 tuổi trở lên');
+      }
+    }
+
     // 3. Fresh catalog prices are resolved INSIDE the transaction (M1);
     // subtotal is computed there, never from stale cart snapshots.
     const shippingFee = STANDARD_SHIPPING_FEE;
-    const holdExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes hold
+    const holdDurationMs = isInstallment ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000;
+    const holdExpiresAt = new Date(Date.now() + holdDurationMs);
 
     // 4. Atomic transaction with IMEI reservation, voucher validation, and inventory deduction.
     // LOW: orderNumber is Date.now()+rand — on the astronomically rare
@@ -289,6 +310,52 @@ export class OrdersService {
         include: { items: true },
       });
 
+      if (isInstallment && dto.installmentData) {
+        const prepayAmount = Math.round(
+          (Number(totalAmount) * dto.installmentData.prepayPercent) / 100,
+        );
+        const loanAmount = Number(totalAmount) - prepayAmount;
+        const monthlyAmount = Math.round(
+          loanAmount / dto.installmentData.termMonths,
+        );
+
+        if (tx.payment?.create) {
+          await tx.payment.create({
+            data: {
+              orderId: newOrder.id,
+              method: PaymentMethod.INSTALLMENT,
+              status: PaymentStatus.PENDING,
+              amount: totalAmount,
+            },
+          });
+        }
+
+        if (tx.installmentApplication?.create) {
+          const installmentApp = await tx.installmentApplication.create({
+            data: {
+              orderId: newOrder.id,
+              userId,
+              provider: dto.installmentData.provider,
+              status: InstallmentStatus.PENDING,
+              termMonths: dto.installmentData.termMonths,
+              prepayPercent: dto.installmentData.prepayPercent,
+              prepayAmount: new Prisma.Decimal(prepayAmount),
+              loanAmount: new Prisma.Decimal(loanAmount),
+              monthlyAmount: new Prisma.Decimal(monthlyAmount),
+              fullName: dto.installmentData.fullName,
+              citizenId: dto.installmentData.citizenId,
+              birthDate: new Date(dto.installmentData.birthDate),
+              phoneNumber: dto.installmentData.phoneNumber,
+              currentAddress: dto.installmentData.currentAddress,
+              incomeRange: dto.installmentData.incomeRange,
+              cccdFrontUrl: dto.installmentData.cccdFrontUrl,
+              cccdBackUrl: dto.installmentData.cccdBackUrl,
+            },
+          });
+          (newOrder as any).installmentApplication = installmentApp;
+        }
+      }
+
       // Record voucher usage
       if (voucherUsageData) {
         await tx.voucherUsage.create({
@@ -337,14 +404,14 @@ export class OrdersService {
       }
     }
 
-    // 6. Push BullMQ job for 15-minute hold auto-release
+    // 6. Push BullMQ job for hold auto-release (15m standard, 24h installment)
     try {
       await this.orderQueue.add(
         'expire-order-hold',
         { orderId: order.id },
-        { delay: 15 * 60 * 1000 },
+        { delay: holdDurationMs },
       );
-      this.logger.log(`Enqueued 15m hold expiry job for order ${order.id}`);
+      this.logger.log(`Enqueued ${isInstallment ? '24h' : '15m'} hold expiry job for order ${order.id}`);
     } catch (queueErr) {
       this.logger.error(
         `Failed to enqueue expire-order-hold job for order ${order.id}:`,
@@ -397,6 +464,16 @@ export class OrdersService {
       if (affected.count === 0) return;
       cancelled = true;
 
+      if (tx.installmentApplication?.updateMany) {
+        await tx.installmentApplication.updateMany({
+          where: { orderId, status: InstallmentStatus.PENDING },
+          data: {
+            status: InstallmentStatus.CANCELLED,
+            rejectionReason: 'Hết thời hạn 24h thẩm định hồ sơ',
+          },
+        });
+      }
+
       await this.rollbackVoucherUsage(tx, order);
 
       for (const item of order.items) {
@@ -425,7 +502,7 @@ export class OrdersService {
   async findMyOrders(userId: string) {
     return this.prisma.order.findMany({
       where: { userId },
-      include: { items: true, payments: true },
+      include: { items: true, payments: true, installmentApplication: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -433,7 +510,12 @@ export class OrdersService {
   async findMyOrder(userId: string, id: string) {
     const order = await this.prisma.order.findFirst({
       where: { id, userId },
-      include: { items: { include: { variant: true } }, payments: true, address: true },
+      include: {
+        items: { include: { variant: true } },
+        payments: true,
+        address: true,
+        installmentApplication: true,
+      },
     });
     if (!order) throw new NotFoundException('Order not found');
     return order;
@@ -451,6 +533,7 @@ export class OrdersService {
           },
         },
         payments: true,
+        installmentApplication: true,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -484,6 +567,7 @@ export class OrdersService {
         items: { include: { variant: { include: { product: true } }, imeiDevice: true } },
         payments: { include: { transactions: true } },
         address: true,
+        installmentApplication: true,
       },
     });
     if (!order) throw new NotFoundException('Order not found');
@@ -569,6 +653,15 @@ export class OrdersService {
         newStatus === OrderStatus.CANCELLED &&
         (order.status === OrderStatus.PENDING || order.status === OrderStatus.CONFIRMED)
       ) {
+        if (tx.installmentApplication?.updateMany) {
+          await tx.installmentApplication.updateMany({
+            where: { orderId: id, status: InstallmentStatus.PENDING },
+            data: {
+              status: InstallmentStatus.CANCELLED,
+              rejectionReason: reason || 'Đơn hàng bị hủy bởi nhân viên',
+            },
+          });
+        }
         await this.rollbackVoucherUsage(tx, order);
         // P2: cancelling a PAID order must refund it in the same transaction —
         // otherwise stock comes back while the money stays captured.
@@ -733,6 +826,16 @@ export class OrdersService {
       // this order — abort instead of double-releasing inventory (H2/H7).
       if (guarded.count === 0) {
         throw new BadRequestException('Order cannot be cancelled in its current status');
+      }
+
+      if (tx.installmentApplication?.updateMany) {
+        await tx.installmentApplication.updateMany({
+          where: { orderId: id, status: InstallmentStatus.PENDING },
+          data: {
+            status: InstallmentStatus.CANCELLED,
+            rejectionReason: dto.reason || 'Khách hàng hủy đơn hàng',
+          },
+        });
       }
 
       await this.rollbackVoucherUsage(tx, order);

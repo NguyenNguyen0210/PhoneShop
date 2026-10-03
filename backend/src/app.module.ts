@@ -27,6 +27,7 @@ import { ImeiModule } from './modules/imei/imei.module';
 import { CartModule } from './modules/cart/cart.module';
 import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { InstallmentsModule } from './modules/installments/installments.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
@@ -72,6 +73,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     CartModule,
     VouchersModule,
     OrdersModule,
+    InstallmentsModule,
     PaymentsModule,
     ReviewsModule,
     WishlistModule,

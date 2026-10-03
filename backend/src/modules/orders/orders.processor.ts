@@ -2,7 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
-import { OrderStatus, ImeiStatus } from '@prisma/client';
+import { OrderStatus, ImeiStatus, InstallmentStatus } from '@prisma/client';
 
 export interface ExpireOrderHoldJobData {
   orderId: string;
@@ -57,6 +57,16 @@ export class OrdersProcessor extends WorkerHost {
       });
       if (affected.count === 0) return; // Order was already confirmed, paid, or cancelled
       cancelled = true;
+
+      if ((tx as any).installmentApplication?.updateMany) {
+        await (tx as any).installmentApplication.updateMany({
+          where: { orderId, status: InstallmentStatus.PENDING },
+          data: {
+            status: InstallmentStatus.CANCELLED,
+            rejectionReason: 'Hết thời hạn 24h thẩm định hồ sơ',
+          },
+        });
+      }
 
       // H2: give the voucher use back together with the stock release
       if ((order as any).voucherCode) {
