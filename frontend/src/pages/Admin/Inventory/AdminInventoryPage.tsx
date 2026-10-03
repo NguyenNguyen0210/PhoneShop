@@ -1,18 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Tabs, Typography, message, Alert } from 'antd';
-import { DatabaseOutlined, BarcodeOutlined } from '@ant-design/icons';
+import { DatabaseOutlined, BarcodeOutlined, HistoryOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { inventoryService } from '../../../services/inventoryService';
 import type { InventoryRecord } from '../../../types';
 import { InventoryStatsCards } from './components/InventoryStatsCards';
 import { InventoryStockTab } from './components/InventoryStockTab';
+import { InventoryLedgerTab } from './components/InventoryLedgerTab';
 import { AdminImeiPage } from '../InventoryImei/AdminImeiPage';
 
 const { Title, Text } = Typography;
 
 export const AdminInventoryPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTabKey = searchParams.get('tab') === 'imei' ? 'imei' : 'stock';
+  const currentTab = searchParams.get('tab');
+  const activeTabKey =
+    currentTab === 'imei' ? 'imei' : currentTab === 'ledger' ? 'ledger' : 'stock';
 
   const [items, setItems] = useState<InventoryRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -40,7 +43,11 @@ export const AdminInventoryPage: React.FC = () => {
   }, [fetchInventory]);
 
   const handleTabChange = (key: string) => {
-    setSearchParams(key === 'imei' ? { tab: 'imei' } : {});
+    if (key === 'stock') {
+      setSearchParams({});
+    } else {
+      setSearchParams({ tab: key });
+    }
   };
 
   const handleToggleLowStock = () => {
@@ -113,6 +120,16 @@ export const AdminInventoryPage: React.FC = () => {
                 </span>
               ),
               children: <AdminImeiPage />,
+            },
+            {
+              key: 'ledger',
+              label: (
+                <span>
+                  <HistoryOutlined style={{ marginRight: 6 }} />
+                  Sổ kho & Dòng tiền
+                </span>
+              ),
+              children: <InventoryLedgerTab />,
             },
           ]}
         />
