@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Star,
   ShieldCheck,
@@ -14,10 +14,13 @@ import {
   CreditCard,
   PackageCheck,
   Award,
+  Heart,
 } from 'lucide-react';
+import { message } from 'antd';
 import { productService } from '../../../services/productService';
 import type { Product, ProductVariant } from '../../../types';
 import { useCartStore } from '../../../stores/useCartStore';
+import { useWishlistStore } from '../../../stores/useWishlistStore';
 import { resolveColorStyle } from '../../../utils/colorHelper';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 import {
@@ -31,6 +34,7 @@ import {
 export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addItem } = useCartStore();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -41,6 +45,9 @@ export const ProductDetailPage: React.FC = () => {
   const [justAdded, setJustAdded] = useState(false);
   const [isInstallmentModalOpen, setIsInstallmentModalOpen] = useState(false);
   const [isSpecsModalOpen, setIsSpecsModalOpen] = useState(false);
+
+  const isInWishlist = useWishlistStore((state) => state.isInWishlist(product?.id || ''));
+  const toggleWishlist = useWishlistStore((state) => state.toggleWishlist);
 
   useEffect(() => {
     if (!id) return;
@@ -147,6 +154,22 @@ export const ProductDetailPage: React.FC = () => {
     if (!product || !selectedVariant) return;
     addItem(product, selectedVariant, 1);
     navigate('/checkout');
+  };
+
+  const handleToggleWishlist = async () => {
+    const token = localStorage.getItem('mobilecommerce_access_token');
+    if (!token) {
+      message.warning('Vui lòng đăng nhập để lưu sản phẩm yêu thích!');
+      navigate('/login', { state: { from: location.pathname } });
+      return;
+    }
+    if (!product) return;
+    try {
+      const isAdded = await toggleWishlist(product);
+      message.success(isAdded ? 'Đã thêm vào danh sách yêu thích!' : 'Đã xóa khỏi danh sách yêu thích!');
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Không thể cập nhật danh sách yêu thích');
+    }
   };
 
   const scrollToReviews = () => {
@@ -391,6 +414,21 @@ export const ProductDetailPage: React.FC = () => {
                     {inventoryAvailable > 0 ? `🟢 Còn ${inventoryAvailable} máy tại kho` : '🔴 Tạm hết hàng'}
                   </span>
                 </div>
+
+                {/* Position A: Wishlist badge */}
+                <button
+                  type="button"
+                  onClick={handleToggleWishlist}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition cursor-pointer active:scale-95 ${
+                    isInWishlist
+                      ? 'border-rose-200 bg-rose-50 text-rose-600'
+                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-rose-300 hover:text-rose-600'
+                  }`}
+                  title={isInWishlist ? 'Đã lưu trong yêu thích' : 'Lưu vào yêu thích'}
+                >
+                  <Heart className={`w-3.5 h-3.5 ${isInWishlist ? 'fill-rose-500 text-rose-500' : ''}`} />
+                  <span>{isInWishlist ? 'Đã yêu thích' : 'Yêu thích'}</span>
+                </button>
               </div>
             </div>
 
@@ -519,6 +557,21 @@ export const ProductDetailPage: React.FC = () => {
             {/* Action CTAs: 3-Column Cohesive Bar (Cart + MUA NGAY + TRẢ GÓP 0%) */}
             <div className="pt-2">
               <div className="flex items-stretch gap-2.5 sm:gap-3">
+                {/* Wishlist Button */}
+                <button
+                  type="button"
+                  onClick={handleToggleWishlist}
+                  className={`w-12 sm:w-14 py-2.5 px-2 rounded-2xl border-2 flex flex-col items-center justify-center transition-all cursor-pointer shrink-0 shadow-xs active:scale-[0.98] ${
+                    isInWishlist
+                      ? 'border-rose-300 bg-rose-50 text-rose-600'
+                      : 'border-slate-200 bg-white text-slate-500 hover:border-rose-300 hover:text-rose-600 hover:bg-rose-50/50'
+                  }`}
+                  title={isInWishlist ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                >
+                  <Heart className={`w-5 h-5 ${isInWishlist ? 'fill-rose-500 text-rose-500' : ''}`} />
+                  <span className="text-[10px] font-bold mt-0.5 leading-tight">{isInWishlist ? 'Đã lưu' : 'Lưu'}</span>
+                </button>
+
                 {/* Cart Button (Outline Button, ~16-18% width) */}
                 <button
                   type="button"
@@ -647,6 +700,18 @@ export const ProductDetailPage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleToggleWishlist}
+                  className={`py-2 px-2.5 rounded-xl border-2 text-xs font-bold flex items-center justify-center transition cursor-pointer shadow-xs active:scale-95 ${
+                    isInWishlist
+                      ? 'border-rose-300 bg-rose-50 text-rose-600'
+                      : 'border-slate-200 bg-white hover:border-rose-300 text-slate-500 hover:text-rose-600'
+                  }`}
+                  title={isInWishlist ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                >
+                  <Heart className={`w-4 h-4 ${isInWishlist ? 'fill-rose-500 text-rose-500' : ''}`} />
+                </button>
                 <button
                   type="button"
                   onClick={handleAddToCart}
