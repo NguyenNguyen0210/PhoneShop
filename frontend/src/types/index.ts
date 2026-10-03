@@ -105,8 +105,11 @@ export interface Review {
   rating: number;
   title?: string;
   content?: string;
+  images?: string[];
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
   isVerified?: boolean;
   createdAt: string;
+  updatedAt?: string;
   user?: {
     id: string;
     firstName?: string;
