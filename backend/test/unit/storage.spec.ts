@@ -11,9 +11,11 @@ describe('StorageService', () => {
   beforeEach(() => {
     mockConfig = {
       get: jest.fn((key: string, defaultVal?: any) => {
-        if (key === 'SUPABASE_URL') return 'https://mock.supabase.co';
-        if (key === 'SUPABASE_SERVICE_ROLE_KEY') return 'mock-key';
-        if (key === 'SUPABASE_STORAGE_BUCKET') return 'mobile-commerce';
+        if (key === 'CLOUDFLARE_R2_ACCOUNT_ID') return 'test-account-id';
+        if (key === 'CLOUDFLARE_R2_BUCKET') return 'phoneshop';
+        if (key === 'CLOUDFLARE_R2_ACCESS_KEY_ID') return 'test-key';
+        if (key === 'CLOUDFLARE_R2_SECRET_ACCESS_KEY') return 'test-secret';
+        if (key === 'CLOUDFLARE_R2_PUBLIC_URL') return 'https://pub-test.r2.dev';
         return defaultVal;
       }),
     };

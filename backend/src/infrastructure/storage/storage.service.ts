@@ -6,7 +6,11 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 
 export interface UploadResult {
@@ -25,29 +29,38 @@ export const ALLOWED_IMAGE_REGEX = /(jpg|jpeg|png|webp)$/i;
 @Injectable()
 export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
-  private supabase: SupabaseClient;
+  private s3: S3Client;
   private bucket: string;
+  private publicUrl: string;
+  private accountId: string;
   private isMock: boolean;
 
   constructor(private readonly config: ConfigService) {}
 
   onModuleInit() {
-    const url = this.config.get<string>('SUPABASE_URL');
-    const key = this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY');
-    this.bucket = this.config.get<string>('SUPABASE_STORAGE_BUCKET', 'mobile-commerce');
+    this.accountId = this.config.get<string>('CLOUDFLARE_R2_ACCOUNT_ID')!;
+    this.bucket = this.config.get<string>('CLOUDFLARE_R2_BUCKET')!;
+    const accessKeyId = this.config.get<string>('CLOUDFLARE_R2_ACCESS_KEY_ID');
+    const secretAccessKey = this.config.get<string>('CLOUDFLARE_R2_SECRET_ACCESS_KEY');
+    this.publicUrl = this.config.get<string>('CLOUDFLARE_R2_PUBLIC_URL')!;
 
-    this.isMock = !url || !key || key.includes('your-supabase');
+    this.isMock =
+      !this.accountId || !this.bucket || !accessKeyId || !secretAccessKey || !this.publicUrl;
 
     if (this.isMock) {
       this.logger.warn(
-        'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not configured. ' +
-          'Storage uploads will fail fast — configure Supabase instead of returning fake URLs.',
+        'CLOUDFLARE_R2_* vars not configured. ' +
+          'Storage uploads will fail fast — configure R2 instead of returning fake URLs.',
       );
       return;
     }
 
-    this.supabase = createClient(url!, key!);
-    this.logger.log(`Supabase Storage initialized (bucket=${this.bucket})`);
+    this.s3 = new S3Client({
+      region: 'auto',
+      endpoint: 'https://' + this.accountId + '.r2.cloudflarestorage.com',
+      credentials: { accessKeyId: accessKeyId!, secretAccessKey: secretAccessKey! },
+    });
+    this.logger.log(`R2 Storage initialized (bucket=${this.bucket})`);
   }
 
   /**
@@ -97,7 +110,7 @@ export class StorageService implements OnModuleInit {
   }
 
   /**
-   * Upload file to Supabase storage with automatic WebP optimization.
+   * Upload file to Cloudflare R2 storage with automatic WebP optimization.
    */
   async uploadFile(
     buffer: Buffer,
@@ -107,57 +120,58 @@ export class StorageService implements OnModuleInit {
   ): Promise<UploadResult> {
     let finalBuffer = buffer;
     let mimeType = 'image/webp';
-    let ext = 'webp';
 
     if (shouldOptimize) {
       const opt = await this.optimizeImage(buffer);
       finalBuffer = opt.buffer;
       mimeType = opt.mimeType;
-      ext = opt.format;
     }
 
     const baseName = originalName.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const path = `${folder}/${Date.now()}-${baseName}.${ext}`;
+    const path = `${folder}/${Date.now()}-${baseName}.webp`;
 
     if (this.isMock) {
       throw new InternalServerErrorException(
-        'Storage is not configured (missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). Upload rejected to avoid fake placeholder URLs.',
+        'Storage is not configured (missing CLOUDFLARE_R2_* vars). Upload rejected to avoid fake placeholder URLs.',
       );
     }
 
-    const { error } = await this.supabase.storage
-      .from(this.bucket)
-      .upload(path, finalBuffer, {
-        contentType: mimeType,
-        upsert: false,
-      });
-
-    if (error) {
-      this.logger.error(`Upload failed: ${path}`, error.message);
-      throw new InternalServerErrorException(`File upload failed: ${error.message}`);
+    try {
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: path,
+          Body: finalBuffer,
+          ContentType: mimeType,
+        }),
+      );
+    } catch (err: any) {
+      this.logger.error(`Upload failed: ${path}`, err?.message);
+      throw new InternalServerErrorException(`File upload failed: ${err?.message}`);
     }
 
-    const { data } = this.supabase.storage.from(this.bucket).getPublicUrl(path);
-    this.logger.log(`File uploaded to Supabase: ${data.publicUrl}`);
+    const url = `${this.publicUrl}/${path}`;
+    this.logger.log(`File uploaded to R2: ${url}`);
 
-    return { url: data.publicUrl, path };
+    return { url, path };
   }
 
   /**
-   * Delete asset from Supabase storage by path.
+   * Delete asset from Cloudflare R2 storage by path.
    */
   async deleteFile(path: string): Promise<void> {
     if (this.isMock) {
       throw new InternalServerErrorException(
-        'Storage is not configured (missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). Delete rejected.',
+        'Storage is not configured (missing CLOUDFLARE_R2_* vars). Delete rejected.',
       );
     }
 
-    const { error } = await this.supabase.storage.from(this.bucket).remove([path]);
-    if (error) {
-      this.logger.error(`Delete failed: ${path}`, error.message);
-      throw new InternalServerErrorException(`File delete failed: ${error.message}`);
+    try {
+      await this.s3.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: path }));
+    } catch (err: any) {
+      this.logger.error(`Delete failed: ${path}`, err?.message);
+      throw new InternalServerErrorException(`File delete failed: ${err?.message}`);
     }
-    this.logger.log(`File deleted from Supabase: ${path}`);
+    this.logger.log(`File deleted from R2: ${path}`);
   }
 }

@@ -48,7 +48,7 @@ export class StorageController {
     )
     file: Express.Multer.File,
   ): Promise<UploadResult> {
-    const validFolders = ['products', 'brands', 'categories'];
+    const validFolders = ['products', 'brands', 'categories', 'branding'];
     if (!validFolders.includes(folder)) {
       throw new BadRequestException(`Folder must be one of: ${validFolders.join(', ')}`);
     }
@@ -124,7 +124,7 @@ export class StorageController {
     if (
       dto.path.includes('..') ||
       dto.path.startsWith('/') ||
-      !/^(avatars|products|brands|categories)\//.test(dto.path)
+      !/^(avatars|products|brands|categories|branding)\//.test(dto.path)
     ) {
       throw new BadRequestException('Invalid file path');
     }
