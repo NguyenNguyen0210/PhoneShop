@@ -7,6 +7,11 @@ export interface VoucherInfo {
   description?: string;
   type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE_SHIPPING';
   value: number;
+  minOrderValue?: number | null;
+  maxDiscountAmount?: number | null;
+  startAt?: string;
+  endAt?: string;
+  discount?: number;
 }
 
 export interface VoucherValidationResult {
