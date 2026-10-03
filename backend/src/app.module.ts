@@ -38,6 +38,7 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { ShippingModule } from './modules/shipping/shipping.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { TicketsModule } from './modules/tickets/tickets.module';
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     SuppliersModule,
     ShippingModule,
     ReportsModule,
+    TicketsModule,
   ],
 })
 export class AppModule {}
