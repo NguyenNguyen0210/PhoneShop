@@ -1,5 +1,5 @@
 import {
-  IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional,
+  IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsObject, IsOptional,
   IsString, IsUrl, IsUUID, Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -20,10 +20,10 @@ export class CreateProductDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  slug: string;
+  slug?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -34,6 +34,11 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   shortDescription?: string;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  @IsObject()
+  specs?: Record<string, any>;
 
   @ApiPropertyOptional({ enum: ProductCondition, default: 'NEW' })
   @IsOptional()
