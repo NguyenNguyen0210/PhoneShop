@@ -16,6 +16,7 @@ coverage/
 e2e_screenshots/
 test_artifacts/
 **/test_artifacts/
+.playwright-mcp/
 test_*.py
 **/test_*.py
 test_*.mjs
