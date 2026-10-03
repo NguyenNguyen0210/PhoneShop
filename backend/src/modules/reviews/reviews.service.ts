@@ -7,6 +7,50 @@ import { ReviewStatus, OrderStatus } from '@prisma/client';
 export class ReviewsService {
   constructor(private prisma: PrismaService) {}
 
+  async getMyReviewStatus(userId: string, productId: string) {
+    const [purchased, existingReview] = await Promise.all([
+      this.prisma.orderItem.findFirst({
+        where: {
+          variant: { productId },
+          order: {
+            userId,
+            status: { in: [OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
+          },
+        },
+        select: { id: true },
+      }),
+      this.prisma.review.findUnique({
+        where: { userId_productId: { userId, productId } },
+        include: {
+          user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+          replies: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatarUrl: true,
+                  roles: { select: { role: { select: { name: true } } } },
+                },
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+      }),
+    ]);
+
+    const hasPurchased = !!purchased;
+    const canReview = hasPurchased && !existingReview;
+
+    return {
+      hasPurchased,
+      canReview,
+      myReview: existingReview || null,
+    };
+  }
+
   async create(userId: string, dto: CreateReviewDto) {
     const existing = await this.prisma.review.findUnique({
       where: { userId_productId: { userId, productId: dto.productId } },
@@ -32,7 +76,19 @@ export class ReviewsService {
     }
 
     return this.prisma.review.create({
-      data: { ...dto, userId, status: ReviewStatus.PENDING, isVerified: true },
+      data: {
+        productId: dto.productId,
+        userId,
+        rating: dto.rating,
+        title: dto.title,
+        content: dto.content,
+        images: dto.images || [],
+        status: ReviewStatus.PENDING,
+        isVerified: true,
+      },
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+      },
     });
   }
 
@@ -106,7 +162,19 @@ export class ReviewsService {
   async update(userId: string, id: string, dto: UpdateReviewDto) {
     const review = await this.findOne(id);
     if (review.userId !== userId) throw new ForbiddenException('You can only edit your own reviews');
-    return this.prisma.review.update({ where: { id }, data: { ...dto, status: ReviewStatus.PENDING } });
+    return this.prisma.review.update({
+      where: { id },
+      data: {
+        ...(dto.rating !== undefined && { rating: dto.rating }),
+        ...(dto.title !== undefined && { title: dto.title }),
+        ...(dto.content !== undefined && { content: dto.content }),
+        ...(dto.images !== undefined && { images: dto.images }),
+        status: ReviewStatus.PENDING,
+      },
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+      },
+    });
   }
 
   async remove(userId: string, id: string, isAdmin = false) {

@@ -20,10 +20,14 @@ import {
   Ban,
   Undo2,
   Check,
+  Star,
+  Edit3,
 } from 'lucide-react';
 import { orderService } from '../../../services/orderService';
 import { installmentService } from '../../../services/installmentService';
-import type { Order, InstallmentApplication, InstallmentStatus } from '../../../types';
+import { reviewService } from '../../../services/reviewService';
+import { ReviewModal } from '../../../components/storefront/reviews';
+import type { Order, InstallmentApplication, InstallmentStatus, Review } from '../../../types';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 import { OrderTrackingTimeline } from './components/OrderTrackingTimeline';
 import { OrderInvoiceModal } from './components/OrderInvoiceModal';
@@ -43,6 +47,38 @@ export const OrderDetailPage: React.FC = () => {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [reorderSuccessMsg, setReorderSuccessMsg] = useState<string | null>(null);
+
+  // Review states for delivered orders
+  const [reviewedProducts, setReviewedProducts] = useState<
+    Record<string, { canReview: boolean; myReview: Review | null }>
+  >({});
+  const [selectedReviewProduct, setSelectedReviewProduct] = useState<{
+    productId: string;
+    productName: string;
+    productImage?: string;
+    initialData?: Review | null;
+  } | null>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (order && (order.status === 'DELIVERED' || order.status === 'COMPLETED')) {
+      const productIds = Array.from(
+        new Set(
+          (order.items || [])
+            .map((item) => item.variant?.productId || item.variant?.product?.id)
+            .filter(Boolean) as string[],
+        ),
+      );
+      productIds.forEach(async (pId) => {
+        try {
+          const res = await reviewService.getMyReviewStatus(pId);
+          setReviewedProducts((prev) => ({ ...prev, [pId]: res }));
+        } catch {
+          // ignore
+        }
+      });
+    }
+  }, [order?.id, order?.status]);
 
   useEffect(() => {
     if (!id) return;
@@ -357,43 +393,105 @@ export const OrderDetailPage: React.FC = () => {
           </div>
 
           <div className="divide-y divide-slate-100">
-            {order.items?.map((item) => (
-              <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex items-center gap-4 text-xs">
-                <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center shrink-0">
-                  <img
-                    src={
-                      item.variant?.images?.[0] ||
-                      item.variant?.imageUrl ||
-                      item.variant?.product?.thumbnail ||
-                      FALLBACK_PRODUCT_IMAGE
-                    }
-                    alt={item.productName || 'Sản phẩm'}
-                    className="w-full h-full object-contain"
-                  />
+            {order.items?.map((item) => {
+              const pId = item.variant?.productId || item.variant?.product?.id;
+              const reviewInfo = pId ? reviewedProducts[pId] : null;
+              const isDelivered = order.status === 'DELIVERED' || order.status === 'COMPLETED';
+
+              return (
+                <div
+                  key={item.id}
+                  className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs"
+                >
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center shrink-0">
+                      <img
+                        src={
+                          item.variant?.images?.[0] ||
+                          item.variant?.imageUrl ||
+                          item.variant?.product?.thumbnail ||
+                          FALLBACK_PRODUCT_IMAGE
+                        }
+                        alt={item.productName || 'Sản phẩm'}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-sm text-slate-900 truncate">
+                        {item.productName || item.variant?.product?.name || 'Điện thoại'}
+                      </h4>
+                      <p className="text-slate-500 mt-0.5">
+                        {item.variant?.color} • {item.variant?.storage} • Số lượng: x{item.quantity}
+                      </p>
+                      {item.imeiDevice && (
+                        <span className="inline-block mt-1 font-mono text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                          IMEI: {item.imeiDevice.imeiNumber || item.imeiDevice.imei}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
+                    <div className="text-right">
+                      <span className="font-mono font-bold text-sm text-blue-600 block">
+                        {formatPrice(item.totalPrice || item.unitPrice * item.quantity)}
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        {formatPrice(item.unitPrice)} / cái
+                      </span>
+                    </div>
+
+                    {isDelivered && pId && (
+                      <div>
+                        {reviewInfo?.myReview ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedReviewProduct({
+                                productId: pId,
+                                productName:
+                                  item.productName || item.variant?.product?.name || 'Sản phẩm',
+                                productImage:
+                                  item.variant?.images?.[0] ||
+                                  item.variant?.imageUrl ||
+                                  item.variant?.product?.thumbnail,
+                                initialData: reviewInfo.myReview,
+                              });
+                              setIsReviewModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Xem / Sửa đánh giá</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedReviewProduct({
+                                productId: pId,
+                                productName:
+                                  item.productName || item.variant?.product?.name || 'Sản phẩm',
+                                productImage:
+                                  item.variant?.images?.[0] ||
+                                  item.variant?.imageUrl ||
+                                  item.variant?.product?.thumbnail,
+                                initialData: null,
+                              });
+                              setIsReviewModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
+                          >
+                            <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                            <span>Đánh giá sản phẩm</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-sm text-slate-900 truncate">
-                    {item.productName || item.variant?.product?.name || 'Điện thoại'}
-                  </h4>
-                  <p className="text-slate-500 mt-0.5">
-                    {item.variant?.color} • {item.variant?.storage} • Số lượng: x{item.quantity}
-                  </p>
-                  {item.imeiDevice && (
-                    <span className="inline-block mt-1 font-mono text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                      IMEI: {item.imeiDevice.imeiNumber || item.imeiDevice.imei}
-                    </span>
-                  )}
-                </div>
-                <div className="text-right">
-                  <span className="font-mono font-bold text-sm text-blue-600 block">
-                    {formatPrice(item.totalPrice || item.unitPrice * item.quantity)}
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    {formatPrice(item.unitPrice)} / cái
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Pricing Totals */}
@@ -524,6 +622,30 @@ export const OrderDetailPage: React.FC = () => {
           }}
         />
       </div>
+
+      {selectedReviewProduct && (
+        <ReviewModal
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          productId={selectedReviewProduct.productId}
+          productName={selectedReviewProduct.productName}
+          productImage={selectedReviewProduct.productImage}
+          initialData={selectedReviewProduct.initialData}
+          onSuccess={async () => {
+            if (selectedReviewProduct.productId) {
+              try {
+                const res = await reviewService.getMyReviewStatus(selectedReviewProduct.productId);
+                setReviewedProducts((prev) => ({
+                  ...prev,
+                  [selectedReviewProduct.productId]: res,
+                }));
+              } catch {
+                // ignore
+              }
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
