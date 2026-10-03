@@ -128,11 +128,26 @@ export const orderService = {
 
   async updateOrderStatus(
     id: string,
-    action: 'confirm' | 'process' | 'ship' | 'deliver' | 'complete' | 'cancel',
-    reason?: string
+    action: 'confirm' | 'process' | 'pack' | 'ship' | 'deliver' | 'complete' | 'cancel',
+    payload?:
+      | {
+          reason?: string;
+          providerName?: string;
+          trackingNumber?: string;
+          estimatedDeliveryDate?: string;
+        }
+      | string
   ): Promise<Order> {
-    const body = action === 'cancel' && reason ? { reason } : {};
+    const body = typeof payload === 'string' ? { reason: payload } : payload || {};
     const response = await apiClient.put(`/orders/${id}/${action}`, body);
+    return response.data?.data ?? response.data;
+  },
+
+  async updateOrderShipping(
+    orderId: string,
+    payload: { providerName?: string; trackingNumber?: string; estimatedDeliveryDate?: string }
+  ): Promise<any> {
+    const response = await apiClient.patch(`/shipping/order/${orderId}`, payload);
     return response.data?.data ?? response.data;
   },
 };

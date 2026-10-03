@@ -152,6 +152,7 @@ export type OrderStatus =
   | 'PENDING'
   | 'CONFIRMED'
   | 'PROCESSING'
+  | 'PACKED'
   | 'SHIPPING'
   | 'DELIVERED'
   | 'COMPLETED'
@@ -247,6 +248,7 @@ export interface Order {
   installmentApplication?: InstallmentApplication;
   shipping?: Shipping;
   returns?: ReturnRequest[];
+  packedAt?: string;
   deliveredAt?: string;
   completedAt?: string;
   cancelledAt?: string;
