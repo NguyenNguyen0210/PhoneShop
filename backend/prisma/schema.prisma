@@ -89,6 +89,19 @@ enum PaymentMethod {
   ZALOPAY
   CREDIT_CARD
   DEBIT_CARD
+  INSTALLMENT
+}
+
+enum InstallmentProvider {
+  HOME_CREDIT
+  FE_CREDIT
+}
+
+enum InstallmentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
 }
 
 enum TransactionType {
@@ -205,6 +218,8 @@ model User {
   auditLogs     AuditLog[]
   warranties    Warranty[]
   returns       Return[]
+  installmentApplications InstallmentApplication[]
+  reviewedInstallments    InstallmentApplication[] @relation("StaffReviewedInstallments")
 
   refreshTokens RefreshToken[]
 
@@ -475,6 +490,7 @@ model Order {
   payments Payment[]
   returns  Return[]
   shipping Shipping?
+  installmentApplication InstallmentApplication?
 
   @@index([userId])
   @@index([status])
@@ -918,4 +934,53 @@ model Shipping {
   @@index([status])
   @@index([trackingNumber])
   @@map("shippings")
+}
+
+// ============================================================
+// INSTALLMENT APPLICATIONS
+// ============================================================
+
+model InstallmentApplication {
+  id              String              @id @default(uuid()) @db.Uuid
+  orderId         String              @unique @map("order_id") @db.Uuid
+  userId          String              @map("user_id") @db.Uuid
+  provider        InstallmentProvider @default(HOME_CREDIT)
+  status          InstallmentStatus   @default(PENDING)
+
+  // Financial Package
+  termMonths      Int                 @map("term_months")
+  prepayPercent   Int                 @map("prepay_percent")
+  prepayAmount    Decimal             @map("prepay_amount") @db.Decimal(15, 2)
+  loanAmount      Decimal             @map("loan_amount") @db.Decimal(15, 2)
+  monthlyAmount   Decimal             @map("monthly_amount") @db.Decimal(15, 2)
+
+  // Identity & Citizen Card Info
+  fullName        String              @map("full_name") @db.VarChar(255)
+  citizenId       String              @map("citizen_id") @db.VarChar(20)
+  birthDate       DateTime            @map("birth_date") @db.Date
+  phoneNumber     String              @map("phone_number") @db.VarChar(20)
+  currentAddress  String              @map("current_address") @db.Text
+  incomeRange     String              @map("income_range") @db.VarChar(50)
+
+  // Cloudflare R2 URLs
+  cccdFrontUrl    String              @map("cccd_front_url") @db.Text
+  cccdBackUrl     String              @map("cccd_back_url") @db.Text
+
+  // Staff Review
+  reviewedBy      String?             @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime?           @map("reviewed_at")
+  staffNotes      String?             @map("staff_notes") @db.Text
+  rejectionReason String?             @map("rejection_reason") @db.Text
+
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  order           Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user            User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  reviewer        User?               @relation("StaffReviewedInstallments", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@index([citizenId])
+  @@map("installment_applications")
 }
