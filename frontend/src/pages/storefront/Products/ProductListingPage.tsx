@@ -214,7 +214,7 @@ export const ProductListingPage: React.FC = () => {
         // In Stock
         if (inStockOnly) {
           const inStock = p.variants?.some((v) => {
-            const qty = v.inventoryQty ?? v.inventory?.availableQty ?? 0;
+            const qty = v.inventory?.availableQty ?? 0;
             return qty > 0;
           });
           if (!inStock) return false;

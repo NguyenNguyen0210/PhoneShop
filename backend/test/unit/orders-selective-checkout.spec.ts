@@ -34,7 +34,7 @@ describe('OrdersService - Selective Checkout', () => {
         updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
       },
       inventory: {
-        update: jest.fn().mockReturnValue(Promise.resolve({})),
+        updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
       },
       order: {
         create: jest.fn().mockImplementation((args: any) =>
@@ -167,10 +167,10 @@ describe('OrdersService - Selective Checkout', () => {
     expect(result.items).toHaveLength(1);
     expect(result.items[0].variantId).toBe('var-1');
 
-    // Only item-1 variant inventory should be updated
-    expect(mockTx.inventory.update).toHaveBeenCalledTimes(1);
-    expect(mockTx.inventory.update).toHaveBeenCalledWith({
-      where: { variantId: 'var-1' },
+    // Only item-1 variant inventory should be held (atomic guarded hold)
+    expect(mockTx.inventory.updateMany).toHaveBeenCalledTimes(1);
+    expect(mockTx.inventory.updateMany).toHaveBeenCalledWith({
+      where: { variantId: 'var-1', availableQty: { gte: 1 } },
       data: {
         reservedQty: { increment: 1 },
         availableQty: { decrement: 1 },

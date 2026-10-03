@@ -176,6 +176,63 @@ describe('Payments Unit Tests', () => {
     });
   });
 
+  describe('VNPay Payment URL Guards', () => {
+    function buildService(order: any) {
+      const mockPrisma: any = {
+        order: {
+          findUnique: jest.fn().mockImplementation(() => Promise.resolve(order)),
+        },
+      };
+      const mockConfig: any = { get: (_k: string, d?: string) => d };
+      const vietqrService = new VietqrService(mockConfig);
+      return new PaymentsService(mockPrisma, vietqrService, {} as any, mockConfig);
+    }
+
+    it('should throw when creating a VNPay URL for a non-PENDING order', async () => {
+      const svc = buildService({
+        id: 'ord-1',
+        orderNumber: 'ORD-1',
+        totalAmount: 1000000,
+        status: OrderStatus.SHIPPING,
+        userId: 'user-1',
+        holdExpiresAt: new Date(Date.now() + 60000),
+        payments: [],
+      });
+
+      await expect(svc.createVnpayPaymentUrl({ orderId: 'ord-1' })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw when confirming a payment whose order is not PENDING', async () => {
+      const mockPrisma: any = {
+        payment: {
+          findUnique: jest.fn().mockImplementation(() =>
+            Promise.resolve({
+              id: 'pay-1',
+              status: 'PENDING',
+              amount: 1000000,
+              order: {
+                id: 'ord-1',
+                userId: 'user-1',
+                totalAmount: 1000000,
+                status: OrderStatus.PROCESSING,
+                holdExpiresAt: new Date(Date.now() + 60000),
+              },
+            }),
+          ),
+        },
+      };
+      const mockConfig: any = { get: (_k: string, d?: string) => d };
+      const vietqrService = new VietqrService(mockConfig);
+      const svc = new PaymentsService(mockPrisma, vietqrService, {} as any, mockConfig);
+
+      await expect(
+        svc.confirmPayment('pay-1', { providerRef: 'REF-123' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
   describe('VNPay IPN Handling', () => {
     it('should reject payment for CANCELLED order with RspCode 02 and not resurrect it', async () => {
       const hashSecret = 'SANDBOX_SECRET_KEY_1234567890ABCDEF';

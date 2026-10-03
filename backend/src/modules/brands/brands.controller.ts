@@ -20,6 +20,18 @@ export class BrandsController {
     return this.brandsService.findAll(search, true);
   }
 
+  // NOTE: static route 'admin/all' must be registered BEFORE ':id',
+  // otherwise 'admin/all' is captured as id='admin'.
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all brands including inactive (MANAGER/ADMIN)' })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  findAllAdmin(@Query('search') search?: string) {
+    return this.brandsService.findAll(search, false);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get brand detail (Public)' })
   findOne(@Param('id') id: string) {
@@ -35,16 +47,6 @@ export class BrandsController {
   @ApiOperation({ summary: 'Create brand (MANAGER/ADMIN)' })
   create(@Body() dto: CreateBrandDto) {
     return this.brandsService.create(dto);
-  }
-
-  @Get('admin/all')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.MANAGER, Role.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all brands including inactive (MANAGER/ADMIN)' })
-  @ApiQuery({ name: 'search', required: false, type: String })
-  findAllAdmin(@Query('search') search?: string) {
-    return this.brandsService.findAll(search, false);
   }
 
   @Patch(':id')

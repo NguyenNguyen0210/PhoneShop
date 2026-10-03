@@ -119,9 +119,10 @@ export const CartPage: React.FC = () => {
   };
 
   const isItemFlashSale = (item: any) => {
+    const unitPrice = item.unitPrice ?? item.price ?? 0;
     if (item.isFlashSale) return true;
-    if (item.originalPrice && item.price < item.originalPrice) return true;
-    if (item.variant?.price && item.price < item.variant.price) return true;
+    if (item.originalPrice && unitPrice < item.originalPrice) return true;
+    if (item.variant?.price && unitPrice < item.variant.price) return true;
     if (activeFlashSale?.items?.some((fi) => fi.variantId === item.variantId)) return true;
     return false;
   };
@@ -487,7 +488,8 @@ export const CartPage: React.FC = () => {
                     item.product?.thumbnailUrl ||
                     FALLBACK_PRODUCT_IMAGE;
                   const isFlash = isItemFlashSale(item);
-                  const origPrice = item.originalPrice || item.variant?.price || item.price;
+                  const unitPrice = item.unitPrice ?? item.price ?? 0;
+                  const origPrice = item.originalPrice || item.variant?.price || unitPrice;
 
                   return (
                     <div
@@ -599,16 +601,16 @@ export const CartPage: React.FC = () => {
                         {/* Price Breakdown for this item */}
                         <div className="text-right min-w-[110px]">
                           <div className={`text-sm sm:text-base font-black font-mono tabular-nums ${isFlash ? 'text-rose-600' : 'text-blue-600'}`}>
-                            {formatPrice(item.price * item.quantity)}
+                            {formatPrice(unitPrice * item.quantity)}
                           </div>
-                          {isFlash && origPrice > item.price && (
+                          {isFlash && origPrice > unitPrice && (
                             <div className="text-[10px] font-mono text-slate-400 line-through tabular-nums">
                               {formatPrice(origPrice * item.quantity)}
                             </div>
                           )}
                           {item.quantity > 1 && (
                             <div className="text-[10px] text-slate-400 font-mono">
-                              {formatPrice(item.price)} / máy
+                              {formatPrice(unitPrice)} / máy
                             </div>
                           )}
                         </div>

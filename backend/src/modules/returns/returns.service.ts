@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateReturnDto, AdminNoteDto, CreateRefundDto } from './dto/return.dto';
-import { ReturnStatus, RefundStatus, OrderStatus, ImeiStatus, StockMovementType } from '@prisma/client';
+import { ReturnStatus, RefundStatus, OrderStatus, ImeiStatus, StockMovementType, PaymentStatus } from '@prisma/client';
+import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
 import { randomBytes } from 'crypto';
 
 @Injectable()
@@ -102,12 +103,20 @@ export class ReturnsService {
     });
   }
 
-  async getMyReturns(userId: string) {
-    return this.prisma.return.findMany({
-      where: { userId },
-      include: { items: true, refunds: true, order: true },
-      orderBy: { createdAt: 'desc' },
-    });
+  async getMyReturns(userId: string, page?: number | string, limit?: number | string) {
+    const { page: safePage, limit: safeLimit, skip } = getPagination(page, limit, 10);
+    const where = { userId };
+    const [total, data] = await Promise.all([
+      this.prisma.return.count({ where }),
+      this.prisma.return.findMany({
+        where,
+        include: { items: true, refunds: true, order: true },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: safeLimit,
+      }),
+    ]);
+    return buildPaginatedResponse(data, total, safePage, safeLimit);
   }
 
   async getMyReturn(userId: string, id: string) {
@@ -119,16 +128,23 @@ export class ReturnsService {
     return ret;
   }
 
-  async findAll() {
-    return this.prisma.return.findMany({
-      include: {
-        user: { select: { id: true, email: true, firstName: true, lastName: true } },
-        items: true,
-        refunds: true,
-        order: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(page?: number | string, limit?: number | string) {
+    const { page: safePage, limit: safeLimit, skip } = getPagination(page, limit, 10);
+    const [total, data] = await Promise.all([
+      this.prisma.return.count(),
+      this.prisma.return.findMany({
+        include: {
+          user: { select: { id: true, email: true, firstName: true, lastName: true } },
+          items: true,
+          refunds: true,
+          order: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: safeLimit,
+      }),
+    ]);
+    return buildPaginatedResponse(data, total, safePage, safeLimit);
   }
 
   async findOne(id: string) {
@@ -150,7 +166,7 @@ export class ReturnsService {
   // silently stamping timestamps.
   private static readonly ALLOWED_RETURN_TRANSITIONS: Partial<Record<ReturnStatus, ReturnStatus[]>> = {
     [ReturnStatus.REQUESTED]: [ReturnStatus.APPROVED, ReturnStatus.REJECTED, ReturnStatus.CANCELLED],
-    [ReturnStatus.APPROVED]: [ReturnStatus.SHIPPING, ReturnStatus.RECEIVED, ReturnStatus.CANCELLED],
+    [ReturnStatus.APPROVED]: [ReturnStatus.SHIPPING, ReturnStatus.RECEIVED, ReturnStatus.INSPECTING, ReturnStatus.CANCELLED],
     [ReturnStatus.SHIPPING]: [ReturnStatus.RECEIVED, ReturnStatus.CANCELLED],
     [ReturnStatus.INSPECTING]: [ReturnStatus.RECEIVED, ReturnStatus.COMPLETED, ReturnStatus.REJECTED],
     [ReturnStatus.RECEIVED]: [ReturnStatus.INSPECTING, ReturnStatus.COMPLETED, ReturnStatus.REJECTED],
@@ -161,10 +177,11 @@ export class ReturnsService {
 
   async transitionStatus(id: string, newStatus: ReturnStatus, dto?: AdminNoteDto) {
     const ret = await this.findOne(id);
-    const allowed = ReturnsService.ALLOWED_RETURN_TRANSITIONS[ret.status] || [];
+    const oldStatus = ret.status;
+    const allowed = ReturnsService.ALLOWED_RETURN_TRANSITIONS[oldStatus] || [];
     if (!allowed.includes(newStatus)) {
       throw new BadRequestException(
-        `Cannot transition return from ${ret.status} to ${newStatus}`,
+        `Cannot transition return from ${oldStatus} to ${newStatus}`,
       );
     }
     const data: any = { status: newStatus };
@@ -174,6 +191,13 @@ export class ReturnsService {
     if (newStatus === ReturnStatus.APPROVED)  data.approvedAt  = now;
     if (newStatus === ReturnStatus.RECEIVED)  data.receivedAt  = now;
     if (newStatus === ReturnStatus.COMPLETED) data.completedAt = now;
+
+    // Guarded write: only flip if the row is still in the expected old
+    // status — a concurrent transition wins instead of silently overwriting.
+    const guardError = () =>
+      new ConflictException(
+        `Return status changed concurrently (expected ${oldStatus})`,
+      );
 
     // H4: on final acceptance the handsets physically came back — restore
     // them to sellable stock (SOLD → RETURNED → AVAILABLE happens via the
@@ -208,9 +232,10 @@ export class ReturnsService {
             });
           }
           if (tx.inventory) {
-            await tx.inventory.update({
+            await tx.inventory.upsert({
               where: { variantId: oi.variantId },
-              data: {
+              create: { variantId: oi.variantId, quantity: ri.quantity, availableQty: ri.quantity, reservedQty: 0 },
+              update: {
                 quantity: { increment: ri.quantity },
                 availableQty: { increment: ri.quantity },
               },
@@ -240,11 +265,15 @@ export class ReturnsService {
             }
           }
         }
-        return tx.return.update({ where: { id }, data });
+        const res = await tx.return.updateMany({ where: { id, status: oldStatus }, data });
+        if (res.count === 0) throw guardError();
+        return tx.return.findUnique({ where: { id } });
       });
     }
 
-    return this.prisma.return.update({ where: { id }, data });
+    const res = await this.prisma.return.updateMany({ where: { id, status: oldStatus }, data });
+    if (res.count === 0) throw guardError();
+    return this.prisma.return.findUnique({ where: { id } });
   }
 
   async cancelReturn(userId: string, id: string) {
@@ -272,6 +301,16 @@ export class ReturnsService {
       throw new BadRequestException('Refund amount must be greater than zero');
     }
 
+    // A refund must settle against a real PAID payment — never create a
+    // floating refund with no payment link.
+    const paidPayment = await this.prisma.payment.findFirst({
+      where: { orderId: ret.orderId, status: PaymentStatus.PAID },
+      orderBy: { paidAt: 'desc' },
+    });
+    if (!paidPayment) {
+      throw new BadRequestException('No PAID payment found for this order');
+    }
+
     // H5: cap total refunds (non-voided) at what the customer actually paid.
     // findOne includes order:true, so the order total is available.
     const orderTotal = Number((ret as any).order?.totalAmount ?? 0);
@@ -292,6 +331,7 @@ export class ReturnsService {
     return this.prisma.refund.create({
       data: {
         returnId: dto.returnId,
+        paymentId: paidPayment.id,
         refundNumber: this.generateRefundNumber(),
         amount: dto.amount,
         reason: dto.reason,

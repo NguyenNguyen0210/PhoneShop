@@ -27,6 +27,7 @@ import {
   EyeInvisibleOutlined,
 } from '@ant-design/icons';
 import { productService } from '../../../services/productService';
+import { inventoryService } from '../../../services/inventoryService';
 import { ImageUploadDragger } from '../../../components/admin/ImageUploadDragger';
 import { ProductEditModal } from './components/ProductEditModal';
 import type { Product, Brand, Category } from '../../../types';
@@ -81,20 +82,26 @@ export const AdminProductsPage: React.FC = () => {
         description: values.description,
         brandId: values.brandId,
         categoryId: values.categoryId,
-        thumbnail: values.thumbnail,
+        thumbnailUrl: values.thumbnailUrl ?? values.thumbnail,
       });
 
       if (created?.id && values.sku) {
         try {
-          await productService.addVariant(created.id, {
+          const variant = await productService.addVariant(created.id, {
             sku: values.sku,
             color: values.variantColor || 'Đen Titan',
             storage: values.variantStorage || '256GB',
             ram: values.variantRam || '8GB',
             price: values.variantPrice || 25000000,
             compareAtPrice: values.variantComparePrice || undefined,
-            inventoryQty: values.inventoryQty || 10,
           });
+          const initialQty = values.inventoryQty || 10;
+          if (variant?.id && initialQty > 0) {
+            await inventoryService.adjustStock(variant.id, {
+              quantity: initialQty,
+              note: 'Tồn kho ban đầu khi tạo sản phẩm',
+            });
+          }
         } catch (vErr) {
           console.warn('Initial variant creation failed:', vErr);
         }

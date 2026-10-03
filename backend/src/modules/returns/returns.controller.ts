@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Put, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Put, Delete, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ReturnsService } from './returns.service';
 import { CreateReturnDto, AdminNoteDto, CreateRefundDto } from './dto/return.dto';
@@ -28,8 +28,12 @@ export class ReturnsController {
   @Get('my')
   @Roles(Role.USER, Role.ADMIN)
   @ApiOperation({ summary: 'Get my return requests (USER)' })
-  getMyReturns(@CurrentUser() user: any) {
-    return this.returnsService.getMyReturns(user.id);
+  getMyReturns(
+    @CurrentUser() user: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.returnsService.getMyReturns(user.id, page, limit);
   }
 
   @Get('my/:id')
@@ -51,8 +55,8 @@ export class ReturnsController {
   @Get()
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Get all returns (STAFF/MANAGER/ADMIN)' })
-  findAll() {
-    return this.returnsService.findAll();
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.returnsService.findAll(page, limit);
   }
 
   @Get(':id')

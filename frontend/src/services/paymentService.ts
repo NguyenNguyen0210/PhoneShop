@@ -1,13 +1,30 @@
 import { apiClient } from './apiClient';
 import type { Payment, PaymentTransaction } from '../types';
 
+export type BackendPaymentMethod =
+  | 'COD'
+  | 'BANK_TRANSFER'
+  | 'VNPAY'
+  | 'MOMO'
+  | 'ZALOPAY'
+  | 'CREDIT_CARD'
+  | 'DEBIT_CARD'
+  | 'INSTALLMENT';
+
+/** Map the storefront payment label to the backend PaymentMethod enum. */
+export const toBackendPaymentMethod = (method: string): BackendPaymentMethod => {
+  if (method === 'VIETQR') return 'BANK_TRANSFER';
+  return method as BackendPaymentMethod;
+};
+
 export interface CreatePaymentDto {
   orderId: string;
-  amount: number;
-  method: 'COD' | 'VIETQR' | 'VNPAY';
+  method: BackendPaymentMethod;
 }
 
 export interface VietQrData {
+  paymentId?: string;
+  orderId?: string;
   qrImageUrl: string;
   bankName: string;
   accountNumber: string;
@@ -16,52 +33,34 @@ export interface VietQrData {
   transferContent: string;
 }
 
+const mapVietQrResponse = (data: any): VietQrData => ({
+  paymentId: data?.paymentId,
+  orderId: data?.orderId,
+  qrImageUrl: data?.qrImageUrl ?? data?.qrUrl ?? '',
+  bankName: data?.bankName ?? data?.bankId ?? '',
+  accountNumber: data?.accountNumber ?? data?.accountNo ?? '',
+  accountName: data?.accountName ?? '',
+  amount: Number(data?.amount ?? 0),
+  transferContent: data?.transferContent ?? data?.orderNumber ?? '',
+});
+
 export const paymentService = {
   async createPayment(dto: CreatePaymentDto) {
     const response = await apiClient.post('/payments', dto);
     return response.data?.data ?? response.data;
   },
 
-  async getVietQrCode(orderId: string, amount: number, orderNumber: string): Promise<VietQrData> {
-    const bankId = '970422'; // MB Bank
-    const bankName = 'MBBank (Quân Đội)';
-    const accountNo = '0987654321';
-    const accountName = 'CONG TY MOBILECOMMERCE';
-    const transferContent = orderNumber || `ORD-${orderId.slice(0, 8).toUpperCase()}`;
-
-    // Standard VietQR QuickLink image URL as defined in spec
-    const qrImageUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(
-      transferContent
-    )}&accountName=${encodeURIComponent(accountName)}`;
-
-    try {
-      // Also notify backend if endpoint is ready
-      const res = await apiClient.post(`/payments/vietqr/${orderId}`, {
-        amount,
-        orderNumber,
-      });
-      const data = res.data?.data ?? res.data;
-      if (data?.qrImageUrl) {
-        return data;
-      }
-    } catch {
-      // Graceful fallback to client-generated VietQR Napas URL
-    }
-
-    return {
-      qrImageUrl,
-      bankName,
-      accountNumber: accountNo,
-      accountName,
-      amount,
-      transferContent,
-    };
+  /** Generate a VietQR dynamic code for an existing order (memo = orderNumber). */
+  async createVietQr(orderId: string): Promise<VietQrData> {
+    const res = await apiClient.post(`/payments/vietqr/${orderId}`);
+    const data = res.data?.data ?? res.data;
+    return mapVietQrResponse(data);
   },
 
   async createVnpayUrl(data: {
     orderId: string;
-    amount: number;
-    orderInfo?: string;
+    bankCode?: string;
+    ipAddr?: string;
   }): Promise<{ paymentUrl: string }> {
     const response = await apiClient.post('/payments/vnpay/create-url', data);
     return response.data?.data ?? response.data;

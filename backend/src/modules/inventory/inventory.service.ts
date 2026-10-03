@@ -3,6 +3,7 @@ import { StockMovementType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdjustStockDto, SetReorderLevelDto, ReserveStockDto } from './dto/inventory.dto';
 import { GetStockLedgerDto } from './dto/stock-movement.dto';
+import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class InventoryService {
@@ -14,12 +15,19 @@ export class InventoryService {
     return inv;
   }
 
-  async findAll() {
-    return this.prisma.inventory.findMany({
-      include: {
-        variant: { include: { product: { select: { id: true, name: true } } } },
-      },
-    });
+  async findAll(page?: number | string, limit?: number | string) {
+    const { page: safePage, limit: safeLimit, skip } = getPagination(page, limit, 20);
+    const [total, data] = await Promise.all([
+      this.prisma.inventory.count(),
+      this.prisma.inventory.findMany({
+        include: {
+          variant: { include: { product: { select: { id: true, name: true } } } },
+        },
+        skip,
+        take: safeLimit,
+      }),
+    ]);
+    return buildPaginatedResponse(data, total, safePage, safeLimit);
   }
 
   async findOne(variantId: string) {

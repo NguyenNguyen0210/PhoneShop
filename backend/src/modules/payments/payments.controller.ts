@@ -119,8 +119,8 @@ export class PaymentsController {
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all payments (STAFF/MANAGER/ADMIN)' })
-  findAll() {
-    return this.paymentsService.findAll();
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.paymentsService.findAll(page, limit);
   }
 
   @Get('transactions')
@@ -128,8 +128,8 @@ export class PaymentsController {
   @Roles(Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all transaction history (MANAGER/ADMIN)' })
-  getTransactionHistory() {
-    return this.paymentsService.getTransactionHistory();
+  getTransactionHistory(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.paymentsService.getTransactionHistory(page, limit);
   }
 
   @Put(':id/confirm')

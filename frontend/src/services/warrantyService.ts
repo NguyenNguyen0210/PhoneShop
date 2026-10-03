@@ -8,7 +8,7 @@ export interface WarrantyLookupResult {
   variantInfo?: string;
   startDate: string;
   endDate: string;
-  status: 'ACTIVE' | 'EXPIRED' | 'CLAIMED' | 'VOID';
+  status: 'ACTIVE' | 'EXPIRED' | 'CLAIMED' | 'VOIDED';
   isExpired: boolean;
   daysRemaining: number;
 }

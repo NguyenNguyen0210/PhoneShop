@@ -23,7 +23,7 @@ import { BrandLogo } from '../../../components/common/BrandLogo';
 import { ProductFilterSidebar } from '../../../components/storefront/ProductFilterSidebar';
 import { ProductSortToolbar } from '../../../components/storefront/ProductSortToolbar';
 import { StorefrontPagination } from '../../../components/storefront/StorefrontPagination';
-import { FALLBACK_PRODUCT_IMAGE, r2Url } from '../../../utils/imageFallback';
+import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 
 export const HomePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -65,52 +65,54 @@ export const HomePage: React.FC = () => {
   // Featured flagship showcase index
   const [heroIndex, setHeroIndex] = useState(0);
 
-  const heroShowcases = [
+  const formatPrice = (val: number) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+  };
+
+  // STATIC_HERO marketing copy — paired with live catalog data below.
+  // Ids, names, prices and images always come from productService.getProducts(),
+  // never from hardcoded values, so the banner can never drift from the DB.
+  const HERO_COPY = [
     {
-      id: 'prod-iphone-16-pro-max',
-      brand: 'Apple',
-      tagline: 'Tuyệt tác Titan sa mạc • Chip A18 Pro',
-      name: 'iPhone 16 Pro Max',
-      description:
-        'Màn hình Super Retina XDR 6.9 inch tràn viền mỏng kỷ lục, nút Điều khiển Camera cảm ứng lực hoàn toàn mới và hệ thống camera 48MP Fusion đỉnh cao.',
-      price: 30990000,
-      comparePrice: 34990000,
-      monthlyPay: '2.580.000₫/tháng',
-      image: FALLBACK_PRODUCT_IMAGE,
-      badge: 'Flagship Mới Nhất 2026',
-      stockStatus: 'Còn 5 suất ưu đãi tại kho – Giao hỏa tốc hôm nay',
+      tagline: 'Flagship nổi bật • Chính hãng 100%',
+      badge: 'Nổi Bật Nhất',
+      stockStatus: 'Sẵn hàng tại kho – Giao hỏa tốc hôm nay',
     },
     {
-      id: 'prod-samsung-s24-ultra',
-      brand: 'Samsung',
-      tagline: 'Kỷ nguyên Galaxy AI • Khung viền Titanium',
-      name: 'Galaxy S24 Ultra 5G',
-      description:
-        'Quyền năng Galaxy AI trợ lý đắc lực, camera 200MP zoom mắt thần Quad Tele 100x và bút S-Pen tích hợp đa năng trong khung viền titan siêu bền.',
-      price: 25290000,
-      comparePrice: 31990000,
-      monthlyPay: '2.107.000₫/tháng',
-      image: r2Url('products/samsung-s24-ultra.webp'),
-      badge: 'Galaxy AI Đỉnh Cao',
-      stockStatus: 'Còn 8 máy tại kho – Sẵn sàng xuất kho ngay',
+      tagline: 'Công nghệ đỉnh cao • Trả góp 0%',
+      badge: 'Công Nghệ Đỉnh Cao',
+      stockStatus: 'Sẵn sàng xuất kho ngay',
     },
     {
-      id: 'prod-samsung-z-fold6',
-      brand: 'Samsung',
-      tagline: 'Tuyệt tác màn hình gập mỏng nhẹ nhất',
-      name: 'Galaxy Z Fold6 5G',
-      description:
-        'Bản lề FlexHinge rãnh kép phẳng mượt, màn hình mở rộng 7.6 inch đa nhiệm thông minh cùng khung viền Armor Aluminum gia cường bền bỉ.',
-      price: 37590000,
-      comparePrice: 43990000,
-      monthlyPay: '3.132.000₫/tháng',
-      image: r2Url('products/samsung-z-fold6.webp'),
-      badge: 'Đột Phá Màn Hình Gập',
-      stockStatus: 'Còn 4 máy tại kho – Đặt giữ ưu đãi ngay',
+      tagline: 'Thiết kế đột phá • Ưu đãi hôm nay',
+      badge: 'Đáng Mua Nhất',
+      stockStatus: 'Đặt giữ ưu đãi ngay',
     },
   ];
 
-  const currentHero = heroShowcases[heroIndex];
+  const heroShowcases = useMemo(() => {
+    return products.slice(0, 3).map((p, i) => {
+      const primary = p.variants?.[0];
+      const price = primary?.price ?? 0;
+      const comparePrice = primary?.compareAtPrice ?? price;
+      const copy = HERO_COPY[i % HERO_COPY.length];
+      return {
+        id: p.id,
+        brand: p.brand?.name ?? '',
+        tagline: copy.tagline,
+        name: p.name,
+        description: p.description ?? '',
+        price,
+        comparePrice,
+        monthlyPay: `${new Intl.NumberFormat('vi-VN').format(Math.round(price / 12))}₫/tháng`,
+        image: p.thumbnail ?? p.thumbnailUrl ?? FALLBACK_PRODUCT_IMAGE,
+        badge: copy.badge,
+        stockStatus: copy.stockStatus,
+      };
+    });
+  }, [products]);
+
+  const currentHero = heroShowcases.length > 0 ? heroShowcases[heroIndex % heroShowcases.length] : null;
 
   useEffect(() => {
     setLoading(true);
@@ -137,10 +139,6 @@ export const HomePage: React.FC = () => {
         setLoading(false);
       });
   }, []);
-
-  const formatPrice = (val: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
-  };
 
   const handlePageChange = (newPage: number) => {
     setSearchParams((prev) => {
@@ -297,7 +295,7 @@ export const HomePage: React.FC = () => {
       // In stock only filter
       if (inStockOnly) {
         const inStock = p.variants?.some(
-          (v) => (v.inventoryQty ?? v.inventory?.availableQty ?? 0) > 0
+          (v) => (v.inventory?.availableQty ?? 0) > 0
         );
         if (!inStock) return false;
       }
@@ -377,6 +375,7 @@ export const HomePage: React.FC = () => {
           1. CLEAN WHITE SHOWCASE HERO BANNER
           ───────────────────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+        {currentHero ? (
         <div className="relative rounded-3xl bg-white border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md transition-shadow duration-300">
           {/* Subtle Ambient Tech Spotlight behind device */}
           <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-96 h-96 bg-blue-50 rounded-full blur-3xl pointer-events-none" />
@@ -514,6 +513,11 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
         </div>
+        ) : (
+          <div className="relative rounded-3xl bg-white border border-slate-200/80 p-10 text-center text-sm text-slate-400 animate-pulse">
+            Đang tải sản phẩm nổi bật...
+          </div>
+        )}
       </section>
 
       {/* ─────────────────────────────────────────────────────────────

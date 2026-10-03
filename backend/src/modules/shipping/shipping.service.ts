@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateShippingDto,
@@ -10,6 +10,7 @@ import {
 } from './dto/shipping.dto';
 import { Role } from '../../common/enums/role.enum';
 import { STANDARD_SHIPPING_FEE } from '../../common/constants';
+import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
 import { OrdersService } from '../orders/orders.service';
 import { OrderStatus } from '@prisma/client';
 
@@ -23,6 +24,8 @@ const STATUS_TRANSITIONS: Partial<Record<ShippingStatus, ShippingStatus[]>> = {
 
 @Injectable()
 export class ShippingService {
+  private readonly logger = new Logger(ShippingService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => OrdersService))
@@ -182,13 +185,17 @@ export class ShippingService {
             try {
               await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.PROCESSING);
             } catch (err) {
-              console.warn('Auto-sync order to PROCESSING deferred:', err);
+              this.logger.warn(
+                `Auto-sync order ${shipping.orderId} CONFIRMED->PROCESSING deferred (shipping ${id} is ${dto.status}): ${(err as Error).message}`,
+              );
             }
           }
           await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.SHIPPING);
         }
       } catch (err) {
-        console.warn('Auto-sync order to SHIPPING deferred:', err);
+        this.logger.warn(
+          `Auto-sync order ${shipping.orderId} to SHIPPING failed (shipping ${id} is ${dto.status}): ${(err as Error).message}`,
+        );
       }
     } else if (dto.status === ShippingStatus.DELIVERED) {
       try {
@@ -197,24 +204,35 @@ export class ShippingService {
           await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.DELIVERED);
         }
       } catch (err) {
-        console.warn('Auto-sync order to DELIVERED deferred:', err);
+        this.logger.warn(
+          `Auto-sync order ${shipping.orderId} to DELIVERED failed (shipping ${id} is ${dto.status}): ${(err as Error).message}`,
+        );
       }
     } else if (dto.status === ShippingStatus.RETURNED) {
       try {
         await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.RETURNED);
       } catch (err) {
-        console.warn('Auto-sync order to RETURNED deferred:', err);
+        this.logger.warn(
+          `Auto-sync order ${shipping.orderId} to RETURNED failed (shipping ${id} is ${dto.status}): ${(err as Error).message}`,
+        );
       }
     }
 
     return updated;
   }
 
-  async findAll() {
-    return this.prisma.shipping.findMany({
-      include: { order: { select: { orderNumber: true, userId: true, totalAmount: true } } },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(page?: number | string, limit?: number | string) {
+    const { page: safePage, limit: safeLimit, skip } = getPagination(page, limit, 20);
+    const [total, data] = await Promise.all([
+      this.prisma.shipping.count(),
+      this.prisma.shipping.findMany({
+        include: { order: { select: { orderNumber: true, userId: true, totalAmount: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: safeLimit,
+      }),
+    ]);
+    return buildPaginatedResponse(data, total, safePage, safeLimit);
   }
 
   async updateByOrder(orderId: string, dto: UpdateOrderShippingDto) {

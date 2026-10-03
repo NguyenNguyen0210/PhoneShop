@@ -30,6 +30,15 @@ export class AddressesController {
     return this.addressesService.findAll(user.id);
   }
 
+  // NOTE: static route 'admin/all' must be registered BEFORE ':id',
+  // otherwise 'admin/all' is captured as id='admin'.
+  @Get('admin/all')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Get all addresses (ADMIN)' })
+  findAllForAdmin() {
+    return this.addressesService.findAllForAdmin();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get address detail of current user' })
   findOne(@CurrentUser() user: any, @Param('id') id: string) {
@@ -52,14 +61,5 @@ export class AddressesController {
   @ApiOperation({ summary: 'Set address as default for current user' })
   setDefault(@CurrentUser() user: any, @Param('id') id: string) {
     return this.addressesService.setDefault(user.id, id);
-  }
-
-  // --- ADMIN ENDPOINTS ---
-
-  @Get('admin/all')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Get all addresses (ADMIN)' })
-  findAllForAdmin() {
-    return this.addressesService.findAllForAdmin();
   }
 }

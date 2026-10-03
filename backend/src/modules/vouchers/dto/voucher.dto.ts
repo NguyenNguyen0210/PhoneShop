@@ -3,7 +3,7 @@ import {
   IsOptional, IsString, Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { VoucherType } from '@prisma/client';
+import { ShippingMethod, VoucherType } from '@prisma/client';
 import { Type } from 'class-transformer';
 
 export class CreateVoucherDto {
@@ -85,4 +85,9 @@ export class ValidateVoucherDto {
   @IsNumber()
   @Min(0)
   orderTotal: number;
+
+  @ApiPropertyOptional({ enum: ShippingMethod, description: 'Used to compute the real shipping fee a FREESHIP voucher discounts' })
+  @IsOptional()
+  @IsEnum(ShippingMethod)
+  shippingMethod?: ShippingMethod;
 }

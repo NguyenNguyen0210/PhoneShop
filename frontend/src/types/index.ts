@@ -99,7 +99,6 @@ export interface ProductVariant {
   price: number;
   compareAtPrice?: number;
   costPrice?: number;
-  inventoryQty?: number;
   inventory?: {
     quantity?: number;
     availableQty?: number;
@@ -141,7 +140,6 @@ export interface CreateVariantDto {
   price: number;
   compareAtPrice?: number;
   costPrice?: number;
-  inventoryQty?: number;
   imageUrl?: string;
   isActive?: boolean;
 }
@@ -163,7 +161,7 @@ export interface Product {
   rating?: number | null;
   reviewCount?: number;
   reviews?: Review[];
-  status: 'ACTIVE' | 'DRAFT' | 'ARCHIVED';
+  status: 'ACTIVE' | 'DRAFT' | 'INACTIVE';
   featured?: boolean;
   createdAt?: string;
 }
@@ -220,7 +218,9 @@ export interface CartItem {
   id: string;
   variantId: string;
   quantity: number;
-  price: number;
+  unitPrice: number;
+  /** Compat alias for unitPrice (legacy local-storage carts). */
+  price?: number;
   product: Product;
   variant: ProductVariant;
   isFlashSale?: boolean;
@@ -460,11 +460,13 @@ export interface ReturnRequest {
   refunds?: RefundItem[];
 }
 
-export type ImeiStatus = 'AVAILABLE' | 'RESERVED' | 'SOLD' | 'WARRANTY' | 'DEFECTIVE';
+export type ImeiStatus = 'AVAILABLE' | 'RESERVED' | 'SOLD' | 'RETURNED' | 'BLOCKED' | 'WARRANTY';
 
 export interface ImeiDevice {
   id: string;
-  imeiNumber: string;
+  imei: string;
+  /** Compat alias for imei (legacy readers). */
+  imeiNumber?: string;
   variantId: string;
   status: ImeiStatus;
   variant?: ProductVariant & { product?: Product };
@@ -478,12 +480,13 @@ export interface Warranty {
   imeiDeviceId: string;
   imeiDevice?: {
     id: string;
-    imeiNumber: string;
+    imei?: string;
+    imeiNumber?: string;
     variant?: ProductVariant & { product?: Product };
   };
   startDate: string;
   endDate: string;
-  status: 'ACTIVE' | 'EXPIRED' | 'CLAIMED' | 'VOID';
+  status: 'ACTIVE' | 'EXPIRED' | 'CLAIMED' | 'VOIDED';
   terms?: string;
   remainingDays?: number;
   deviceInfo?: {
@@ -554,7 +557,8 @@ export type NotificationType =
   | 'PROMOTION'
   | 'SYSTEM'
   | 'WARRANTY'
-  | 'RETURN';
+  | 'RETURN'
+  | 'SUPPORT';
 
 export type NotificationChannel = 'IN_APP' | 'EMAIL' | 'SMS' | 'PUSH';
 

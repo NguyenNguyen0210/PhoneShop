@@ -130,7 +130,6 @@ export const FlashSaleFormModal: React.FC<FlashSaleFormModalProps> = ({
       const available =
         variant.inventory?.quantity ??
         variant.inventory?.availableQty ??
-        variant.inventoryQty ??
         10;
       setItemStockLimit(Math.min(available, 10));
     } else {
@@ -144,7 +143,6 @@ export const FlashSaleFormModal: React.FC<FlashSaleFormModalProps> = ({
     return (
       variant.inventory?.quantity ??
       variant.inventory?.availableQty ??
-      variant.inventoryQty ??
       0
     );
   };
@@ -394,7 +392,7 @@ export const FlashSaleFormModal: React.FC<FlashSaleFormModalProps> = ({
                   options={(selectedProduct?.variants || []).map((v) => {
                     const labelParts = [v.sku, v.color, v.storage].filter(Boolean).join(' - ');
                     const stock =
-                      v.inventory?.quantity ?? v.inventory?.availableQty ?? v.inventoryQty ?? 0;
+                      v.inventory?.quantity ?? v.inventory?.availableQty ?? 0;
                     return {
                       value: v.id,
                       label: `${labelParts} (${Number(v.price).toLocaleString('vi-VN')} ₫ | Kho: ${stock})`,

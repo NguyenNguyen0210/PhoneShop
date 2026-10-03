@@ -257,35 +257,9 @@ export const ProductDetailPage: React.FC = () => {
 
   const fallbackImg = FALLBACK_PRODUCT_IMAGE;
 
-  // Prepare rich gallery views with angle labels
+  // Prepare rich gallery views with angle labels (only from product data + fallback)
   const galleryViews = (() => {
     if (!product) return [];
-
-    // Special curation for HONOR 200 5G
-    if (product.slug === 'honor-200-5g' || product.name.includes('HONOR 200')) {
-      return [
-        {
-          url: 'https://pub-dcd7bf5fa7c74b97a10cdc8dfadc4064.r2.dev/products/honor-200-5g.webp',
-          label: 'Tổng thể',
-        },
-        {
-          url: 'https://fdn2.gsmarena.com/vv/pics/honor/honor-200-1.jpg',
-          label: 'Trước & Sau',
-        },
-        {
-          url: 'https://fdn.gsmarena.com/imgroot/news/24/06/honor-200-hands-on/inline/-1200w5/gsmarena_006.jpg',
-          label: 'Lưng Ánh Trăng',
-        },
-        {
-          url: 'https://fdn.gsmarena.com/imgroot/news/24/06/honor-200-hands-on/inline/-1200w5/gsmarena_004.jpg',
-          label: 'Camera Harcourt',
-        },
-        {
-          url: 'https://fdn2.gsmarena.com/vv/pics/honor/honor-200-2.jpg',
-          label: 'Bộ sưu tập',
-        },
-      ];
-    }
 
     // Generic fallback if product has multiple images
     const rawList = product.images?.length
@@ -314,7 +288,7 @@ export const ProductDetailPage: React.FC = () => {
     : null;
 
   const inventoryAvailable =
-    selectedVariant.inventory?.availableQty ?? selectedVariant.inventoryQty ?? 0;
+    selectedVariant.inventory?.availableQty ?? 0;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 py-8">

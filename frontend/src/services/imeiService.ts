@@ -11,6 +11,7 @@ export interface PaginatedImeis {
 
 const mapImeiItem = (item: any): ImeiDevice => ({
   id: item.id,
+  imei: item.imei || item.imeiNumber || '',
   imeiNumber: item.imeiNumber || item.imei || '',
   variantId: item.variantId,
   status: item.status,
@@ -79,7 +80,8 @@ export const imeiService = {
     const item = response.data?.data ?? response.data;
     return {
       id: item.id,
-      imeiNumber: item.imei || item.imeiNumber,
+      imei: item.imei || item.imeiNumber,
+      imeiNumber: item.imeiNumber || item.imei,
       variantId: item.variantId,
       status: item.status,
       variant: item.variant,

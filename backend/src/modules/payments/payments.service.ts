@@ -25,6 +25,7 @@ import {
   WarrantyStatus,
 } from '@prisma/client';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
 
 export function buildVnpaySignData(params: Record<string, any>): string {
   const sortedKeys = Object.keys(params).sort();
@@ -276,15 +277,14 @@ export class PaymentsService {
 
     await this.rejectIfHoldExpired(order);
 
-    if (order.status === OrderStatus.CANCELLED) {
-      throw new BadRequestException('Cannot pay for a cancelled order');
-    }
-
-    if (
-      order.status === OrderStatus.CONFIRMED ||
-      order.status === OrderStatus.COMPLETED
-    ) {
-      throw new BadRequestException('Order has already been paid and confirmed');
+    // Only a PENDING order may start a new payment attempt — anything else
+    // is either already paid/confirmed or already out of the payable funnel.
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException(
+        order.status === OrderStatus.CANCELLED
+          ? 'Cannot pay for a cancelled order'
+          : 'Order has already been paid and confirmed',
+      );
     }
 
     const isVnpayEnabled = this.settingsService
@@ -636,7 +636,7 @@ export class PaymentsService {
 
     await this.rejectIfHoldExpired(order);
 
-    if (order.status === 'CANCELLED') {
+    if (order.status === OrderStatus.CANCELLED) {
       throw new BadRequestException('Cannot pay for a cancelled order');
     }
 
@@ -644,8 +644,6 @@ export class PaymentsService {
       where: { orderId: dto.orderId, status: PaymentStatus.PAID },
     });
     if (existing) throw new BadRequestException('Order is already paid');
-
-    await this.rejectIfHoldExpired(order as any);
 
     // M5: double-clicking "pay" must not stack PENDING rows — reuse the fresh
     // pending payment for the same order+method instead of creating another.
@@ -667,7 +665,7 @@ export class PaymentsService {
       },
     });
 
-    if (dto.method === 'COD') {
+    if (dto.method === PaymentMethod.COD) {
       await this.prisma.paymentTransaction.create({
         data: {
           paymentId: payment.id,
@@ -707,15 +705,15 @@ export class PaymentsService {
 
     const order = payment.order;
     if (!order) throw new NotFoundException('Order for payment not found');
-    if (order.status === OrderStatus.CANCELLED) {
-      throw new BadRequestException('Cannot confirm payment for a cancelled order');
-    }
-    if (
-      order.status === OrderStatus.CONFIRMED ||
-      order.status === OrderStatus.COMPLETED ||
-      order.status === OrderStatus.DELIVERED
-    ) {
-      throw new BadRequestException('Order is already confirmed');
+    // Manual confirmation may only confirm a still-PENDING order — confirming
+    // a PROCESSING/SHIPPING/DELIVERED order would rewrite history (and a
+    // concurrent IPN claim already guards the PENDING→CONFIRMED edge).
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException(
+        order.status === OrderStatus.CANCELLED
+          ? 'Cannot confirm payment for a cancelled order'
+          : 'Only a PENDING order can be confirmed',
+      );
     }
     // H5: the confirmed amount must equal what the buyer actually owes.
     if (Math.round(Number(payment.amount)) !== Math.round(Number(order.totalAmount))) {
@@ -838,26 +836,40 @@ export class PaymentsService {
     });
   }
 
-  async findAll() {
-    return this.prisma.payment.findMany({
-      include: {
-        order: { select: { id: true, orderNumber: true, userId: true } },
-        transactions: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(page?: number | string, limit?: number | string) {
+    const { page: safePage, limit: safeLimit, skip } = getPagination(page, limit, 20);
+    const [total, data] = await Promise.all([
+      this.prisma.payment.count(),
+      this.prisma.payment.findMany({
+        include: {
+          order: { select: { id: true, orderNumber: true, userId: true } },
+          transactions: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: safeLimit,
+      }),
+    ]);
+    return buildPaginatedResponse(data, total, safePage, safeLimit);
   }
 
-  async getTransactionHistory() {
-    return this.prisma.paymentTransaction.findMany({
-      include: {
-        payment: {
-          include: {
-            order: { select: { id: true, orderNumber: true, userId: true } },
+  async getTransactionHistory(page?: number | string, limit?: number | string) {
+    const { page: safePage, limit: safeLimit, skip } = getPagination(page, limit, 20);
+    const [total, data] = await Promise.all([
+      this.prisma.paymentTransaction.count(),
+      this.prisma.paymentTransaction.findMany({
+        include: {
+          payment: {
+            include: {
+              order: { select: { id: true, orderNumber: true, userId: true } },
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: safeLimit,
+      }),
+    ]);
+    return buildPaginatedResponse(data, total, safePage, safeLimit);
   }
 }

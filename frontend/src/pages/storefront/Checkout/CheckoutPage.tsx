@@ -12,9 +12,6 @@ import {
   AlertCircle,
   Loader2,
   Sparkles,
-  Check,
-  Copy,
-  X,
   Building2,
   MapPin,
 } from 'lucide-react';
@@ -75,10 +72,6 @@ export const CheckoutPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
-  // VietQR Modal state
-  const [showQrModal, setShowQrModal] = useState(false);
-  const [copiedText, setCopiedText] = useState<string | null>(null);
 
   // Voucher State
   const [appliedVoucher, setAppliedVoucher] = useState<any>(() => {
@@ -177,12 +170,6 @@ export const CheckoutPage: React.FC = () => {
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
-  };
-
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedText(label);
-    setTimeout(() => setCopiedText(null), 2000);
   };
 
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
@@ -313,11 +300,6 @@ export const CheckoutPage: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const [sampleMemo] = useState(() => `ORD-${Math.floor(100000 + Math.random() * 900000)}`);
-  const sampleVietQrUrl = `https://img.vietqr.io/image/970422-0987654321-compact2.png?amount=${totalAmountDue}&addInfo=${encodeURIComponent(
-    sampleMemo
-  )}&accountName=${encodeURIComponent('CONG TY MOBILECOMMERCE')}`;
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 py-8 sm:py-10">
@@ -664,19 +646,12 @@ export const CheckoutPage: React.FC = () => {
                           Mã QR tự động tích hợp số tiền và nội dung đơn hàng. Xác nhận giao dịch tức thì qua kết nối Napas 247.
                         </p>
 
-                        {/* Modal button if VietQR is active */}
+                        {/* Real VietQR is generated after the order exists — see OrderSuccess page. */}
                         <div className="pt-2">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowQrModal(true);
-                            }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold text-xs rounded-xl transition cursor-pointer"
-                          >
+                          <p className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 font-bold text-xs rounded-xl">
                             <QrCode className="w-3.5 h-3.5 text-blue-600" />
-                            <span>Mở mã VietQR mẫu & Thông tin tài khoản</span>
-                          </button>
+                            <span>Mã VietQR (nội dung = mã đơn hàng) sẽ hiển thị sau khi đặt hàng thành công</span>
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -844,8 +819,9 @@ export const CheckoutPage: React.FC = () => {
               {/* Items list */}
               <div className="space-y-3.5 max-h-72 overflow-y-auto pr-1">
                 {checkoutItems.map((it) => {
-                  const isFlash = (it as any).isFlashSale || (it.variant && it.price < it.variant.price);
-                  const origPrice = (it as any).originalPrice || it.variant?.price || it.price;
+                  const itemPrice = it.unitPrice ?? it.price ?? 0;
+                  const isFlash = (it as any).isFlashSale || (it.variant && itemPrice < it.variant.price);
+                  const origPrice = (it as any).originalPrice || it.variant?.price || itemPrice;
                   return (
                     <div key={it.id} className="flex gap-3 items-center text-xs">
                       <div className="w-14 h-14 rounded-xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center shrink-0">
@@ -879,9 +855,9 @@ export const CheckoutPage: React.FC = () => {
                       </div>
                       <div className="text-right shrink-0">
                         <span className={`font-mono font-bold tabular-nums ${isFlash ? 'text-rose-600' : 'text-blue-600'}`}>
-                          {formatPrice(it.price * it.quantity)}
+                          {formatPrice(itemPrice * it.quantity)}
                         </span>
-                        {isFlash && origPrice > it.price && (
+                        {isFlash && origPrice > itemPrice && (
                           <div className="text-[10px] font-mono text-slate-400 line-through tabular-nums">
                             {formatPrice(origPrice * it.quantity)}
                           </div>
@@ -1008,83 +984,6 @@ export const CheckoutPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* VietQR Dynamic Modal */}
-      {showQrModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl relative">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
-                  <QrCode className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-slate-900">Cổng VietQR Napas 247</h3>
-                  <span className="text-[10px] text-emerald-600 font-mono">● LIVE POLLING SẴN SÀNG</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowQrModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="text-center space-y-3">
-              <div className="inline-block p-3 bg-white border border-slate-200 rounded-2xl shadow-xs">
-                <img
-                  src={sampleVietQrUrl}
-                  alt="VietQR Sample"
-                  className="w-52 h-52 object-contain mx-auto"
-                />
-              </div>
-              <p className="text-xs text-slate-500">
-                Quét mã qua bất kỳ ứng dụng ngân hàng nào (Vietcombank, MB, Techcombank, VPBank,...)
-              </p>
-            </div>
-
-            <div className="space-y-2 text-xs bg-slate-50 border border-slate-200 rounded-2xl p-4">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Ngân hàng:</span>
-                <span className="font-bold text-slate-900">MBBank (Quân Đội)</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Số tài khoản:</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono font-bold text-slate-900">0987654321</span>
-                  <button
-                    onClick={() => copyToClipboard('0987654321', 'stk')}
-                    className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
-                    title="Sao chép STK"
-                  >
-                    {copiedText === 'stk' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Chủ tài khoản:</span>
-                <span className="font-bold text-slate-900">CONG TY MOBILECOMMERCE</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Số tiền:</span>
-                <span className="font-mono font-bold text-blue-600">{formatPrice(totalAmountDue)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Nội dung CK:</span>
-                <span className="font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">{sampleMemo}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowQrModal(false)}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
-            >
-              Đóng và tiếp tục đặt hàng
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Address Select / Create Modal */}
       <AddressSelectModal

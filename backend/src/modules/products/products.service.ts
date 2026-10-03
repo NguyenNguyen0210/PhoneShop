@@ -61,26 +61,19 @@ export class ProductsService {
 
   private formatProduct(product: any) {
     if (!product) return product;
+    // NOTE: Product/ProductVariant rows only carry thumbnailUrl/imageUrl —
+    // there is no `images` column, so never read product.images/v.images.
     const thumb =
       product.thumbnailUrl ||
+      product.thumbnail ||
       product.variants?.[0]?.imageUrl ||
       '/images/products/iphone-16-pro-max.png';
-
-    const images =
-      Array.isArray(product.images) && product.images.length > 0
-        ? product.images
-        : thumb
-        ? [thumb]
-        : [];
 
     const variants = Array.isArray(product.variants)
       ? product.variants.map((v: any) => ({
           ...v,
           imageUrl: v.imageUrl || thumb,
-          images:
-            Array.isArray(v.images) && v.images.length > 0
-              ? v.images
-              : [v.imageUrl || thumb],
+          images: [v.imageUrl || thumb],
         }))
       : [];
 
@@ -96,7 +89,7 @@ export class ProductsService {
       ...product,
       thumbnail: thumb,
       thumbnailUrl: thumb,
-      images,
+      images: [thumb],
       variants,
       specs: product.specs || {},
       rating,

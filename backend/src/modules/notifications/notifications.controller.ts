@@ -42,16 +42,18 @@ export class NotificationsController {
     return this.notificationsService.getUnreadCount(user.id);
   }
 
-  @Put('my/:id/read')
-  @ApiOperation({ summary: 'Mark notification as read' })
-  markRead(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.notificationsService.markRead(user.id, id);
-  }
-
+  // NOTE: static route 'my/read-all' must be registered BEFORE 'my/:id/read',
+  // otherwise 'read-all' is captured as id='read-all'.
   @Put('my/read-all')
   @ApiOperation({ summary: 'Mark all notifications as read' })
   markAllRead(@CurrentUser() user: any) {
     return this.notificationsService.markAllRead(user.id);
+  }
+
+  @Put('my/:id/read')
+  @ApiOperation({ summary: 'Mark notification as read' })
+  markRead(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.notificationsService.markRead(user.id, id);
   }
 
   @Delete('my/:id')
@@ -65,8 +67,8 @@ export class NotificationsController {
   @Get()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Get all notifications (ADMIN)' })
-  findAll() {
-    return this.notificationsService.findAll();
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.notificationsService.findAll(page, limit);
   }
 
   @Post()

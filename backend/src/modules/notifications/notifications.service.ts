@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateNotificationDto, BroadcastNotificationDto } from './dto/notification.dto';
 import { NotificationChannel, NotificationType } from '@prisma/client';
+import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class NotificationsService {
@@ -27,13 +28,12 @@ export class NotificationsService {
 
   async getMyNotifications(
     userId: string,
-    page = 1,
-    limit = 20,
+    page: number | string = 1,
+    limit: number | string = 20,
     type?: NotificationType,
     isRead?: string,
   ) {
-    const safePage = Math.max(1, page || 1);
-    const safeLimit = Math.min(100, Math.max(1, limit || 20));
+    const { page: safePage, limit: safeLimit, skip } = getPagination(page, limit, 20);
 
     const where: any = { userId };
     if (type) {
@@ -48,11 +48,11 @@ export class NotificationsService {
       this.prisma.notification.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        skip: (safePage - 1) * safeLimit,
+        skip,
         take: safeLimit,
       }),
     ]);
-    return { data, total, page: safePage, limit: safeLimit };
+    return buildPaginatedResponse(data, total, safePage, safeLimit);
   }
 
   async getUnreadCount(userId: string) {
@@ -119,11 +119,17 @@ export class NotificationsService {
     return { sent: inserted };
   }
 
-  async findAll() {
-    return this.prisma.notification.findMany({
-      include: { user: { select: { id: true, email: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    });
+  async findAll(page?: number | string, limit?: number | string) {
+    const { page: safePage, limit: safeLimit, skip } = getPagination(page, limit, 20);
+    const [total, data] = await Promise.all([
+      this.prisma.notification.count(),
+      this.prisma.notification.findMany({
+        include: { user: { select: { id: true, email: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: safeLimit,
+      }),
+    ]);
+    return buildPaginatedResponse(data, total, safePage, safeLimit);
   }
 }

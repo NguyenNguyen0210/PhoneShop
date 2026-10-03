@@ -16,30 +16,30 @@ export interface StockCheckResult {
 
 export const inventoryService = {
   getInventoryList: async (): Promise<InventoryRecord[]> => {
-    const response = await apiClient.get<InventoryRecord[]>('/inventory');
-    return response.data;
+    const response = await apiClient.get('/inventory');
+    return response.data?.data ?? response.data;
   },
 
   getLowStockAlerts: async (threshold?: number): Promise<InventoryRecord[]> => {
-    const response = await apiClient.get<InventoryRecord[]>('/inventory/low-stock', {
+    const response = await apiClient.get('/inventory/low-stock', {
       params: threshold !== undefined ? { threshold } : undefined,
     });
-    return response.data;
+    return response.data?.data ?? response.data;
   },
 
   checkStock: async (variantId: string): Promise<StockCheckResult> => {
-    const response = await apiClient.get<StockCheckResult>(`/inventory/${variantId}/check`);
-    return response.data;
+    const response = await apiClient.get(`/inventory/${variantId}/check`);
+    return response.data?.data ?? response.data;
   },
 
   adjustStock: async (variantId: string, payload: AdjustStockPayload): Promise<InventoryRecord> => {
-    const response = await apiClient.put<InventoryRecord>(`/inventory/${variantId}/adjust`, payload);
-    return response.data;
+    const response = await apiClient.put(`/inventory/${variantId}/adjust`, payload);
+    return response.data?.data ?? response.data;
   },
 
   setReorderLevel: async (variantId: string, payload: SetReorderLevelPayload): Promise<InventoryRecord> => {
-    const response = await apiClient.put<InventoryRecord>(`/inventory/${variantId}/reorder-level`, payload);
-    return response.data;
+    const response = await apiClient.put(`/inventory/${variantId}/reorder-level`, payload);
+    return response.data?.data ?? response.data;
   },
 
   getLedger: async (params?: {

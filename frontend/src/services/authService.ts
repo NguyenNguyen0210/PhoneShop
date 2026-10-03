@@ -10,10 +10,14 @@ export const authService = {
   async register(data: {
     email: string;
     password: string;
-    fullName: string;
+    firstName: string;
+    lastName: string;
     phone?: string;
   }): Promise<AuthResponse> {
-    const response = await apiClient.post('/auth/register', data);
+    const response = await apiClient.post('/auth/register', {
+      ...data,
+      email: data.email.trim().toLowerCase(),
+    });
     return response.data?.data ?? response.data;
   },
 

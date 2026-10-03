@@ -30,8 +30,8 @@ export class InventoryController {
   @Get()
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'View all inventory (STAFF/MANAGER/ADMIN)' })
-  findAll() {
-    return this.inventoryService.findAll();
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.inventoryService.findAll(page, limit);
   }
 
   @Get('ledger')

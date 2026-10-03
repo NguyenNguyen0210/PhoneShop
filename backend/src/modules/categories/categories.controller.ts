@@ -25,23 +25,8 @@ export class CategoriesController {
     return this.categoriesService.getTree(true);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get category detail (Public)' })
-  findOne(@Param('id') id: string) {
-    return this.categoriesService.findOne(id);
-  }
-
-  // --- MANAGER / ADMIN ENDPOINTS ---
-
-  @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.MANAGER, Role.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create category (MANAGER/ADMIN)' })
-  create(@Body() dto: CreateCategoryDto) {
-    return this.categoriesService.create(dto);
-  }
-
+  // NOTE: static routes (admin/*) must be registered BEFORE ':id',
+  // otherwise 'admin/all' is captured as id='admin'.
   @Get('admin/all')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.MANAGER, Role.ADMIN)
@@ -58,6 +43,23 @@ export class CategoriesController {
   @ApiOperation({ summary: 'Get complete category tree (MANAGER/ADMIN)' })
   getTreeAdmin() {
     return this.categoriesService.getTree(false);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get category detail (Public)' })
+  findOne(@Param('id') id: string) {
+    return this.categoriesService.findOne(id);
+  }
+
+  // --- MANAGER / ADMIN ENDPOINTS ---
+
+  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create category (MANAGER/ADMIN)' })
+  create(@Body() dto: CreateCategoryDto) {
+    return this.categoriesService.create(dto);
   }
 
   @Patch(':id')

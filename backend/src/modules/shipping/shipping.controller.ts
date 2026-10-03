@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, ParseUUIDPipe, UseGuards,
+  Controller, Get, Post, Patch, Body, Param, ParseUUIDPipe, UseGuards, Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ShippingService } from './shipping.service';
@@ -42,8 +42,8 @@ export class ShippingController {
   @Get()
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Get all shipping records (STAFF+)' })
-  findAll() {
-    return this.shippingService.findAll();
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.shippingService.findAll(page, limit);
   }
 
   @Get(':id')

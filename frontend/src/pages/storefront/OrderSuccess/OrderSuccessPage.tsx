@@ -56,9 +56,9 @@ export const OrderSuccessPage: React.FC = () => {
 
   useEffect(() => {
     if (order && order.paymentMethod === 'VIETQR') {
-      const amount = order.totalAmount || 0;
-      const orderNum = order.orderNumber || id || 'ORD-UNKNOWN';
-      paymentService.getVietQrCode(order.id || id || '', amount, orderNum).then((qr) => {
+      const oid = order.id || id;
+      if (!oid) return;
+      paymentService.createVietQr(oid).then((qr) => {
         setVietQrData(qr);
       });
     }
@@ -79,8 +79,6 @@ export const OrderSuccessPage: React.FC = () => {
     try {
       const res = await paymentService.createVnpayUrl({
         orderId: order.id || id || '',
-        amount: order.totalAmount,
-        orderInfo: `Thanh toan don hang ${order.orderNumber || id}`,
       });
       if (res.paymentUrl) {
         window.location.href = res.paymentUrl;

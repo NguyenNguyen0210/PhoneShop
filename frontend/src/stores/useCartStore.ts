@@ -59,6 +59,7 @@ export const useCartStore = create<CartState>()(
               ? {
                   ...item,
                   quantity: item.quantity + quantity,
+                  unitPrice: finalPrice,
                   price: finalPrice,
                   isFlashSale: isFlashSale ?? item.isFlashSale,
                   originalPrice: item.originalPrice ?? variant.price,
@@ -70,6 +71,7 @@ export const useCartStore = create<CartState>()(
             id: `local-${variant.id}-${Date.now()}`,
             variantId: variant.id,
             quantity,
+            unitPrice: finalPrice,
             price: finalPrice,
             product,
             variant,
@@ -128,7 +130,10 @@ export const useCartStore = create<CartState>()(
       toggleDrawer: () => set((state) => ({ isDrawerOpen: !state.isDrawerOpen })),
 
       totalAmount: () => {
-        return get().items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        return get().items.reduce(
+          (sum, item) => sum + (item.unitPrice ?? item.price ?? 0) * item.quantity,
+          0
+        );
       },
 
       totalCount: () => {
@@ -173,7 +178,9 @@ export const useCartStore = create<CartState>()(
       },
 
       selectedSubtotal: () => {
-        return get().selectedItems().reduce((sum, item) => sum + item.price * item.quantity, 0);
+        return get()
+          .selectedItems()
+          .reduce((sum, item) => sum + (item.unitPrice ?? item.price ?? 0) * item.quantity, 0);
       },
 
       selectedTotalCount: () => {

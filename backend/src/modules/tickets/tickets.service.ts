@@ -10,6 +10,8 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 import { CreateTicketMessageDto } from './dto/create-ticket-message.dto';
 import { QueryTicketDto } from './dto/query-ticket.dto';
 import { TicketCategory, TicketPriority, TicketStatus, NotificationType } from '@prisma/client';
+import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class TicketsService {
@@ -28,46 +30,70 @@ export class TicketsService {
     return `${prefix}${String(count + 1).padStart(4, '0')}`;
   }
 
+  // Race-safe code generation: count+1 collides under concurrency, so retry
+  // on unique violation (P2002) with a random suffix, up to 3 attempts.
+  private withRetryCode(baseCode: string, attempt: number): string {
+    if (attempt === 0) return baseCode;
+    return `${baseCode}-${randomBytes(2).toString('hex').toUpperCase()}`;
+  }
+
   async createTicket(userId: string, dto: CreateTicketDto) {
-    const code = await this.generateTicketCode();
-
-    return this.prisma.$transaction(async (tx) => {
-      const ticket = await tx.ticket.create({
-        data: {
-          code,
-          title: dto.title,
-          category: dto.category || TicketCategory.ACCOUNT_GENERAL,
-          priority: dto.priority || TicketPriority.MEDIUM,
-          status: TicketStatus.OPEN,
-          userId,
-          orderId: dto.orderId || null,
-        },
+    // Tickets may only reference the caller's own orders — never trust a
+    // client-supplied orderId without an ownership check.
+    if (dto.orderId) {
+      const order = await this.prisma.order.findFirst({
+        where: { id: dto.orderId, userId },
       });
+      if (!order) throw new ForbiddenException('Order không thuộc về bạn hoặc không tồn tại');
+    }
 
-      await tx.ticketMessage.create({
-        data: {
-          ticketId: ticket.id,
-          senderId: userId,
-          message: dto.message,
-          attachments: dto.attachments || [],
-          isInternalNote: false,
-        },
-      });
+    const baseCode = await this.generateTicketCode();
 
-      return tx.ticket.findUnique({
-        where: { id: ticket.id },
-        include: {
-          messages: true,
-          order: { select: { id: true, orderNumber: true, totalAmount: true } },
-        },
-      });
-    });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const code = this.withRetryCode(baseCode, attempt);
+      try {
+        return await this.prisma.$transaction(async (tx) => {
+          const ticket = await tx.ticket.create({
+            data: {
+              code,
+              title: dto.title,
+              category: dto.category || TicketCategory.ACCOUNT_GENERAL,
+              priority: dto.priority || TicketPriority.MEDIUM,
+              status: TicketStatus.OPEN,
+              userId,
+              orderId: dto.orderId || null,
+            },
+          });
+
+          await tx.ticketMessage.create({
+            data: {
+              ticketId: ticket.id,
+              senderId: userId,
+              message: dto.message,
+              attachments: dto.attachments || [],
+              isInternalNote: false,
+            },
+          });
+
+          return tx.ticket.findUnique({
+            where: { id: ticket.id },
+            include: {
+              messages: true,
+              order: { select: { id: true, orderNumber: true, totalAmount: true } },
+            },
+          });
+        });
+      } catch (err: any) {
+        // Unique violation on code (concurrent count+1 collision) → retry
+        // with a random suffix. Anything else (or last attempt) rethrows.
+        if (err?.code === 'P2002' && attempt < 2) continue;
+        throw err;
+      }
+    }
   }
 
   async getMyTickets(userId: string, query: QueryTicketDto) {
-    const page = Number(query.page) || 1;
-    const limit = Number(query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = getPagination(query.page, query.limit, 10);
 
     const where: any = { userId };
     if (query.status) where.status = query.status;
@@ -87,13 +113,7 @@ export class TicketsService {
       }),
     ]);
 
-    return {
-      data: tickets,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+    return buildPaginatedResponse(tickets, total, page, limit);
   }
 
   async getTicketDetailForCustomer(ticketId: string, userId: string) {
@@ -161,9 +181,7 @@ export class TicketsService {
   }
 
   async findAllAdmin(query: QueryTicketDto) {
-    const page = Number(query.page) || 1;
-    const limit = Number(query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = getPagination(query.page, query.limit, 10);
 
     const where: any = {};
     if (query.status) where.status = query.status;
@@ -197,13 +215,7 @@ export class TicketsService {
       }),
     ]);
 
-    return {
-      data: tickets,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+    return buildPaginatedResponse(tickets, total, page, limit);
   }
 
   async findOneAdmin(id: string) {

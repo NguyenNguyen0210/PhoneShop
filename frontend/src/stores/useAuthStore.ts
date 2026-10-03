@@ -117,7 +117,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   register: async (data) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await authService.register(data);
+      // Backend RegisterDto expects firstName/lastName — split from fullName
+      // (last whitespace-separated word is lastName, the rest is firstName).
+      const parts = data.fullName.trim().split(/\s+/).filter(Boolean);
+      const lastName = parts.length > 1 ? parts[parts.length - 1] : parts[0] || '';
+      const firstName = parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0] || '';
+      const res = await authService.register({
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+        firstName,
+        lastName,
+        phone: data.phone,
+      });
       const user = res.user;
       const accessToken = res.accessToken;
       const refreshToken = res.refreshToken;

@@ -135,14 +135,18 @@ export const productService = {
 
   async createProduct(dto: {
     name: string;
-    description: string;
+    description?: string;
     brandId: string;
     categoryId: string;
+    thumbnailUrl?: string;
+    /** Legacy alias — mapped to thumbnailUrl when sent. */
     thumbnail?: string;
     images?: string[];
-    specs?: Record<string, string>;
+    specs?: Record<string, any>;
   }): Promise<Product> {
-    const response = await apiClient.post('/products', dto);
+    const { thumbnail, ...rest } = dto;
+    const payload = { ...rest, thumbnailUrl: dto.thumbnailUrl ?? thumbnail };
+    const response = await apiClient.post('/products', payload);
     return response.data?.data ?? response.data;
   },
 
@@ -164,10 +168,13 @@ export const productService = {
       ram?: string;
       price: number;
       compareAtPrice?: number;
-      inventoryQty?: number;
     }
   ): Promise<ProductVariant> {
-    const response = await apiClient.post(`/products/${productId}/variants`, dto);
+    // Backend CreateVariantDto has no inventoryQty — stock is adjusted
+    // separately via inventoryService.adjustStock after creation.
+    const payload = { ...(dto as Record<string, unknown>) };
+    delete payload.inventoryQty;
+    const response = await apiClient.post(`/products/${productId}/variants`, payload);
     return response.data?.data ?? response.data;
   },
 

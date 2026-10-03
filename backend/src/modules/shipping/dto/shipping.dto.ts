@@ -1,15 +1,10 @@
 import { IsString, IsOptional, IsDateString, IsEnum, Length } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
-export enum ShippingStatus {
-  PENDING = 'PENDING',
-  READY_TO_SHIP = 'READY_TO_SHIP',
-  PICKED_UP = 'PICKED_UP',
-  IN_TRANSIT = 'IN_TRANSIT',
-  DELIVERED = 'DELIVERED',
-  FAILED = 'FAILED',
-  RETURNED = 'RETURNED',
-}
+// Single source of truth: re-export the Prisma enum instead of maintaining
+// a duplicate ShippingStatus definition that can drift from the schema.
+import { ShippingStatus } from '@prisma/client';
+export { ShippingStatus };
 
 export class CreateShippingDto {
   @ApiProperty({ example: 'uuid-of-order' })

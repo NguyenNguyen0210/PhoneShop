@@ -180,7 +180,7 @@ export const AdminImeiPage: React.FC = () => {
       setImeis((prev) =>
         prev.map((i) => (i.id === record.id ? { ...i, status: nextStatus } : i))
       );
-      message.info(`Đã cập nhật trạng thái IMEI ${record.imeiNumber} sang ${nextStatus}`);
+      message.info(`Đã cập nhật trạng thái IMEI ${record.imei ?? record.imeiNumber} sang ${nextStatus}`);
       void loadData();
     } catch (err: any) {
       message.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
@@ -264,12 +264,12 @@ export const AdminImeiPage: React.FC = () => {
   const columns: ColumnsType<ImeiDevice> = [
     {
       title: 'Mã số IMEI (15 số)',
-      dataIndex: 'imeiNumber',
-      key: 'imeiNumber',
-      render: (num: string) => (
+      dataIndex: 'imei',
+      key: 'imei',
+      render: (num: string, record: ImeiDevice) => (
         <Space size="middle">
           <Text strong style={{ fontFamily: 'monospace', fontSize: 13, color: '#0f172a', letterSpacing: 0.5 }}>
-            {num}
+            {num ?? record.imeiNumber}
           </Text>
           <Tooltip title="Đạt tiêu chuẩn định dạng quốc tế GSMA">
             <Tag

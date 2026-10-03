@@ -2,8 +2,8 @@ import { Injectable, NotFoundException, BadRequestException, ConflictException }
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateVoucherDto, ValidateVoucherDto } from './dto/voucher.dto';
 import { UpdateVoucherDto } from './dto/update-voucher.dto';
-import { VoucherType } from '@prisma/client';
-import { STANDARD_SHIPPING_FEE } from '../../common/constants';
+import { ShippingMethod, VoucherType } from '@prisma/client';
+import { calculateShippingFee, computeFreeshipDiscount } from '../../common/constants';
 
 @Injectable()
 export class VouchersService {
@@ -36,7 +36,20 @@ export class VouchersService {
   }
 
   async update(id: string, dto: UpdateVoucherDto) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
+
+    // Code is unique — reject duplicates on rename.
+    if (dto.code && dto.code !== existing.code) {
+      const dup = await this.prisma.voucher.findUnique({ where: { code: dto.code } });
+      if (dup) throw new ConflictException('Voucher code already exists');
+    }
+
+    // Once the voucher has been used, its economics are locked — changing
+    // type/value would retroactively alter already-issued discounts.
+    if (existing.usageCount > 0 && (dto.type !== undefined || dto.value !== undefined)) {
+      throw new BadRequestException('Cannot change voucher type/value after it has been used');
+    }
+
     const data: any = { ...dto };
     if (dto.startAt) data.startAt = new Date(dto.startAt);
     if (dto.endAt) data.endAt = new Date(dto.endAt);
@@ -107,9 +120,14 @@ export class VouchersService {
     } else if (voucher.type === VoucherType.FIXED_AMOUNT) {
       discount = Math.min(Number(voucher.value), orderTotal);
     } else if (voucher.type === VoucherType.FREE_SHIPPING) {
-      // M2: must match checkout — freeship discounts the flat shipping fee,
+      // M2: must match checkout — freeship discounts the REAL shipping fee
+      // for the requested method/subtotal (not a hardcoded flat rate),
       // capped by the voucher value.
-      discount = Math.min(Number(voucher.value), STANDARD_SHIPPING_FEE);
+      const shippingFee = calculateShippingFee(
+        dto.shippingMethod ?? ShippingMethod.STANDARD,
+        orderTotal,
+      );
+      discount = computeFreeshipDiscount(Number(voucher.value), shippingFee);
     }
 
     return {

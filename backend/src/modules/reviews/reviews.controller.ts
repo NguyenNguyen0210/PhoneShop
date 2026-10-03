@@ -23,14 +23,8 @@ export class ReviewsController {
     return this.reviewsService.findAll(productId);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get review detail (Public)' })
-  findOne(@Param('id') id: string) {
-    return this.reviewsService.findOne(id);
-  }
-
-  // ── USER ──────────────────────────────────────────────
-
+  // NOTE: static routes ('product/:productId/my-review', 'admin/all') must be
+  // registered BEFORE ':id', otherwise they are captured as id='product'/'admin'.
   @Get('product/:productId/my-review')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -38,6 +32,34 @@ export class ReviewsController {
   getMyReviewStatus(@CurrentUser() user: any, @Param('productId') productId: string) {
     return this.reviewsService.getMyReviewStatus(user.id, productId);
   }
+
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all reviews for moderation (STAFF/MANAGER/ADMIN)' })
+  @ApiQuery({ name: 'productId', required: false })
+  @ApiQuery({ name: 'status', required: false, enum: ReviewStatus })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  findAllAdmin(
+    @Query('productId') productId?: string,
+    @Query('status') status?: ReviewStatus,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const pageNum = Math.max(1, parseInt(page || '1', 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit || '20', 10) || 20));
+    return this.reviewsService.findAllAdmin(productId, status, pageNum, limitNum);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get review detail (Public)' })
+  findOne(@Param('id') id: string) {
+    return this.reviewsService.findOne(id);
+  }
+
+  // ── USER ──────────────────────────────────────────────
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -68,26 +90,6 @@ export class ReviewsController {
   }
 
   // ── STAFF / MANAGER / ADMIN ──────────────────────────
-
-  @Get('admin/all')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all reviews for moderation (STAFF/MANAGER/ADMIN)' })
-  @ApiQuery({ name: 'productId', required: false })
-  @ApiQuery({ name: 'status', required: false, enum: ReviewStatus })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  findAllAdmin(
-    @Query('productId') productId?: string,
-    @Query('status') status?: ReviewStatus,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    const pageNum = Math.max(1, parseInt(page || '1', 10) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit || '20', 10) || 20));
-    return this.reviewsService.findAllAdmin(productId, status, pageNum, limitNum);
-  }
 
   @Put(':id/approve')
   @UseGuards(JwtAuthGuard, RolesGuard)

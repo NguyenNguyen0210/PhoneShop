@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -249,54 +250,91 @@ export class InstallmentsService {
 
     const now = new Date();
 
+    const appWithRelations = {
+      order: {
+        include: {
+          items: {
+            include: {
+              variant: {
+                include: { product: true },
+              },
+            },
+          },
+        },
+      },
+      user: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+        },
+      },
+      reviewer: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    };
+
     return this.prisma.$transaction(async (tx) => {
       if (dto.status === 'APPROVED') {
-        const updatedApp = await tx.installmentApplication.update({
-          where: { id },
+        // Approve only a live hold: the order must still be PENDING and its
+        // hold must not have expired — approving a released/cancelled order
+        // would confirm stock that no longer belongs to it.
+        const freshOrder = await tx.order.findUnique({
+          where: { id: app.orderId },
+          select: { status: true, holdExpiresAt: true },
+        });
+        if (!freshOrder || freshOrder.status !== OrderStatus.PENDING) {
+          throw new BadRequestException(
+            'Only a PENDING order can be approved for installment',
+          );
+        }
+        if (
+          !freshOrder.holdExpiresAt ||
+          freshOrder.holdExpiresAt.getTime() <= Date.now()
+        ) {
+          throw new BadRequestException(
+            'Order hold has expired. The reserved stock was released — please place the order again.',
+          );
+        }
+
+        const claimedApp = await tx.installmentApplication.updateMany({
+          where: { id, status: InstallmentStatus.PENDING },
           data: {
             status: InstallmentStatus.APPROVED,
             reviewedBy: staffId,
             reviewedAt: now,
             staffNotes: dto.staffNotes?.trim() || null,
           },
-          include: {
-            order: {
-              include: {
-                items: {
-                  include: {
-                    variant: {
-                      include: { product: true },
-                    },
-                  },
-                },
-              },
-            },
-            user: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                phone: true,
-              },
-            },
-            reviewer: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
         });
+        if (claimedApp.count === 0) {
+          throw new ConflictException(
+            'Installment application was already processed concurrently',
+          );
+        }
 
-        await tx.order.update({
-          where: { id: app.orderId },
+        const claimedOrder = await tx.order.updateMany({
+          where: { id: app.orderId, status: OrderStatus.PENDING },
           data: {
             status: OrderStatus.CONFIRMED,
             confirmedAt: now,
           },
+        });
+        if (claimedOrder.count === 0) {
+          throw new ConflictException(
+            'Order status changed concurrently; please refresh and retry',
+          );
+        }
+
+        const updatedApp = await tx.installmentApplication.findUnique({
+          where: { id },
+          include: appWithRelations,
         });
 
         this.logger.log(
@@ -306,8 +344,8 @@ export class InstallmentsService {
         return updatedApp;
       } else {
         const rejectionReason = dto.rejectionReason!.trim();
-        const updatedApp = await tx.installmentApplication.update({
-          where: { id },
+        const claimedApp = await tx.installmentApplication.updateMany({
+          where: { id, status: InstallmentStatus.PENDING },
           data: {
             status: InstallmentStatus.REJECTED,
             reviewedBy: staffId,
@@ -315,46 +353,26 @@ export class InstallmentsService {
             staffNotes: dto.staffNotes?.trim() || null,
             rejectionReason,
           },
-          include: {
-            order: {
-              include: {
-                items: {
-                  include: {
-                    variant: {
-                      include: { product: true },
-                    },
-                  },
-                },
-              },
-            },
-            user: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                phone: true,
-              },
-            },
-            reviewer: {
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
         });
+        if (claimedApp.count === 0) {
+          throw new ConflictException(
+            'Installment application was already processed concurrently',
+          );
+        }
 
-        await tx.order.update({
-          where: { id: app.orderId },
+        const claimedOrder = await tx.order.updateMany({
+          where: { id: app.orderId, status: OrderStatus.PENDING },
           data: {
             status: OrderStatus.CANCELLED,
             cancelledAt: now,
             cancelledReason: `Từ chối hồ sơ trả góp: ${rejectionReason}`,
           },
         });
+        if (claimedOrder.count === 0) {
+          throw new ConflictException(
+            'Order is no longer PENDING and cannot be cancelled by rejection',
+          );
+        }
 
         // Rollback voucher usage if any
         if (app.order.voucherCode) {
@@ -392,7 +410,10 @@ export class InstallmentsService {
           `Installment application ${id} rejected for order ${app.orderId} by staff ${staffId}. Stock released.`,
         );
 
-        return updatedApp;
+        return tx.installmentApplication.findUnique({
+          where: { id },
+          include: appWithRelations,
+        });
       }
     });
   }

@@ -2,7 +2,7 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { OrdersService } from '../../src/modules/orders/orders.service';
 import { ShippingService } from '../../src/modules/shipping/shipping.service';
 import { OrderStatus, ShippingStatus, ImeiStatus } from '@prisma/client';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 
 describe('OrdersService - PACKED and SHIPPING transitions', () => {
   let service: OrdersService;
@@ -24,7 +24,7 @@ describe('OrdersService - PACKED and SHIPPING transitions', () => {
         findFirst: jest.fn(),
         findMany: jest.fn(),
         update: jest.fn(),
-        updateMany: jest.fn(),
+        updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
       },
       shipping: {
         findUnique: jest.fn(),
@@ -59,12 +59,21 @@ describe('OrdersService - PACKED and SHIPPING transitions', () => {
 
     const result = await service.transitionStatus('order-123', OrderStatus.PACKED);
     expect(result.status).toBe(OrderStatus.PACKED);
-    expect(prisma.order.update).toHaveBeenCalledWith(
+    expect(prisma.order.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'order-123' },
+        where: { id: 'order-123', status: OrderStatus.PROCESSING },
         data: expect.objectContaining({ status: OrderStatus.PACKED }),
       }),
     );
+  });
+
+  it('should throw ConflictException when the order moved concurrently', async () => {
+    (prisma.order.findUnique as any).mockResolvedValue(mockOrder);
+    (prisma.order.updateMany as any).mockResolvedValue({ count: 0 });
+
+    await expect(service.transitionStatus('order-123', OrderStatus.PACKED)).rejects.toThrow(ConflictException);
+
+    (prisma.order.updateMany as any).mockResolvedValue({ count: 1 });
   });
 
   it('should transition from PACKED to SHIPPING and sync shipping details', async () => {

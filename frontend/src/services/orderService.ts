@@ -1,5 +1,13 @@
 import { apiClient } from './apiClient';
 import type { Order, PaymentMethod, InstallmentFormData, ShippingMethod } from '../types';
+import { toBackendPaymentMethod } from './paymentService';
+
+const VALID_PAYMENT_METHODS: Array<PaymentMethod | string> = [
+  'COD',
+  'VIETQR',
+  'VNPAY',
+  'INSTALLMENT',
+];
 
 export interface CheckoutPayload {
   customerName: string;
@@ -24,6 +32,10 @@ export interface PaginatedOrders {
 
 export const orderService = {
   async checkout(payload: CheckoutPayload): Promise<Order> {
+    if (payload.paymentMethod && !VALID_PAYMENT_METHODS.includes(payload.paymentMethod)) {
+      throw new Error(`Phương thức thanh toán không hợp lệ: ${payload.paymentMethod}`);
+    }
+
     let addressId = payload.addressId;
 
     if (!addressId) {
@@ -43,11 +55,19 @@ export const orderService = {
       }
     }
 
+    if (!addressId) {
+      throw new Error('Vui lòng chọn địa chỉ giao hàng trước khi đặt hàng.');
+    }
+
+    const backendPaymentMethod = payload.paymentMethod
+      ? toBackendPaymentMethod(payload.paymentMethod)
+      : undefined;
+
     const orderRes = await apiClient.post('/orders/checkout', {
-      addressId: addressId || '00000000-0000-0000-0000-000000000000',
+      addressId,
       voucherCode: payload.voucherCode || undefined,
       customerNote: payload.notes || undefined,
-      paymentMethod: payload.paymentMethod,
+      paymentMethod: backendPaymentMethod,
       installmentData: payload.installmentData,
       selectedItemIds: payload.selectedItemIds,
       shippingMethod: payload.shippingMethod,
@@ -56,12 +76,11 @@ export const orderService = {
     const orderData: Order = orderRes.data?.data ?? orderRes.data;
 
     // Attach chosen payment method if provided (backend handles INSTALLMENT in order transaction)
-    if (payload.paymentMethod && payload.paymentMethod !== 'INSTALLMENT' && orderData?.id) {
+    if (backendPaymentMethod && backendPaymentMethod !== 'INSTALLMENT' && orderData?.id) {
       try {
         await apiClient.post('/payments', {
           orderId: orderData.id,
-          amount: orderData.totalAmount,
-          method: payload.paymentMethod,
+          method: backendPaymentMethod,
         });
       } catch (paymentErr) {
         console.warn('Payment record creation deferred or handled elsewhere:', paymentErr);

@@ -123,9 +123,12 @@ describe('Installment System Unit Tests', () => {
           findUnique: mockFn(),
           findFirst: mockFn(),
           update: mockFn(),
+          updateMany: mockFn(),
         },
         order: {
           update: mockFn(),
+          updateMany: mockFn(),
+          findUnique: mockFn(),
         },
         voucher: {
           findUnique: mockFn(),
@@ -201,14 +204,18 @@ describe('Installment System Unit Tests', () => {
         order: { items: [] },
       };
       mockPrisma.installmentApplication.findUnique.mockResolvedValue(mockApp);
-      mockPrisma.installmentApplication.update.mockResolvedValue({
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.PENDING,
+        holdExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      });
+      mockPrisma.installmentApplication.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.order.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.installmentApplication.findUnique.mockResolvedValueOnce(mockApp);
+      mockPrisma.installmentApplication.findUnique.mockResolvedValueOnce({
         ...mockApp,
         status: InstallmentStatus.APPROVED,
         reviewedBy: 'staff-1',
-      });
-      mockPrisma.order.update.mockResolvedValue({
-        id: 'order-1',
-        status: OrderStatus.CONFIRMED,
       });
 
       const result = await service.review('app-1', 'staff-1', {
@@ -216,13 +223,59 @@ describe('Installment System Unit Tests', () => {
         staffNotes: 'Verified and approved',
       });
 
-      expect(result.status).toBe(InstallmentStatus.APPROVED);
-      expect(mockPrisma.order.update).toHaveBeenCalledWith(
+      expect(result!.status).toBe(InstallmentStatus.APPROVED);
+      expect(mockPrisma.installmentApplication.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 'order-1' },
+          where: { id: 'app-1', status: InstallmentStatus.PENDING },
+          data: expect.objectContaining({ status: InstallmentStatus.APPROVED }),
+        }),
+      );
+      expect(mockPrisma.order.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'order-1', status: OrderStatus.PENDING },
           data: expect.objectContaining({ status: OrderStatus.CONFIRMED }),
         }),
       );
+    });
+
+    it('should reject approval when the order is no longer PENDING', async () => {
+      const mockApp = {
+        id: 'app-1',
+        orderId: 'order-1',
+        status: InstallmentStatus.PENDING,
+        order: { items: [] },
+      };
+      mockPrisma.installmentApplication.findUnique.mockResolvedValue(mockApp);
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.CANCELLED,
+        holdExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      });
+
+      await expect(
+        service.review('app-1', 'staff-1', { status: 'APPROVED' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockPrisma.order.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('should reject approval when the order hold has expired', async () => {
+      const mockApp = {
+        id: 'app-1',
+        orderId: 'order-1',
+        status: InstallmentStatus.PENDING,
+        order: { items: [] },
+      };
+      mockPrisma.installmentApplication.findUnique.mockResolvedValue(mockApp);
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.PENDING,
+        holdExpiresAt: new Date(Date.now() - 1000),
+      });
+
+      await expect(
+        service.review('app-1', 'staff-1', { status: 'APPROVED' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockPrisma.installmentApplication.updateMany).not.toHaveBeenCalled();
     });
 
     it('should reject an installment application, cancel order, release inventory and rollback voucher', async () => {
@@ -244,14 +297,13 @@ describe('Installment System Unit Tests', () => {
       };
 
       mockPrisma.installmentApplication.findUnique.mockResolvedValue(mockApp);
-      mockPrisma.installmentApplication.update.mockResolvedValue({
+      mockPrisma.installmentApplication.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.order.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.installmentApplication.findUnique.mockResolvedValueOnce(mockApp);
+      mockPrisma.installmentApplication.findUnique.mockResolvedValueOnce({
         ...mockApp,
         status: InstallmentStatus.REJECTED,
         rejectionReason: 'Bad credit history',
-      });
-      mockPrisma.order.update.mockResolvedValue({
-        id: 'order-1',
-        status: OrderStatus.CANCELLED,
       });
       mockPrisma.voucher.findUnique.mockResolvedValue({ id: 'vouch-1' });
       mockPrisma.voucher.update.mockResolvedValue({});
@@ -264,10 +316,10 @@ describe('Installment System Unit Tests', () => {
         rejectionReason: 'Bad credit history',
       });
 
-      expect(result.status).toBe(InstallmentStatus.REJECTED);
-      expect(mockPrisma.order.update).toHaveBeenCalledWith(
+      expect(result!.status).toBe(InstallmentStatus.REJECTED);
+      expect(mockPrisma.order.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 'order-1' },
+          where: { id: 'order-1', status: OrderStatus.PENDING },
           data: expect.objectContaining({
             status: OrderStatus.CANCELLED,
             cancelledReason: 'Từ chối hồ sơ trả góp: Bad credit history',
@@ -390,6 +442,7 @@ describe('Installment System Unit Tests', () => {
         },
         inventory: {
           update: mockFn().mockResolvedValue({}),
+          updateMany: mockFn().mockResolvedValue({ count: 1 }),
         },
         order: {
           create: mockFn().mockImplementation((args: any) =>

@@ -234,7 +234,7 @@ export const WishlistPage: React.FC = () => {
 
             const totalAvailable =
               product.variants?.reduce(
-                (sum, v) => sum + (v.inventory?.availableQty ?? v.inventoryQty ?? 0),
+                (sum, v) => sum + (v.inventory?.availableQty ?? 0),
                 0
               ) ?? 0;
             const isInStock =

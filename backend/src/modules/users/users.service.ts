@@ -7,6 +7,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 import { Customer360Metrics, Customer360Response } from './dto/customer-360.dto';
+import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class UsersService {
@@ -61,9 +62,7 @@ export class UsersService {
   // --- ADMIN & STAFF FUNCTIONS ---
 
   async findAll(query: QueryUserDto = {}, currentUser?: any) {
-    const page = Number(query.page) || 1;
-    const limit = Number(query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = getPagination(query.page, query.limit, 10);
 
     const roles: string[] = Array.isArray(currentUser?.roles)
       ? currentUser.roles.map((r: any) => (typeof r === 'string' ? r : r.name || r.role?.name))
@@ -123,13 +122,7 @@ export class UsersService {
       return u;
     });
 
-    return {
-      data: sanitizedUsers,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit) || 1,
-    };
+    return buildPaginatedResponse(sanitizedUsers, total, page, limit);
   }
 
   async findOne(id: string, currentUser?: any) {

@@ -99,7 +99,7 @@ export const CartDrawer: React.FC = () => {
                       </p>
                       <div className="mt-2 flex items-center justify-between">
                         <span className="text-sm font-bold text-red-600">
-                          {formatPrice(item.price)}
+                          {formatPrice(item.unitPrice ?? item.price ?? 0)}
                         </span>
 
                         <div className="flex items-center border border-gray-200 rounded-md">

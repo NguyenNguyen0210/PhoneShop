@@ -26,12 +26,24 @@ export class ResponseInterceptor<T>
     const response = context.switchToHttp().getResponse<Response>();
 
     return next.handle().pipe(
-      map((data) => ({
-        success: true,
-        statusCode: response.statusCode,
-        message: 'Success',
-        data,
-      })),
+      map((data) => {
+        // If the handler already returned a `{ message, ... }` payload, use
+        // its message instead of the hardcoded default. The payload itself
+        // is passed through untouched (backward compatible).
+        const message =
+          data &&
+          typeof data === 'object' &&
+          !Array.isArray(data) &&
+          typeof (data as any).message === 'string'
+            ? (data as any).message
+            : 'Success';
+        return {
+          success: true,
+          statusCode: response.statusCode,
+          message,
+          data,
+        };
+      }),
     );
   }
 }

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -27,6 +28,10 @@ import {
 } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PaginationQueryDto, PaginatedResponse } from '../../common/dto/pagination.dto';
+import {
+  calculateShippingFee,
+  computeFreeshipDiscount,
+} from '../../common/constants';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -67,27 +72,8 @@ export class OrdersService {
   }
 
   calculateShippingFee(method: ShippingMethod, subtotal: number): number {
-    if (subtotal > 500000) {
-      switch (method) {
-        case ShippingMethod.ECONOMY:
-          return 0;
-        case ShippingMethod.EXPRESS_2H:
-          return 30000;
-        case ShippingMethod.STANDARD:
-        default:
-          return 0;
-      }
-    } else {
-      switch (method) {
-        case ShippingMethod.ECONOMY:
-          return 15000;
-        case ShippingMethod.EXPRESS_2H:
-          return 60000;
-        case ShippingMethod.STANDARD:
-        default:
-          return 30000;
-      }
-    }
+    // Single source of truth lives in common/constants (shared with vouchers).
+    return calculateShippingFee(method, subtotal);
   }
 
   computeEstimatedDeliveryDate(method: ShippingMethod, fromDate: Date = new Date()): Date {
@@ -326,7 +312,7 @@ export class OrdersService {
         } else if (voucher.type === VoucherType.FREE_SHIPPING) {
           // M2: a freeship voucher discounts the SHIPPING fee (capped by its
           // value) — never the merchandise subtotal. Must match validate().
-          discountAmount = Math.min(Number(voucher.value), shippingFee);
+          discountAmount = computeFreeshipDiscount(Number(voucher.value), shippingFee);
         }
 
         voucherUsageData = { voucherId: voucher.id, discountAmount };
@@ -400,14 +386,20 @@ export class OrdersService {
           });
         }
 
-        // Adjust inventory
-        await tx.inventory.update({
-          where: { variantId: item.variantId },
+        // Adjust inventory: atomic hold — the read-check before the
+        // transaction is advisory only; this conditional updateMany is the
+        // authoritative guard. Concurrent checkouts racing for the last units
+        // get count===0 here instead of overselling into negative stock.
+        const held = await tx.inventory.updateMany({
+          where: { variantId: item.variantId, availableQty: { gte: item.quantity } },
           data: {
             reservedQty: { increment: item.quantity },
             availableQty: { decrement: item.quantity },
           },
         });
+        if (held.count === 0) {
+          throw new BadRequestException(`Insufficient stock for ${item.variant.name}`);
+        }
       }
 
       // Create Order
@@ -804,6 +796,27 @@ export class OrdersService {
     await tx.voucherUsage.deleteMany({ where: { orderId: order.id } });
   }
 
+  // ── INVENTORY SETTLEMENT ────────────────────────────────
+  // A delivered sale converts the hold into a real deduction: the reserved
+  // units leave the warehouse, so reservedQty AND physical quantity drop
+  // together. availableQty is untouched — it was already decremented at
+  // hold time. Guarded on reservedQty so a concurrent release can never
+  // drive the counters negative; a no-op means nothing was reserved.
+  private async settleInventory(
+    tx: any,
+    items: Array<{ variantId: string; quantity: number }>,
+  ): Promise<void> {
+    for (const item of items) {
+      await tx.inventory.updateMany({
+        where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
+        data: {
+          reservedQty: { decrement: item.quantity },
+          quantity: { decrement: item.quantity },
+        },
+      });
+    }
+  }
+
   async transitionStatus(
     id: string,
     newStatus: OrderStatus,
@@ -812,13 +825,16 @@ export class OrdersService {
     shippingInfo?: { providerName?: string; trackingNumber?: string; estimatedDeliveryDate?: string },
   ) {
     const order = await this.findOne(id);
+    // Guarded-transition anchor: the final write re-checks this status so a
+    // concurrent transition (or the hold-expiry job) cannot be overwritten.
+    const oldStatus = order.status;
 
     const allowedTransitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
       [OrderStatus.PENDING]:    [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
       [OrderStatus.CONFIRMED]:  [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
       [OrderStatus.PROCESSING]: [OrderStatus.PACKED, OrderStatus.CANCELLED],
       [OrderStatus.PACKED]:     [OrderStatus.SHIPPING, OrderStatus.CANCELLED],
-      [OrderStatus.SHIPPING]:   [OrderStatus.DELIVERED],
+      [OrderStatus.SHIPPING]:   [OrderStatus.DELIVERED, OrderStatus.RETURNED],
       [OrderStatus.DELIVERED]:  [OrderStatus.COMPLETED, OrderStatus.RETURNED],
     };
 
@@ -957,6 +973,13 @@ export class OrdersService {
           });
         }
 
+        // Settle exactly once per fulfilled order: entering DELIVERED consumes
+        // the reservation (COMPLETED is only reachable from DELIVERED, so it
+        // must NOT settle again or one sale would deduct stock twice).
+        if (oldStatus !== OrderStatus.DELIVERED) {
+          await this.settleInventory(tx, order.items);
+        }
+
         // P3: cash is collected at the door — flip pending COD payments to
         // PAID on delivery so finance never shows delivered orders as unpaid.
         // (VietQR/bank-transfer rows stay manual: only a bank reference proves
@@ -1045,7 +1068,20 @@ export class OrdersService {
         });
       }
 
-      return tx.order.update({ where: { id }, data });
+      // Guarded write: only the holder of oldStatus wins. A concurrent
+      // transition (or hold-expiry cancel) that already moved the order makes
+      // count===0 — the whole transaction rolls back instead of silently
+      // overwriting it and double-applying the side effects above.
+      const claimed = await tx.order.updateMany({
+        where: { id, status: oldStatus },
+        data,
+      });
+      if (claimed.count === 0) {
+        throw new ConflictException(
+          `Order status changed concurrently (expected ${oldStatus}); please refresh and retry`,
+        );
+      }
+      return { ...order, ...data };
     });
   }
 

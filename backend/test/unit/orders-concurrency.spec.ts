@@ -37,6 +37,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         },
         inventory: {
           update: jest.fn().mockReturnValue(Promise.resolve({})),
+          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
         },
         order: {
           create: jest.fn().mockImplementation((args: any) =>
@@ -91,8 +92,8 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         where: { id: { in: ['imei-uuid-1', 'imei-uuid-2'] } },
         data: { status: ImeiStatus.RESERVED },
       });
-      expect(mockTx.inventory.update).toHaveBeenCalledWith({
-        where: { variantId: 'var-1' },
+      expect(mockTx.inventory.updateMany).toHaveBeenCalledWith({
+        where: { variantId: 'var-1', availableQty: { gte: 2 } },
         data: {
           reservedQty: { increment: 2 },
           availableQty: { decrement: 2 },
@@ -101,6 +102,65 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
       expect(result.items).toHaveLength(2);
       expect(result.items[0].imeiDeviceId).toBe('imei-uuid-1');
       expect(result.items[1].imeiDeviceId).toBe('imei-uuid-2');
+    });
+
+    it('should throw Insufficient stock when a concurrent checkout wins the atomic hold (count==0)', async () => {
+      const mockTx: any = {
+        address: {
+          findFirst: jest.fn().mockImplementation(() =>
+            Promise.resolve({ id: 'addr-1', userId: 'user-1' }),
+          ),
+        },
+        productVariant: {
+          findMany: jest.fn().mockImplementation(() =>
+            Promise.resolve([{ id: 'var-1', price: 10000000 }]),
+          ),
+        },
+        $queryRaw: jest.fn().mockImplementation(() =>
+          Promise.resolve([{ id: 'imei-uuid-1' }]),
+        ),
+        imeiDevice: {
+          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
+        },
+        inventory: {
+          // Lost the race: another transaction consumed the last units first
+          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 0 })),
+        },
+      };
+
+      mockPrisma = {
+        cart: {
+          findUnique: jest.fn().mockImplementation(() =>
+            Promise.resolve({
+              id: 'cart-1',
+              items: [
+                {
+                  id: 'item-1',
+                  variantId: 'var-1',
+                  quantity: 1,
+                  unitPrice: 10000000,
+                  variant: {
+                    id: 'var-1',
+                    name: 'iPhone 15 128GB',
+                    sku: 'IP15-128',
+                    isActive: true,
+                    inventory: { availableQty: 5 },
+                  },
+                },
+              ],
+            }),
+          ),
+        },
+        $transaction: jest.fn().mockImplementation(async (callback: any) => {
+          return callback(mockTx);
+        }),
+      };
+
+      ordersService = new OrdersService(mockPrisma, mockOrderQueue);
+
+      await expect(
+        ordersService.checkout('user-1', { addressId: 'addr-1' } as any),
+      ).rejects.toThrow('Insufficient stock');
     });
 
     it('should throw BadRequestException if available IMEIs are fewer than required quantity', async () => {
@@ -330,6 +390,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         },
         inventory: {
           update: jest.fn().mockReturnValue(Promise.resolve({})),
+          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
         },
         order: {
           create: jest.fn().mockImplementation((args: any) =>
@@ -407,6 +468,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
           update: jest.fn().mockImplementation((args: any) =>
             Promise.resolve({ id: 'ord-1', status: args.data.status }),
           ),
+          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
         },
       };
 
@@ -454,6 +516,9 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         imeiDevice: {
           updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
         },
+        inventory: {
+          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
+        },
         payment: {
           findMany: jest.fn().mockReturnValue(Promise.resolve([])),
         },
@@ -464,6 +529,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
           update: jest.fn().mockImplementation((args: any) =>
             Promise.resolve({ id: 'ord-1', status: args.data.status }),
           ),
+          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
         },
       };
 
@@ -500,11 +566,22 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
           soldAt: expect.any(Date),
         },
       });
+      // Entering DELIVERED settles the hold exactly once (reserved + physical down, available untouched)
+      expect(mockTx.inventory.updateMany).toHaveBeenCalledWith({
+        where: { variantId: 'var-1', reservedQty: { gte: 1 } },
+        data: {
+          reservedQty: { decrement: 1 },
+          quantity: { decrement: 1 },
+        },
+      });
     });
 
     it('should update assigned IMEIs to SOLD when transitioning to COMPLETED', async () => {
       const mockTx: any = {
         imeiDevice: {
+          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
+        },
+        inventory: {
           updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
         },
         payment: {
@@ -517,6 +594,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
           update: jest.fn().mockImplementation((args: any) =>
             Promise.resolve({ id: 'ord-1', status: args.data.status }),
           ),
+          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
         },
       };
 
@@ -553,6 +631,43 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
           soldAt: expect.any(Date),
         },
       });
+      // COMPLETED-after-DELIVERED must NOT settle again — one sale, one deduction
+      expect(mockTx.inventory.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('should allow SHIPPING to RETURNED so carrier returns auto-sync', async () => {
+      const mockTx: any = {
+        order: {
+          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
+        },
+      };
+
+      mockPrisma = {
+        order: {
+          findUnique: jest.fn().mockImplementation(() =>
+            Promise.resolve({
+              id: 'ord-1',
+              status: OrderStatus.SHIPPING,
+              items: [],
+            }),
+          ),
+        },
+        $transaction: jest.fn().mockImplementation(async (callback: any) => {
+          return callback(mockTx);
+        }),
+      };
+
+      ordersService = new OrdersService(mockPrisma, {} as any);
+
+      const result: any = await ordersService.transitionStatus('ord-1', OrderStatus.RETURNED);
+
+      expect(result.status).toBe(OrderStatus.RETURNED);
+      expect(mockTx.order.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'ord-1', status: OrderStatus.SHIPPING },
+          data: expect.objectContaining({ status: OrderStatus.RETURNED }),
+        }),
+      );
     });
   });
 

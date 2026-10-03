@@ -43,6 +43,7 @@ describe('OrdersService - Shipping Calculation & Checkout Integration', () => {
       },
       inventory: {
         update: jest.fn().mockReturnValue(Promise.resolve({})),
+        updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
       },
       order: {
         create: jest.fn().mockImplementation((args: any) =>
