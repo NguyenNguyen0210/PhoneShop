@@ -38,6 +38,7 @@ logs
 *.log
 
 # Local docs & scratch (personal notes, plans, specs — not source)
+.opencode/
 docs/
 **/docs/
 scratch/

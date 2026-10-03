@@ -109,6 +109,16 @@ export class CartService {
     return this.prisma.cartItem.delete({ where: { id: itemId } });
   }
 
+  async removeItemsBulk(userId: string, itemIds: string[]) {
+    const cart = await this.getOrCreateCart(userId);
+    return this.prisma.cartItem.deleteMany({
+      where: {
+        cartId: cart.id,
+        id: { in: itemIds },
+      },
+    });
+  }
+
   async clearCart(userId: string) {
     const cart = await this.getOrCreateCart(userId);
     await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });

@@ -1,6 +1,13 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+
+export class BulkDeleteCartItemsDto {
+  @ApiProperty({ type: [String], description: 'List of CartItem IDs to delete' })
+  @IsArray()
+  @IsUUID('all', { each: true })
+  itemIds: string[];
+}
 
 export class AddCartItemDto {
   @ApiProperty()

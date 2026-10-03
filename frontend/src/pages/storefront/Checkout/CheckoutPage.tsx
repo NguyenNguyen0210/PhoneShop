@@ -26,7 +26,8 @@ import type { PaymentMethod, InstallmentFormData } from '../../../types';
 
 export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
-  const { items, totalAmount, clearCart } = useCartStore();
+  const { selectedItems, selectedSubtotal, removeSelectedItems } = useCartStore();
+  const checkoutItems = selectedItems();
   const { user } = useAuthStore();
 
   // 15-minute Hold Countdown (15 * 60 = 900 seconds)
@@ -66,13 +67,13 @@ export const CheckoutPage: React.FC = () => {
   const storedVoucherRaw = sessionStorage.getItem('mobilecommerce_voucher');
   const storedVoucher = storedVoucherRaw ? JSON.parse(storedVoucherRaw) : null;
 
-  const subtotal = totalAmount();
+  const subtotal = selectedSubtotal();
   const shippingFee = subtotal > 500000 || subtotal === 0 ? 0 : 30000;
   const discountAmount = storedVoucher ? storedVoucher.discount || 0 : 0;
   const totalAmountDue = Math.max(0, subtotal - discountAmount + shippingFee);
 
   useEffect(() => {
-    if (items.length === 0) {
+    if (checkoutItems.length === 0) {
       navigate('/cart');
       return;
     }
@@ -88,7 +89,7 @@ export const CheckoutPage: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [items.length, navigate]);
+  }, [checkoutItems.length, navigate]);
 
   const minutes = Math.floor(secondsRemaining / 60);
   const seconds = secondsRemaining % 60;
@@ -183,6 +184,7 @@ export const CheckoutPage: React.FC = () => {
         paymentMethod,
         installmentData: paymentMethod === 'INSTALLMENT' ? installmentData : undefined,
         voucherCode: storedVoucher?.code,
+        selectedItemIds: checkoutItems.map((i) => i.id),
       });
 
       if (!orderRes || !orderRes.id) {
@@ -204,15 +206,15 @@ export const CheckoutPage: React.FC = () => {
           paymentMethod,
           installmentData: paymentMethod === 'INSTALLMENT' ? installmentData : undefined,
           totalAmount: totalAmountDue,
-          items,
+          items: checkoutItems,
           discountAmount,
           shippingFee,
           createdAt: new Date().toISOString(),
         })
       );
 
-      // Clear cart after successful checkout
-      clearCart();
+      // Clear ONLY selected items from cart
+      removeSelectedItems();
       sessionStorage.removeItem('mobilecommerce_voucher');
 
       navigate(`/order-success/${orderId}`);
@@ -609,7 +611,7 @@ export const CheckoutPage: React.FC = () => {
           <div className="lg:col-span-5 space-y-6">
             <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider pb-3 border-b border-slate-200 flex items-center justify-between">
-                <span>Đơn hàng ({items.length} mặt hàng)</span>
+                <span>Đơn hàng ({checkoutItems.length} mặt hàng)</span>
                 <Link to="/cart" className="text-xs text-blue-600 font-semibold hover:underline">
                   Chỉnh sửa
                 </Link>
@@ -617,7 +619,7 @@ export const CheckoutPage: React.FC = () => {
 
               {/* Items list */}
               <div className="space-y-3.5 max-h-72 overflow-y-auto pr-1">
-                {items.map((it) => (
+                {checkoutItems.map((it) => (
                   <div key={it.id} className="flex gap-3 items-center text-xs">
                     <div className="w-14 h-14 rounded-xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center shrink-0">
                       <img

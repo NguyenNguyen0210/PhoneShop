@@ -17,7 +17,7 @@ export const CartDrawer: React.FC = () => {
 
   const handleCheckout = () => {
     setDrawerOpen(false);
-    navigate('/checkout');
+    navigate('/cart');
   };
 
   const handleViewCart = () => {

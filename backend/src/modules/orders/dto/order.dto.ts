@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -15,6 +16,12 @@ export class CreateOrderDto {
   @ApiProperty()
   @IsUUID()
   addressId: string;
+
+  @ApiPropertyOptional({ type: [String], description: 'Selected CartItem IDs to checkout' })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  selectedItemIds?: string[];
 
   @ApiPropertyOptional()
   @IsOptional()

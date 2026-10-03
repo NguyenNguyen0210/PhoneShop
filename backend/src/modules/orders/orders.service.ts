@@ -69,8 +69,17 @@ export class OrdersService {
       throw new BadRequestException('Cart is empty');
     }
 
+    let itemsToCheckout = cart.items;
+    if (dto.selectedItemIds && dto.selectedItemIds.length > 0) {
+      const selectedSet = new Set(dto.selectedItemIds);
+      itemsToCheckout = cart.items.filter((item) => selectedSet.has(item.id));
+      if (itemsToCheckout.length === 0 || itemsToCheckout.length !== selectedSet.size) {
+        throw new BadRequestException('None of the selected items were found in your cart');
+      }
+    }
+
     // 2. Verify stock
-    for (const item of cart.items) {
+    for (const item of itemsToCheckout) {
       if (!item.variant.isActive) {
         throw new BadRequestException(`Variant ${item.variant.name} is not available`);
       }
@@ -127,13 +136,13 @@ export class OrdersService {
       // who added items before a price hike pays the CURRENT price, not the
       // stale snapshot. The cart row is refreshed too so the cart never
       // disagrees with what was charged.
-      const variantIds = [...new Set(cart.items.map((i) => i.variantId))];
+      const variantIds = [...new Set(itemsToCheckout.map((i) => i.variantId))];
       const freshVariants = await tx.productVariant.findMany({
         where: { id: { in: variantIds } },
         select: { id: true, price: true },
       });
       const priceByVariant = new Map(freshVariants.map((v) => [v.id, Number(v.price)]));
-      for (const item of cart.items) {
+      for (const item of itemsToCheckout) {
         const fresh = priceByVariant.get(item.variantId);
         if (fresh === undefined || !item.variant.isActive) {
           throw new BadRequestException(
@@ -148,7 +157,7 @@ export class OrdersService {
           (item as any).unitPrice = fresh;
         }
       }
-      const subtotal = cart.items.reduce(
+      const subtotal = itemsToCheckout.reduce(
         (acc, item) => acc + Number(item.unitPrice) * item.quantity,
         0,
       );
@@ -258,7 +267,7 @@ export class OrdersService {
         imeiDeviceId: string;
       }> = [];
 
-      for (const item of cart.items) {
+      for (const item of itemsToCheckout) {
         // Atomic row-level locking for available IMEIs
         const availableImeis: Array<{ id: string }> = await tx.$queryRaw`
           SELECT id FROM imei_devices
@@ -402,8 +411,14 @@ export class OrdersService {
         }
       }
 
-      // Clear cart
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      // Selective cart clear: delete only purchased items
+      const purchasedItemIds = itemsToCheckout.map((i) => i.id);
+      await tx.cartItem.deleteMany({
+        where: {
+          cartId: cart.id,
+          id: { in: purchasedItemIds },
+        },
+      });
 
       return newOrder;
         });

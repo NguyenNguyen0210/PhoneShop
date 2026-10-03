@@ -10,6 +10,7 @@ export interface CheckoutPayload {
   installmentData?: InstallmentFormData | any;
   voucherCode?: string;
   addressId?: string;
+  selectedItemIds?: string[];
 }
 
 export interface PaginatedOrders {
@@ -47,6 +48,7 @@ export const orderService = {
       customerNote: payload.notes || undefined,
       paymentMethod: payload.paymentMethod,
       installmentData: payload.installmentData,
+      selectedItemIds: payload.selectedItemIds,
     });
 
     const orderData: Order = orderRes.data?.data ?? orderRes.data;

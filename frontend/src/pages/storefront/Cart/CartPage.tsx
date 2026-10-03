@@ -26,7 +26,21 @@ import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 
 export const CartPage: React.FC = () => {
   const navigate = useNavigate();
-  const { items, updateQuantity, removeItem, clearCart, totalAmount, totalCount } = useCartStore();
+  const {
+    items,
+    selectedItemIds,
+    updateQuantity,
+    removeItem,
+    clearCart,
+    totalCount,
+    toggleSelectItem,
+    selectAll,
+    deselectAll,
+    removeSelectedItems,
+    selectedSubtotal,
+    selectedTotalCount,
+    isAllSelected,
+  } = useCartStore();
 
   const [voucherCode, setVoucherCode] = useState('');
   const [availableVouchers, setAvailableVouchers] = useState<VoucherInfo[]>([]);
@@ -39,11 +53,13 @@ export const CartPage: React.FC = () => {
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [suggestedProducts, setSuggestedProducts] = useState<Product[]>([]);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false);
 
-  const subtotal = totalAmount();
+  const subtotal = selectedSubtotal();
+  const selectedCount = selectedTotalCount();
   // Free shipping threshold: all phone purchases get free shipping (over 500k)
   const isFreeShipping = subtotal > 500000 || subtotal === 0;
-  const shippingFee = isFreeShipping ? 0 : 30000;
+  const shippingFee = subtotal === 0 ? 0 : (isFreeShipping ? 0 : 30000);
 
   useEffect(() => {
     // 1. Fetch active vouchers from database API
@@ -99,7 +115,7 @@ export const CartPage: React.FC = () => {
     }
 
     if (subtotal === 0) {
-      setVoucherError('Giỏ hàng trống. Vui lòng chọn sản phẩm trước khi áp dụng mã.');
+      setVoucherError('Giỏ hàng trống hoặc chưa chọn sản phẩm. Vui lòng chọn sản phẩm trước khi áp dụng mã.');
       return;
     }
 
@@ -135,7 +151,7 @@ export const CartPage: React.FC = () => {
   };
 
   const handleProceedCheckout = () => {
-    if (items.length === 0) return;
+    if (selectedCount === 0) return;
     if (appliedVoucher) {
       sessionStorage.setItem('mobilecommerce_voucher', JSON.stringify(appliedVoucher));
     }
@@ -343,26 +359,76 @@ export const CartPage: React.FC = () => {
             <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
               {/* Table Top Header */}
               <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider">
-                    Sản phẩm đã chọn ({totalCount()})
-                  </span>
-                  <span className="text-slate-400">•</span>
-                  <span className="text-xs text-emerald-600 font-medium">
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected()}
+                      onChange={(e) => {
+                        if (e.target.checked) selectAll();
+                        else deselectAll();
+                      }}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer"
+                    />
+                    <span className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider">
+                      Chọn tất cả ({items.length})
+                    </span>
+                  </label>
+                  <span className="text-slate-400 hidden sm:inline">•</span>
+                  <span className="text-xs text-emerald-600 font-medium hidden sm:inline">
                     Cam kết chính hãng &amp; giao nhanh 2h
                   </span>
                 </div>
 
-                {/* Bulk Clear Action */}
-                <button
-                  type="button"
-                  onClick={() => setShowClearConfirm(true)}
-                  className="text-xs text-slate-400 hover:text-rose-600 font-medium flex items-center gap-1 transition cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Xóa giỏ hàng</span>
-                </button>
+                <div className="flex items-center gap-3">
+                  {selectedItemIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteSelectedConfirm(true)}
+                      className="text-xs text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Xóa mục đã chọn ({selectedItemIds.length})</span>
+                    </button>
+                  )}
+
+                  {/* Bulk Clear Action */}
+                  <button
+                    type="button"
+                    onClick={() => setShowClearConfirm(true)}
+                    className="text-xs text-slate-400 hover:text-rose-600 font-medium flex items-center gap-1 transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xóa giỏ hàng</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Delete Selected Confirmation Bar */}
+              {showDeleteSelectedConfirm && (
+                <div className="p-3 bg-rose-50 border-b border-rose-200 flex items-center justify-between text-xs text-rose-900 animate-fadeIn">
+                  <span className="font-medium">
+                    Bạn có chắc chắn muốn xóa {selectedItemIds.length} sản phẩm đã chọn khỏi giỏ hàng?
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        removeSelectedItems();
+                        setShowDeleteSelectedConfirm(false);
+                      }}
+                      className="px-3 py-1 bg-rose-600 text-white font-bold rounded-lg hover:bg-rose-700 transition cursor-pointer"
+                    >
+                      Xác nhận xóa
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteSelectedConfirm(false)}
+                      className="px-3 py-1 bg-white border border-rose-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition cursor-pointer"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Clear Confirmation Bar */}
               {showClearConfirm && (
@@ -404,8 +470,18 @@ export const CartPage: React.FC = () => {
                       key={item.id}
                       className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-slate-50/50 transition duration-150"
                     >
-                      {/* Left: Image & Info */}
-                      <div className="flex items-start gap-3.5 sm:gap-4 flex-1">
+                      {/* Left: Checkbox + Image & Info */}
+                      <div className="flex items-start gap-3 sm:gap-4 flex-1">
+                        <div className="pt-2 sm:pt-4 flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedItemIds.includes(item.id)}
+                            onChange={() => toggleSelectItem(item.id)}
+                            className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 accent-blue-600 cursor-pointer shrink-0"
+                            aria-label={`Chọn ${item.product?.name || 'sản phẩm'}`}
+                          />
+                        </div>
+
                         <Link
                           to={`/products/${item.product?.id || item.variant?.productId || ''}`}
                           className="w-20 h-20 sm:w-24 sm:h-24 bg-slate-50 border border-slate-200/80 rounded-2xl p-2 shrink-0 flex items-center justify-center group overflow-hidden"
@@ -689,7 +765,7 @@ export const CartPage: React.FC = () => {
               <div className="space-y-3 text-xs">
                 {/* Subtotal */}
                 <div className="flex justify-between items-center text-slate-600">
-                  <span>Tạm tính ({totalCount()} thiết bị):</span>
+                  <span>Tạm tính ({selectedCount} thiết bị đã chọn):</span>
                   <span className="font-mono font-bold text-slate-900 text-sm">
                     {formatPrice(subtotal)}
                   </span>
@@ -751,14 +827,24 @@ export const CartPage: React.FC = () => {
               </div>
 
               {/* Primary CTA Button */}
-              <button
-                type="button"
-                onClick={handleProceedCheckout}
-                className="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-sm rounded-2xl shadow-lg shadow-blue-500/25 transition duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-98 group"
-              >
-                <span>TIẾN HÀNH ĐẶT HÀNG NGAY</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition duration-200" />
-              </button>
+              {selectedCount === 0 ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full py-4 bg-slate-200 text-slate-400 font-black text-sm rounded-2xl cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <span>VUI LÒNG CHỌN SẢN PHẨM (0)</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleProceedCheckout}
+                  className="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-sm rounded-2xl shadow-lg shadow-blue-500/25 transition duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-98 group"
+                >
+                  <span>TIẾN HÀNH ĐẶT HÀNG ({selectedCount})</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition duration-200" />
+                </button>
+              )}
 
               {/* Security & Gateways info */}
               <div className="pt-3 border-t border-slate-100 space-y-2 text-center">
