@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useCartStore } from '../../stores/useCartStore';
+import { useWishlistStore } from '../../stores/useWishlistStore';
 import { orderService } from '../../services/orderService';
 import { voucherService, type VoucherInfo } from '../../services/voucherService';
 
@@ -29,6 +30,8 @@ export const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout, isStaffOrAdmin } = useAuthStore();
   const { totalCount } = useCartStore();
+  const { items: wishlistItems, fetchWishlist } = useWishlistStore();
+  const wishlistCount = wishlistItems.length;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -98,6 +101,14 @@ export const Navbar: React.FC = () => {
       isMounted = false;
     };
   }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchWishlist();
+    } else {
+      useWishlistStore.getState().clearState();
+    }
+  }, [user, fetchWishlist]);
 
   // Handle click outside dropdown
   useEffect(() => {
@@ -209,6 +220,21 @@ export const Navbar: React.FC = () => {
               >
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 <span>Tra cứu bảo hành</span>
+              </Link>
+
+              {/* Wishlist Link */}
+              <Link
+                to="/wishlist"
+                className="relative p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-rose-600 rounded-xl transition cursor-pointer shadow-2xs group"
+                aria-label="Sản phẩm yêu thích"
+                title="Sản phẩm yêu thích"
+              >
+                <Heart className="w-5 h-5 group-hover:scale-105 transition-transform" />
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-rose-500 text-white font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-in zoom-in-75">
+                    {wishlistCount}
+                  </span>
+                )}
               </Link>
 
               {/* Cart Page Direct Link */}
@@ -346,7 +372,7 @@ export const Navbar: React.FC = () => {
                         </button>
 
                         <Link
-                          to="/products"
+                          to="/wishlist"
                           onClick={() => setUserDropdownOpen(false)}
                           className="group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-rose-50 hover:text-rose-600"
                         >
@@ -354,7 +380,13 @@ export const Navbar: React.FC = () => {
                             <Heart className="h-4 w-4 text-slate-400 group-hover:text-rose-600 transition-colors" />
                             <span>Sản phẩm yêu thích</span>
                           </div>
-                          <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-rose-600 transition-colors" />
+                          {wishlistCount > 0 ? (
+                            <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                              {wishlistCount}
+                            </span>
+                          ) : (
+                            <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-rose-600 transition-colors" />
+                          )}
                         </Link>
                       </div>
 
@@ -504,6 +536,21 @@ export const Navbar: React.FC = () => {
                   </span>
                 )}
               </Link>
+              <Link
+                to="/wishlist"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 text-xs font-medium text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition flex items-center justify-between"
+              >
+                <span className="flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-rose-500" />
+                  <span>Sản phẩm yêu thích</span>
+                </span>
+                {wishlistCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px]">
+                    {wishlistCount}
+                  </span>
+                )}
+              </Link>
             </div>
 
             {user ? (
@@ -545,6 +592,21 @@ export const Navbar: React.FC = () => {
                     <span className="text-[10px] font-bold text-amber-600 font-mono">{topVoucherLabel}</span>
                   )}
                 </button>
+                <Link
+                  to="/wishlist"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 text-xs font-semibold text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <Heart className="w-4 h-4 text-rose-500" />
+                    <span>Sản phẩm yêu thích</span>
+                  </span>
+                  {wishlistCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px]">
+                      {wishlistCount}
+                    </span>
+                  )}
+                </Link>
                 <Link
                   to="/profile"
                   onClick={() => setMobileMenuOpen(false)}

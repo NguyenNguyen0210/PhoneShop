@@ -15,6 +15,7 @@ import { OrderSuccessPage } from '../pages/storefront/OrderSuccess/OrderSuccessP
 import { OrderDetailPage } from '../pages/storefront/Orders/OrderDetailPage';
 import { WarrantyLookupPage } from '../pages/storefront/WarrantyLookup/WarrantyLookupPage';
 import { ProfilePage } from '../pages/storefront/Profile/ProfilePage';
+import { WishlistPage } from '../pages/storefront/Wishlist/WishlistPage';
 
 // Auth Pages
 import { LoginPage } from '../pages/storefront/Auth/LoginPage';
@@ -54,6 +55,14 @@ export const AppRoutes: React.FC = () => {
         <Route path="/order-success/:id" element={<OrderSuccessPage />} />
         <Route path="/orders/:id" element={<OrderDetailPage />} />
         <Route path="/warranty-lookup" element={<WarrantyLookupPage />} />
+        <Route
+          path="/wishlist"
+          element={
+            <ProtectedRoute>
+              <WishlistPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/orders" element={<ProfilePage />} />
       </Route>
