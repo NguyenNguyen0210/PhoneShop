@@ -70,7 +70,6 @@ export const AdminLayout: React.FC = () => {
       label: 'Quản lý Đơn hàng',
     },
     {
-    {
       key: '/admin/promotions',
       icon: <TagOutlined style={{ fontSize: 16 }} />,
       label: 'Khuyến mãi & Flash Sale',
@@ -79,7 +78,6 @@ export const AdminLayout: React.FC = () => {
       key: '/admin/payments',
       icon: <DollarOutlined style={{ fontSize: 16 }} />,
       label: 'Quản lý Thanh toán',
-    },
     },
     {
       key: '/admin/returns',
