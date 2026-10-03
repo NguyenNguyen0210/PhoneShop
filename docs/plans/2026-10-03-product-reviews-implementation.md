@@ -1,6 +1,6 @@
 # Product Reviews Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development (recommended) or executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development (recommended) or executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Complete the full product reviews feature including authenticated verified buyer reviews, interactive 1-5 star ratings, image uploads, editing, deleting, and integration across Product Detail Page (PDP) and Order Detail Page.
 
@@ -59,7 +59,7 @@
 **Files:**
 - Modify: `backend/prisma/schema.prisma:620-635`
 
-- [ ] **Step 1: Update Review model in Prisma schema**
+- [x] **Step 1: Update Review model in Prisma schema**
 
 Edit `backend/prisma/schema.prisma` inside `model Review`:
 ```prisma
@@ -88,7 +88,7 @@ model Review {
 }
 ```
 
-- [ ] **Step 2: Generate Prisma Client & Run DB Migration**
+- [x] **Step 2: Generate Prisma Client & Run DB Migration**
 
 Run:
 ```bash
@@ -98,7 +98,7 @@ npx prisma db push
 ```
 Expected: `Generated Prisma Client` and database schema synchronized without errors.
 
-- [ ] **Step 3: Commit database schema changes**
+- [x] **Step 3: Commit database schema changes**
 
 ```bash
 git add backend/prisma/schema.prisma
@@ -112,7 +112,7 @@ git commit -m "feat(reviews): add images array to Review model in prisma schema"
 **Files:**
 - Modify: `backend/src/modules/reviews/dto/review.dto.ts`
 
-- [ ] **Step 1: Update CreateReviewDto and UpdateReviewDto**
+- [x] **Step 1: Update CreateReviewDto and UpdateReviewDto**
 
 Edit `backend/src/modules/reviews/dto/review.dto.ts`:
 ```typescript
@@ -188,7 +188,7 @@ export class UpdateReviewDto {
 }
 ```
 
-- [ ] **Step 2: Commit DTO updates**
+- [x] **Step 2: Commit DTO updates**
 
 ```bash
 git add backend/src/modules/reviews/dto/review.dto.ts
@@ -202,7 +202,7 @@ git commit -m "feat(reviews): add images validation to CreateReviewDto and Updat
 **Files:**
 - Modify: `backend/src/infrastructure/storage/storage.controller.ts`
 
-- [ ] **Step 1: Add upload-review-images endpoint**
+- [x] **Step 1: Add upload-review-images endpoint**
 
 In `backend/src/infrastructure/storage/storage.controller.ts`, add:
 ```typescript
@@ -242,7 +242,7 @@ In `backend/src/infrastructure/storage/storage.controller.ts`, add:
   }
 ```
 
-- [ ] **Step 2: Verify endpoint compiles**
+- [x] **Step 2: Verify endpoint compiles**
 
 Run:
 ```bash
@@ -251,7 +251,7 @@ npm run build
 ```
 Expected: Compilation succeeds without errors.
 
-- [ ] **Step 3: Commit storage upload endpoint**
+- [x] **Step 3: Commit storage upload endpoint**
 
 ```bash
 git add backend/src/infrastructure/storage/storage.controller.ts
@@ -265,7 +265,7 @@ git commit -m "feat(storage): add POST /storage/upload-review-images endpoint fo
 **Files:**
 - Modify: `backend/src/modules/reviews/reviews.service.ts`
 
-- [ ] **Step 1: Add getMyReviewStatus and update create/update in reviews.service.ts**
+- [x] **Step 1: Add getMyReviewStatus and update create/update in reviews.service.ts**
 
 In `backend/src/modules/reviews/reviews.service.ts`:
 ```typescript
@@ -375,7 +375,7 @@ Ensure `update` handles `images`:
   }
 ```
 
-- [ ] **Step 2: Commit service updates**
+- [x] **Step 2: Commit service updates**
 
 ```bash
 git add backend/src/modules/reviews/reviews.service.ts
@@ -390,7 +390,7 @@ git commit -m "feat(reviews): add getMyReviewStatus and support images in create
 - Modify: `backend/src/modules/reviews/reviews.controller.ts`
 - Create: `backend/src/modules/reviews/__tests__/reviews.service.spec.ts`
 
-- [ ] **Step 1: Expose GET /reviews/product/:productId/my-review in Controller**
+- [x] **Step 1: Expose GET /reviews/product/:productId/my-review in Controller**
 
 In `backend/src/modules/reviews/reviews.controller.ts`:
 ```typescript
@@ -403,7 +403,7 @@ In `backend/src/modules/reviews/reviews.controller.ts`:
   }
 ```
 
-- [ ] **Step 2: Write unit test for reviews.service.ts**
+- [x] **Step 2: Write unit test for reviews.service.ts**
 
 Create `backend/src/modules/reviews/__tests__/reviews.service.spec.ts`:
 ```typescript
@@ -474,7 +474,7 @@ describe('ReviewsService', () => {
 });
 ```
 
-- [ ] **Step 3: Run unit tests**
+- [x] **Step 3: Run unit tests**
 
 Run:
 ```bash
@@ -483,7 +483,7 @@ npx jest src/modules/reviews/__tests__/reviews.service.spec.ts --passWithNoTests
 ```
 Expected: PASS
 
-- [ ] **Step 4: Commit Controller and Tests**
+- [x] **Step 4: Commit Controller and Tests**
 
 ```bash
 git add backend/src/modules/reviews/reviews.controller.ts backend/src/modules/reviews/__tests__/reviews.service.spec.ts
@@ -498,7 +498,7 @@ git commit -m "feat(reviews): add getMyReviewStatus endpoint and unit tests"
 - Modify: `frontend/src/types/index.ts:100-118`
 - Create: `frontend/src/services/reviewService.ts`
 
-- [ ] **Step 1: Update Review interface in frontend/src/types/index.ts**
+- [x] **Step 1: Update Review interface in frontend/src/types/index.ts**
 
 Update `interface Review`:
 ```typescript
@@ -524,7 +524,7 @@ export interface Review {
 }
 ```
 
-- [ ] **Step 2: Create frontend/src/services/reviewService.ts**
+- [x] **Step 2: Create frontend/src/services/reviewService.ts**
 
 Create `frontend/src/services/reviewService.ts`:
 ```typescript
@@ -594,7 +594,7 @@ export const reviewService = {
 };
 ```
 
-- [ ] **Step 3: Commit Frontend Types and Review Service**
+- [x] **Step 3: Commit Frontend Types and Review Service**
 
 ```bash
 git add frontend/src/types/index.ts frontend/src/services/reviewService.ts
@@ -608,7 +608,7 @@ git commit -m "feat(frontend): add reviewService and update Review type"
 **Files:**
 - Create: `frontend/src/components/storefront/reviews/StarRatingInput.tsx`
 
-- [ ] **Step 1: Implement StarRatingInput component**
+- [x] **Step 1: Implement StarRatingInput component**
 
 Create `frontend/src/components/storefront/reviews/StarRatingInput.tsx`:
 ```tsx
@@ -678,7 +678,7 @@ export const StarRatingInput: React.FC<StarRatingInputProps> = ({
 export default StarRatingInput;
 ```
 
-- [ ] **Step 2: Commit StarRatingInput component**
+- [x] **Step 2: Commit StarRatingInput component**
 
 ```bash
 git add frontend/src/components/storefront/reviews/StarRatingInput.tsx
@@ -692,7 +692,7 @@ git commit -m "feat(frontend): create interactive StarRatingInput component"
 **Files:**
 - Create: `frontend/src/components/storefront/reviews/ReviewImageUploader.tsx`
 
-- [ ] **Step 1: Implement ReviewImageUploader component**
+- [x] **Step 1: Implement ReviewImageUploader component**
 
 Create `frontend/src/components/storefront/reviews/ReviewImageUploader.tsx`:
 ```tsx
@@ -824,7 +824,7 @@ export const ReviewImageUploader: React.FC<ReviewImageUploaderProps> = ({
 export default ReviewImageUploader;
 ```
 
-- [ ] **Step 2: Commit ReviewImageUploader component**
+- [x] **Step 2: Commit ReviewImageUploader component**
 
 ```bash
 git add frontend/src/components/storefront/reviews/ReviewImageUploader.tsx
@@ -839,7 +839,7 @@ git commit -m "feat(frontend): create ReviewImageUploader component"
 - Create: `frontend/src/components/storefront/reviews/ReviewModal.tsx`
 - Create: `frontend/src/components/storefront/reviews/ReviewDeleteDialog.tsx`
 
-- [ ] **Step 1: Create ReviewModal component**
+- [x] **Step 1: Create ReviewModal component**
 
 Create `frontend/src/components/storefront/reviews/ReviewModal.tsx`:
 ```tsx
@@ -1060,7 +1060,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 export default ReviewModal;
 ```
 
-- [ ] **Step 2: Create ReviewDeleteDialog component**
+- [x] **Step 2: Create ReviewDeleteDialog component**
 
 Create `frontend/src/components/storefront/reviews/ReviewDeleteDialog.tsx`:
 ```tsx
@@ -1146,7 +1146,7 @@ export const ReviewDeleteDialog: React.FC<ReviewDeleteDialogProps> = ({
 export default ReviewDeleteDialog;
 ```
 
-- [ ] **Step 3: Commit Modal and Dialog components**
+- [x] **Step 3: Commit Modal and Dialog components**
 
 ```bash
 git add frontend/src/components/storefront/reviews/ReviewModal.tsx frontend/src/components/storefront/reviews/ReviewDeleteDialog.tsx
@@ -1160,7 +1160,7 @@ git commit -m "feat(frontend): create ReviewModal and ReviewDeleteDialog compone
 **Files:**
 - Modify: `frontend/src/components/storefront/pdp/ProductHighlightsSection.tsx`
 
-- [ ] **Step 1: Integrate Review actions and gallery into ProductHighlightsSection.tsx**
+- [x] **Step 1: Integrate Review actions and gallery into ProductHighlightsSection.tsx**
 
 In `frontend/src/components/storefront/pdp/ProductHighlightsSection.tsx`:
 1. Import `ReviewModal`, `ReviewDeleteDialog`, `reviewService`, and `useAuthStore`.
@@ -1173,7 +1173,7 @@ In `frontend/src/components/storefront/pdp/ProductHighlightsSection.tsx`:
 5. In review items, render attached `rev.images` as clickable thumbnails that open a full-size preview.
 6. Refresh review status and product reviews when `onSuccess` fires.
 
-- [ ] **Step 2: Commit ProductHighlightsSection integration**
+- [x] **Step 2: Commit ProductHighlightsSection integration**
 
 ```bash
 git add frontend/src/components/storefront/pdp/ProductHighlightsSection.tsx
@@ -1187,7 +1187,7 @@ git commit -m "feat(frontend): integrate review modal, review management, and ph
 **Files:**
 - Modify: `frontend/src/pages/storefront/Orders/OrderDetailPage.tsx`
 
-- [ ] **Step 1: Add review button per delivered order item**
+- [x] **Step 1: Add review button per delivered order item**
 
 In `frontend/src/pages/storefront/Orders/OrderDetailPage.tsx`:
 1. Check order status: if `DELIVERED` or `COMPLETED`, allow reviewing each item.
@@ -1195,7 +1195,7 @@ In `frontend/src/pages/storefront/Orders/OrderDetailPage.tsx`:
 3. Clicking opens `ReviewModal` with the selected item's `productId`, `productName`, and `productImage`.
 4. After submission, show success notification and mark item as reviewed.
 
-- [ ] **Step 2: Commit OrderDetailPage integration**
+- [x] **Step 2: Commit OrderDetailPage integration**
 
 ```bash
 git add frontend/src/pages/storefront/Orders/OrderDetailPage.tsx
@@ -1206,7 +1206,7 @@ git commit -m "feat(frontend): add product review action buttons in OrderDetailP
 
 ### Task 12: End-to-End Build & Verification
 
-- [ ] **Step 1: Run Backend Build & Tests**
+- [x] **Step 1: Run Backend Build & Tests**
 
 Run:
 ```bash
@@ -1216,7 +1216,7 @@ npx jest src/modules/reviews/__tests__/reviews.service.spec.ts --passWithNoTests
 ```
 Expected: Build succeeds with 0 errors, all unit tests PASS.
 
-- [ ] **Step 2: Run Frontend Build & Type Check**
+- [x] **Step 2: Run Frontend Build & Type Check**
 
 Run:
 ```bash
@@ -1225,7 +1225,7 @@ npm run build
 ```
 Expected: Vite build succeeds with 0 errors.
 
-- [ ] **Step 3: Final Commit**
+- [x] **Step 3: Final Commit**
 
 ```bash
 git add .
