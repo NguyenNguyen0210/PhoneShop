@@ -122,6 +122,12 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
           upsertedWarranties.push(record);
           return Promise.resolve(record);
         }),
+        createMany: jest.fn().mockImplementation((args: any) => {
+          for (const item of args.data) {
+            upsertedWarranties.push({ id: `warranty-uuid-${upsertedWarranties.length + 1}`, ...item });
+          }
+          return Promise.resolve({ count: args.data.length });
+        }),
       },
       return: {
         upsert: jest.fn().mockImplementation((args: any) => {
@@ -163,6 +169,19 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
           upsertedReviews.push(record);
           return Promise.resolve(record);
         }),
+        createManyAndReturn: jest.fn().mockImplementation((args: any) => {
+          const created: any[] = [];
+          for (const item of args.data) {
+            const record = {
+              id: `review-uuid-${upsertedReviews.length + 1}`,
+              createdAt: item.createdAt || new Date(),
+              ...item,
+            };
+            upsertedReviews.push(record);
+            created.push(record);
+          }
+          return Promise.resolve(created);
+        }),
       },
       reviewReply: {
         findFirst: jest.fn().mockImplementation(() => Promise.resolve(null)),
@@ -171,12 +190,27 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
           createdReviewReplies.push(record);
           return Promise.resolve(record);
         }),
+        createMany: jest.fn().mockImplementation((args: any) => {
+          for (const item of args.data) {
+            createdReviewReplies.push({ id: `reply-uuid-${createdReviewReplies.length + 1}`, ...item });
+          }
+          return Promise.resolve({ count: args.data.length });
+        }),
       },
       cart: {
         upsert: jest.fn().mockImplementation((args: any) => {
           const record = { id: `cart-uuid-${upsertedCarts.length + 1}`, ...args.create };
           upsertedCarts.push(record);
           return Promise.resolve(record);
+        }),
+        createManyAndReturn: jest.fn().mockImplementation((args: any) => {
+          const created: any[] = [];
+          for (const item of args.data) {
+            const record = { id: `cart-uuid-${upsertedCarts.length + 1}`, ...item };
+            upsertedCarts.push(record);
+            created.push(record);
+          }
+          return Promise.resolve(created);
         }),
       },
       cartItem: {
@@ -185,6 +219,12 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
           upsertedCartItems.push(record);
           return Promise.resolve(record);
         }),
+        createMany: jest.fn().mockImplementation((args: any) => {
+          for (const item of args.data) {
+            upsertedCartItems.push({ id: `cart-item-uuid-${upsertedCartItems.length + 1}`, ...item });
+          }
+          return Promise.resolve({ count: args.data.length });
+        }),
       },
       wishlist: {
         upsert: jest.fn().mockImplementation((args: any) => {
@@ -192,12 +232,27 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
           upsertedWishlists.push(record);
           return Promise.resolve(record);
         }),
+        createManyAndReturn: jest.fn().mockImplementation((args: any) => {
+          const created: any[] = [];
+          for (const item of args.data) {
+            const record = { id: `wishlist-uuid-${upsertedWishlists.length + 1}`, ...item };
+            upsertedWishlists.push(record);
+            created.push(record);
+          }
+          return Promise.resolve(created);
+        }),
       },
       wishlistItem: {
         upsert: jest.fn().mockImplementation((args: any) => {
           const record = { id: `wishlist-item-uuid-${upsertedWishlistItems.length + 1}`, ...args.create };
           upsertedWishlistItems.push(record);
           return Promise.resolve(record);
+        }),
+        createMany: jest.fn().mockImplementation((args: any) => {
+          for (const item of args.data) {
+            upsertedWishlistItems.push({ id: `wishlist-item-uuid-${upsertedWishlistItems.length + 1}`, ...item });
+          }
+          return Promise.resolve({ count: args.data.length });
         }),
       },
     } as unknown as PrismaClient;

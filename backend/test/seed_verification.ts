@@ -57,18 +57,28 @@ async function verifySeed() {
   if (paymentCount < 180) throw new Error(`Payment count too low: ${paymentCount} < 180`);
   if (voucherCount < 5) throw new Error(`Voucher count too low: ${voucherCount} < 5`);
 
-  // Password verification: Find a customer user (email != 'admin@mobilecommerce.vn') and test bcrypt.compare
+  // Password verification: Check Admin, Staff, and seeded Customer passwords
+  const adminUser = await prisma.user.findUnique({ where: { email: 'admin@mobilecommerce.vn' } });
+  if (!adminUser || !(await bcrypt.compare('Password@123', adminUser.passwordHash))) {
+    throw new Error('Admin password verification failed (expected Password@123)');
+  }
+
+  const staffUser = await prisma.user.findUnique({ where: { email: 'staff@mobilecommerce.vn' } });
+  if (!staffUser || !(await bcrypt.compare('Password@123', staffUser.passwordHash))) {
+    throw new Error('Staff password verification failed (expected Password@123)');
+  }
+
   const customerUser = await prisma.user.findFirst({
-    where: { email: { not: 'admin@mobilecommerce.vn' } },
+    where: { email: { notIn: ['admin@mobilecommerce.vn', 'staff@mobilecommerce.vn'] } },
   });
   if (!customerUser) {
-    throw new Error('No customer user found (email != admin@mobilecommerce.vn)');
+    throw new Error('No customer user found (email not in admin or staff)');
   }
   const isPasswordValid = await bcrypt.compare('Password@123', customerUser.passwordHash);
   if (!isPasswordValid) {
     throw new Error(`Password verification failed for customer user: ${customerUser.email}`);
   }
-  console.log(`✅ Customer password verified successfully for: ${customerUser.email}`);
+  console.log(`✅ User credentials verified successfully (Admin, Staff, Customer: ${customerUser.email})`);
 
   // Luhn IMEI verification: Fetch 30 sample IMEI devices and verify validateImei
   const sampleImeis = await prisma.imeiDevice.findMany({ take: 30 });

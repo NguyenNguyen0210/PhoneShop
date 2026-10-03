@@ -364,9 +364,7 @@ export async function seedFeedbackAndAftersales(
     }));
   }
 
-  let warrantyCreatedCount = 0;
-  for (let index = 0; index < deliveredItemsList.length; index++) {
-    const item = deliveredItemsList[index];
+  const warrantyData = deliveredItemsList.map((item, index) => {
     const startDate = item.deliveredAt ? new Date(item.deliveredAt) : new Date();
     const endDate = new Date(startDate);
     endDate.setFullYear(endDate.getFullYear() + 1);
@@ -375,31 +373,24 @@ export async function seedFeedbackAndAftersales(
     const notes =
       'Bảo hành chính hãng 12 tháng - 1 đổi 1 trong 30 ngày nếu có lỗi do nhà sản xuất.';
 
-    await prisma.warranty.upsert({
-      where: { orderItemId: item.orderItemId },
-      update: {
-        userId: item.userId,
-        productVariantId: item.variantId,
-        imeiDeviceId: item.imeiDeviceId ?? null,
-        startDate,
-        endDate,
-        status: WarrantyStatus.ACTIVE,
-        notes,
-      },
-      create: {
-        userId: item.userId,
-        productVariantId: item.variantId,
-        orderItemId: item.orderItemId,
-        imeiDeviceId: item.imeiDeviceId ?? null,
-        warrantyCode,
-        startDate,
-        endDate,
-        status: WarrantyStatus.ACTIVE,
-        notes,
-      },
-    });
-    warrantyCreatedCount++;
-  }
+    return {
+      userId: item.userId,
+      productVariantId: item.variantId,
+      orderItemId: item.orderItemId,
+      imeiDeviceId: item.imeiDeviceId || null,
+      warrantyCode,
+      startDate,
+      endDate,
+      status: WarrantyStatus.ACTIVE,
+      notes,
+    };
+  });
+
+  const warrantyResult = await prisma.warranty.createMany({
+    data: warrantyData,
+    skipDuplicates: true,
+  });
+  const warrantyCreatedCount = warrantyResult.count;
   console.log(`    + Provisioned ${warrantyCreatedCount} electronic warranty records.`);
 
   // ============================================================
@@ -582,61 +573,49 @@ export async function seedFeedbackAndAftersales(
     }
   }
 
-  let reviewsCreated = 0;
-  let repliesCreated = 0;
   const targetReviewCount = Math.min(120, candidatePairs.length);
-
+  const reviewsToInsert: any[] = [];
   for (let idx = 0; idx < targetReviewCount; idx++) {
     const pair = candidatePairs[idx];
     const template = reviewTemplates[idx % reviewTemplates.length];
     usedUserProductPairs.add(`${pair.userId}_${pair.productId}`);
 
-    const review = await prisma.review.upsert({
-      where: {
-        userId_productId: {
-          userId: pair.userId,
-          productId: pair.productId,
-        },
-      },
-      update: {
-        rating: template.rating,
-        title: template.title,
-        content: template.content,
-        status: ReviewStatus.APPROVED,
-        isVerified: true,
-      },
-      create: {
-        userId: pair.userId,
-        productId: pair.productId,
-        rating: template.rating,
-        title: template.title,
-        content: template.content,
-        status: ReviewStatus.APPROVED,
-        isVerified: true,
-        createdAt: new Date(Date.now() - (idx * 2 + 1) * 3600000),
-      },
+    reviewsToInsert.push({
+      userId: pair.userId,
+      productId: pair.productId,
+      rating: template.rating,
+      title: template.title,
+      content: template.content,
+      status: ReviewStatus.APPROVED,
+      isVerified: true,
+      createdAt: new Date(Date.now() - (idx * 2 + 1) * 3600000),
     });
-    reviewsCreated++;
+  }
 
-    // For ~60 reviews (first 60), create a staff reply
-    if (idx < 60 && effectiveStaffId) {
-      const existingReply = await prisma.reviewReply.findFirst({
-        where: { reviewId: review.id },
+  const createdReviews = await prisma.review.createManyAndReturn({
+    data: reviewsToInsert,
+    skipDuplicates: true,
+  });
+  const reviewsCreated = createdReviews.length;
+
+  let repliesCreated = 0;
+  if (effectiveStaffId && createdReviews.length > 0) {
+    const replyCount = Math.min(60, createdReviews.length);
+    const repliesToInsert: any[] = [];
+    for (let idx = 0; idx < replyCount; idx++) {
+      const review = createdReviews[idx];
+      repliesToInsert.push({
+        reviewId: review.id,
+        userId: effectiveStaffId,
+        content: STAFF_REPLIES[idx % STAFF_REPLIES.length],
+        createdAt: new Date(review.createdAt.getTime() + 7200000),
       });
-
-      if (!existingReply) {
-        const replyContent = STAFF_REPLIES[idx % STAFF_REPLIES.length];
-        await prisma.reviewReply.create({
-          data: {
-            reviewId: review.id,
-            userId: effectiveStaffId,
-            content: replyContent,
-            createdAt: new Date(review.createdAt.getTime() + 7200000),
-          },
-        });
-        repliesCreated++;
-      }
     }
+    const replyRes = await prisma.reviewReply.createMany({
+      data: repliesToInsert,
+      skipDuplicates: true,
+    });
+    repliesCreated = replyRes.count;
   }
   console.log(`    + Created/upserted ${reviewsCreated} reviews and ${repliesCreated} staff replies.`);
 
@@ -652,70 +631,64 @@ export async function seedFeedbackAndAftersales(
 
   // Carts for 15 customers
   const cartCustomers = customerList.slice(0, 15);
-  for (let i = 0; i < cartCustomers.length; i++) {
-    const cust = cartCustomers[i];
-    const cart = await prisma.cart.upsert({
-      where: { userId: cust.id },
-      update: { status: CartStatus.ACTIVE },
-      create: { userId: cust.id, status: CartStatus.ACTIVE },
-    });
+  const createdCarts = await prisma.cart.createManyAndReturn({
+    data: cartCustomers.map((c) => ({
+      userId: c.id,
+      status: CartStatus.ACTIVE,
+    })),
+    skipDuplicates: true,
+  });
 
+  const cartItemsToInsert: any[] = [];
+  createdCarts.forEach((cart, i) => {
     if (activeVariants.length > 0) {
       const itemCount = (i % 2) + 1; // 1 or 2 items
       for (let j = 0; j < itemCount; j++) {
         const variant = activeVariants[(i * 2 + j) % activeVariants.length];
-        await prisma.cartItem.upsert({
-          where: {
-            cartId_variantId: {
-              cartId: cart.id,
-              variantId: variant.id,
-            },
-          },
-          update: {
-            quantity: 1,
-            unitPrice: variant.price,
-          },
-          create: {
-            cartId: cart.id,
-            variantId: variant.id,
-            quantity: 1,
-            unitPrice: variant.price,
-          },
+        cartItemsToInsert.push({
+          cartId: cart.id,
+          variantId: variant.id,
+          quantity: 1,
+          unitPrice: variant.price,
         });
       }
     }
+  });
+  if (cartItemsToInsert.length > 0) {
+    await prisma.cartItem.createMany({
+      data: cartItemsToInsert,
+      skipDuplicates: true,
+    });
   }
   console.log(`    + Seeded active Carts with items for ${cartCustomers.length} customers.`);
 
   // Wishlists for 20 customers
   const wishlistCustomers = customerList.slice(10, 30);
-  for (let i = 0; i < wishlistCustomers.length; i++) {
-    const cust = wishlistCustomers[i];
-    const wishlist = await prisma.wishlist.upsert({
-      where: { userId: cust.id },
-      update: {},
-      create: { userId: cust.id },
-    });
+  const createdWishlists = await prisma.wishlist.createManyAndReturn({
+    data: wishlistCustomers.map((c) => ({
+      userId: c.id,
+    })),
+    skipDuplicates: true,
+  });
 
+  const wishlistItemsToInsert: any[] = [];
+  createdWishlists.forEach((wishlist, i) => {
     if (productList.length > 0) {
       const wishCount = (i % 3) + 1; // 1, 2, or 3 items
       for (let k = 0; k < wishCount; k++) {
         const prod = productList[(i * 3 + k) % productList.length];
-        await prisma.wishlistItem.upsert({
-          where: {
-            wishlistId_productId: {
-              wishlistId: wishlist.id,
-              productId: prod.id,
-            },
-          },
-          update: {},
-          create: {
-            wishlistId: wishlist.id,
-            productId: prod.id,
-          },
+        wishlistItemsToInsert.push({
+          wishlistId: wishlist.id,
+          productId: prod.id,
         });
       }
     }
+  });
+  if (wishlistItemsToInsert.length > 0) {
+    await prisma.wishlistItem.createMany({
+      data: wishlistItemsToInsert,
+      skipDuplicates: true,
+    });
   }
   console.log(`    + Seeded Wishlists with items for ${wishlistCustomers.length} customers.`);
 
