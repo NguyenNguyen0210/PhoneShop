@@ -16,6 +16,7 @@ import { OrderDetailPage } from '../pages/storefront/Orders/OrderDetailPage';
 import { WarrantyLookupPage } from '../pages/storefront/WarrantyLookup/WarrantyLookupPage';
 import { ProfilePage } from '../pages/storefront/Profile/ProfilePage';
 import { WishlistPage } from '../pages/storefront/Wishlist/WishlistPage';
+import { NotificationPage } from '../pages/storefront/Notifications/NotificationPage';
 
 // Auth Pages
 import { LoginPage } from '../pages/storefront/Auth/LoginPage';
@@ -61,6 +62,14 @@ export const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <WishlistPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <NotificationPage />
             </ProtectedRoute>
           }
         />

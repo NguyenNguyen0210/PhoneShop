@@ -4,7 +4,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 export interface StorefrontPaginationProps {
   currentPage: number;
   totalPages: number;
-  totalCount: number;
+  totalCount?: number;
+  totalItems?: number;
+  itemLabel?: string;
   pageSize: number;
   onPageChange: (page: number) => void;
   className?: string;
@@ -30,26 +32,30 @@ export const StorefrontPagination: React.FC<StorefrontPaginationProps> = ({
   currentPage,
   totalPages,
   totalCount,
+  totalItems,
+  itemLabel = 'sản phẩm',
   pageSize,
   onPageChange,
   className = '',
 }) => {
+  const count = totalCount ?? totalItems ?? 0;
+
   if (totalPages <= 1) {
-    if (totalCount === 0) return null;
+    if (count === 0) return null;
     return (
       <div
         className={`bg-white px-4 py-3 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between text-xs sm:text-sm text-slate-500 ${className}`}
       >
         <span>
-          Hiển thị <span className="font-bold text-slate-900">{totalCount}</span> trên tổng số{' '}
-          <span className="font-bold text-slate-900">{totalCount}</span> sản phẩm
+          Hiển thị <span className="font-bold text-slate-900">{count}</span> trên tổng số{' '}
+          <span className="font-bold text-slate-900">{count}</span> {itemLabel}
         </span>
       </div>
     );
   }
 
-  const from = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const to = Math.min(currentPage * pageSize, totalCount);
+  const from = count === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const to = Math.min(currentPage * pageSize, count);
   const pages = getPaginationWindow(currentPage, totalPages);
 
   return (
@@ -59,11 +65,11 @@ export const StorefrontPagination: React.FC<StorefrontPaginationProps> = ({
       {/* Item Summary */}
       <div className="text-xs sm:text-sm text-slate-500 text-center sm:text-left">
         Hiển thị <span className="font-bold text-slate-900">{from} - {to}</span> trên tổng số{' '}
-        <span className="font-bold text-slate-900">{totalCount}</span> sản phẩm
+        <span className="font-bold text-slate-900">{count}</span> {itemLabel}
       </div>
 
       {/* Pagination Controls */}
-      <nav aria-label="Phân trang sản phẩm" className="flex items-center gap-1.5 sm:gap-2">
+      <nav aria-label={`Phân trang ${itemLabel}`} className="flex items-center gap-1.5 sm:gap-2">
         {/* Previous Button */}
         <button
           type="button"
