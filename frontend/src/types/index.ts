@@ -34,10 +34,27 @@ export interface Brand {
   name: string;
   slug: string;
   logo?: string;
-  logoUrl?: string;
+  logoUrl?: string | null;
+  websiteUrl?: string | null;
+  description?: string | null;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  _count?: {
+    products: number;
+  };
+}
+
+export interface CreateBrandInput {
+  name: string;
+  slug: string;
   description?: string;
+  logoUrl?: string;
+  websiteUrl?: string;
   isActive?: boolean;
 }
+
+export type UpdateBrandInput = Partial<CreateBrandInput>;
 
 export interface Category {
   id: string;
