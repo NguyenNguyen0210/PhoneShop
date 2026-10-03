@@ -9,9 +9,22 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderDto, CancelOrderDto } from './dto/order.dto';
-import { OrderStatus, VoucherType, ImeiStatus, WarrantyStatus, Prisma, PaymentStatus, PaymentMethod, TransactionStatus, TransactionType, RefundStatus, InstallmentStatus } from '@prisma/client';
+import {
+  OrderStatus,
+  VoucherType,
+  ImeiStatus,
+  WarrantyStatus,
+  Prisma,
+  PaymentStatus,
+  PaymentMethod,
+  TransactionStatus,
+  TransactionType,
+  RefundStatus,
+  InstallmentStatus,
+  ShippingMethod,
+  ShippingStatus,
+} from '@prisma/client';
 import { randomBytes } from 'crypto';
-import { STANDARD_SHIPPING_FEE } from '../../common/constants';
 import { PaginationQueryDto, PaginatedResponse } from '../../common/dto/pagination.dto';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -48,6 +61,41 @@ export class OrdersService {
 
   private generateRefundNumber(): string {
     return `REF-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
+  }
+
+  calculateShippingFee(method: ShippingMethod, subtotal: number): number {
+    if (subtotal > 500000) {
+      switch (method) {
+        case ShippingMethod.ECONOMY:
+          return 0;
+        case ShippingMethod.EXPRESS_2H:
+          return 30000;
+        case ShippingMethod.STANDARD:
+        default:
+          return 0;
+      }
+    } else {
+      switch (method) {
+        case ShippingMethod.ECONOMY:
+          return 15000;
+        case ShippingMethod.EXPRESS_2H:
+          return 60000;
+        case ShippingMethod.STANDARD:
+        default:
+          return 30000;
+      }
+    }
+  }
+
+  computeEstimatedDeliveryDate(method: ShippingMethod, fromDate: Date = new Date()): Date {
+    const time = fromDate.getTime();
+    if (method === ShippingMethod.EXPRESS_2H) {
+      return new Date(time + 2 * 60 * 60 * 1000);
+    }
+    if (method === ShippingMethod.ECONOMY) {
+      return new Date(time + 4 * 24 * 60 * 60 * 1000);
+    }
+    return new Date(time + 2 * 24 * 60 * 60 * 1000);
   }
 
   async checkout(userId: string, dto: CreateOrderDto) {
@@ -110,7 +158,6 @@ export class OrdersService {
 
     // 3. Fresh catalog prices are resolved INSIDE the transaction (M1);
     // subtotal is computed there, never from stale cart snapshots.
-    const shippingFee = STANDARD_SHIPPING_FEE;
     const holdDurationMs = isInstallment ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000;
     const holdExpiresAt = new Date(Date.now() + holdDurationMs);
 
@@ -161,6 +208,9 @@ export class OrdersService {
         (acc, item) => acc + Number(item.unitPrice) * item.quantity,
         0,
       );
+
+      const chosenShippingMethod = dto.shippingMethod || ShippingMethod.STANDARD;
+      const shippingFee = this.calculateShippingFee(chosenShippingMethod, subtotal);
 
       // Voucher validation inside transaction
       let discountAmount = 0;
@@ -229,7 +279,7 @@ export class OrdersService {
         } else if (voucher.type === VoucherType.FREE_SHIPPING) {
           // M2: a freeship voucher discounts the SHIPPING fee (capped by its
           // value) — never the merchandise subtotal. Must match validate().
-          discountAmount = Math.min(Number(voucher.value), STANDARD_SHIPPING_FEE);
+          discountAmount = Math.min(Number(voucher.value), shippingFee);
         }
 
         voucherUsageData = { voucherId: voucher.id, discountAmount };
@@ -322,6 +372,7 @@ export class OrdersService {
           subtotal,
           discountAmount,
           shippingFee,
+          shippingMethod: chosenShippingMethod,
           taxAmount: 0,
           totalAmount,
           voucherCode: dto.voucherCode,
@@ -333,6 +384,26 @@ export class OrdersService {
         },
         include: { items: true },
       });
+
+      // Create Shipping record
+      const estimatedDeliveryDate = this.computeEstimatedDeliveryDate(chosenShippingMethod);
+      if (tx.shipping?.create) {
+        const shippingRecord = await tx.shipping.create({
+          data: {
+            orderId: newOrder.id,
+            providerName:
+              chosenShippingMethod === ShippingMethod.EXPRESS_2H
+                ? 'Giao hàng Hỏa tốc 2h'
+                : chosenShippingMethod === ShippingMethod.ECONOMY
+                  ? 'Giao hàng Tiết kiệm'
+                  : 'Giao hàng Tiêu chuẩn',
+            shippingFee,
+            status: ShippingStatus.PENDING,
+            estimatedDeliveryDate,
+          },
+        });
+        (newOrder as any).shipping = shippingRecord;
+      }
 
       if (isInstallment && dto.installmentData) {
         const prepayAmount = Math.round(
@@ -532,7 +603,7 @@ export class OrdersService {
   async findMyOrders(userId: string) {
     return this.prisma.order.findMany({
       where: { userId },
-      include: { items: true, payments: true, installmentApplication: true },
+      include: { items: true, payments: true, installmentApplication: true, shipping: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -545,6 +616,7 @@ export class OrdersService {
         payments: true,
         address: true,
         installmentApplication: true,
+        shipping: true,
       },
     });
     if (!order) throw new NotFoundException('Order not found');
@@ -590,6 +662,7 @@ export class OrdersService {
           },
           payments: true,
           installmentApplication: true,
+          shipping: true,
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -633,6 +706,7 @@ export class OrdersService {
         payments: { include: { transactions: true } },
         address: true,
         installmentApplication: true,
+        shipping: true,
       },
     });
     if (!order) throw new NotFoundException('Order not found');

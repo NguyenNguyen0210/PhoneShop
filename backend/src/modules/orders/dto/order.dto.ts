@@ -8,7 +8,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
-import { PaymentMethod } from '@prisma/client';
+import { PaymentMethod, ShippingMethod } from '@prisma/client';
 import { Type } from 'class-transformer';
 import { CreateInstallmentApplicationDto } from '../../installments/dto/create-installment-application.dto';
 
@@ -32,6 +32,11 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   customerNote?: string;
+
+  @ApiPropertyOptional({ enum: ShippingMethod, default: ShippingMethod.STANDARD })
+  @IsOptional()
+  @IsEnum(ShippingMethod)
+  shippingMethod?: ShippingMethod;
 
   @ApiPropertyOptional({ enum: PaymentMethod, default: PaymentMethod.COD })
   @IsOptional()
