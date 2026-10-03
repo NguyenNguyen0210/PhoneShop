@@ -25,6 +25,7 @@ import {
 } from '@ant-design/icons';
 import { orderService } from '../../../services/orderService';
 import type { Order, OrderStatus } from '../../../types';
+import { ShippingDispatchModal } from './components/ShippingDispatchModal';
 
 const { Title, Text } = Typography;
 
@@ -33,6 +34,8 @@ export const AdminOrdersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [shippingModalOrder, setShippingModalOrder] = useState<Order | null>(null);
+  const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
 
   // Server-side pagination & filter states
   const [page, setPage] = useState<number>(1);
@@ -191,19 +194,50 @@ export const AdminOrdersPage: React.FC = () => {
       ),
     },
     {
+      title: 'Vận chuyển',
+      key: 'shipping',
+      render: (_, record) => {
+        if (record.shipping?.trackingNumber) {
+          return (
+            <Space direction="vertical" size={2}>
+              <Tag color="cyan" icon={<CarOutlined />} style={{ fontFamily: 'monospace' }}>
+                {record.shipping.trackingNumber}
+              </Tag>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                {record.shipping.providerName}
+              </Text>
+            </Space>
+          );
+        }
+        return <Tag color="default">Chưa gán</Tag>;
+      },
+    },
+    {
       title: 'Thao tác',
       key: 'actions',
       render: (_, record) => (
-        <Button
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => {
-            setSelectedOrder(record);
-            setIsDetailModalOpen(true);
-          }}
-        >
-          Chi tiết
-        </Button>
+        <Space size={6}>
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => {
+              setSelectedOrder(record);
+              setIsDetailModalOpen(true);
+            }}
+          >
+            Chi tiết
+          </Button>
+          <Button
+            size="small"
+            icon={<CarOutlined />}
+            onClick={() => {
+              setShippingModalOrder(record);
+              setIsShippingModalOpen(true);
+            }}
+          >
+            Vận chuyển
+          </Button>
+        </Space>
       ),
     },
   ];
@@ -305,6 +339,18 @@ export const AdminOrdersPage: React.FC = () => {
         open={isDetailModalOpen}
         onCancel={() => setIsDetailModalOpen(false)}
         footer={[
+          <Button
+            key="dispatch"
+            icon={<CarOutlined />}
+            onClick={() => {
+              if (selectedOrder) {
+                setShippingModalOrder(selectedOrder);
+                setIsShippingModalOpen(true);
+              }
+            }}
+          >
+            Vận chuyển
+          </Button>,
           <Button key="close" onClick={() => setIsDetailModalOpen(false)}>
             Đóng
           </Button>,
@@ -336,6 +382,67 @@ export const AdminOrdersPage: React.FC = () => {
                 </Descriptions.Item>
               )}
             </Descriptions>
+
+            {/* Shipping Summary Section */}
+            <Card
+              size="small"
+              style={{
+                borderRadius: 12,
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 10,
+                }}
+              >
+                <Space>
+                  <CarOutlined style={{ color: '#2563eb', fontSize: 16 }} />
+                  <Text strong style={{ fontSize: 13 }}>
+                    Thông tin điều phối vận chuyển
+                  </Text>
+                </Space>
+                <Button
+                  size="small"
+                  type="primary"
+                  icon={<CarOutlined />}
+                  onClick={() => {
+                    setShippingModalOrder(selectedOrder);
+                    setIsShippingModalOpen(true);
+                  }}
+                >
+                  Cập nhật vận chuyển
+                </Button>
+              </div>
+
+              <Descriptions bordered size="small" column={{ xs: 1, sm: 3 }}>
+                <Descriptions.Item label="Đơn vị vận chuyển">
+                  <Text strong>
+                    {selectedOrder.shipping?.providerName || 'Chưa phân công'}
+                  </Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Mã vận đơn">
+                  {selectedOrder.shipping?.trackingNumber ? (
+                    <Text code strong style={{ color: '#1d4ed8' }}>
+                      {selectedOrder.shipping.trackingNumber}
+                    </Text>
+                  ) : (
+                    <Text type="secondary">Chưa có</Text>
+                  )}
+                </Descriptions.Item>
+                <Descriptions.Item label="Trạng thái giao nhận">
+                  {selectedOrder.shipping?.status ? (
+                    <Tag color="cyan">{selectedOrder.shipping.status}</Tag>
+                  ) : (
+                    <Tag color="default">Chưa khởi tạo</Tag>
+                  )}
+                </Descriptions.Item>
+              </Descriptions>
+            </Card>
 
             <Divider titlePlacement="start" plain>
               Danh sách thiết bị & Mã IMEI định danh đã khóa
@@ -414,6 +521,37 @@ export const AdminOrdersPage: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      {/* Modal: Shipping Dispatch */}
+      <ShippingDispatchModal
+        open={isShippingModalOpen}
+        order={shippingModalOrder}
+        onClose={() => {
+          setIsShippingModalOpen(false);
+          setShippingModalOrder(null);
+        }}
+        onSuccess={async () => {
+          setIsShippingModalOpen(false);
+          const currentOrderId = shippingModalOrder?.id;
+          setShippingModalOrder(null);
+          await loadOrders();
+          if (selectedOrder && currentOrderId === selectedOrder.id) {
+            try {
+              const res = await orderService.getAllOrdersAdmin({
+                page,
+                limit,
+                search: selectedOrder.orderNumber,
+              });
+              const refreshed = res?.data?.find((o: Order) => o.id === selectedOrder.id);
+              if (refreshed) {
+                setSelectedOrder(refreshed);
+              }
+            } catch (err) {
+              console.error('Failed to refresh selected order in detail modal:', err);
+            }
+          }
+        }}
+      />
     </div>
   );
 };
