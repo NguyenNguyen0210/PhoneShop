@@ -28,6 +28,7 @@ import { ResetPasswordPage } from '../pages/storefront/Auth/ResetPasswordPage';
 import { AdminDashboard } from '../pages/Admin/Dashboard/AdminDashboard';
 import { AdminProductsPage } from '../pages/Admin/Products/AdminProductsPage';
 import { AdminCategoriesPage } from '../pages/Admin/Categories/AdminCategoriesPage';
+import { AdminBrandsPage } from '../pages/Admin/Brands/AdminBrandsPage';
 import { AdminInventoryPage } from '../pages/Admin/Inventory/AdminInventoryPage';
 import { AdminOrdersPage } from '../pages/Admin/Orders/AdminOrdersPage';
 import { AdminReturnsPage } from '../pages/Admin/Returns/AdminReturnsPage';
@@ -101,6 +102,14 @@ export const AppRoutes: React.FC = () => {
             element={
               <RoleGuard allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
                 <AdminCategoriesPage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/admin/brands"
+            element={
+              <RoleGuard allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
+                <AdminBrandsPage />
               </RoleGuard>
             }
           />
