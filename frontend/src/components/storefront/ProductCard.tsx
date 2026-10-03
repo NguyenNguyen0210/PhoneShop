@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ShoppingCart, Star, Check } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { ShoppingCart, Star, Check, Heart } from 'lucide-react';
+import { message } from 'antd';
 import type { Product } from '../../types';
 import { useCartStore } from '../../stores/useCartStore';
+import { useWishlistStore } from '../../stores/useWishlistStore';
 import { getDistinctColors } from '../../utils/colorHelper';
 import { FALLBACK_PRODUCT_IMAGE } from '../../utils/imageFallback';
 
@@ -11,8 +13,13 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { addItem } = useCartStore();
   const [justAdded, setJustAdded] = useState(false);
+
+  const isInWishlist = useWishlistStore((state) => state.isInWishlist(product.id));
+  const toggleWishlist = useWishlistStore((state) => state.toggleWishlist);
 
   const primaryVariant = product.variants?.[0];
   const price = primaryVariant?.price || 0;
@@ -65,6 +72,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     }
   };
 
+  const handleToggleWishlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const token = localStorage.getItem('mobilecommerce_access_token');
+    if (!token) {
+      message.warning('Vui lòng đăng nhập để lưu sản phẩm yêu thích!');
+      navigate('/login', { state: { from: location } });
+      return;
+    }
+    try {
+      const isAdded = await toggleWishlist(product);
+      message.success(isAdded ? 'Đã thêm vào danh sách yêu thích!' : 'Đã xóa khỏi danh sách yêu thích!');
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Không thể cập nhật danh sách yêu thích');
+    }
+  };
+
   const productThumb =
     product.thumbnail ||
     product.thumbnailUrl ||
@@ -92,20 +116,37 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </div>
 
         {/* Product Image (Consistent 1:1 Aspect Ratio) */}
-        <Link
-          to={`/products/${product.id}`}
-          className="relative my-3 flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-slate-50/60 p-3 block"
-        >
-          <img
-            src={productThumb}
-            alt={product.name}
-            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
-            }}
-          />
-        </Link>
+        <div className="relative my-3">
+          <Link
+            to={`/products/${product.id}`}
+            className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-slate-50/60 p-3 block"
+          >
+            <img
+              src={productThumb}
+              alt={product.name}
+              className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+              loading="lazy"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
+              }}
+            />
+          </Link>
+          <button
+            type="button"
+            onClick={handleToggleWishlist}
+            aria-label={isInWishlist ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+            className={`absolute top-2.5 right-2.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 backdrop-blur-xs ring-1 ring-slate-200/80 shadow-2xs transition-all duration-200 hover:scale-110 hover:bg-white cursor-pointer active:scale-95 ${
+              isInWishlist ? 'text-rose-500 shadow-rose-100' : 'text-slate-400 hover:text-rose-500'
+            }`}
+            title={isInWishlist ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+          >
+            <Heart
+              className={`h-4 w-4 transition-all duration-200 ${
+                isInWishlist ? 'fill-rose-500 stroke-rose-500 scale-105' : 'stroke-[2.2]'
+              }`}
+            />
+          </button>
+        </div>
 
         {/* Compact Tech Specs Pill */}
         <div className="flex flex-wrap items-center gap-1.5 mb-2">

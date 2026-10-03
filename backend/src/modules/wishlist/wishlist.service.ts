@@ -2,6 +2,25 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { PrismaService } from '../../prisma/prisma.service';
 import { AddToWishlistDto } from './dto/wishlist.dto';
 
+const WISHLIST_INCLUDE = {
+  items: {
+    include: {
+      product: {
+        include: {
+          brand: true,
+          category: true,
+          variants: {
+            where: { isActive: true },
+            include: { inventory: true },
+            orderBy: { price: 'asc' as const },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' as const },
+  },
+};
+
 @Injectable()
 export class WishlistService {
   constructor(private prisma: PrismaService) {}
@@ -9,12 +28,12 @@ export class WishlistService {
   private async getOrCreateWishlist(userId: string) {
     let wishlist = await this.prisma.wishlist.findUnique({
       where: { userId },
-      include: { items: { include: { product: true } } },
+      include: WISHLIST_INCLUDE,
     });
     if (!wishlist) {
       wishlist = await this.prisma.wishlist.create({
         data: { userId },
-        include: { items: { include: { product: true } } },
+        include: WISHLIST_INCLUDE,
       });
     }
     return wishlist;
@@ -34,7 +53,7 @@ export class WishlistService {
 
     return this.prisma.wishlistItem.create({
       data: { wishlistId: wishlist.id, productId: dto.productId },
-      include: { product: true },
+      include: WISHLIST_INCLUDE.items.include,
     });
   }
 
@@ -81,30 +100,31 @@ export class WishlistService {
       throw new BadRequestException('Variant is out of stock');
     }
 
-    // Add to cart
-    const cart = await this.prisma.cart.upsert({
-      where: { userId },
-      create: { userId },
-      update: {},
-    });
-
-    const existingCartItem = await this.prisma.cartItem.findUnique({
-      where: { cartId_variantId: { cartId: cart.id, variantId: variant.id } },
-    });
-
-    if (existingCartItem) {
-      await this.prisma.cartItem.update({
-        where: { id: existingCartItem.id },
-        data: { quantity: { increment: 1 } },
+    // Execute cart addition and wishlist deletion atomically in transaction
+    await this.prisma.$transaction(async (tx) => {
+      const cart = await tx.cart.upsert({
+        where: { userId },
+        create: { userId },
+        update: {},
       });
-    } else {
-      await this.prisma.cartItem.create({
-        data: { cartId: cart.id, variantId: variant.id, quantity: 1, unitPrice: variant.price },
-      });
-    }
 
-    // Remove from wishlist
-    await this.prisma.wishlistItem.delete({ where: { id: item.id } });
+      const existingCartItem = await tx.cartItem.findUnique({
+        where: { cartId_variantId: { cartId: cart.id, variantId: variant.id } },
+      });
+
+      if (existingCartItem) {
+        await tx.cartItem.update({
+          where: { id: existingCartItem.id },
+          data: { quantity: { increment: 1 } },
+        });
+      } else {
+        await tx.cartItem.create({
+          data: { cartId: cart.id, variantId: variant.id, quantity: 1, unitPrice: variant.price },
+        });
+      }
+
+      await tx.wishlistItem.delete({ where: { id: item.id } });
+    });
 
     return { success: true, message: 'Product moved to cart' };
   }
