@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import { apiClient } from './apiClient';
 import type { InventoryRecord, AdjustStockPayload, SetReorderLevelPayload } from '../types';
 
 export interface StockCheckResult {
