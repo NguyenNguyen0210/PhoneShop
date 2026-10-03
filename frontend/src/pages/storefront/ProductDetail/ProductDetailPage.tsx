@@ -13,34 +13,27 @@ import {
   Cpu,
   Check,
 } from 'lucide-react';
-import { mockProducts } from '../../../data/mockProducts';
 import { productService } from '../../../services/productService';
 import type { Product, ProductVariant } from '../../../types';
 import { useCartStore } from '../../../stores/useCartStore';
+import { resolveColorHex } from '../../../utils/colorHelper';
 
 export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addItem } = useCartStore();
 
-  const localInitial =
-    mockProducts.find(
-      (p) => p.id === id || p.slug === id || (id === 'prod-1' && (p.id === 'prod-iphone-16-pro-max' || p.id === mockProducts[0]?.id))
-    ) || null;
-  const [product, setProduct] = useState<Product | null>(localInitial);
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
-    localInitial?.variants[0] || null
-  );
-  const [activeImage, setActiveImage] = useState<string>(
-    localInitial?.images?.[0] || localInitial?.thumbnail || ''
-  );
+  const [product, setProduct] = useState<Product | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [activeImage, setActiveImage] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'specs' | 'reviews' | 'imei-policy'>('specs');
-  const [loading, setLoading] = useState(!localInitial);
+  const [loading, setLoading] = useState(true);
   const [showStickyBar, setShowStickyBar] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
 
   useEffect(() => {
     if (!id) return;
+    setLoading(true);
 
     productService
       .getProductById(id)
@@ -49,24 +42,13 @@ export const ProductDetailPage: React.FC = () => {
           setProduct(data);
           setSelectedVariant(data.variants[0]);
           setActiveImage(data.images?.[0] || data.thumbnail || '');
-        } else if (!localInitial && mockProducts.length > 0) {
-          const fallback = mockProducts[0];
-          setProduct(fallback);
-          setSelectedVariant(fallback.variants[0]);
-          setActiveImage(fallback.images?.[0] || fallback.thumbnail || '');
         }
       })
-      .catch(() => {
-        // If API fails and local wasn't found, default to first mock product
-        if (!localInitial && mockProducts.length > 0) {
-          const fallback = mockProducts[0];
-          setProduct(fallback);
-          setSelectedVariant(fallback.variants[0]);
-          setActiveImage(fallback.images?.[0] || fallback.thumbnail || '');
-        }
+      .catch((err) => {
+        console.error('Failed to fetch product from database API:', err);
       })
       .finally(() => setLoading(false));
-  }, [id, localInitial]);
+  }, [id]);
 
   // Handle scroll for sticky purchase bar
   useEffect(() => {
@@ -129,13 +111,49 @@ export const ProductDetailPage: React.FC = () => {
   };
 
   const handleBuyNow = () => {
+    if (!product || !selectedVariant) return;
     addItem(product, selectedVariant, 1);
     navigate('/checkout');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] text-slate-800 py-16 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm font-medium text-slate-600">Đang tải thông tin sản phẩm từ cơ sở dữ liệu...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product || !selectedVariant) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] text-slate-800 py-16 flex items-center justify-center">
+        <div className="text-center space-y-4 max-w-md mx-auto px-4">
+          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
+            !
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Không tìm thấy sản phẩm</h2>
+          <p className="text-sm text-slate-600">
+            Sản phẩm này có thể đã ngừng kinh doanh hoặc đường dẫn không chính xác.
+          </p>
+          <Link
+            to="/products"
+            className="inline-block mt-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition"
+          >
+            Quay lại danh mục sản phẩm
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const fallbackImg = '/images/products/iphone-16-pro-max.png';
+
   const imagesList = product.images?.length
     ? product.images
-    : [product.thumbnail || 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5'];
+    : [product.thumbnail || product.thumbnailUrl || fallbackImg];
 
   const discountPercent =
     selectedVariant.compareAtPrice && selectedVariant.compareAtPrice > selectedVariant.price
@@ -189,9 +207,12 @@ export const ProductDetailPage: React.FC = () => {
 
               {/* Main Image */}
               <img
-                src={activeImage}
+                src={activeImage || fallbackImg}
                 alt={product.name}
                 className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500 z-0"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = fallbackImg;
+                }}
               />
             </div>
 
@@ -207,7 +228,14 @@ export const ProductDetailPage: React.FC = () => {
                       : 'border-slate-200 opacity-70 hover:opacity-100 hover:border-slate-300'
                   }`}
                 >
-                  <img src={img} alt="thumbnail" className="w-full h-full object-contain" />
+                  <img
+                    src={img}
+                    alt="thumbnail"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = fallbackImg;
+                    }}
+                  />
                 </button>
               ))}
             </div>
@@ -232,7 +260,7 @@ export const ProductDetailPage: React.FC = () => {
           {/* Header & Title */}
           <div>
             <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider mb-2">
-              <span className="font-bold text-blue-600">{product.brand?.name || 'Apple'}</span>
+              <span className="font-bold text-blue-600">{product.brand?.name || 'Chính hãng'}</span>
               <span className="text-slate-300">•</span>
               <span className="text-slate-500">SKU: {selectedVariant.sku}</span>
             </div>
@@ -246,9 +274,11 @@ export const ProductDetailPage: React.FC = () => {
             <div className="flex flex-wrap items-center gap-4 mt-3">
               <div className="flex items-center gap-1 text-xs text-amber-500 font-bold">
                 <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
-                <span className="text-amber-600">{product.rating || '4.9'}</span>
+                <span className="text-amber-600">
+                  {product.rating ? Number(product.rating).toFixed(1) : 'Mới'}
+                </span>
                 <span className="text-slate-500 font-normal">
-                  ({product.reviewCount || 150} đánh giá phần cứng)
+                  ({product.reviewCount ?? product.reviews?.length ?? 0} đánh giá phần cứng)
                 </span>
               </div>
               <span className="text-slate-300 hidden sm:inline">|</span>
@@ -261,7 +291,9 @@ export const ProductDetailPage: React.FC = () => {
                 </span>
                 <span>
                   Tình trạng: Còn{' '}
-                  <strong className="text-slate-900 font-bold">{selectedVariant.inventoryQty ?? 18}</strong>{' '}
+                  <strong className="text-slate-900 font-bold">
+                    {selectedVariant.inventory?.availableQty ?? selectedVariant.inventoryQty ?? 0}
+                  </strong>{' '}
                   máy sẵn sàng xuất kho
                 </span>
               </div>
@@ -311,7 +343,7 @@ export const ProductDetailPage: React.FC = () => {
                   >
                     <span
                       className="w-4 h-4 rounded-full border border-slate-300 shadow-inner"
-                      style={{ backgroundColor: vMatch?.colorHex || '#475569' }}
+                      style={{ backgroundColor: resolveColorHex(color, vMatch?.colorHex) }}
                     />
                     <span>{color}</span>
                   </button>
@@ -452,7 +484,7 @@ export const ProductDetailPage: React.FC = () => {
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            Đánh giá khách hàng ({product.reviewCount || 150})
+            Đánh giá khách hàng ({product.reviewCount ?? product.reviews?.length ?? 0})
           </button>
           <button
             onClick={() => setActiveTab('imei-policy')}
@@ -504,11 +536,11 @@ export const ProductDetailPage: React.FC = () => {
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 bg-slate-50 border border-slate-200 rounded-2xl p-6">
                 <div className="text-center sm:text-left">
                   <span className="text-4xl font-black text-amber-500 tabular-nums">
-                    {product.rating || '4.9'}
+                    {product.rating ? Number(product.rating).toFixed(1) : '—'}
                   </span>
                   <div className="flex text-amber-500 text-sm mt-1">★★★★★</div>
                   <span className="text-[11px] text-slate-500 font-mono block mt-1">
-                    Dựa trên {product.reviewCount || 150} khách hàng đã mua
+                    {product.reviewCount ?? product.reviews?.length ?? 0} khách hàng đã đánh giá
                   </span>
                 </div>
                 <div className="text-xs text-slate-600 space-y-1">
@@ -520,29 +552,63 @@ export const ProductDetailPage: React.FC = () => {
               </div>
 
               <div className="space-y-4 pt-2">
-                <div className="border-b border-slate-100 pb-4 space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-900">Nguyễn Văn Hùng</span>
-                    <span className="text-slate-400 text-[11px]">3 ngày trước (Đã mua qua VietQR)</span>
-                  </div>
-                  <div className="text-amber-500 text-xs">★★★★★</div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Máy chuẩn nguyên seal, quét mã IMEI trên hệ thống tra cứu bảo hành hiển thị ngay thời
-                    hạn kích hoạt 12 tháng. Quy trình giữ máy 15 phút tại bước thanh toán rất an tâm!
-                  </p>
-                </div>
+                {product.reviews && product.reviews.length > 0 ? (
+                  product.reviews.map((rev: any) => {
+                    const reviewerName = rev.user
+                      ? `${rev.user.lastName || ''} ${rev.user.firstName || ''}`.trim()
+                      : 'Khách hàng PhoneShop';
+                    const stars = '★'.repeat(rev.rating) + '☆'.repeat(5 - rev.rating);
+                    const replies = Array.isArray(rev.replies) ? rev.replies : [];
+                    return (
+                      <div key={rev.id} className="border-b border-slate-100 pb-4 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-slate-900">{reviewerName}</span>
+                          <span className="text-slate-400 text-[11px]">
+                            {new Date(rev.createdAt).toLocaleDateString('vi-VN')} {rev.isVerified ? '(Đã xác thực mua hàng)' : ''}
+                          </span>
+                        </div>
+                        <div className="text-amber-500 text-xs">{stars}</div>
+                        {rev.title && <p className="text-xs font-semibold text-slate-800">{rev.title}</p>}
+                        <p className="text-xs text-slate-600 leading-relaxed">{rev.content}</p>
 
-                <div className="border-b border-slate-100 pb-4 space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-900">Trần Thị Bích</span>
-                    <span className="text-slate-400 text-[11px]">1 tuần trước (Đã mua qua VNPay)</span>
+                        {/* Shop / customer replies */}
+                        {replies.length > 0 && (
+                          <div className="pt-2 pl-3 sm:pl-4 space-y-2.5 border-l-2 border-blue-200 ml-1">
+                            {replies.map((rep: any) => {
+                              const replyerName = rep.user
+                                ? `${rep.user.lastName || ''} ${rep.user.firstName || ''}`.trim()
+                                : 'PhoneShop';
+                              const roles: string[] = Array.isArray(rep.user?.roles)
+                                ? rep.user.roles.map((r: any) => r?.role?.name).filter(Boolean)
+                                : [];
+                              const isShop = roles.some((r) => ['ADMIN', 'STAFF', 'MANAGER'].includes(r));
+                              return (
+                                <div key={rep.id} className="bg-slate-50 border border-slate-200/70 rounded-xl px-3 py-2.5 space-y-1">
+                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+                                    <span className="font-bold text-slate-900">{replyerName}</span>
+                                    {isShop && (
+                                      <span className="px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[10px] font-bold">
+                                        Phản hồi từ PhoneShop
+                                      </span>
+                                    )}
+                                    <span className="text-slate-400">
+                                      {new Date(rep.createdAt).toLocaleDateString('vi-VN')}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-slate-600 leading-relaxed">{rep.content}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 text-slate-500 text-xs">
+                    Chưa có đánh giá nào cho sản phẩm này. Hãy là người đầu tiên mua và đánh giá!
                   </div>
-                  <div className="text-amber-500 text-xs">★★★★★</div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Màu sắc Titan sa mạc bên ngoài thực sự ấn tượng, sang trọng hơn nhiều so với hình ảnh.
-                    Giao hàng hỏa tốc trong 1 giờ.
-                  </p>
-                </div>
+                )}
               </div>
             </div>
           )}

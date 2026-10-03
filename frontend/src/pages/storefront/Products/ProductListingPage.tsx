@@ -7,9 +7,8 @@ import {
   Search,
   Check,
 } from 'lucide-react';
-import { mockProducts, mockBrands } from '../../../data/mockProducts';
 import { productService } from '../../../services/productService';
-import type { Product } from '../../../types';
+import type { Product, Brand } from '../../../types';
 import { ProductCard } from '../../../components/storefront/ProductCard';
 
 export const ProductListingPage: React.FC = () => {
@@ -17,7 +16,8 @@ export const ProductListingPage: React.FC = () => {
   const initialSearch = searchParams.get('search') || '';
   const initialBrand = searchParams.get('brand') || '';
 
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -31,15 +31,21 @@ export const ProductListingPage: React.FC = () => {
   const [searchKeyword, setSearchKeyword] = useState<string>(initialSearch);
 
   useEffect(() => {
-    productService
-      .getProducts()
-      .then((res) => {
-        if (res.items && res.items.length > 0) {
+    setLoading(true);
+    Promise.all([
+      productService.getProducts({ limit: 100 }),
+      productService.getBrands(),
+    ])
+      .then(([res, brandsRes]) => {
+        if (res.items) {
           setProducts(res.items);
         }
+        if (Array.isArray(brandsRes)) {
+          setBrands(brandsRes);
+        }
       })
-      .catch(() => {
-        // Fallback to mock
+      .catch((err) => {
+        console.error('Error fetching products from database:', err);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -158,8 +164,7 @@ export const ProductListingPage: React.FC = () => {
             Tất cả Điện thoại Thông minh
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Tìm thấy <strong className="text-blue-600">{filteredProducts.length}</strong> thiết bị
-            chính hãng có sẵn mã IMEI
+            Tìm thấy <strong className="text-blue-600">{filteredProducts.length}</strong> sản phẩm chính hãng sẵn sàng giao ngay
           </p>
         </div>
 
@@ -221,11 +226,11 @@ export const ProductListingPage: React.FC = () => {
               Thương hiệu
             </h4>
             <div className="space-y-2">
-              {mockBrands.map((b) => {
+              {brands.map((b) => {
                 const checked = selectedBrands.includes(b.name.toLowerCase());
                 return (
                   <label
-                    key={b.id}
+                    key={b.id || b.slug}
                     onClick={() => toggleBrand(b.name)}
                     className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer hover:text-blue-600 select-none"
                   >

@@ -9,8 +9,9 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderDto, CancelOrderDto } from './dto/order.dto';
-import { OrderStatus, VoucherType, ImeiStatus } from '@prisma/client';
+import { OrderStatus, VoucherType, ImeiStatus, WarrantyStatus, Prisma, PaymentStatus, PaymentMethod, TransactionStatus, TransactionType, RefundStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
+import { STANDARD_SHIPPING_FEE } from '../../common/constants';
 
 const CANCELLABLE_STATUSES: OrderStatus[] = [
   OrderStatus.PENDING,
@@ -28,6 +29,10 @@ export class OrdersService {
 
   private generateOrderNumber(): string {
     return `ORD-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
+  }
+
+  private generateRefundNumber(): string {
+    return `REF-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
   }
 
   async checkout(userId: string, dto: CreateOrderDto) {
@@ -59,17 +64,59 @@ export class OrdersService {
       }
     }
 
-    // 3. Calculate subtotal
-    const subtotal = cart.items.reduce(
-      (acc, item) => acc + Number(item.unitPrice) * item.quantity,
-      0,
-    );
-
-    const shippingFee = 30000; // 30,000 VND flat rate
+    // 3. Fresh catalog prices are resolved INSIDE the transaction (M1);
+    // subtotal is computed there, never from stale cart snapshots.
+    const shippingFee = STANDARD_SHIPPING_FEE;
     const holdExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes hold
 
-    // 4. Atomic transaction with IMEI reservation, voucher validation, and inventory deduction
-    const order = await this.prisma.$transaction(async (tx) => {
+    // 4. Atomic transaction with IMEI reservation, voucher validation, and inventory deduction.
+    // LOW: orderNumber is Date.now()+rand — on the astronomically rare
+    // collision the @unique constraint throws P2002 mid-checkout. Retry the
+    // whole (rolled-back) transaction with a fresh number instead of 500ing.
+    // Retries are safe: everything inside rolled back, IMEI re-picked.
+    const MAX_CHECKOUT_ATTEMPTS = 3;
+    let order: any = null;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        order = await this.prisma.$transaction(async (tx) => {
+      // Address must belong to the buyer — never attach another user's address
+      const addr = await tx.address.findFirst({
+        where: { id: dto.addressId, userId },
+      });
+      if (!addr) {
+        throw new BadRequestException('Shipping address not found');
+      }
+
+      // M1: re-read current catalog prices inside the transaction. A buyer
+      // who added items before a price hike pays the CURRENT price, not the
+      // stale snapshot. The cart row is refreshed too so the cart never
+      // disagrees with what was charged.
+      const variantIds = [...new Set(cart.items.map((i) => i.variantId))];
+      const freshVariants = await tx.productVariant.findMany({
+        where: { id: { in: variantIds } },
+        select: { id: true, price: true },
+      });
+      const priceByVariant = new Map(freshVariants.map((v) => [v.id, Number(v.price)]));
+      for (const item of cart.items) {
+        const fresh = priceByVariant.get(item.variantId);
+        if (fresh === undefined || !item.variant.isActive) {
+          throw new BadRequestException(
+            `Variant ${item.variant?.name || item.variantId} is no longer available`,
+          );
+        }
+        if (fresh !== Number(item.unitPrice)) {
+          await tx.cartItem.update({
+            where: { id: item.id },
+            data: { unitPrice: fresh },
+          });
+          (item as any).unitPrice = fresh;
+        }
+      }
+      const subtotal = cart.items.reduce(
+        (acc, item) => acc + Number(item.unitPrice) * item.quantity,
+        0,
+      );
+
       // Voucher validation inside transaction
       let discountAmount = 0;
       let voucherUsageData: { voucherId: string; discountAmount: number } | null = null;
@@ -100,6 +147,14 @@ export class OrdersService {
         ) {
           throw new BadRequestException('Voucher usage limit reached');
         }
+        // H1: lock the voucher row for the rest of this transaction so that
+        // concurrent checkouts using the SAME voucher are serialized. Without
+        // FOR UPDATE, two simultaneous checkouts both read usageCount=0 and
+        // both consume a single-use voucher (read-then-write race).
+        // Table name comes from @@map("vouchers") in schema.prisma.
+        await tx.$queryRaw`
+          SELECT id FROM vouchers WHERE id = ${voucher.id}::uuid FOR UPDATE
+        `;
         if (voucher.minOrderValue && subtotal < Number(voucher.minOrderValue)) {
           throw new BadRequestException(
             `Minimum order value is ${voucher.minOrderValue}`,
@@ -124,19 +179,34 @@ export class OrdersService {
               Number(voucher.maxDiscountAmount),
             );
           }
-        } else if (
-          voucher.type === VoucherType.FIXED_AMOUNT ||
-          voucher.type === VoucherType.FREE_SHIPPING
-        ) {
+        } else if (voucher.type === VoucherType.FIXED_AMOUNT) {
           discountAmount = Math.min(Number(voucher.value), subtotal);
+        } else if (voucher.type === VoucherType.FREE_SHIPPING) {
+          // M2: a freeship voucher discounts the SHIPPING fee (capped by its
+          // value) — never the merchandise subtotal. Must match validate().
+          discountAmount = Math.min(Number(voucher.value), STANDARD_SHIPPING_FEE);
         }
 
         voucherUsageData = { voucherId: voucher.id, discountAmount };
 
-        await tx.voucher.update({
-          where: { id: voucher.id },
-          data: { usageCount: { increment: 1 } },
-        });
+        // H1: conditional increment is the authoritative guard. Even if two
+        // transactions passed the read-check above, only the first one whose
+        // updateMany matches (usageCount still below limit) consumes the use.
+        // Unlimited vouchers (usageLimit null) take the plain increment path.
+        if (voucher.usageLimit !== null && voucher.usageLimit !== undefined) {
+          const consumed = await tx.voucher.updateMany({
+            where: { id: voucher.id, usageCount: { lt: voucher.usageLimit } },
+            data: { usageCount: { increment: 1 } },
+          });
+          if (consumed.count === 0) {
+            throw new BadRequestException('Voucher usage limit reached');
+          }
+        } else {
+          await tx.voucher.update({
+            where: { id: voucher.id },
+            data: { usageCount: { increment: 1 } },
+          });
+        }
       }
 
       const totalAmount = Math.max(0, subtotal - discountAmount + shippingFee);
@@ -229,13 +299,43 @@ export class OrdersService {
             discountAmount: voucherUsageData.discountAmount,
           },
         });
+        // H1 (per-user cap): re-count INSIDE the same transaction after our own
+        // insert. Combined with the FOR UPDATE row lock above (which serializes
+        // all checkouts consuming this voucher), a concurrent second checkout
+        // for the same user either blocks until we commit (then sees count+1
+        // and fails) or fails here — fail-closed, the whole checkout rolls back.
+        const voucherForCap = await tx.voucher.findUnique({
+          where: { id: voucherUsageData.voucherId },
+          select: { perUserLimit: true },
+        });
+        if (voucherForCap?.perUserLimit) {
+          const finalUsage = await tx.voucherUsage.count({
+            where: { voucherId: voucherUsageData.voucherId, userId },
+          });
+          if (finalUsage > voucherForCap.perUserLimit) {
+            throw new BadRequestException(
+              'You have reached the per-user usage limit',
+            );
+          }
+        }
       }
 
       // Clear cart
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
       return newOrder;
-    });
+        });
+        break; // success
+      } catch (err: any) {
+        const target = (err as any)?.meta?.target;
+        const isOrderNumberCollision =
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002' &&
+          (Array.isArray(target) ? target.join(',') : String(target || '')).includes('order_number');
+        if (!isOrderNumberCollision || attempt >= MAX_CHECKOUT_ATTEMPTS) throw err;
+        this.logger.warn(`Checkout orderNumber collision, retrying (attempt ${attempt + 1})`);
+      }
+    }
 
     // 6. Push BullMQ job for 15-minute hold auto-release
     try {
@@ -250,9 +350,76 @@ export class OrdersService {
         `Failed to enqueue expire-order-hold job for order ${order.id}:`,
         (queueErr as Error).message,
       );
+      // H7 fallback: if the queue is down (or the local fallback silently
+      // drops delayed jobs), the hold would otherwise never expire and stock
+      // stays RESERVED forever. Schedule an in-process release as backstop.
+      // NOTE: single-instance safety net only — with multiple instances the
+      // BullMQ job is authoritative; this timer is a no-op if the order is
+      // already confirmed/cancelled (guarded by conditional updateMany).
+      const delayMs = Math.max(0, holdExpiresAt.getTime() - Date.now());
+      const timer = setTimeout(() => {
+        this.releaseExpiredHold(order.id).catch((err) =>
+          this.logger.error(
+            `Fallback hold release failed for order ${order.id}:`,
+            (err as Error).message,
+          ),
+        );
+      }, delayMs);
+      // H7 safety: unref so the timer never keeps the process alive alone.
+      if (typeof (timer as any)?.unref === 'function') (timer as any).unref();
     }
 
     return order;
+  }
+
+  // ── H7: FALLBACK HOLD RELEASE ─────────────────────────────────
+  // Same guarded semantics as OrdersProcessor.handleExpireOrderHold:
+  // only a still-PENDING order is cancelled; IMEI/inventory release is
+  // status-filtered so concurrent cancel paths cannot double-release.
+  // Voucher use is rolled back together (H2).
+  async releaseExpiredHold(orderId: string): Promise<boolean> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+    if (!order || order.status !== OrderStatus.PENDING) return false;
+
+    let cancelled = false;
+    await this.prisma.$transaction(async (tx) => {
+      const affected = await tx.order.updateMany({
+        where: { id: orderId, status: OrderStatus.PENDING },
+        data: {
+          status: OrderStatus.CANCELLED,
+          cancelledAt: new Date(),
+          cancelledReason: 'Hold expired (15 minutes)',
+        },
+      });
+      if (affected.count === 0) return;
+      cancelled = true;
+
+      await this.rollbackVoucherUsage(tx, order);
+
+      for (const item of order.items) {
+        if (item.imeiDeviceId) {
+          await tx.imeiDevice.updateMany({
+            where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
+            data: { status: ImeiStatus.AVAILABLE },
+          });
+        }
+        await tx.inventory.update({
+          where: { variantId: item.variantId },
+          data: {
+            reservedQty: { decrement: item.quantity },
+            availableQty: { increment: item.quantity },
+          },
+        });
+      }
+    });
+
+    if (cancelled) {
+      this.logger.log(`Fallback released expired hold for order ${orderId}`);
+    }
+    return cancelled;
   }
 
   async findMyOrders(userId: string) {
@@ -273,13 +440,39 @@ export class OrdersService {
   }
 
   async findAll() {
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
       include: {
-        user: { select: { id: true, email: true, firstName: true, lastName: true } },
-        items: true,
+        user: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } },
+        address: true,
+        items: {
+          include: {
+            variant: { include: { product: true } },
+            imeiDevice: true,
+          },
+        },
         payments: true,
       },
       orderBy: { createdAt: 'desc' },
+    });
+
+    return orders.map((o) => {
+      const customerName =
+        o.address?.recipientName ||
+        (o.user ? `${o.user.lastName || ''} ${o.user.firstName || ''}`.trim() : 'Khách hàng');
+      const shippingPhone = o.address?.phone || o.user?.phone || '';
+      const shippingAddress = o.address
+        ? `${o.address.addressLine1}, ${o.address.ward ? o.address.ward + ', ' : ''}${o.address.district ? o.address.district + ', ' : ''}${o.address.city}`
+        : '';
+      const primaryPayment = o.payments?.[0];
+
+      return {
+        ...o,
+        customerName,
+        shippingPhone,
+        shippingAddress,
+        paymentMethod: primaryPayment?.method || 'COD',
+        paymentStatus: primaryPayment?.status || 'PENDING',
+      };
     });
   }
 
@@ -287,17 +480,61 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
-        user: { select: { id: true, email: true, firstName: true, lastName: true } },
-        items: { include: { variant: { include: { product: true } } } },
+        user: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } },
+        items: { include: { variant: { include: { product: true } }, imeiDevice: true } },
         payments: { include: { transactions: true } },
         address: true,
       },
     });
     if (!order) throw new NotFoundException('Order not found');
-    return order;
+
+    const customerName =
+      order.address?.recipientName ||
+      (order.user ? `${order.user.lastName || ''} ${order.user.firstName || ''}`.trim() : 'Khách hàng');
+    const shippingPhone = order.address?.phone || order.user?.phone || '';
+    const shippingAddress = order.address
+      ? `${order.address.addressLine1}, ${order.address.ward ? order.address.ward + ', ' : ''}${order.address.district ? order.address.district + ', ' : ''}${order.address.city}`
+      : '';
+    const primaryPayment = order.payments?.[0];
+
+    return {
+      ...order,
+      customerName,
+      shippingPhone,
+      shippingAddress,
+      paymentMethod: primaryPayment?.method || 'COD',
+      paymentStatus: primaryPayment?.status || 'PENDING',
+    };
   }
 
-  async transitionStatus(id: string, newStatus: OrderStatus, staffId?: string) {
+  // ── H2: VOUCHER ROLLBACK ────────────────────────────────────
+  // A cancelled/expired order must give its voucher use back: decrement the
+  // global counter and remove this order's usage row. Must run INSIDE the
+  // same transaction as the cancellation so the two can never diverge.
+  private async rollbackVoucherUsage(
+    tx: any,
+    order: { id: string; voucherCode: string | null },
+  ): Promise<void> {
+    if (!order.voucherCode) return;
+    const voucher = await tx.voucher.findUnique({
+      where: { code: order.voucherCode },
+      select: { id: true },
+    });
+    if (voucher) {
+      await tx.voucher.update({
+        where: { id: voucher.id },
+        data: { usageCount: { decrement: 1 } },
+      });
+    }
+    await tx.voucherUsage.deleteMany({ where: { orderId: order.id } });
+  }
+
+  async transitionStatus(
+    id: string,
+    newStatus: OrderStatus,
+    staffId?: string,
+    reason?: string,
+  ) {
     const order = await this.findOne(id);
 
     const allowedTransitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
@@ -322,6 +559,9 @@ export class OrdersService {
     if (newStatus === OrderStatus.DELIVERED)  data.deliveredAt  = now;
     if (newStatus === OrderStatus.COMPLETED)  data.completedAt  = now;
     if (newStatus === OrderStatus.CANCELLED)  data.cancelledAt  = now;
+    // M10: persist the staff-supplied cancellation reason instead of
+    // silently dropping the request body (user-cancel already stores its own).
+    if (newStatus === OrderStatus.CANCELLED && reason) data.cancelledReason = reason;
 
     return this.prisma.$transaction(async (tx) => {
       // When transitioning from CONFIRMED or PENDING to CANCELLED: release reserved IMEIs back to AVAILABLE and restore inventory availableQty
@@ -329,6 +569,32 @@ export class OrdersService {
         newStatus === OrderStatus.CANCELLED &&
         (order.status === OrderStatus.PENDING || order.status === OrderStatus.CONFIRMED)
       ) {
+        await this.rollbackVoucherUsage(tx, order);
+        // P2: cancelling a PAID order must refund it in the same transaction —
+        // otherwise stock comes back while the money stays captured.
+        const paid = (order.payments || []).find(
+          (p: any) => p.status === PaymentStatus.PAID,
+        );
+        if (paid) {
+          const existingRefund = await tx.refund.findFirst({
+            where: {
+              paymentId: paid.id,
+              status: { notIn: [RefundStatus.FAILED, RefundStatus.CANCELLED] },
+            },
+            select: { id: true },
+          });
+          if (!existingRefund) {
+            await tx.refund.create({
+              data: {
+                paymentId: paid.id,
+                refundNumber: this.generateRefundNumber(),
+                amount: paid.amount,
+                status: RefundStatus.PENDING,
+                reason: `Auto-created: paid order ${order.orderNumber} cancelled by staff`,
+              },
+            });
+          }
+        }
         for (const item of order.items) {
           if (item.imeiDeviceId) {
             await tx.imeiDevice.updateMany({
@@ -347,6 +613,11 @@ export class OrdersService {
       }
 
       // When transitioning order to DELIVERED or COMPLETED: update all assigned IMEIs to SOLD and set soldAt: new Date()
+      // H6: status-filtered so an IMEI that was meanwhile BLOCKED (lost,
+      // stolen, QC-failed) is NOT silently resurrected to SOLD by delivery.
+      // H8: activate warranties here too — COD/manual orders never pass the
+      // VNPay IPN, so without this they would ship with no warranty rows and
+      // customers could not claim. End date follows product.warrantyMonths.
       if (newStatus === OrderStatus.DELIVERED || newStatus === OrderStatus.COMPLETED) {
         const imeiIds = order.items
           .map((item) => item.imeiDeviceId)
@@ -354,10 +625,68 @@ export class OrdersService {
 
         if (imeiIds.length > 0) {
           await tx.imeiDevice.updateMany({
-            where: { id: { in: imeiIds } },
+            where: { id: { in: imeiIds }, status: ImeiStatus.RESERVED },
             data: {
               status: ImeiStatus.SOLD,
               soldAt: now,
+            },
+          });
+        }
+
+        // P3: cash is collected at the door — flip pending COD payments to
+        // PAID on delivery so finance never shows delivered orders as unpaid.
+        // (VietQR/bank-transfer rows stay manual: only a bank reference proves
+        // the money arrived.) Idempotent via the PENDING filter.
+        const codPending = await tx.payment.findMany({
+          where: { orderId: id, method: PaymentMethod.COD, status: PaymentStatus.PENDING },
+          select: { id: true, amount: true },
+        });
+        for (const cp of codPending) {
+          await tx.payment.update({
+            where: { id: cp.id },
+            data: { status: PaymentStatus.PAID, paidAt: now },
+          });
+          await tx.paymentTransaction.create({
+            data: {
+              paymentId: cp.id,
+              transactionCode: `COD-${Date.now()}-${randomBytes(2).toString('hex').toUpperCase()}`,
+              type: TransactionType.PAYMENT,
+              status: TransactionStatus.SUCCESS,
+              amount: cp.amount,
+              providerReference: 'CASH_ON_DELIVERY',
+            },
+          });
+        }
+
+        const warrantable = await tx.orderItem.findMany({
+          where: { orderId: id, imeiDeviceId: { not: null } },
+          include: {
+            variant: { include: { product: { select: { warrantyMonths: true } } } },
+          },
+        });
+        for (const item of warrantable) {
+          const months = item.variant?.product?.warrantyMonths ?? 12;
+          const startDate = newStatus === OrderStatus.DELIVERED ? now : (order.deliveredAt || now);
+          // P7: clamp to month-end (Jan 31 + 1mo → Feb 28/29, not Mar 2-3).
+          const endDate = new Date(startDate);
+          const startDay = endDate.getDate();
+          endDate.setMonth(endDate.getMonth() + months);
+          if (endDate.getDate() < startDay) endDate.setDate(0);
+          const warrantyCode = `WRT-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
+          await tx.warranty.upsert({
+            where: { orderItemId: item.id },
+            // Never overwrite an existing (e.g. IPN-created) warranty's dates.
+            update: {},
+            create: {
+              userId: order.userId,
+              productVariantId: item.variantId,
+              orderItemId: item.id,
+              imeiDeviceId: item.imeiDeviceId,
+              warrantyCode,
+              startDate,
+              endDate,
+              status: WarrantyStatus.ACTIVE,
+              notes: 'Kích hoạt khi giao hàng/hoàn tất đơn hàng',
             },
           });
         }
@@ -375,9 +704,39 @@ export class OrdersService {
       throw new BadRequestException('Order cannot be cancelled in its current status');
     }
 
+    // P2: a paid order must never be cancelled into thin air — the money
+    // would stay PAID with no refund row. Buyers go through return/refund;
+    // staff use the admin cancel path (which auto-creates the refund below).
+    const paidPayment = await this.prisma.payment.findFirst({
+      where: { orderId: id, status: PaymentStatus.PAID },
+      select: { id: true },
+    });
+    if (paidPayment) {
+      throw new BadRequestException(
+        'Order is already paid and cannot be cancelled directly. Please request a return to receive a refund.',
+      );
+    }
+
     // Release reserved stock & IMEIs
     const items = await this.prisma.orderItem.findMany({ where: { orderId: id } });
     await this.prisma.$transaction(async (tx) => {
+      // H2: give the voucher use back together with the stock release
+      const guarded = await tx.order.updateMany({
+        where: { id, userId, status: { in: CANCELLABLE_STATUSES } },
+        data: {
+          status: OrderStatus.CANCELLED,
+          cancelledAt: new Date(),
+          cancelledReason: dto.reason,
+        },
+      });
+      // Another concurrent cancellation (or the hold-expiry job) already took
+      // this order — abort instead of double-releasing inventory (H2/H7).
+      if (guarded.count === 0) {
+        throw new BadRequestException('Order cannot be cancelled in its current status');
+      }
+
+      await this.rollbackVoucherUsage(tx, order);
+
       for (const item of items) {
         if (item.imeiDeviceId) {
           await tx.imeiDevice.updateMany({
@@ -393,15 +752,6 @@ export class OrdersService {
           },
         });
       }
-
-      await tx.order.update({
-        where: { id },
-        data: {
-          status: OrderStatus.CANCELLED,
-          cancelledAt: new Date(),
-          cancelledReason: dto.reason,
-        },
-      });
     });
 
     return this.prisma.order.findUnique({ where: { id } });

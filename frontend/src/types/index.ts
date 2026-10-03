@@ -7,6 +7,7 @@ export interface User {
   phone?: string;
   role: Role;
   avatar?: string;
+  avatarUrl?: string;
   createdAt?: string;
 }
 
@@ -49,8 +50,14 @@ export interface ProductVariant {
   price: number;
   compareAtPrice?: number;
   inventoryQty?: number;
+  inventory?: {
+    quantity?: number;
+    availableQty?: number;
+    reservedQty?: number;
+  };
   status?: string;
   images?: string[];
+  imageUrl?: string;
   product?: {
     id: string;
     name: string;
@@ -72,14 +79,54 @@ export interface Product {
   category?: Category;
   variants: ProductVariant[];
   thumbnail?: string;
+  thumbnailUrl?: string;
   images?: string[];
   specs?: Record<string, string>;
-  rating?: number;
+  rating?: number | null;
   reviewCount?: number;
+  reviews?: Review[];
   status: 'ACTIVE' | 'DRAFT' | 'ARCHIVED';
   featured?: boolean;
   createdAt?: string;
 }
+
+export interface Review {
+  id: string;
+  userId: string;
+  productId: string;
+  rating: number;
+  title?: string;
+  content?: string;
+  isVerified?: boolean;
+  createdAt: string;
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    avatarUrl?: string;
+  };
+  replies?: ReviewReply[];
+}
+
+export interface ReviewReply {
+  id: string;
+  reviewId: string;
+  userId: string;
+  content: string;
+  createdAt: string;
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    avatarUrl?: string;
+    roles?: Array<{ role?: { name?: string } }>;
+  };
+}
+
+export const isShopReply = (reply: ReviewReply): boolean => {
+  const roles = reply.user?.roles ?? [];
+  return roles.some((r) => ['ADMIN', 'STAFF', 'MANAGER'].includes(r.role?.name ?? ''));
+};
 
 export interface CartItem {
   id: string;
@@ -114,7 +161,8 @@ export interface OrderItem {
   imeiDeviceId?: string;
   imeiDevice?: {
     id: string;
-    imeiNumber: string;
+    imei?: string;
+    imeiNumber?: string;
     status?: string;
   };
   variant?: ProductVariant;

@@ -36,13 +36,15 @@ export class ImeiController {
   }
 
   @Get('check/:imei')
-  @ApiOperation({ summary: 'Check IMEI availability' })
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Check IMEI availability (STAFF+)' })
   checkAvailability(@Param('imei') imei: string) {
     return this.imeiService.checkAvailability(imei);
   }
 
   @Get('validate/:imei')
-  @ApiOperation({ summary: 'Validate IMEI format (Luhn)' })
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Validate IMEI format - Luhn (STAFF+)' })
   validate(@Param('imei') imei: string) {
     return this.imeiService.validate(imei).then(valid => ({ imei, valid }));
   }
@@ -62,8 +64,8 @@ export class ImeiController {
   }
 
   @Post('import')
-  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
-  @ApiOperation({ summary: 'Bulk import IMEI devices (STAFF/MANAGER/ADMIN)' })
+  @Roles(Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Bulk import IMEI devices (MANAGER/ADMIN)' })
   import(@Body() dto: ImportImeiDto) {
     return this.imeiService.import(dto);
   }
@@ -76,8 +78,8 @@ export class ImeiController {
   }
 
   @Put(':id/sell')
-  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
-  @ApiOperation({ summary: 'Mark IMEI as sold (STAFF/MANAGER/ADMIN)' })
+  @Roles(Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Mark IMEI as sold (MANAGER/ADMIN)' })
   markSold(@Param('id') id: string) {
     return this.imeiService.markSold(id);
   }

@@ -10,10 +10,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     private configService: ConfigService,
     private prisma: PrismaService,
   ) {
+    // M12: fail closed on missing secret + pin HS256 (rejects `none` and
+    // algorithm-confusion tokens).
+    const secret = configService.get<string>('JWT_SECRET');
+    if (!secret) {
+      throw new Error('FATAL: JWT_SECRET must be set (refusing to use default secret)');
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET') || 'super-secret',
+      secretOrKey: secret,
+      algorithms: ['HS256'],
     });
   }
 

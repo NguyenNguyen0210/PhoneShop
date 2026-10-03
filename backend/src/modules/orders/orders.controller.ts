@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Put, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto, CancelOrderDto } from './dto/order.dto';
@@ -7,6 +7,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { IdempotencyInterceptor } from '../../infrastructure/idempotency/idempotency.interceptor';
 import { OrderStatus } from '@prisma/client';
 
 @ApiTags('Orders')
@@ -20,7 +21,8 @@ export class OrdersController {
 
   @Post('checkout')
   @Roles(Role.USER, Role.ADMIN)
-  @ApiOperation({ summary: 'Checkout and create order from cart' })
+  @UseInterceptors(IdempotencyInterceptor)
+  @ApiOperation({ summary: 'Checkout and create order from cart (idempotent via Idempotency-Key header)' })
   checkout(@CurrentUser() user: any, @Body() dto: CreateOrderDto) {
     return this.ordersService.checkout(user.id, dto);
   }
@@ -105,6 +107,6 @@ export class OrdersController {
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Cancel order (STAFF/MANAGER/ADMIN)' })
   cancel(@Param('id') id: string, @Body() dto: CancelOrderDto) {
-    return this.ordersService.transitionStatus(id, OrderStatus.CANCELLED);
+    return this.ordersService.transitionStatus(id, OrderStatus.CANCELLED, undefined, dto?.reason);
   }
 }

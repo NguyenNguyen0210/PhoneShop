@@ -20,13 +20,6 @@ export const WarrantyLookupPage: React.FC = () => {
   const [result, setResult] = useState<WarrantyLookupResult | null>(null);
   const [error, setError] = useState('');
 
-  const sampleImeis = [
-    '353245081234567',
-    '864922041234560',
-    '358245091234562',
-    'WRT-17182903-8F4A',
-  ];
-
   // Real-time Luhn calculation
   const cleanInput = query.trim();
   const is15Digits = /^\d{15}$/.test(cleanInput);
@@ -59,11 +52,6 @@ export const WarrantyLookupPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickFill = (imei: string) => {
-    setQuery(imei);
-    setError('');
   };
 
   const formatDate = (dateStr: string) => {
@@ -142,13 +130,13 @@ export const WarrantyLookupPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Real-time Luhn Checksum Status Badge */}
+          {/* Real-time Validation Status Badge */}
           {is15Digits && (
             <div className="animate-in fade-in duration-200">
               {isLuhnValid ? (
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Cấu trúc số IMEI hợp lệ (Chuẩn quốc tế GSMA)</span>
+                  <span>Định dạng 15 số hợp lệ</span>
                 </div>
               ) : (
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
@@ -165,19 +153,16 @@ export const WarrantyLookupPage: React.FC = () => {
             </div>
           )}
 
-          {/* Quick sample chips */}
-          <div className="flex flex-wrap items-center gap-2 pt-2 text-xs text-slate-500 border-t border-slate-100">
-            <span className="font-semibold text-slate-700">Mã mẫu thử nghiệm:</span>
-            {sampleImeis.map((imei) => (
-              <button
-                key={imei}
-                type="button"
-                onClick={() => handleQuickFill(imei)}
-                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-mono text-[11px] rounded-lg transition cursor-pointer"
-              >
-                {imei}
-              </button>
-            ))}
+          {/* Quick tip */}
+          <div className="flex items-center gap-2 pt-2 text-xs text-slate-500 border-t border-slate-100">
+            <Info className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>
+              Mẹo: Mở bàn phím cuộc gọi trên điện thoại và bấm{' '}
+              <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700 font-mono font-bold">
+                *#06#
+              </code>{' '}
+              để xem nhanh mã IMEI 15 số của thiết bị.
+            </span>
           </div>
         </div>
 
@@ -221,8 +206,8 @@ export const WarrantyLookupPage: React.FC = () => {
             {/* Certificate Body */}
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                  <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">
+                <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80">
+                  <span className="text-xs text-slate-500 font-medium block mb-1">
                     Mã bảo hành điện tử
                   </span>
                   <span className="font-mono font-bold text-blue-600 text-xs sm:text-sm">
@@ -230,17 +215,17 @@ export const WarrantyLookupPage: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                  <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">
+                <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80">
+                  <span className="text-xs text-slate-500 font-medium block mb-1">
                     Mã số IMEI thiết bị
                   </span>
                   <span className="font-mono font-bold text-slate-900 text-xs sm:text-sm">
-                    {result.imeiNumber || '353245081234567'}
+                    {result.imeiNumber || 'Thiết bị bảo hành điện tử'}
                   </span>
                 </div>
 
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                  <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">
+                <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80">
+                  <span className="text-xs text-slate-500 font-medium block mb-1">
                     Ngày kích hoạt
                   </span>
                   <div className="flex items-center gap-1.5 text-slate-800 text-xs font-semibold">
@@ -249,8 +234,8 @@ export const WarrantyLookupPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                  <span className="text-[10px] uppercase font-mono text-slate-500 block mb-1">
+                <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80">
+                  <span className="text-xs text-slate-500 font-medium block mb-1">
                     Ngày hết hạn
                   </span>
                   <div className="flex items-center gap-1.5 text-slate-800 text-xs font-semibold">

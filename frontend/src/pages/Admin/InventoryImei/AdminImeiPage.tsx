@@ -24,73 +24,15 @@ import {
   CheckOutlined,
 } from '@ant-design/icons';
 import { imeiService } from '../../../services/imeiService';
-import { mockProducts } from '../../../data/mockProducts';
-import type { ImeiDevice, ImeiStatus } from '../../../types';
+import { productService } from '../../../services/productService';
+import type { ImeiDevice, ImeiStatus, Product } from '../../../types';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
-const fallbackImeis: ImeiDevice[] = [
-  {
-    id: 'imei-1',
-    imeiNumber: '353245081234567',
-    variantId: 'var-ip15pm-256-nat',
-    status: 'AVAILABLE',
-    variant: {
-      ...mockProducts[0].variants[0],
-      product: mockProducts[0],
-    },
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'imei-2',
-    imeiNumber: '353245081234568',
-    variantId: 'var-ip15pm-256-nat',
-    status: 'RESERVED',
-    variant: {
-      ...mockProducts[0].variants[0],
-      product: mockProducts[0],
-    },
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'imei-3',
-    imeiNumber: '864922041234560',
-    variantId: 'var-s24u-256-gray',
-    status: 'AVAILABLE',
-    variant: {
-      ...mockProducts[1].variants[0],
-      product: mockProducts[1],
-    },
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'imei-4',
-    imeiNumber: '864922041234561',
-    variantId: 'var-s24u-256-gray',
-    status: 'SOLD',
-    variant: {
-      ...mockProducts[1].variants[0],
-      product: mockProducts[1],
-    },
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    soldAt: new Date().toISOString(),
-  },
-  {
-    id: 'imei-5',
-    imeiNumber: '358245091234562',
-    variantId: 'var-mi14u-512-blk',
-    status: 'WARRANTY',
-    variant: {
-      ...mockProducts[2].variants[0],
-      product: mockProducts[2],
-    },
-    createdAt: new Date(Date.now() - 172800000).toISOString(),
-  },
-];
-
 export const AdminImeiPage: React.FC = () => {
-  const [imeis, setImeis] = useState<ImeiDevice[]>(fallbackImeis);
+  const [imeis, setImeis] = useState<ImeiDevice[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -103,41 +45,41 @@ export const AdminImeiPage: React.FC = () => {
     invalidLines: string[];
   } | null>(null);
 
-  // Available variants for import
+  // Available variants for import from database
   const allVariants = useMemo(
     () =>
-      mockProducts.flatMap((p) =>
+      products.flatMap((p) =>
         p.variants.map((v) => ({
           variantId: v.id,
           label: `${p.name} - ${v.color} (${v.storage}) - SKU: ${v.sku}`,
         }))
       ),
-    []
+    [products]
   );
 
-  const loadImeis = useCallback(async () => {
-    await Promise.resolve();
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await imeiService.getAllImeis();
-      if (data && data.length > 0) {
-        setImeis(data);
-      } else {
-        setImeis(fallbackImeis);
+      const [imeiData, prodData] = await Promise.all([
+        imeiService.getAllImeis(),
+        productService.getAllProductsAdmin(),
+      ]);
+      if (Array.isArray(imeiData)) {
+        setImeis(imeiData);
       }
-    } catch {
-      // Ignored
+      if (prodData.items) {
+        setProducts(prodData.items);
+      }
+    } catch (err) {
+      console.error('Failed to load IMEIs or products from database API:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      void loadImeis();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [loadImeis]);
+    void loadData();
+  }, [loadData]);
 
   // Live validator for pasted text in textarea
   const handleImeiTextChange = (text: string) => {
@@ -182,7 +124,7 @@ export const AdminImeiPage: React.FC = () => {
 
     if (validationReport && validationReport.invalidCount > 0) {
       message.warning(
-        `Có ${validationReport.invalidCount} mã IMEI không đạt chuẩn Luhn 15 số! Vui lòng kiểm tra lại.`
+        `Có ${validationReport.invalidCount} mã IMEI không đúng định dạng 15 số! Vui lòng kiểm tra lại.`
       );
       return;
     }
@@ -193,7 +135,7 @@ export const AdminImeiPage: React.FC = () => {
       setIsImportModalOpen(false);
       importForm.resetFields();
       setValidationReport(null);
-      await loadImeis();
+      await loadData();
     } catch (err: any) {
       message.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
     }
@@ -308,7 +250,7 @@ export const AdminImeiPage: React.FC = () => {
 
   const columns: ColumnsType<ImeiDevice> = [
     {
-      title: 'Mã số IMEI (15 số Luhn)',
+      title: 'Mã số IMEI (15 số)',
       dataIndex: 'imeiNumber',
       key: 'imeiNumber',
       render: (num: string) => (
@@ -316,7 +258,7 @@ export const AdminImeiPage: React.FC = () => {
           <Text strong style={{ fontFamily: 'monospace', fontSize: 13, color: '#0f172a', letterSpacing: 0.5 }}>
             {num}
           </Text>
-          <Tooltip title="Đạt tiêu chuẩn thuật toán kiểm định Luhn checksum quốc tế">
+          <Tooltip title="Đạt tiêu chuẩn định dạng quốc tế GSMA">
             <Tag
               style={{
                 fontSize: 10,
@@ -327,7 +269,7 @@ export const AdminImeiPage: React.FC = () => {
                 borderRadius: 4,
               }}
             >
-              LUHN OK
+              GSMA OK
             </Tag>
           </Tooltip>
         </Space>
@@ -472,11 +414,11 @@ export const AdminImeiPage: React.FC = () => {
                 fontWeight: 600,
               }}
             >
-              Luhn Certified
+              GSMA Standard
             </span>
           </div>
           <Text style={{ fontSize: 13, color: '#64748b', marginTop: 4, display: 'block' }}>
-            Kiểm soát định danh từng chiếc máy, đảm bảo tính duy nhất và khóa concurrency 15 phút
+            Kiểm soát định danh từng chiếc máy, đảm bảo tính duy nhất và nguồn gốc chính hãng
           </Text>
         </div>
 
@@ -634,7 +576,7 @@ export const AdminImeiPage: React.FC = () => {
             name="imeiList"
             label="Danh sách mã IMEI (mỗi mã 1 dòng, 15 chữ số)"
             rules={[{ required: true, message: 'Vui lòng nhập ít nhất 1 mã IMEI' }]}
-            extra="Hệ thống tự động chạy thuật toán kiểm tra Luhn checksum ngay khi bạn nhập."
+            extra="Hệ thống tự động kiểm tra định dạng và cấu trúc mã IMEI ngay khi bạn nhập."
           >
             <TextArea
               rows={6}
@@ -650,12 +592,12 @@ export const AdminImeiPage: React.FC = () => {
             />
           </Form.Item>
 
-          {/* Real-time Luhn Validation Alert */}
+          {/* Real-time Validation Alert */}
           {validationReport && (
             <div style={{ marginBottom: 16 }}>
               {validationReport.invalidCount === 0 ? (
                 <Alert
-                  message={`Hợp lệ 100%: Tất cả ${validationReport.validCount} mã IMEI đều đạt chuẩn Luhn 15 chữ số quốc tế!`}
+                  message={`Hợp lệ 100%: Tất cả ${validationReport.validCount} mã IMEI đều đúng định dạng 15 chữ số!`}
                   type="success"
                   showIcon
                   style={{
@@ -667,7 +609,7 @@ export const AdminImeiPage: React.FC = () => {
                 />
               ) : (
                 <Alert
-                  message={`Cảnh báo: Có ${validationReport.invalidCount} mã sai định dạng hoặc sai mã Luhn checksum!`}
+                  message={`Cảnh báo: Có ${validationReport.invalidCount} mã sai định dạng hoặc kiểm tra không hợp lệ!`}
                   description={
                     <div style={{ fontSize: 12, marginTop: 4 }}>
                       Mã không hợp lệ:{' '}

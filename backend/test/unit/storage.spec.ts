@@ -49,17 +49,14 @@ describe('StorageService', () => {
     expect(metadata.width).toBeLessThanOrEqual(800);
   });
 
-  it('should convert SVG to WebP instead of bypassing compression (Stored XSS prevention)', async () => {
+  it('should reject SVG uploads at the magic-byte check (active content is never stored)', async () => {
+    // M15: SVGs (even rasterizable ones) are rejected instead of converted —
+    // script-bearing active content must never reach the public bucket.
     const svgBuffer = Buffer.from(
       '<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="blue"/><script>alert("xss")</script></svg>',
     );
 
-    const result = await service.optimizeImage(svgBuffer, 800);
-    expect(result.mimeType).toBe('image/webp');
-    expect(result.format).toBe('webp');
-
-    const metadata = await sharp(result.buffer).metadata();
-    expect(metadata.format).toBe('webp');
+    await expect(service.optimizeImage(svgBuffer, 800)).rejects.toThrow(BadRequestException);
   });
 });
 

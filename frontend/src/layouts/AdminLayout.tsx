@@ -243,7 +243,7 @@ export const AdminLayout: React.FC = () => {
                 </span>
               </div>
               <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
-                Lock: 15m SKIP LOCKED
+                Đồng bộ kho: Thời gian thực
               </div>
             </div>
           )}
@@ -318,7 +318,7 @@ export const AdminLayout: React.FC = () => {
                 className="sm:flex"
               >
                 <ThunderboltOutlined style={{ fontSize: 12, color: '#059669' }} />
-                <span>Luhn & Lock: 100% OK</span>
+                <span>Hệ thống trực tuyến 100%</span>
               </div>
 
               <Link to="/">
@@ -366,15 +366,16 @@ export const AdminLayout: React.FC = () => {
                   }}
                 >
                   <Avatar
+                    src={user?.avatar || (user as any)?.avatarUrl}
                     style={{
                       backgroundColor: '#2563eb',
                       color: '#ffffff',
                       fontWeight: 'bold',
                       boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
                     }}
-                    icon={<UserOutlined />}
+                    icon={!(user?.avatar || (user as any)?.avatarUrl) && <UserOutlined />}
                   >
-                    {user?.fullName?.charAt(0) || 'A'}
+                    {!(user?.avatar || (user as any)?.avatarUrl) && (user?.fullName?.charAt(0) || 'A')}
                   </Avatar>
                   <span
                     style={{

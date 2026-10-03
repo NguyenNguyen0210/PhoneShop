@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Body, Patch, Param, Delete,
-  UseGuards, Query, Put,
+  UseGuards, Query, Put, ParseEnumPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
@@ -77,7 +77,10 @@ export class ProductsController {
   @Roles(Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Change product status (MANAGER/ADMIN)' })
-  changeStatus(@Param('id') id: string, @Param('status') status: ProductStatus) {
+  changeStatus(
+    @Param('id') id: string,
+    @Param('status', new ParseEnumPipe(ProductStatus)) status: ProductStatus,
+  ) {
     return this.productsService.changeStatus(id, status);
   }
 

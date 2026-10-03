@@ -23,23 +23,57 @@ export interface PaginatedProducts {
   totalPages: number;
 }
 
+export const normalizeProduct = (p: any): Product => {
+  if (!p) return p;
+  const thumb =
+    p.thumbnail ||
+    p.thumbnailUrl ||
+    p.images?.[0] ||
+    p.variants?.[0]?.imageUrl ||
+    p.variants?.[0]?.images?.[0] ||
+    '/images/products/iphone-16-pro-max.png';
+
+  const images = Array.isArray(p.images) && p.images.length > 0
+    ? p.images
+    : [thumb];
+
+  const variants = Array.isArray(p.variants)
+    ? p.variants.map((v: any) => ({
+        ...v,
+        imageUrl: v.imageUrl || thumb,
+        images: Array.isArray(v.images) && v.images.length > 0 ? v.images : [v.imageUrl || thumb],
+      }))
+    : [];
+
+  return {
+    ...p,
+    thumbnail: thumb,
+    thumbnailUrl: thumb,
+    images,
+    variants,
+  };
+};
+
 export const productService = {
   async getProducts(params?: ProductFilterParams): Promise<PaginatedProducts> {
     const response = await apiClient.get('/products', { params });
     const data = response.data?.data ?? response.data;
     // Backend might return an array or { items, total, ... }
     if (Array.isArray(data)) {
+      const items = data.map(normalizeProduct);
       return {
-        items: data,
-        total: data.length,
+        items,
+        total: items.length,
         page: 1,
-        limit: data.length,
+        limit: items.length,
         totalPages: 1,
       };
     }
+    const rawItems = data.items || data.data || data.products || [];
+    const items = rawItems.map(normalizeProduct);
     return {
-      items: data.items || data.data || data.products || [],
-      total: data.total ?? (data.items?.length || data.data?.length || 0),
+      items,
+      total: data.total ?? items.length,
       page: data.page ?? 1,
       limit: data.limit ?? 50,
       totalPages: data.totalPages ?? 1,
@@ -48,7 +82,8 @@ export const productService = {
 
   async getProductById(id: string): Promise<Product> {
     const response = await apiClient.get(`/products/${id}`);
-    return response.data?.data ?? response.data;
+    const data = response.data?.data ?? response.data;
+    return normalizeProduct(data);
   },
 
   async getBrands(): Promise<Brand[]> {
@@ -68,17 +103,20 @@ export const productService = {
     const response = await apiClient.get('/products/admin/all', { params });
     const data = response.data?.data ?? response.data;
     if (Array.isArray(data)) {
+      const items = data.map(normalizeProduct);
       return {
-        items: data,
-        total: data.length,
+        items,
+        total: items.length,
         page: 1,
-        limit: data.length,
+        limit: items.length,
         totalPages: 1,
       };
     }
+    const rawItems = data.items || data.data || [];
+    const items = rawItems.map(normalizeProduct);
     return {
-      items: data.items || data.data || [],
-      total: data.total ?? (data.items?.length || data.data?.length || 0),
+      items,
+      total: data.total ?? items.length,
       page: data.page ?? 1,
       limit: data.limit ?? 50,
       totalPages: data.totalPages ?? 1,

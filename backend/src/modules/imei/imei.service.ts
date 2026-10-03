@@ -7,21 +7,60 @@ import { ImeiStatus } from '@prisma/client';
 export class ImeiService {
   constructor(private prisma: PrismaService) {}
 
+  // ── H3: IMEI HYGIENE ───────────────────────────────────────
+  // Every write path must normalize + validate. Previously only the
+  // read-only GET /imei/validate/:imei checked Luhn, so "12345",
+  // bad-check-digit codes, or " 3589… " (trailing space — bypasses the
+  // @unique index while being the same handset) entered stock silently.
+  private normalizeImei(raw: string): string {
+    return (raw || '').replace(/[\s-]/g, '');
+  }
+
+  private async assertValidImei(raw: string): Promise<string> {
+    const imei = this.normalizeImei(raw);
+    if (!(await this.validate(imei))) {
+      throw new BadRequestException(
+        `Invalid IMEI "${raw}": must be exactly 15 digits with a valid Luhn check digit`,
+      );
+    }
+    return imei;
+  }
+
   async add(dto: CreateImeiDto) {
-    const existing = await this.prisma.imeiDevice.findUnique({ where: { imei: dto.imei } });
+    const imei = await this.assertValidImei(dto.imei);
+    const existing = await this.prisma.imeiDevice.findUnique({ where: { imei } });
     if (existing) throw new ConflictException('IMEI already registered');
-    return this.prisma.imeiDevice.create({ data: dto });
+    return this.prisma.imeiDevice.create({ data: { ...dto, imei } });
   }
 
   async import(dto: ImportImeiDto) {
+    // Validate the whole batch BEFORE touching the DB so a single bad code
+    // rejects the import instead of half-importing stock.
+    const normalized = new Map<string, string>(); // original -> normalized
+    const invalid: string[] = [];
+    for (const item of dto.items) {
+      const imei = this.normalizeImei(item.imei);
+      if (!(await this.validate(imei))) {
+        if (invalid.length < 10) invalid.push(item.imei);
+      } else {
+        normalized.set(item.imei, imei);
+      }
+    }
+    if (invalid.length > 0) {
+      throw new BadRequestException(
+        `Import rejected: ${dto.items.length - normalized.size} IMEI(s) failed Luhn/format check (e.g. ${invalid.join(', ')}). No devices were imported.`,
+      );
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const created: any[] = [];
       const variantCountMap = new Map<string, number>();
 
       for (const item of dto.items) {
-        const existing = await tx.imeiDevice.findUnique({ where: { imei: item.imei } });
+        const imei = normalized.get(item.imei) as string;
+        const existing = await tx.imeiDevice.findUnique({ where: { imei } });
         if (!existing) {
-          const device = await tx.imeiDevice.create({ data: item });
+          const device = await tx.imeiDevice.create({ data: { ...item, imei } });
           created.push(device);
           variantCountMap.set(
             item.variantId,
@@ -72,7 +111,7 @@ export class ImeiService {
 
   async searchByImei(imei: string) {
     const device = await this.prisma.imeiDevice.findUnique({
-      where: { imei },
+      where: { imei: this.normalizeImei(imei) },
       include: { variant: { include: { product: true } } },
     });
     if (!device) throw new NotFoundException('IMEI not found');
@@ -80,9 +119,10 @@ export class ImeiService {
   }
 
   async checkAvailability(imei: string) {
-    const device = await this.prisma.imeiDevice.findUnique({ where: { imei } });
+    const normalized = this.normalizeImei(imei);
+    const device = await this.prisma.imeiDevice.findUnique({ where: { imei: normalized } });
     if (!device) throw new NotFoundException('IMEI not found');
-    return { imei, status: device.status, available: device.status === ImeiStatus.AVAILABLE };
+    return { imei: normalized, status: device.status, available: device.status === ImeiStatus.AVAILABLE };
   }
 
   async validate(imei: string): Promise<boolean> {
@@ -97,56 +137,64 @@ export class ImeiService {
     return sum % 10 === 0;
   }
 
+  // ── H6: IMEI STATE MACHINE ────────────────────────────────
+  // Previously updateStatus/return/block/warranty accepted ANY → ANY, so a
+  // SOLD handset could be flipped back to AVAILABLE and double-sold, or an
+  // AVAILABLE unit flipped to RETURNED (shrinking sellable stock). Every
+  // mutation below goes through transitionTo(): allowed-map check +
+  // conditional updateMany (count===0 ⇒ lost a race or illegal jump).
+  private static readonly ALLOWED_IMEI_TRANSITIONS: Record<ImeiStatus, ImeiStatus[]> = {
+    [ImeiStatus.AVAILABLE]: [ImeiStatus.RESERVED, ImeiStatus.SOLD, ImeiStatus.BLOCKED],
+    [ImeiStatus.RESERVED]: [ImeiStatus.AVAILABLE, ImeiStatus.SOLD, ImeiStatus.BLOCKED],
+    [ImeiStatus.SOLD]: [ImeiStatus.WARRANTY, ImeiStatus.RETURNED],
+    [ImeiStatus.RETURNED]: [ImeiStatus.AVAILABLE, ImeiStatus.BLOCKED],
+    [ImeiStatus.BLOCKED]: [ImeiStatus.AVAILABLE],
+    [ImeiStatus.WARRANTY]: [ImeiStatus.AVAILABLE, ImeiStatus.SOLD],
+  };
+
+  private async transitionTo(id: string, to: ImeiStatus, extraData: Record<string, any> = {}) {
+    const device = await this.findOne(id);
+    const allowed = ImeiService.ALLOWED_IMEI_TRANSITIONS[device.status] || [];
+    if (!allowed.includes(to)) {
+      throw new BadRequestException(
+        `Cannot transition IMEI from ${device.status} to ${to}`,
+      );
+    }
+    const updated = await this.prisma.imeiDevice.updateMany({
+      where: { id, status: device.status },
+      data: { status: to, ...extraData },
+    });
+    if (updated.count === 0) {
+      throw new BadRequestException(
+        `IMEI state changed concurrently (expected ${device.status})`,
+      );
+    }
+    return this.findOne(id);
+  }
+
   async updateStatus(id: string, dto: UpdateImeiStatusDto) {
-    await this.findOne(id);
-    const data: any = { status: dto.status };
+    const data: any = {};
     if (dto.status === ImeiStatus.SOLD) data.soldAt = new Date();
-    return this.prisma.imeiDevice.update({ where: { id }, data });
+    return this.transitionTo(id, dto.status, data);
   }
 
   async reserve(id: string) {
-    const device = await this.findOne(id);
-    if (device.status !== ImeiStatus.AVAILABLE) {
-      throw new BadRequestException('IMEI is not available for reservation');
-    }
-    return this.prisma.imeiDevice.update({
-      where: { id },
-      data: { status: ImeiStatus.RESERVED },
-    });
+    return this.transitionTo(id, ImeiStatus.RESERVED);
   }
 
   async markSold(id: string) {
-    const device = await this.findOne(id);
-    if (device.status !== ImeiStatus.AVAILABLE && device.status !== ImeiStatus.RESERVED) {
-      throw new BadRequestException('Cannot mark IMEI as sold in current state');
-    }
-    return this.prisma.imeiDevice.update({
-      where: { id },
-      data: { status: ImeiStatus.SOLD, soldAt: new Date() },
-    });
+    return this.transitionTo(id, ImeiStatus.SOLD, { soldAt: new Date() });
   }
 
   async returnDevice(id: string) {
-    await this.findOne(id);
-    return this.prisma.imeiDevice.update({
-      where: { id },
-      data: { status: ImeiStatus.RETURNED },
-    });
+    return this.transitionTo(id, ImeiStatus.RETURNED);
   }
 
   async block(id: string) {
-    await this.findOne(id);
-    return this.prisma.imeiDevice.update({
-      where: { id },
-      data: { status: ImeiStatus.BLOCKED },
-    });
+    return this.transitionTo(id, ImeiStatus.BLOCKED);
   }
 
   async warranty(id: string) {
-    await this.findOne(id);
-    return this.prisma.imeiDevice.update({
-      where: { id },
-      data: { status: ImeiStatus.WARRANTY },
-    });
+    return this.transitionTo(id, ImeiStatus.WARRANTY);
   }
 }

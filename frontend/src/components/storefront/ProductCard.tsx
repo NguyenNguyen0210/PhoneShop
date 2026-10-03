@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, ShoppingCart, Eye } from 'lucide-react';
+import { ShoppingCart, Star, Check } from 'lucide-react';
 import type { Product } from '../../types';
 import { useCartStore } from '../../stores/useCartStore';
+import { getDistinctColors } from '../../utils/colorHelper';
 
 interface ProductCardProps {
   product: Product;
@@ -10,6 +11,7 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addItem } = useCartStore();
+  const [justAdded, setJustAdded] = useState(false);
 
   const primaryVariant = product.variants?.[0];
   const price = primaryVariant?.price || 0;
@@ -19,122 +21,185 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100)
       : null;
 
+  // Format currency VND
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   };
+
+  // Helper to normalize uppercase product titles to clean Title Case
+  const formatProductName = (name: string): string => {
+    if (!name) return '';
+    const letters = name.replace(/[^a-zA-Z]/g, '');
+    const isAllCaps = letters.length > 3 && letters === letters.toUpperCase();
+    if (isAllCaps) {
+      return name
+        .toLowerCase()
+        .split(' ')
+        .map((word) => {
+          const upper = word.toUpperCase();
+          if (['5G', '4G', 'AI', 'LTE', 'OIS', 'RAM', 'ROM', 'NFC', 'VI', 'IV', 'V', 'II', 'III', 'SE', 'FE'].includes(upper)) {
+            return upper;
+          }
+          return word.charAt(0).toUpperCase() + word.slice(1);
+        })
+        .join(' ');
+    }
+    return name;
+  };
+
+  // Quick specs summary (storage + chipset/specs)
+  const storage = primaryVariant?.storage || '256GB';
+  const chipset =
+    product.specs?.['Chipset']?.split('(')?.[0]?.trim() ||
+    product.specs?.['Màn hình']?.split('(')?.[0]?.trim() ||
+    'Chính hãng';
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (primaryVariant) {
       addItem(product, primaryVariant, 1);
+      setJustAdded(true);
+      setTimeout(() => setJustAdded(false), 1500);
     }
   };
 
-  return (
-    <div className="group bg-white rounded-2xl border border-slate-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden relative">
-      {/* Discount badge */}
-      {discountPercent && (
-        <div className="absolute top-3 left-3 z-10 bg-red-600 text-white font-extrabold text-[11px] px-2.5 py-1 rounded-full shadow-sm">
-          -{discountPercent}%
-        </div>
-      )}
+  const productThumb =
+    product.thumbnail ||
+    product.thumbnailUrl ||
+    primaryVariant?.images?.[0] ||
+    primaryVariant?.imageUrl ||
+    '/images/products/iphone-16-pro-max.png';
 
-      {/* Brand badge */}
-      <div className="absolute top-3 right-3 z-10 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
-        {product.brand?.name || 'Chính hãng'}
+  return (
+    <div className="group relative flex flex-col justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-slate-300">
+      <div>
+        {/* Top Badges: Brand & Discount */}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            {product.brand?.name || 'Chính hãng'}
+          </span>
+          {discountPercent ? (
+            <span className="rounded-md bg-red-50 px-2 py-0.5 text-xs font-bold text-red-600">
+              -{discountPercent}%
+            </span>
+          ) : (
+            <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+              Trả góp 0%
+            </span>
+          )}
+        </div>
+
+        {/* Product Image (Consistent 1:1 Aspect Ratio) */}
+        <Link
+          to={`/products/${product.id}`}
+          className="relative my-3 flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-slate-50/60 p-3 block"
+        >
+          <img
+            src={productThumb}
+            alt={product.name}
+            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = '/images/products/iphone-16-pro-max.png';
+            }}
+          />
+        </Link>
+
+        {/* Compact Tech Specs Pill */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-mono font-medium text-slate-600">
+            {storage}
+          </span>
+          <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 truncate max-w-[130px]">
+            {chipset}
+          </span>
+        </div>
+
+        {/* Product Title (Clean, Scannable Title Case) */}
+        <Link to={`/products/${product.id}`} className="block">
+          <h3 className="text-sm sm:text-base font-semibold text-slate-900 transition-colors group-hover:text-blue-600 line-clamp-1 leading-snug">
+            {formatProductName(product.name)}
+          </h3>
+        </Link>
+
+        {/* Rating and Color Swatches */}
+        <div className="flex items-center justify-between mt-2 pt-1">
+          {/* Star Rating — M18: null rating renders as "Mới" instead of fake 5.0 */}
+          <div className="flex items-center gap-1 text-[11px] text-amber-500 font-semibold">
+            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+            <span>{product.rating ? Number(product.rating).toFixed(1) : 'Mới'}</span>
+            <span className="text-slate-400 font-normal">({product.reviewCount ?? 0})</span>
+          </div>
+
+          {/* Authentic Real Device Color preview dots */}
+          {(() => {
+            const distinctColors = getDistinctColors(product.variants);
+            if (distinctColors.length === 0) return null;
+
+            return (
+              <div
+                className="flex items-center gap-1.5"
+                title={`${distinctColors.length} màu sắc: ${distinctColors.map((c) => c.name).join(', ')}`}
+              >
+                <div className="flex items-center -space-x-1.5">
+                  {distinctColors.slice(0, 4).map((c, idx) => (
+                    <span
+                      key={idx}
+                      className="w-3.5 h-3.5 rounded-full ring-2 ring-white shadow-xs inline-block border border-slate-300/80 transition-transform duration-200 hover:scale-130 hover:z-20 cursor-pointer"
+                      style={{ backgroundColor: c.hex }}
+                      title={c.name}
+                    />
+                  ))}
+                </div>
+                {distinctColors.length > 4 && (
+                  <span className="text-[10px] text-slate-500 font-mono font-medium">
+                    +{distinctColors.length - 4}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
+        </div>
       </div>
 
-      {/* Image container */}
-      <Link
-        to={`/products/${product.id}`}
-        className="relative pt-[85%] overflow-hidden bg-slate-50 flex items-center justify-center p-4 block"
-      >
-        <img
-          src={
-            product.thumbnail ||
-            primaryVariant?.images?.[0] ||
-            'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&w=400&q=80'
-          }
-          alt={product.name}
-          className="absolute inset-0 w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-300"
-          loading="lazy"
-        />
-      </Link>
-
-      {/* Content info */}
-      <div className="p-4 flex-1 flex flex-col justify-between">
-        <div>
-          {/* Storage tags */}
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {product.variants?.slice(0, 3).map((v) => (
-              <span
-                key={v.id}
-                className="text-[10px] font-medium px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md"
-              >
-                {v.storage}
-              </span>
-            ))}
-          </div>
-
-          <Link to={`/products/${product.id}`}>
-            <h3 className="text-sm font-bold text-slate-900 hover:text-blue-600 transition line-clamp-2 leading-snug">
-              {product.name}
-            </h3>
-          </Link>
-
-          {/* Color options dots */}
-          <div className="flex items-center gap-1.5 my-2">
-            {product.variants?.map((v) => (
-              <span
-                key={v.id}
-                title={v.color}
-                className="w-3.5 h-3.5 rounded-full border border-slate-300 shadow-2xs"
-                style={{ backgroundColor: v.colorHex || '#94a3b8' }}
-              />
-            ))}
-            <span className="text-[11px] text-slate-400 ml-1">
-              ({product.variants?.length || 1} màu)
+      {/* Pricing & Full-Width Action Button */}
+      <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+        {/* Pricing */}
+        <div className="flex items-baseline gap-2">
+          <span className="text-base sm:text-lg font-bold font-mono text-slate-950 tabular-nums tracking-tight">
+            {formatPrice(price)}
+          </span>
+          {compareAtPrice && compareAtPrice > price && (
+            <span className="text-xs font-mono text-slate-400 line-through tabular-nums">
+              {formatPrice(compareAtPrice)}
             </span>
-          </div>
-
-          {/* Rating */}
-          <div className="flex items-center gap-1 text-xs text-amber-500 font-semibold mb-3">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span>{product.rating || '4.9'}</span>
-            <span className="text-slate-400 font-normal">({product.reviewCount || 120})</span>
-          </div>
+          )}
         </div>
 
-        {/* Pricing & Actions */}
-        <div>
-          <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-base font-extrabold text-red-600">{formatPrice(price)}</span>
-            {compareAtPrice && compareAtPrice > price && (
-              <span className="text-xs text-slate-400 line-through">
-                {formatPrice(compareAtPrice)}
-              </span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-5 gap-2">
-            <Link
-              to={`/products/${product.id}`}
-              className="col-span-3 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl flex items-center justify-center gap-1 transition"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>Xem chi tiết</span>
-            </Link>
-            <button
-              onClick={handleQuickAdd}
-              className="col-span-2 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-1 transition shadow-xs"
-              title="Thêm vào giỏ"
-            >
-              <ShoppingCart className="w-3.5 h-3.5" />
-              <span>Mua</span>
-            </button>
-          </div>
-        </div>
+        {/* Full-Width Quick Add CTA */}
+        <button
+          type="button"
+          onClick={handleQuickAdd}
+          className={`flex h-10 w-full items-center justify-center gap-2 rounded-xl font-semibold text-xs transition-all cursor-pointer active:scale-[0.98] ${
+            justAdded
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-800'
+          }`}
+          title="Thêm thiết bị này vào giỏ hàng"
+        >
+          {justAdded ? (
+            <>
+              <Check className="h-4 w-4 stroke-[3]" />
+              <span>Đã thêm vào giỏ!</span>
+            </>
+          ) : (
+            <>
+              <ShoppingCart className="h-4 w-4" />
+              <span>Thêm vào giỏ</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

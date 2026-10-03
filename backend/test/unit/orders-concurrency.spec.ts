@@ -19,6 +19,16 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
 
     it('should acquire IMEIs using $queryRaw row-level locking and reserve them', async () => {
       const mockTx: any = {
+        address: {
+          findFirst: jest.fn().mockImplementation(() =>
+            Promise.resolve({ id: 'addr-1', userId: 'user-1' }),
+          ),
+        },
+        productVariant: {
+          findMany: jest.fn().mockImplementation(() =>
+            Promise.resolve([{ id: 'var-1', price: 10000000 }]),
+          ),
+        },
         $queryRaw: jest.fn().mockImplementation(() =>
           Promise.resolve([{ id: 'imei-uuid-1' }, { id: 'imei-uuid-2' }]),
         ),
@@ -95,6 +105,16 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
 
     it('should throw BadRequestException if available IMEIs are fewer than required quantity', async () => {
       const mockTx: any = {
+        address: {
+          findFirst: jest.fn().mockImplementation(() =>
+            Promise.resolve({ id: 'addr-1', userId: 'user-1' }),
+          ),
+        },
+        productVariant: {
+          findMany: jest.fn().mockImplementation(() =>
+            Promise.resolve([{ id: 'var-1', price: 10000000 }]),
+          ),
+        },
         $queryRaw: jest.fn().mockImplementation(() =>
           Promise.resolve([{ id: 'imei-uuid-1' }]), // only 1 returned, need 2
         ),
@@ -137,6 +157,16 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
     it('should validate voucher usageLimit and minOrderValue inside transaction', async () => {
       const now = new Date();
       const mockTx: any = {
+        address: {
+          findFirst: jest.fn().mockImplementation(() =>
+            Promise.resolve({ id: 'addr-1', userId: 'user-1' }),
+          ),
+        },
+        productVariant: {
+          findMany: jest.fn().mockImplementation(() =>
+            Promise.resolve([{ id: 'var-1', price: 1000000 }]),
+          ),
+        },
         voucher: {
           findUnique: jest.fn().mockImplementation(() =>
             Promise.resolve({
@@ -195,6 +225,17 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
     it('should throw if order subtotal is below voucher minOrderValue inside transaction', async () => {
       const now = new Date();
       const mockTx: any = {
+        address: {
+          findFirst: jest.fn().mockImplementation(() =>
+            Promise.resolve({ id: 'addr-1', userId: 'user-1' }),
+          ),
+        },
+        productVariant: {
+          findMany: jest.fn().mockImplementation(() =>
+            Promise.resolve([{ id: 'var-1', price: 5000000 }]),
+          ),
+        },
+        $queryRaw: jest.fn().mockImplementation(() => Promise.resolve([])),
         voucher: {
           findUnique: jest.fn().mockImplementation(() =>
             Promise.resolve({
@@ -253,6 +294,16 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
     it('should increment voucher usage inside transaction when valid', async () => {
       const now = new Date();
       const mockTx: any = {
+        address: {
+          findFirst: jest.fn().mockImplementation(() =>
+            Promise.resolve({ id: 'addr-1', userId: 'user-1' }),
+          ),
+        },
+        productVariant: {
+          findMany: jest.fn().mockImplementation(() =>
+            Promise.resolve([{ id: 'var-1', price: 2000000 }]),
+          ),
+        },
         voucher: {
           findUnique: jest.fn().mockImplementation(() =>
             Promise.resolve({
@@ -269,7 +320,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
               maxDiscountAmount: 500000,
             }),
           ),
-          update: jest.fn().mockReturnValue(Promise.resolve({})),
+          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
         },
         $queryRaw: jest.fn().mockImplementation(() =>
           Promise.resolve([{ id: 'imei-uuid-1' }]),
@@ -331,8 +382,8 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         voucherCode: 'VALID10',
       } as any);
 
-      expect(mockTx.voucher.update).toHaveBeenCalledWith({
-        where: { id: 'vouch-1' },
+      expect(mockTx.voucher.updateMany).toHaveBeenCalledWith({
+        where: { id: 'vouch-1', usageCount: { lt: 10 } },
         data: { usageCount: { increment: 1 } },
       });
       expect(mockTx.voucherUsage.create).toHaveBeenCalled();
@@ -403,6 +454,12 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         imeiDevice: {
           updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
         },
+        payment: {
+          findMany: jest.fn().mockReturnValue(Promise.resolve([])),
+        },
+        orderItem: {
+          findMany: jest.fn().mockReturnValue(Promise.resolve([])),
+        },
         order: {
           update: jest.fn().mockImplementation((args: any) =>
             Promise.resolve({ id: 'ord-1', status: args.data.status }),
@@ -437,7 +494,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
       await ordersService.transitionStatus('ord-1', OrderStatus.DELIVERED);
 
       expect(mockTx.imeiDevice.updateMany).toHaveBeenCalledWith({
-        where: { id: { in: ['imei-1'] } },
+        where: { id: { in: ['imei-1'] }, status: ImeiStatus.RESERVED },
         data: {
           status: ImeiStatus.SOLD,
           soldAt: expect.any(Date),
@@ -449,6 +506,12 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
       const mockTx: any = {
         imeiDevice: {
           updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
+        },
+        payment: {
+          findMany: jest.fn().mockReturnValue(Promise.resolve([])),
+        },
+        orderItem: {
+          findMany: jest.fn().mockReturnValue(Promise.resolve([])),
         },
         order: {
           update: jest.fn().mockImplementation((args: any) =>
@@ -484,7 +547,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
       await ordersService.transitionStatus('ord-1', OrderStatus.COMPLETED);
 
       expect(mockTx.imeiDevice.updateMany).toHaveBeenCalledWith({
-        where: { id: { in: ['imei-1'] } },
+        where: { id: { in: ['imei-1'] }, status: ImeiStatus.RESERVED },
         data: {
           status: ImeiStatus.SOLD,
           soldAt: expect.any(Date),
@@ -632,10 +695,11 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
       const imeiService = new ImeiService(mockPrisma);
 
       const importDto = {
+        // Luhn-valid fixtures (H3 rejects anything else at the service gate)
         items: [
-          { variantId: 'var-1', imei: '358901010000010' },
-          { variantId: 'var-1', imei: '358901010000028' },
-          { variantId: 'var-2', imei: '358901010000036' },
+          { variantId: 'var-1', imei: '358901010000013' },
+          { variantId: 'var-1', imei: '358901010000021' },
+          { variantId: 'var-2', imei: '358901010000039' },
         ],
       };
 
@@ -679,7 +743,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
       const mockTx: any = {
         imeiDevice: {
           findUnique: jest.fn().mockImplementation((args: any) => {
-            if (args.where.imei === '358901010000010') {
+            if (args.where.imei === '358901010000013') {
               return Promise.resolve({ id: 'existing-id' }); // already exists
             }
             return Promise.resolve(null);
@@ -703,8 +767,8 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
 
       const importDto = {
         items: [
-          { variantId: 'var-1', imei: '358901010000010' }, // duplicate
-          { variantId: 'var-1', imei: '358901010000028' }, // new
+          { variantId: 'var-1', imei: '358901010000013' }, // duplicate
+          { variantId: 'var-1', imei: '358901010000021' }, // new
         ],
       };
 

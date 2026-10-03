@@ -11,7 +11,7 @@ import { EmailService } from '../../infrastructure/email/email.service';
 import {
   CreatePaymentDto,
   CreateVnpayUrlDto,
-  PaymentCallbackDto,
+  ConfirmPaymentDto,
 } from './dto/payment.dto';
 import {
   PaymentStatus,
@@ -22,7 +22,7 @@ import {
   ImeiStatus,
   WarrantyStatus,
 } from '@prisma/client';
-import { createHmac, randomBytes } from 'crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 
 export function buildVnpaySignData(params: Record<string, any>): string {
   const sortedKeys = Object.keys(params).sort();
@@ -40,6 +40,16 @@ export function hashVnpayParams(params: Record<string, any>, secret: string): st
   return hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
 }
 
+// LOW: constant-time HMAC comparison (length-checked first —
+// timingSafeEqual throws on length mismatch).
+export function vnpSignaturesEqual(a: string, b: string): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const ba = Buffer.from(a, 'utf-8');
+  const bb = Buffer.from(b, 'utf-8');
+  if (ba.length !== bb.length) return false;
+  return timingSafeEqual(ba, bb);
+}
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -49,7 +59,23 @@ export class PaymentsService {
     private readonly vietqrService: VietqrService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    // LOW: in production, refuse to sign/verify VNPay traffic with the
+    // publicly visible sandbox placeholders. Dev keeps working with sandbox.
+    if ((configService.get<string>('NODE_ENV') || '').toLowerCase() === 'production') {
+      const tmn = configService.get<string>('VNPAY_TMN_CODE');
+      const secret = configService.get<string>('VNPAY_HASH_SECRET');
+      if (
+        !tmn || !secret ||
+        tmn === 'SANDBOX1' ||
+        secret === 'SANDBOX_SECRET_KEY_1234567890ABCDEF'
+      ) {
+        throw new Error(
+          'FATAL: production requires real VNPAY_TMN_CODE / VNPAY_HASH_SECRET (sandbox placeholders refused)',
+        );
+      }
+    }
+  }
 
   private generateTransactionCode(): string {
     return `TXN-${Date.now()}-${randomBytes(4).toString('hex').toUpperCase()}`;
@@ -72,6 +98,8 @@ export class PaymentsService {
     if (userId && order.userId !== userId) {
       throw new BadRequestException('Unauthorized order access');
     }
+
+    await this.rejectIfHoldExpired(order);
 
     if (order.status === OrderStatus.CANCELLED) {
       throw new BadRequestException('Cannot generate payment QR for cancelled order');
@@ -108,7 +136,126 @@ export class PaymentsService {
   // VNPAY INTEGRATION
   // ============================================================
 
-  async createVnpayPaymentUrl(dto: CreateVnpayUrlDto, clientIp?: string) {
+  // ── H7: HOLD-EXPIRY ENFORCEMENT ─────────────────────────────
+  // A PENDING order whose 15-minute hold has passed must never be payable:
+  // paying for it would confirm stock that may already belong to someone
+  // else. Release the hold inline (same guarded semantics as the expiry
+  // job: conditional cancel + status-filtered IMEI/inventory release +
+  // voucher rollback) and reject the payment attempt.
+  private async rejectIfHoldExpired(order: {
+    id: string;
+    status: OrderStatus;
+    holdExpiresAt: Date | null;
+    voucherCode?: string | null;
+  }): Promise<void> {
+    if (order.status !== OrderStatus.PENDING) return;
+    if (!order.holdExpiresAt || order.holdExpiresAt.getTime() > Date.now()) return;
+
+    const full = await this.prisma.order.findUnique({
+      where: { id: order.id },
+      include: { items: true },
+    });
+    if (full) {
+      await this.prisma.$transaction(async (tx) => {
+        const affected = await tx.order.updateMany({
+          where: { id: full.id, status: OrderStatus.PENDING },
+          data: {
+            status: OrderStatus.CANCELLED,
+            cancelledAt: new Date(),
+            cancelledReason: 'Hold expired (15 minutes)',
+          },
+        });
+        if (affected.count === 0) return;
+        if (full.voucherCode) {
+          const voucher = await tx.voucher.findUnique({
+            where: { code: full.voucherCode },
+            select: { id: true },
+          });
+          if (voucher) {
+            await tx.voucher.update({
+              where: { id: voucher.id },
+              data: { usageCount: { decrement: 1 } },
+            });
+          }
+          await tx.voucherUsage.deleteMany({ where: { orderId: full.id } });
+        }
+        for (const item of full.items) {
+          if (item.imeiDeviceId) {
+            await tx.imeiDevice.updateMany({
+              where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
+              data: { status: ImeiStatus.AVAILABLE },
+            });
+          }
+          await tx.inventory.update({
+            where: { variantId: item.variantId },
+            data: {
+              reservedQty: { decrement: item.quantity },
+              availableQty: { increment: item.quantity },
+            },
+          });
+        }
+      });
+    }
+    throw new BadRequestException(
+      'Order hold has expired. The reserved stock was released — please place the order again.',
+    );
+  }
+
+  // ── H8: UNIFIED WARRANTY ACTIVATION ─────────────────────────
+  // Warranty coverage must depend on POLICY (product.warrantyMonths),
+  // never on which payment method confirmed the order. Previously the VNPay
+  // IPN hardcoded 365 days while COD/manual confirms created no warranty at
+  // all. Every paid/confirmed order funnels through this helper with a
+  // calendar-month end date anchored at the given date.
+  private addWarrantyMonths(date: Date, months: number): Date {
+    // P7: clamp to month-end so Jan 31 + 1 month lands on Feb 28/29,
+    // not Mar 2-3 (native setMonth overflow).
+    const d = new Date(date);
+    const day = d.getDate();
+    d.setMonth(d.getMonth() + months);
+    if (d.getDate() < day) d.setDate(0);
+    return d;
+  }
+
+  private async activateWarranties(
+    tx: any,
+    order: { id: string; userId: string },
+    anchorDate: Date,
+    note: string,
+  ): Promise<void> {
+    const items = await tx.orderItem.findMany({
+      where: { orderId: order.id },
+      include: {
+        variant: { include: { product: { select: { warrantyMonths: true } } } },
+      },
+    });
+    for (const item of items) {
+      if (!item.imeiDeviceId) continue;
+      const months = item.variant?.product?.warrantyMonths ?? 12;
+      const warrantyCode = `WRT-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
+      await tx.warranty.upsert({
+        where: { orderItemId: item.id },
+        update: {
+          status: WarrantyStatus.ACTIVE,
+          startDate: anchorDate,
+          endDate: this.addWarrantyMonths(anchorDate, months),
+        },
+        create: {
+          userId: order.userId,
+          productVariantId: item.variantId,
+          orderItemId: item.id,
+          imeiDeviceId: item.imeiDeviceId,
+          warrantyCode,
+          startDate: anchorDate,
+          endDate: this.addWarrantyMonths(anchorDate, months),
+          status: WarrantyStatus.ACTIVE,
+          notes: note,
+        },
+      });
+    }
+  }
+
+  async createVnpayPaymentUrl(dto: CreateVnpayUrlDto, clientIp?: string, userId?: string) {
     const order = await this.prisma.order.findUnique({
       where: { id: dto.orderId },
       include: { payments: true },
@@ -117,6 +264,12 @@ export class PaymentsService {
     if (!order) {
       throw new NotFoundException('Order not found');
     }
+
+    if (userId && order.userId !== userId) {
+      throw new BadRequestException('Unauthorized order access');
+    }
+
+    await this.rejectIfHoldExpired(order);
 
     if (order.status === OrderStatus.CANCELLED) {
       throw new BadRequestException('Cannot pay for a cancelled order');
@@ -201,7 +354,8 @@ export class PaymentsService {
 
     const checkHash = hashVnpayParams(cleanParams, hashSecret);
 
-    if (checkHash !== secureHash) {
+    // LOW: constant-time comparison — plain !== leaks prefix timing.
+    if (!vnpSignaturesEqual(checkHash, secureHash)) {
       this.logger.warn(`VNPay IPN: Invalid checksum (expected: ${checkHash}, received: ${secureHash})`);
       return { RspCode: '97', Message: 'Invalid Checksum' };
     }
@@ -243,10 +397,35 @@ export class PaymentsService {
       return { RspCode: '02', Message: 'Order already confirmed' };
     }
 
+    // H7: a success IPN arriving after the 15-minute hold expired must not
+    // confirm released stock. Release inline and report so VNPay/the buyer
+    // knows the money needs a refund flow instead of silent confirmation.
+    try {
+      await this.rejectIfHoldExpired(order);
+    } catch (holdErr) {
+      this.logger.warn(
+        `VNPay IPN: Order ${orderNumber} hold expired — released instead of confirming`,
+      );
+      return { RspCode: '02', Message: 'Order hold expired' };
+    }
+
     const responseCode = query['vnp_ResponseCode'];
     if (responseCode === '00') {
       // Payment Successful
-      await this.prisma.$transaction(async (tx) => {
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          // H3(IPN): claim the order PENDING → CONFIRMED conditionally FIRST.
+          // A concurrent duplicate IPN finds count===0 and bails out instead
+          // of writing a second SUCCESS transaction row.
+          const claimed = await tx.order.updateMany({
+            where: { id: order.id, status: OrderStatus.PENDING },
+            data: { status: OrderStatus.CONFIRMED, confirmedAt: new Date() },
+          });
+          if (claimed.count === 0) {
+            const dup: any = new Error('Order already processed by another IPN');
+            dup.code = 'VNPAY_ALREADY_PROCESSED';
+            throw dup;
+          }
         // 1. Create or update payment
         let payment = order.payments.find((p) => p.status === PaymentStatus.PENDING);
         if (!payment) {
@@ -287,50 +466,30 @@ export class PaymentsService {
           },
         });
 
-        // 3. Update Order status = CONFIRMED
-        await tx.order.update({
-          where: { id: order.id },
-          data: {
-            status: OrderStatus.CONFIRMED,
-            confirmedAt: new Date(),
-          },
-        });
+        // 3. Order status was already claimed PENDING → CONFIRMED at the top
+        // of this transaction (conditional updateMany).
 
-        // 4. Mark all reserved IMEIs as SOLD and auto-create Warranty (12 months)
-        const warrantyEndDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-
+        // 4. Mark reserved IMEIs as SOLD (H6: conditional — never resurrect a
+        // unit that was meanwhile BLOCKED/released) and activate warranties
+        // from product policy instead of a hardcoded 365 days (H8).
+        const paidAt = new Date();
         for (const item of order.items) {
           if (item.imeiDeviceId) {
-            await tx.imeiDevice.update({
-              where: { id: item.imeiDeviceId },
+            await tx.imeiDevice.updateMany({
+              where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
               data: {
                 status: ImeiStatus.SOLD,
-                soldAt: new Date(),
-              },
-            });
-
-            const warrantyCode = `WRT-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
-            await tx.warranty.upsert({
-              where: { orderItemId: item.id },
-              update: {
-                status: WarrantyStatus.ACTIVE,
-                startDate: new Date(),
-                endDate: warrantyEndDate,
-              },
-              create: {
-                userId: order.userId,
-                productVariantId: item.variantId,
-                orderItemId: item.id,
-                imeiDeviceId: item.imeiDeviceId,
-                warrantyCode,
-                startDate: new Date(),
-                endDate: warrantyEndDate,
-                status: WarrantyStatus.ACTIVE,
-                notes: 'Tự động kích hoạt khi thanh toán VNPay thành công',
+                soldAt: paidAt,
               },
             });
           }
         }
+        await this.activateWarranties(
+          tx,
+          order,
+          paidAt,
+          'Tự động kích hoạt khi thanh toán VNPay thành công',
+        );
       });
 
       // 5. Trigger email notification
@@ -351,21 +510,43 @@ export class PaymentsService {
 
       this.logger.log(`VNPay IPN: Successfully processed order ${orderNumber}`);
       return { RspCode: '00', Message: 'Confirm Success' };
+      } catch (txErr: any) {
+      // H3(IPN): duplicate concurrent success IPN — already handled.
+      if (txErr?.code === 'VNPAY_ALREADY_PROCESSED') {
+        this.logger.log(`VNPay IPN: Order ${orderNumber} already processed by concurrent IPN`);
+        return { RspCode: '02', Message: 'Order already confirmed' };
+      }
+      throw txErr;
+    }
     } else {
-      // Payment Failed
+      // Payment Failed — dedupe: VNPay retries IPNs, so record at most one
+      // FAILED row per provider transaction instead of one per retry.
       this.logger.warn(
         `VNPay IPN: Payment failed for order ${orderNumber} with code ${responseCode}`,
       );
-      await this.prisma.payment.create({
-        data: {
-          orderId: order.id,
-          method: PaymentMethod.VNPAY,
-          status: PaymentStatus.FAILED,
-          amount: order.totalAmount,
-          provider: 'VNPAY',
-          providerOrderId: query['vnp_TransactionNo'],
-        },
-      });
+      const txnNo = query['vnp_TransactionNo'];
+      const alreadyRecorded = txnNo
+        ? await this.prisma.payment.findFirst({
+            where: {
+              orderId: order.id,
+              status: PaymentStatus.FAILED,
+              providerOrderId: txnNo,
+            },
+            select: { id: true },
+          })
+        : null;
+      if (!alreadyRecorded) {
+        await this.prisma.payment.create({
+          data: {
+            orderId: order.id,
+            method: PaymentMethod.VNPAY,
+            status: PaymentStatus.FAILED,
+            amount: order.totalAmount,
+            provider: 'VNPAY',
+            providerOrderId: txnNo,
+          },
+        });
+      }
 
       return { RspCode: '00', Message: 'Confirm Success' };
     }
@@ -387,7 +568,7 @@ export class PaymentsService {
 
     const checkHash = hashVnpayParams(cleanParams, hashSecret);
 
-    const isValid = checkHash === secureHash;
+    const isValid = vnpSignaturesEqual(checkHash, secureHash);
     const isSuccess = isValid && query['vnp_ResponseCode'] === '00';
 
     return {
@@ -413,6 +594,8 @@ export class PaymentsService {
     });
     if (!order) throw new NotFoundException('Order not found');
 
+    await this.rejectIfHoldExpired(order);
+
     if (order.status === 'CANCELLED') {
       throw new BadRequestException('Cannot pay for a cancelled order');
     }
@@ -421,6 +604,20 @@ export class PaymentsService {
       where: { orderId: dto.orderId, status: PaymentStatus.PAID },
     });
     if (existing) throw new BadRequestException('Order is already paid');
+
+    await this.rejectIfHoldExpired(order as any);
+
+    // M5: double-clicking "pay" must not stack PENDING rows — reuse the fresh
+    // pending payment for the same order+method instead of creating another.
+    const pending = await this.prisma.payment.findFirst({
+      where: {
+        orderId: dto.orderId,
+        method: dto.method,
+        status: PaymentStatus.PENDING,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (pending) return pending;
 
     const payment = await this.prisma.payment.create({
       data: {
@@ -445,35 +642,106 @@ export class PaymentsService {
     return payment;
   }
 
-  async handleCallback(dto: PaymentCallbackDto) {
-    return { received: true, provider: dto.provider };
-  }
-
-  async confirmPayment(paymentId: string) {
+  // ── H5: MANUAL CONFIRM WITH EVIDENCE ────────────────────────
+  // Confirming a bank-transfer payment mints ledger truth from a human click,
+  // so it must carry evidence and perform the SAME atomic settlement the
+  // VNPay IPN does: amount match → PAID → order CONFIRMED → IMEI SOLD →
+  // warranties. Previously it flipped PAID alone (order stayed PENDING and
+  // could later be auto-cancelled by hold expiry; IMEIs never SOLD; no
+  // warranty) and could be clicked repeatedly or on FAILED payments.
+  async confirmPayment(
+    paymentId: string,
+    dto: ConfirmPaymentDto,
+    actorId?: string,
+  ) {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
+      include: { order: { include: { items: true } } },
     });
     if (!payment) throw new NotFoundException('Payment not found');
+    if (payment.status !== PaymentStatus.PENDING) {
+      throw new BadRequestException(
+        `Only a PENDING payment can be confirmed (current: ${payment.status})`,
+      );
+    }
 
-    await this.prisma.paymentTransaction.create({
-      data: {
-        paymentId,
-        transactionCode: this.generateTransactionCode(),
-        type: TransactionType.PAYMENT,
-        status: TransactionStatus.SUCCESS,
-        amount: payment.amount,
-      },
-    });
+    const order = payment.order;
+    if (!order) throw new NotFoundException('Order for payment not found');
+    if (order.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException('Cannot confirm payment for a cancelled order');
+    }
+    if (
+      order.status === OrderStatus.CONFIRMED ||
+      order.status === OrderStatus.COMPLETED ||
+      order.status === OrderStatus.DELIVERED
+    ) {
+      throw new BadRequestException('Order is already confirmed');
+    }
+    // H5: the confirmed amount must equal what the buyer actually owes.
+    if (Math.round(Number(payment.amount)) !== Math.round(Number(order.totalAmount))) {
+      throw new BadRequestException(
+        `Payment amount (${payment.amount}) does not match order total (${order.totalAmount})`,
+      );
+    }
+    await this.rejectIfHoldExpired(order as any);
 
-    return this.prisma.payment.update({
-      where: { id: paymentId },
-      data: { status: PaymentStatus.PAID, paidAt: new Date() },
+    const paidAt = new Date();
+    return this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.payment.updateMany({
+        where: { id: paymentId, status: PaymentStatus.PENDING },
+        data: { status: PaymentStatus.PAID, paidAt: new Date(paidAt) },
+      });
+      if (claimed.count === 0) {
+        throw new BadRequestException('Payment was already processed concurrently');
+      }
+
+      await tx.paymentTransaction.create({
+        data: {
+          paymentId,
+          transactionCode: this.generateTransactionCode(),
+          type: TransactionType.PAYMENT,
+          status: TransactionStatus.SUCCESS,
+          amount: payment.amount,
+          providerReference: dto.providerRef,
+          responseData: {
+            confirmedBy: actorId || null,
+            providerRef: dto.providerRef,
+          },
+        },
+      });
+
+      await tx.order.updateMany({
+        where: { id: order.id, status: OrderStatus.PENDING },
+        data: { status: OrderStatus.CONFIRMED, confirmedAt: paidAt },
+      });
+
+      for (const item of order.items) {
+        if (item.imeiDeviceId) {
+          await tx.imeiDevice.updateMany({
+            where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
+            data: { status: ImeiStatus.SOLD, soldAt: paidAt },
+          });
+        }
+      }
+      await this.activateWarranties(
+        tx,
+        { id: order.id, userId: order.userId },
+        paidAt,
+        'Kích hoạt khi soát chứng từ chuyển khoản thành công',
+      );
+
+      return tx.payment.findUnique({ where: { id: paymentId } });
     });
   }
 
   async failPayment(paymentId: string) {
     const payment = await this.prisma.payment.findUnique({ where: { id: paymentId } });
     if (!payment) throw new NotFoundException('Payment not found');
+    if (payment.status !== PaymentStatus.PENDING) {
+      throw new BadRequestException(
+        `Only a PENDING payment can be marked failed (current: ${payment.status})`,
+      );
+    }
 
     await this.prisma.paymentTransaction.create({
       data: {
@@ -491,16 +759,39 @@ export class PaymentsService {
     });
   }
 
-  async getStatus(paymentId: string) {
+  // H11: payment reads are scoped — a buyer sees only their own orders'
+  // payments. Staff roles keep cross-order visibility for support.
+  private isPrivilegedRole(user: { role?: string; roles?: Array<{ role?: { name?: string } } | string> }): boolean {
+    if (!user) return false;
+    if (user.role && ['STAFF', 'MANAGER', 'ADMIN'].includes(user.role)) return true;
+    const roles = user.roles ?? [];
+    return roles.some((r) => {
+      const name = typeof r === 'string' ? r : r?.role?.name;
+      return name && ['STAFF', 'MANAGER', 'ADMIN'].includes(name);
+    });
+  }
+
+  async getStatus(paymentId: string, user?: { role?: string; roles?: any }) {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
-      include: { transactions: true },
+      include: { transactions: true, order: { select: { id: true, userId: true } } },
     });
     if (!payment) throw new NotFoundException('Payment not found');
+    if (user && !this.isPrivilegedRole(user) && payment.order?.userId !== (user as any)?.id) {
+      throw new NotFoundException('Payment not found');
+    }
     return payment;
   }
 
-  async findByOrder(orderId: string) {
+  async findByOrder(orderId: string, user?: { role?: string; roles?: any }) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, userId: true },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+    if (user && !this.isPrivilegedRole(user) && order.userId !== (user as any)?.id) {
+      throw new NotFoundException('Order not found');
+    }
     return this.prisma.payment.findMany({
       where: { orderId },
       include: { transactions: true },

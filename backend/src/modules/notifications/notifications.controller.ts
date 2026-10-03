@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Put, Query, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto, BroadcastNotificationDto } from './dto/notification.dto';
@@ -18,9 +18,17 @@ export class NotificationsController {
   // ── ALL AUTHENTICATED USERS ───────────────────────────
 
   @Get('my')
-  @ApiOperation({ summary: 'Get my notifications' })
-  getMyNotifications(@CurrentUser() user: any) {
-    return this.notificationsService.getMyNotifications(user.id);
+  @ApiOperation({ summary: 'Get my notifications (paginated)' })
+  getMyNotifications(
+    @CurrentUser() user: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.notificationsService.getMyNotifications(
+      user.id,
+      parseInt(page || '1', 10),
+      parseInt(limit || '20', 10),
+    );
   }
 
   @Get('my/unread-count')
@@ -39,6 +47,12 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Mark all notifications as read' })
   markAllRead(@CurrentUser() user: any) {
     return this.notificationsService.markAllRead(user.id);
+  }
+
+  @Delete('my/:id')
+  @ApiOperation({ summary: 'Delete my notification' })
+  deleteMyNotification(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.notificationsService.deleteMyNotification(user.id, id);
   }
 
   // ── MANAGER / ADMIN ──────────────────────────────────

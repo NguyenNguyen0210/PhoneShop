@@ -37,7 +37,8 @@ export class InventoryController {
   }
 
   @Get(':variantId/check')
-  @ApiOperation({ summary: 'Check stock availability (All authenticated)' })
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Check stock availability (STAFF+)' })
   checkStock(@Param('variantId') variantId: string) {
     return this.inventoryService.checkStock(variantId);
   }

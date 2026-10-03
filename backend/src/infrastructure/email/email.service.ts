@@ -10,6 +10,21 @@ export interface SendEmailOptions {
   html?: string;
 }
 
+// M16: minimal HTML escaper for staff/partner-entered values interpolated
+// into email templates.
+export function escapeHtml(value: string): string {
+  return (value ?? '').replace(/[&<>"']/g, (c) => {
+    switch (c) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      case "'": return '&#39;';
+      default: return c;
+    }
+  });
+}
+
 @Injectable()
 export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
@@ -30,7 +45,7 @@ export class EmailService implements OnModuleInit {
     if (this.isMock) {
       this.logger.warn(
         'EMAIL credentials not set (EMAIL_HOST / EMAIL_USER / EMAIL_PASS). ' +
-          'Running in mock mode — emails will only be logged to console.',
+          'Running without SMTP — emails will only be logged to console, nothing is sent.',
       );
       return;
     }
@@ -85,39 +100,9 @@ export class EmailService implements OnModuleInit {
     });
   }
 
-  async sendPasswordReset(to: string, resetToken: string): Promise<void> {
-    await this.send({
-      to,
-      subject: `[MobileCommerce] Đặt lại mật khẩu`,
-      html: `
-        <div style="font-family:sans-serif;max-width:600px;margin:auto">
-          <h2 style="color:#1a1a2e">🔒 Đặt lại mật khẩu</h2>
-          <p>Sử dụng token dưới đây để đặt lại mật khẩu (có hiệu lực <strong>30 phút</strong>):</p>
-          <div style="background:#f4f4f4;padding:16px;border-radius:8px;font-size:20px;letter-spacing:4px;text-align:center">
-            <strong>${resetToken}</strong>
-          </div>
-          <p style="color:#888;font-size:12px;margin-top:16px">Nếu bạn không yêu cầu thao tác này, hãy bỏ qua email này.</p>
-        </div>
-      `,
-    });
-  }
-
-  async sendVerificationEmail(to: string, verificationCode: string): Promise<void> {
-    await this.send({
-      to,
-      subject: `[MobileCommerce] Xác thực email của bạn`,
-      html: `
-        <div style="font-family:sans-serif;max-width:600px;margin:auto">
-          <h2 style="color:#1a1a2e">✉️ Xác thực tài khoản</h2>
-          <p>Mã xác thực của bạn là:</p>
-          <div style="background:#1a1a2e;color:#fff;padding:24px;border-radius:8px;font-size:32px;letter-spacing:8px;text-align:center">
-            <strong>${verificationCode}</strong>
-          </div>
-          <p style="color:#888;font-size:12px;margin-top:16px">Mã có hiệu lực trong <strong>15 phút</strong>.</p>
-        </div>
-      `,
-    });
-  }
+  // NOTE: password-reset / email-verification senders were removed (dead
+  // code — no auth flow ever called them). When those flows are built, they
+  // need hashed single-use tokens with 15–30 min expiry (see audit notes).
 
   async sendShippingNotification(
     to: string,
@@ -125,14 +110,19 @@ export class EmailService implements OnModuleInit {
     trackingNumber: string,
     providerName: string,
   ): Promise<void> {
+    // M16: provider/tracking values are staff/partner-entered free text —
+    // escape before interpolating into HTML (stored XSS via email client).
+    const safeProvider = escapeHtml(providerName);
+    const safeTracking = escapeHtml(trackingNumber);
+    const safeOrder = escapeHtml(orderNumber);
     await this.send({
       to,
-      subject: `[MobileCommerce] Đơn hàng #${orderNumber} đang được giao`,
+      subject: `[MobileCommerce] Đơn hàng #${safeOrder} đang được giao`,
       html: `
         <div style="font-family:sans-serif;max-width:600px;margin:auto">
           <h2 style="color:#1a1a2e">🚚 Đơn hàng đang trên đường!</h2>
-          <p>Đơn hàng <strong>#${orderNumber}</strong> đã được bàn giao cho <strong>${providerName}</strong>.</p>
-          <p>Mã vận đơn: <strong style="color:#e94560">${trackingNumber}</strong></p>
+          <p>Đơn hàng <strong>#${safeOrder}</strong> đã được bàn giao cho <strong>${safeProvider}</strong>.</p>
+          <p>Mã vận đơn: <strong style="color:#e94560">${safeTracking}</strong></p>
           <p>Bạn có thể tra cứu trạng thái giao hàng trên website của đơn vị vận chuyển.</p>
         </div>
       `,

@@ -2,12 +2,14 @@ import { Module, Global } from '@nestjs/common';
 import { BullModule, getQueueToken } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
-const createMockQueue = (name: string) => ({
+// In-memory queue fallback used when Redis is disabled (REDIS_ENABLED !== 'true').
+// Internal-only job IDs (never user-facing, never persisted as business data).
+const createLocalQueue = (name: string) => ({
   provide: getQueueToken(name),
   useValue: {
     name,
     add: async (jobName: string, data: any) => {
-      return { id: `mock-${Date.now()}`, name: jobName, data };
+      return { id: `local-${Date.now()}`, name: jobName, data };
     },
     on: () => {},
     close: async () => {},
@@ -40,9 +42,9 @@ const isRedisEnabled = process.env.REDIS_ENABLED === 'true';
   providers: isRedisEnabled
     ? []
     : [
-        createMockQueue('email-queue'),
-        createMockQueue('notification-queue'),
-        createMockQueue('order-queue'),
+        createLocalQueue('email-queue'),
+        createLocalQueue('notification-queue'),
+        createLocalQueue('order-queue'),
       ],
   exports: isRedisEnabled
     ? [BullModule]

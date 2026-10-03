@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Put, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { VouchersService } from './vouchers.service';
 import { CreateVoucherDto, ValidateVoucherDto } from './dto/voucher.dto';
 import { UpdateVoucherDto } from './dto/update-voucher.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { OptionalJwtGuard } from '../../common/guards/optional-jwt.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
@@ -14,6 +15,23 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 export class VouchersController {
   constructor(private readonly vouchersService: VouchersService) {}
 
+  @Get('active')
+  @ApiOperation({ summary: 'View active public vouchers' })
+  findPublicActive() {
+    return this.vouchersService.findAll(true);
+  }
+
+  @Post('validate')
+  @UseGuards(OptionalJwtGuard)
+  @ApiOperation({ summary: 'Validate and calculate discount for a voucher' })
+  validate(@Req() req: any, @Body() dto: ValidateVoucherDto) {
+    // M3: OptionalJwtGuard populates req.user only when a valid token is
+    // sent — authenticated quotes use the server-side cart, guests keep the
+    // estimate path. Never 401s here.
+    const userId = req.user?.id;
+    return this.vouchersService.validate(userId, dto);
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
@@ -21,15 +39,6 @@ export class VouchersController {
   findAllActive(@CurrentUser() user: any) {
     const showAll = user.roles.includes(Role.MANAGER) || user.roles.includes(Role.ADMIN);
     return this.vouchersService.findAll(!showAll);
-  }
-
-  @Post('validate')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.USER, Role.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Validate and calculate discount for a voucher' })
-  validate(@CurrentUser() user: any, @Body() dto: ValidateVoucherDto) {
-    return this.vouchersService.validate(user.id, dto);
   }
 
   // ── MANAGER / ADMIN ──────────────────────────────────

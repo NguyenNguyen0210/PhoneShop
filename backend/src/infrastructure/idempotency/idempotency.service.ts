@@ -12,18 +12,28 @@ export class IdempotencyService {
     });
   }
 
-  async createRecord(key: string, userId: string | null, endpoint: string): Promise<IdempotencyRecord> {
+  async createRecord(
+    key: string,
+    userId: string | null,
+    endpoint: string,
+    requestHash?: string,
+  ): Promise<IdempotencyRecord> {
     // Expires in 24 hours
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    
+
     return this.prisma.idempotencyRecord.create({
       data: {
         key,
         userId,
         endpoint,
+        requestHash,
         expiresAt,
       },
     });
+  }
+
+  async deleteRecord(key: string): Promise<void> {
+    await this.prisma.idempotencyRecord.deleteMany({ where: { key } });
   }
 
   async updateRecord(key: string, responseStatus: number, responseBody: any): Promise<IdempotencyRecord> {

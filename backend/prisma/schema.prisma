@@ -198,6 +198,7 @@ model User {
   cart          Cart?
   orders        Order[]
   reviews       Review[]
+  reviewReplies ReviewReply[]
   wishlist      Wishlist?
   voucherUsages VoucherUsage[]
   notifications Notification[]
@@ -313,6 +314,7 @@ model Product {
   slug             String           @unique @db.VarChar(280)
   description      String?          @db.Text
   shortDescription String?          @map("short_description") @db.Text
+  specs            Json?
   condition        ProductCondition @default(NEW)
   status           ProductStatus    @default(DRAFT)
   thumbnailUrl     String?          @map("thumbnail_url") @db.Text
@@ -613,10 +615,31 @@ model Review {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
+  replies ReviewReply[]
+
   @@unique([userId, productId])
   @@index([productId])
   @@index([status])
   @@map("reviews")
+}
+
+// ============================================================
+// REVIEW REPLIES (shop / customer replies under a review)
+// ============================================================
+
+model ReviewReply {
+  id        String   @id @default(uuid()) @db.Uuid
+  reviewId  String   @map("review_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@map("review_replies")
 }
 
 // ============================================================

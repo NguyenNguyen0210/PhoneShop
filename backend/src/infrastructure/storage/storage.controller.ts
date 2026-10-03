@@ -119,6 +119,16 @@ export class StorageController {
       throw new BadRequestException('File path is required');
     }
 
+    // M15: never let a caller address arbitrary bucket keys — only managed
+    // folders, no traversal.
+    if (
+      dto.path.includes('..') ||
+      dto.path.startsWith('/') ||
+      !/^(avatars|products|brands|categories)\//.test(dto.path)
+    ) {
+      throw new BadRequestException('Invalid file path');
+    }
+
     await this.storageService.deleteFile(dto.path);
     return { success: true, message: `File ${dto.path} deleted successfully` };
   }

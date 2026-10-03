@@ -10,33 +10,37 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Warranty')
 @Controller('warranty')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@ApiBearerAuth()
 export class WarrantyController {
   constructor(private readonly warrantyService: WarrantyService) {}
 
-  // ── USER ──────────────────────────────────────────────
-
-  @Get('my')
-  @ApiOperation({ summary: 'Get my warranties (USER)' })
-  getMyWarranties(@CurrentUser() user: any) {
-    return this.warrantyService.getUserWarranties(user.id);
-  }
+  // ── PUBLIC LOOKUP ─────────────────────────────────────
 
   @Get('check/:code')
-  @ApiOperation({ summary: 'Check warranty by code (All)' })
+  @ApiOperation({ summary: 'Check warranty by code or IMEI (Public)' })
   checkStatus(@Param('code') code: string) {
     return this.warrantyService.checkStatus(code);
   }
 
   @Get('search/:code')
-  @ApiOperation({ summary: 'Search warranty by code (All)' })
+  @ApiOperation({ summary: 'Search warranty by code or IMEI (Public)' })
   searchByCode(@Param('code') code: string) {
     return this.warrantyService.searchByCode(code);
   }
 
+  // ── USER ──────────────────────────────────────────────
+
+  @Get('my')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get my warranties (USER)' })
+  getMyWarranties(@CurrentUser() user: any) {
+    return this.warrantyService.getUserWarranties(user.id);
+  }
+
   @Post(':id/claim')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.USER, Role.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Claim warranty (USER)' })
   claimWarranty(
     @CurrentUser() user: any,
@@ -49,28 +53,36 @@ export class WarrantyController {
   // ── STAFF / MANAGER / ADMIN ──────────────────────────
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all warranties (STAFF/MANAGER/ADMIN)' })
   findAll() {
     return this.warrantyService.findAll();
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get warranty detail (STAFF/MANAGER/ADMIN)' })
   findOne(@Param('id') id: string) {
     return this.warrantyService.findOne(id);
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create warranty record (STAFF/MANAGER/ADMIN)' })
   create(@Body() dto: CreateWarrantyDto) {
     return this.warrantyService.create(dto);
   }
 
   @Put(':id/void')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Void warranty (MANAGER/ADMIN)' })
   voidWarranty(@Param('id') id: string) {
     return this.warrantyService.voidWarranty(id);

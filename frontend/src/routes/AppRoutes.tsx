@@ -18,6 +18,7 @@ import { ProfilePage } from '../pages/storefront/Profile/ProfilePage';
 // Auth Pages
 import { LoginPage } from '../pages/storefront/Auth/LoginPage';
 import { RegisterPage } from '../pages/storefront/Auth/RegisterPage';
+import { OAuthCallbackPage } from '../pages/storefront/Auth/OAuthCallbackPage';
 
 // Admin Pages
 import { AdminDashboard } from '../pages/Admin/Dashboard/AdminDashboard';
@@ -49,11 +50,13 @@ export const AppRoutes: React.FC = () => {
         <Route path="/order-success/:id" element={<OrderSuccessPage />} />
         <Route path="/warranty-lookup" element={<WarrantyLookupPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/orders" element={<ProfilePage />} />
       </Route>
 
       {/* Auth Routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/auth/oauth/callback" element={<OAuthCallbackPage />} />
 
       {/* Admin Portal Routes (Protected) */}
       <Route element={<AdminRoute />}>

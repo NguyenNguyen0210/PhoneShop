@@ -14,17 +14,30 @@ import {
   Package,
   Clock,
   ChevronRight,
-  Terminal,
+  BadgeCheck,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export const ProfilePage: React.FC = () => {
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, fetchProfile } = useAuthStore();
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(() => Boolean(user));
+  const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (location.pathname === '/orders' || location.hash === '#orders') {
+      setTimeout(() => {
+        document.getElementById('orders-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    }
+  }, [location.pathname, location.hash]);
+
+  useEffect(() => {
+    fetchProfile().catch(() => {});
+  }, [fetchProfile]);
 
   useEffect(() => {
     let isMounted = true;
@@ -162,25 +175,26 @@ export const ProfilePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 py-10 sm:py-12">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        {/* Terminal Header */}
+        {/* Customer Account Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
           <div>
-            <div className="flex items-center gap-2 text-xs font-mono text-blue-600 mb-1">
-              <Terminal className="w-3.5 h-3.5" />
-              <span>TERMINAL // QUẢN TRỊ DANH TÍNH KHÁCH HÀNG</span>
+            <div className="flex items-center gap-2 text-xs font-bold text-blue-600 mb-1 uppercase tracking-wider">
+              <BadgeCheck className="w-4 h-4 text-blue-600" />
+              <span>TRUNG TÂM TÀI KHOẢN KHÁCH HÀNG</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              Hồ sơ người dùng & Tài khoản
+              Hồ sơ cá nhân &amp; Đơn hàng
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-mono font-semibold rounded-lg">
-              UID: {user.id ? user.id.slice(0, 8) : 'GUEST'}
+            <span className="px-3.5 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold rounded-xl flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-blue-600" />
+              <span>Thành viên PhoneShop</span>
             </span>
           </div>
         </div>
 
-        {/* Clean Light Developer Settings Card */}
+        {/* Profile Card */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
           {/* Banner */}
           <div className="h-36 bg-gradient-to-r from-blue-50 via-indigo-50/50 to-slate-100 border-b border-slate-200 relative overflow-hidden" />
@@ -196,6 +210,7 @@ export const ProfilePage: React.FC = () => {
                       src={avatarSrc}
                       alt={user.fullName || 'Avatar'}
                       className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
                     />
                   ) : (
                     <User className="w-14 h-14 text-slate-400" />
@@ -229,15 +244,15 @@ export const ProfilePage: React.FC = () => {
               {/* Name & Role */}
               <div className="text-center sm:text-left flex-1 space-y-1">
                 <h2 className="text-2xl font-black text-slate-900">{user.fullName || 'Khách hàng'}</h2>
-                <p className="text-xs sm:text-sm text-slate-500 font-mono">{user.email}</p>
+                <p className="text-xs sm:text-sm text-slate-500">{user.email}</p>
                 <div className="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start pt-1">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                     <Shield className="w-3.5 h-3.5" />
-                    Vai trò: {user.role || 'USER'}
+                    <span>{user.role === 'ADMIN' ? 'Quản trị viên' : user.role === 'STAFF' ? 'Nhân viên hệ thống' : 'Thành viên thân thiết'}</span>
                   </span>
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    Supabase CDN WebP
+                    <span>Tài khoản đã xác thực</span>
                   </span>
                 </div>
               </div>
@@ -263,8 +278,8 @@ export const ProfilePage: React.FC = () => {
 
             {/* Details Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-200">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
-                <div className="flex items-center gap-2 text-slate-500 text-xs font-mono uppercase">
+              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-1">
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
                   <User className="w-3.5 h-3.5 text-blue-600" />
                   <span>Họ và tên</span>
                 </div>
@@ -273,12 +288,12 @@ export const ProfilePage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
-                <div className="flex items-center gap-2 text-slate-500 text-xs font-mono uppercase">
+              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-1">
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
                   <Mail className="w-3.5 h-3.5 text-blue-600" />
                   <span>Địa chỉ Email</span>
                 </div>
-                <p className="text-slate-900 font-bold text-sm sm:text-base font-mono">
+                <p className="text-slate-900 font-semibold text-sm sm:text-base">
                   {user.email}
                 </p>
               </div>
@@ -287,12 +302,12 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         {/* Order History Section */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-5">
+        <div id="orders-section" className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-5 scroll-mt-24">
           <div className="flex items-center justify-between pb-3 border-b border-slate-200">
             <div className="flex items-center gap-2">
               <Package className="w-5 h-5 text-blue-600" />
               <h3 className="text-base sm:text-lg font-bold text-slate-900 uppercase tracking-wider">
-                Lịch sử đặt hàng & IMEI liên kết
+                Lịch sử đặt hàng của bạn
               </h3>
             </div>
             <span className="text-xs font-mono text-slate-500">
@@ -310,7 +325,7 @@ export const ProfilePage: React.FC = () => {
               <Clock className="w-8 h-8 text-slate-400 mx-auto" />
               <p className="text-sm font-semibold text-slate-800">Chưa có đơn hàng nào</p>
               <p className="text-xs text-slate-500">
-                Các đơn hàng bạn đặt với cơ chế giữ IMEI 15 phút sẽ xuất hiện tại đây.
+                Các đơn hàng bạn đã đặt sẽ xuất hiện chi tiết tại đây.
               </p>
               <div className="pt-2">
                 <Link

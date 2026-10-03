@@ -28,13 +28,11 @@ export class CreateVnpayUrlDto {
   bankCode?: string;
 }
 
-export class PaymentCallbackDto {
-  @ApiProperty()
+export class ConfirmPaymentDto {
+  @ApiProperty({
+    description: 'Bank transaction reference proving the money arrived (mandatory evidence for manual confirmation)',
+  })
   @IsString()
   @IsNotEmpty()
-  provider: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  data: any;
+  providerRef: string;
 }

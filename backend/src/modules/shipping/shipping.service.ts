@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateShippingDto, UpdateShippingStatusDto, ShippingStatus } from './dto/shipping.dto';
+import { Role } from '../../common/enums/role.enum';
+import { STANDARD_SHIPPING_FEE } from '../../common/constants';
 
 const STATUS_TRANSITIONS: Partial<Record<ShippingStatus, ShippingStatus[]>> = {
   [ShippingStatus.PENDING]:       [ShippingStatus.READY_TO_SHIP],
@@ -19,7 +21,7 @@ export class ShippingService {
    * Replace with actual carrier API call.
    */
   estimateFee(_city?: string, _weight?: number): number {
-    return 30_000; // flat rate 30,000 VND
+    return STANDARD_SHIPPING_FEE;
   }
 
   async create(dto: CreateShippingDto) {
@@ -36,10 +38,45 @@ export class ShippingService {
         orderId: dto.orderId,
         providerName: dto.providerName,
         trackingNumber: dto.trackingNumber,
-        shippingFee: dto.shippingFee ?? this.estimateFee(),
+        // P1: fee defaults to what the buyer was actually charged — a
+        // caller-supplied fee decoupled from the order is a bookkeeping hole.
+        shippingFee: dto.shippingFee ?? Number(order.shippingFee) ?? this.estimateFee(),
         estimatedDeliveryDate: dto.estimatedDeliveryDate ? new Date(dto.estimatedDeliveryDate) : undefined,
       },
     });
+  }
+
+  // P1: owner-or-staff scoping — tracking numbers are private logistics data.
+  private isPrivileged(user: any): boolean {
+    const roles: string[] = user?.roles ?? [];
+    return (
+      user?.role === Role.STAFF || user?.role === Role.MANAGER || user?.role === Role.ADMIN ||
+      roles.includes(Role.STAFF) || roles.includes(Role.MANAGER) || roles.includes(Role.ADMIN)
+    );
+  }
+
+  async findByOrderScoped(orderId: string, user: any) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, userId: true },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+    if (!this.isPrivileged(user) && order.userId !== user?.id) {
+      throw new NotFoundException('Shipping not found for this order');
+    }
+    return this.findByOrder(orderId);
+  }
+
+  async findOneScoped(id: string, user: any) {
+    const shipping = await this.findOne(id);
+    const order = await this.prisma.order.findUnique({
+      where: { id: shipping.orderId },
+      select: { userId: true },
+    });
+    if (!this.isPrivileged(user) && order?.userId !== user?.id) {
+      throw new NotFoundException('Shipping record not found');
+    }
+    return shipping;
   }
 
   async findByOrder(orderId: string) {

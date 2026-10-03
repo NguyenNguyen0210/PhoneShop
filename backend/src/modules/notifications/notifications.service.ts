@@ -25,11 +25,21 @@ export class NotificationsService {
     });
   }
 
-  async getMyNotifications(userId: string) {
-    return this.prisma.notification.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
+  async getMyNotifications(userId: string, page = 1, limit = 20) {
+    // M7(infra): paginate — long-lived accounts would otherwise pull their
+    // entire history on every poll.
+    const safePage = Math.max(1, page || 1);
+    const safeLimit = Math.min(100, Math.max(1, limit || 20));
+    const [total, data] = await Promise.all([
+      this.prisma.notification.count({ where: { userId } }),
+      this.prisma.notification.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        skip: (safePage - 1) * safeLimit,
+        take: safeLimit,
+      }),
+    ]);
+    return { data, total, page: safePage, limit: safeLimit };
   }
 
   async getUnreadCount(userId: string) {
@@ -59,30 +69,48 @@ export class NotificationsService {
     return { success: true };
   }
 
+  async deleteMyNotification(userId: string, id: string) {
+    const notification = await this.prisma.notification.findFirst({
+      where: { id, userId },
+    });
+    if (!notification) throw new NotFoundException('Notification not found');
+    await this.prisma.notification.delete({ where: { id } });
+    return { success: true };
+  }
+
   async sendSystemNotification(dto: BroadcastNotificationDto) {
-    // Get all active users
+    // M13: chunk the fan-out — one giant createMany breaks at scale
+    // (statement size, lock time, gateway timeout) and misreports on partial
+    // failure. 1k rows per batch keeps every statement small.
     const users = await this.prisma.user.findMany({
       where: { status: 'ACTIVE' },
       select: { id: true },
     });
 
-    await this.prisma.notification.createMany({
-      data: users.map((user) => ({
-        userId: user.id,
-        type: dto.type,
-        title: dto.title,
-        message: dto.message,
-        channel: NotificationChannel.IN_APP,
-      })),
-    });
+    const CHUNK_SIZE = 1000;
+    let inserted = 0;
+    for (let i = 0; i < users.length; i += CHUNK_SIZE) {
+      const chunk = users.slice(i, i + CHUNK_SIZE);
+      const res = await this.prisma.notification.createMany({
+        data: chunk.map((user) => ({
+          userId: user.id,
+          type: dto.type,
+          title: dto.title,
+          message: dto.message,
+          channel: NotificationChannel.IN_APP,
+        })),
+      });
+      inserted += res.count;
+    }
 
-    return { sent: users.length };
+    return { sent: inserted };
   }
 
   async findAll() {
     return this.prisma.notification.findMany({
       include: { user: { select: { id: true, email: true } } },
       orderBy: { createdAt: 'desc' },
+      take: 100,
     });
   }
 }

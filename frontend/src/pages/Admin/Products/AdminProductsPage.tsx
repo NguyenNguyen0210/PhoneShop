@@ -26,15 +26,16 @@ import {
   CheckCircleOutlined,
   EyeInvisibleOutlined,
 } from '@ant-design/icons';
-import { mockProducts, mockBrands, mockCategories } from '../../../data/mockProducts';
 import { productService } from '../../../services/productService';
 import { ImageUploadDragger } from '../../../components/admin/ImageUploadDragger';
-import type { Product } from '../../../types';
+import type { Product, Brand, Category } from '../../../types';
 
 const { Title, Text } = Typography;
 
 export const AdminProductsPage: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,27 +43,33 @@ export const AdminProductsPage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [form] = Form.useForm();
 
-  const loadProducts = useCallback(async () => {
-    await Promise.resolve();
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await productService.getAllProductsAdmin();
-      if (res.items && res.items.length > 0) {
-        setProducts(res.items);
+      const [prodRes, brandsRes, catRes] = await Promise.all([
+        productService.getAllProductsAdmin(),
+        productService.getBrands(),
+        productService.getCategories(),
+      ]);
+      if (prodRes.items) {
+        setProducts(prodRes.items);
       }
-    } catch {
-      // Use existing mock
+      if (Array.isArray(brandsRes)) {
+        setBrands(brandsRes);
+      }
+      if (Array.isArray(catRes)) {
+        setCategories(catRes);
+      }
+    } catch (err) {
+      console.error('Failed to load admin products:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      void loadProducts();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [loadProducts]);
+    void loadData();
+  }, [loadData]);
 
   const handleCreateProduct = async (values: any) => {
     try {
@@ -93,7 +100,7 @@ export const AdminProductsPage: React.FC = () => {
       message.success('Thêm sản phẩm thành công!');
       setIsModalOpen(false);
       form.resetFields();
-      await loadProducts();
+      await loadData();
     } catch (err: any) {
       message.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
     }
@@ -373,7 +380,7 @@ export const AdminProductsPage: React.FC = () => {
               style={{ width: 160 }}
               options={[
                 { value: 'ALL', label: 'Tất cả thương hiệu' },
-                ...mockBrands.map((b) => ({ value: b.id, label: b.name })),
+                ...brands.map((b) => ({ value: b.id, label: b.name })),
               ]}
             />
           </div>
@@ -485,8 +492,8 @@ export const AdminProductsPage: React.FC = () => {
           layout="vertical"
           onFinish={handleCreateProduct}
           initialValues={{
-            brandId: mockBrands[0].id,
-            categoryId: mockCategories[0].id,
+            brandId: brands[0]?.id,
+            categoryId: categories[0]?.id,
             variantColor: 'Titan Tự Nhiên',
             variantStorage: '256GB',
             variantRam: '8GB',
@@ -505,8 +512,8 @@ export const AdminProductsPage: React.FC = () => {
             </Form.Item>
 
             <Form.Item name="brandId" label="Thương hiệu" rules={[{ required: true }]}>
-              <Select>
-                {mockBrands.map((b) => (
+              <Select placeholder="Chọn thương hiệu">
+                {brands.map((b) => (
                   <Select.Option key={b.id} value={b.id}>
                     {b.name}
                   </Select.Option>
@@ -517,8 +524,8 @@ export const AdminProductsPage: React.FC = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Form.Item name="categoryId" label="Danh mục sản phẩm" rules={[{ required: true }]}>
-              <Select>
-                {mockCategories.map((c) => (
+              <Select placeholder="Chọn danh mục">
+                {categories.map((c) => (
                   <Select.Option key={c.id} value={c.id}>
                     {c.name}
                   </Select.Option>

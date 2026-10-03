@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
 import { OrdersProcessor } from './orders.processor';
+import { HoldExpirySweeper } from './hold-expiry.sweeper';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 const isRedisEnabled = process.env.REDIS_ENABLED === 'true';
@@ -15,6 +16,7 @@ const isRedisEnabled = process.env.REDIS_ENABLED === 'true';
   controllers: [OrdersController],
   providers: [
     OrdersService,
+    HoldExpirySweeper,
     ...(isRedisEnabled ? [OrdersProcessor] : []),
   ],
   exports: [OrdersService],

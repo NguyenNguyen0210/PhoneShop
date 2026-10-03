@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsIn, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ProductCondition, ProductStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
@@ -55,6 +55,7 @@ export class FilterProductDto {
   @Type(() => Number)
   @IsNumber()
   @Min(1)
+  @Max(100)
   limit?: number;
 
   @ApiPropertyOptional({ default: 'createdAt' })
@@ -65,5 +66,6 @@ export class FilterProductDto {
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()
   @IsString()
+  @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc';
 }

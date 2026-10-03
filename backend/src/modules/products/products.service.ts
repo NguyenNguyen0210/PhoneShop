@@ -5,7 +5,33 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
 import { FilterProductDto } from './dto/filter-product.dto';
-import { ProductStatus } from '@prisma/client';
+import { ProductStatus, ReviewStatus } from '@prisma/client';
+
+// Reviews with nested shop/customer replies (oldest reply first).
+// Reply authors include roles so the storefront can badge shop responses.
+// H9: storefront aggregation and listing only ever see APPROVED reviews —
+// PENDING/REJECTED must never move the rating or render publicly. (Admin
+// moderation uses reviews.findAllAdmin, which is intentionally unfiltered.)
+const reviewsWithRepliesInclude = {
+  where: { status: ReviewStatus.APPROVED },
+  include: {
+    user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+    replies: {
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+            roles: { select: { role: { select: { name: true } } } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' as const },
+    },
+  },
+};
 
 @Injectable()
 export class ProductsService {
@@ -23,6 +49,52 @@ export class ProductsService {
       data: dto,
       include: { brand: true, category: true, variants: true },
     });
+  }
+
+  private formatProduct(product: any) {
+    if (!product) return product;
+    const thumb =
+      product.thumbnailUrl ||
+      product.variants?.[0]?.imageUrl ||
+      '/images/products/iphone-16-pro-max.png';
+
+    const images =
+      Array.isArray(product.images) && product.images.length > 0
+        ? product.images
+        : thumb
+        ? [thumb]
+        : [];
+
+    const variants = Array.isArray(product.variants)
+      ? product.variants.map((v: any) => ({
+          ...v,
+          imageUrl: v.imageUrl || thumb,
+          images:
+            Array.isArray(v.images) && v.images.length > 0
+              ? v.images
+              : [v.imageUrl || thumb],
+        }))
+      : [];
+
+    const reviews = Array.isArray(product.reviews) ? product.reviews : [];
+    // M18: no reviews → rating null (never a fake 5.0). The storefront renders
+    // "Chưa có đánh giá" from reviewCount === 0.
+    const rating = reviews.length > 0
+      ? Number((reviews.reduce((sum: number, r: any) => sum + (r.rating || 5), 0) / reviews.length).toFixed(1))
+      : null;
+    const reviewCount = reviews.length;
+
+    return {
+      ...product,
+      thumbnail: thumb,
+      thumbnailUrl: thumb,
+      images,
+      variants,
+      specs: product.specs || {},
+      rating,
+      reviewCount,
+      reviews,
+    };
   }
 
   async findAll(filter: FilterProductDto, publicOnly = false) {
@@ -75,11 +147,22 @@ export class ProductsService {
         skip,
         take: limit,
         orderBy,
-        include: { brand: true, category: true, variants: { where: { isActive: true } } },
+        include: {
+          brand: true,
+          category: true,
+          variants: { where: { isActive: true }, include: { inventory: true } },
+          reviews: reviewsWithRepliesInclude,
+        },
       }),
     ]);
 
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return {
+      data: data.map((p) => this.formatProduct(p)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(idOrSlug: string) {
@@ -90,9 +173,13 @@ export class ProductsService {
           brand: true,
           category: true,
           variants: { include: { inventory: true } },
+          reviews: {
+            ...reviewsWithRepliesInclude,
+            orderBy: { createdAt: 'desc' as const },
+          },
         },
       });
-      if (first) return first;
+      if (first) return this.formatProduct(first);
     }
 
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
@@ -109,35 +196,42 @@ export class ProductsService {
         brand: true,
         category: true,
         variants: { include: { inventory: true } },
+        reviews: {
+          ...reviewsWithRepliesInclude,
+          orderBy: { createdAt: 'desc' as const },
+        },
       },
     });
     if (!product) throw new NotFoundException('Product not found');
-    return product;
+    return this.formatProduct(product);
   }
 
   async update(id: string, dto: UpdateProductDto) {
-    await this.findOne(id);
+    // M9(infra): findOne accepts slugs/fuzzy ids, but update/remove/status
+    // must use the canonical row id — otherwise a slug input finds the row
+    // yet crashes the write (P2025).
+    const product = await this.findOne(id);
     if (dto.slug) {
       const existing = await this.prisma.product.findFirst({
-        where: { slug: dto.slug, id: { not: id } },
+        where: { slug: dto.slug, id: { not: product.id } },
       });
       if (existing) throw new ConflictException('Product slug already in use');
     }
     return this.prisma.product.update({
-      where: { id },
+      where: { id: product.id },
       data: dto,
       include: { brand: true, category: true, variants: true },
     });
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.product.delete({ where: { id } });
+    const product = await this.findOne(id);
+    return this.prisma.product.delete({ where: { id: product.id } });
   }
 
   async changeStatus(id: string, status: ProductStatus) {
-    await this.findOne(id);
-    return this.prisma.product.update({ where: { id }, data: { status } });
+    const product = await this.findOne(id);
+    return this.prisma.product.update({ where: { id: product.id }, data: { status } });
   }
 
   // ── VARIANTS ──────────────────────────────────────────

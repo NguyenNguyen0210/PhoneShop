@@ -17,6 +17,17 @@ export const authService = {
     return response.data?.data ?? response.data;
   },
 
+  async getGoogleAuthUrl(): Promise<{ url: string; state: string }> {
+    const response = await apiClient.get('/auth/google/url');
+    const data = response.data?.data ?? response.data;
+    return { url: data.url, state: data.state };
+  },
+
+  async googleLogin(code: string, state?: string): Promise<AuthResponse> {
+    const response = await apiClient.post('/auth/google/callback', { code, state });
+    return response.data?.data ?? response.data;
+  },
+
   async logout(): Promise<void> {
     try {
       await apiClient.post('/auth/logout');

@@ -36,14 +36,23 @@ export class InventoryService {
   }
 
   async getLowStockAlerts(threshold?: number) {
-    return this.prisma.inventory.findMany({
-      where: {
-        availableQty: { lte: threshold ? threshold : this.prisma.inventory.fields.reorderLevel },
-      },
+    // M20: Prisma cannot compare two columns in `where` — the previous
+    // `lte: fields.reorderLevel` filter was invalid and crashed this endpoint.
+    // An explicit threshold still filters in SQL; otherwise compare per-row.
+    if (threshold !== undefined) {
+      return this.prisma.inventory.findMany({
+        where: { availableQty: { lte: threshold } },
+        include: {
+          variant: { include: { product: { select: { id: true, name: true } } } },
+        },
+      });
+    }
+    const all = await this.prisma.inventory.findMany({
       include: {
         variant: { include: { product: { select: { id: true, name: true } } } },
       },
     });
+    return all.filter((inv) => inv.availableQty <= inv.reorderLevel);
   }
 
   async adjustStock(variantId: string, dto: AdjustStockDto) {
@@ -52,7 +61,8 @@ export class InventoryService {
 
     if (newQty < 0) throw new BadRequestException('Insufficient stock');
 
-    const newAvailable = Math.max(0, inv.availableQty + dto.quantity);
+    // Available can never exceed physical quantity on hand.
+    const newAvailable = Math.min(Math.max(0, inv.availableQty + dto.quantity), newQty);
 
     return this.prisma.inventory.update({
       where: { variantId },

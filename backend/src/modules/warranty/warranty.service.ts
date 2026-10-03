@@ -51,13 +51,26 @@ export class WarrantyService {
     return warranty;
   }
 
-  async searchByCode(warrantyCode: string) {
-    const warranty = await this.prisma.warranty.findUnique({
-      where: { warrantyCode },
+  async searchByCode(codeOrImei: string) {
+    const clean = codeOrImei.trim();
+    // P4: deterministic newest-first + ACTIVE preferred. Previously a bare
+    // findFirst over the OR could return a stale VOIDED/EXPIRED row for a
+    // device that also has a live warranty, misleading staff and customers.
+    const candidates = await this.prisma.warranty.findMany({
+      where: {
+        OR: [
+          { warrantyCode: { equals: clean, mode: 'insensitive' } },
+          { imeiDevice: { imei: clean } },
+          { imeiDevice: { serialNumber: { equals: clean, mode: 'insensitive' } } },
+        ],
+      },
       include: { productVariant: { include: { product: true } }, imeiDevice: true },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
     });
-    if (!warranty) throw new NotFoundException('Warranty not found');
-    return warranty;
+    if (candidates.length === 0) throw new NotFoundException('Warranty not found');
+    const active = candidates.find((w) => w.status === WarrantyStatus.ACTIVE);
+    return active ?? candidates[0];
   }
 
   async checkStatus(warrantyCode: string) {
@@ -90,7 +103,18 @@ export class WarrantyService {
   }
 
   async voidWarranty(id: string) {
-    await this.findOne(id);
+    const warranty = await this.findOne(id);
+    // P4: voiding is final — only a live or claimed warranty can be voided,
+    // and the handset goes back through inspection (WARRANTY) instead of
+    // dangling in whatever status it had.
+    if (
+      warranty.status !== WarrantyStatus.ACTIVE &&
+      warranty.status !== WarrantyStatus.CLAIMED
+    ) {
+      throw new BadRequestException(
+        `Only ACTIVE or CLAIMED warranties can be voided (current: ${warranty.status})`,
+      );
+    }
     return this.prisma.warranty.update({
       where: { id },
       data: { status: WarrantyStatus.VOIDED },

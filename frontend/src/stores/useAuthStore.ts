@@ -11,6 +11,7 @@ interface AuthState {
 
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   login: (email: string, password: string) => Promise<User>;
+  loginWithGoogle: (code: string, state?: string) => Promise<User>;
   register: (data: {
     email: string;
     password: string;
@@ -24,10 +25,39 @@ interface AuthState {
   isStaffOrAdmin: () => boolean;
 }
 
+const normalizeUser = (u: any): User | null => {
+  if (!u) return null;
+  const rolesArray: string[] = Array.isArray(u.roles)
+    ? u.roles.map((r: any) => (typeof r === 'string' ? r : r?.name || r?.role?.name || ''))
+    : u.role
+    ? [u.role]
+    : [];
+
+  const primaryRole: Role = rolesArray.includes('ADMIN')
+    ? 'ADMIN'
+    : rolesArray.includes('MANAGER')
+    ? 'MANAGER'
+    : rolesArray.includes('STAFF')
+    ? 'STAFF'
+    : (rolesArray[0] as Role) || 'USER';
+
+  const fullName = u.fullName || [u.lastName, u.firstName].filter(Boolean).join(' ') || u.email;
+  const avatar = u.avatar || u.avatarUrl || null;
+
+  return {
+    ...u,
+    role: u.role || primaryRole,
+    roles: rolesArray,
+    fullName,
+    avatar,
+    avatarUrl: avatar,
+  };
+};
+
 const getStoredUser = (): User | null => {
   try {
     const raw = localStorage.getItem('mobilecommerce_user');
-    return raw ? JSON.parse(raw) : null;
+    return raw ? normalizeUser(JSON.parse(raw)) : null;
   } catch {
     return null;
   }
@@ -41,10 +71,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
 
   setAuth: (user: User, accessToken: string, refreshToken: string) => {
-    localStorage.setItem('mobilecommerce_user', JSON.stringify(user));
+    const normalized = normalizeUser(user) || user;
+    localStorage.setItem('mobilecommerce_user', JSON.stringify(normalized));
     localStorage.setItem('mobilecommerce_access_token', accessToken);
     localStorage.setItem('mobilecommerce_refresh_token', refreshToken);
-    set({ user, accessToken, refreshToken, error: null });
+    set({ user: normalized, accessToken, refreshToken, error: null });
   },
 
   login: async (email: string, password: string) => {
@@ -60,6 +91,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return user;
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Đăng nhập thất bại';
+      set({ error: msg, isLoading: false });
+      throw new Error(msg);
+    }
+  },
+
+  loginWithGoogle: async (code: string, state?: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await authService.googleLogin(code, state);
+      const user = res.user;
+      const accessToken = res.accessToken;
+      const refreshToken = res.refreshToken;
+
+      get().setAuth(user, accessToken, refreshToken);
+      set({ isLoading: false });
+      return user;
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Đăng nhập Google thất bại';
       set({ error: msg, isLoading: false });
       throw new Error(msg);
     }
@@ -86,9 +135,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateUser: (partial: Partial<User>) => {
     const current = get().user;
     if (!current) return;
-    const updated = { ...current, ...partial };
-    localStorage.setItem('mobilecommerce_user', JSON.stringify(updated));
-    set({ user: updated });
+    const updated = normalizeUser({ ...current, ...partial });
+    if (updated) {
+      localStorage.setItem('mobilecommerce_user', JSON.stringify(updated));
+      set({ user: updated });
+    }
   },
 
   logout: async () => {
@@ -106,9 +157,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   fetchProfile: async () => {
     try {
-      const user = await authService.getProfile();
-      localStorage.setItem('mobilecommerce_user', JSON.stringify(user));
-      set({ user });
+      const profile = await authService.getProfile();
+      const normalizedUser = normalizeUser(profile);
+      if (normalizedUser) {
+        localStorage.setItem('mobilecommerce_user', JSON.stringify(normalizedUser));
+        set({ user: normalizedUser });
+      }
     } catch {
       // If fetching profile fails (e.g., token expired), keep state or clear
     }
@@ -116,13 +170,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   isAdmin: () => {
     const user = get().user;
-    return user?.role === 'ADMIN';
+    if (!user) return false;
+    const r = (user as any).role;
+    const roles: string[] = (user as any).roles || [];
+    return r === 'ADMIN' || roles.includes('ADMIN');
   },
 
   isStaffOrAdmin: () => {
     const user = get().user;
-    const role = user?.role as Role | undefined;
-    return role === 'ADMIN' || role === 'STAFF' || role === 'MANAGER';
+    if (!user) return false;
+    const r = (user as any).role;
+    const roles: string[] = (user as any).roles || [];
+    const checkRoles = ['ADMIN', 'STAFF', 'MANAGER'];
+    return checkRoles.includes(r) || roles.some((x: string) => checkRoles.includes(x));
   },
 }));
 

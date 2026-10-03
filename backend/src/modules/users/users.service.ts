@@ -45,6 +45,14 @@ export class UsersService {
       data: { passwordHash: hashedPassword },
     });
 
+    // M6: a password change is the standard response to suspected compromise —
+    // revoke all sessions so a stolen refresh token does not survive it
+    // (same predicate as AuthService.logout).
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
     return { success: true };
   }
 

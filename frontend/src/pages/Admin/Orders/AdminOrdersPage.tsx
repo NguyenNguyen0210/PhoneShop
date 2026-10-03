@@ -21,151 +21,32 @@ import {
   BarcodeOutlined,
 } from '@ant-design/icons';
 import { orderService } from '../../../services/orderService';
-import { mockProducts } from '../../../data/mockProducts';
 import type { Order, OrderStatus } from '../../../types';
 
 const { Title, Text } = Typography;
 
-const fallbackOrders: Order[] = [
-  {
-    id: 'ord-1',
-    orderNumber: 'ORD-202610-A91',
-    userId: 'u1',
-    customerName: 'Hoàng Văn Thắng',
-    shippingPhone: '0908123456',
-    shippingAddress: '123 Lê Lợi, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-    notes: 'Giao giờ hành chính, gọi trước 15 phút',
-    status: 'CONFIRMED',
-    paymentMethod: 'VIETQR',
-    paymentStatus: 'PAID',
-    subtotal: 29990000,
-    shippingFee: 0,
-    discount: 0,
-    totalAmount: 29990000,
-    createdAt: new Date().toISOString(),
-    items: [
-      {
-        id: 'item-1',
-        orderId: 'ord-1',
-        variantId: 'var-ip15pm-256-nat',
-        quantity: 1,
-        unitPrice: 29990000,
-        totalPrice: 29990000,
-        imeiDeviceId: 'imei-1',
-        imeiDevice: {
-          id: 'imei-1',
-          imeiNumber: '353245081234567',
-          status: 'SOLD',
-        },
-        variant: {
-          ...mockProducts[0].variants[0],
-          product: mockProducts[0],
-        },
-      },
-    ],
-  },
-  {
-    id: 'ord-2',
-    orderNumber: 'ORD-202610-B42',
-    userId: 'u2',
-    customerName: 'Đặng Mai Phương',
-    shippingPhone: '0987654321',
-    shippingAddress: '45 Cầu Giấy, Hà Nội',
-    status: 'PENDING',
-    paymentMethod: 'COD',
-    paymentStatus: 'PENDING',
-    subtotal: 27990000,
-    shippingFee: 0,
-    discount: 50000,
-    totalAmount: 27940000,
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-    items: [
-      {
-        id: 'item-2',
-        orderId: 'ord-2',
-        variantId: 'var-s24u-256-gray',
-        quantity: 1,
-        unitPrice: 27990000,
-        totalPrice: 27990000,
-        imeiDeviceId: 'imei-3',
-        imeiDevice: {
-          id: 'imei-3',
-          imeiNumber: '864922041234560',
-          status: 'RESERVED',
-        },
-        variant: {
-          ...mockProducts[1].variants[0],
-          product: mockProducts[1],
-        },
-      },
-    ],
-  },
-  {
-    id: 'ord-3',
-    orderNumber: 'ORD-202610-C77',
-    userId: 'u3',
-    customerName: 'Nguyễn Tấn Dũng',
-    shippingPhone: '0912389123',
-    shippingAddress: '88 Nguyễn Huệ, Đà Nẵng',
-    status: 'SHIPPING',
-    paymentMethod: 'VNPAY',
-    paymentStatus: 'PAID',
-    subtotal: 35990000,
-    shippingFee: 0,
-    discount: 0,
-    totalAmount: 35990000,
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    items: [
-      {
-        id: 'item-3',
-        orderId: 'ord-3',
-        variantId: 'var-ip15pm-512-nat',
-        quantity: 1,
-        unitPrice: 35990000,
-        totalPrice: 35990000,
-        imeiDeviceId: 'imei-8',
-        imeiDevice: {
-          id: 'imei-8',
-          imeiNumber: '353245081234575',
-          status: 'SOLD',
-        },
-        variant: {
-          ...mockProducts[0].variants[1],
-          product: mockProducts[0],
-        },
-      },
-    ],
-  },
-];
-
 export const AdminOrdersPage: React.FC = () => {
-  const [orders, setOrders] = useState<Order[]>(fallbackOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const loadOrders = useCallback(async () => {
-    await Promise.resolve();
     setLoading(true);
     try {
       const data = await orderService.getAllOrdersAdmin();
-      if (data && data.length > 0) {
+      if (Array.isArray(data)) {
         setOrders(data);
-      } else {
-        setOrders(fallbackOrders);
       }
-    } catch {
-      // Ignored
+    } catch (err) {
+      console.error('Failed to load orders from database API:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      void loadOrders();
-    }, 0);
-    return () => clearTimeout(timer);
+    void loadOrders();
   }, [loadOrders]);
 
   const handleUpdateStatus = async (orderId: string, nextStatus: OrderStatus) => {
@@ -395,27 +276,29 @@ export const AdminOrdersPage: React.FC = () => {
                   </div>
 
                   {/* Assigned IMEI box */}
-                  <div
-                    style={{
-                      marginTop: 10,
-                      padding: '8px 12px',
-                      background: '#fff',
-                      borderRadius: 8,
-                      border: '1px dashed #cbd5e1',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                  >
-                    <BarcodeOutlined style={{ color: '#2563eb', fontSize: 16 }} />
-                    <span style={{ fontSize: 12, color: '#475569' }}>Mã IMEI đã khóa cho máy này:</span>
-                    <Text code strong style={{ fontSize: 13, color: '#0f172a' }}>
-                      {item.imeiDevice?.imeiNumber || '353245081234567'}
-                    </Text>
-                    <Tag color="green" style={{ fontSize: 10 }}>
-                      ĐÃ GÁN ĐƠN
-                    </Tag>
-                  </div>
+                  {(item.imeiDevice?.imeiNumber || item.imeiDevice?.imei) && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: '8px 12px',
+                        background: '#fff',
+                        borderRadius: 8,
+                        border: '1px dashed #cbd5e1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}
+                    >
+                      <BarcodeOutlined style={{ color: '#2563eb', fontSize: 16 }} />
+                      <span style={{ fontSize: 12, color: '#475569' }}>Mã IMEI đã khóa cho máy này:</span>
+                      <Text code strong style={{ fontSize: 13, color: '#0f172a' }}>
+                        {item.imeiDevice?.imeiNumber || item.imeiDevice?.imei}
+                      </Text>
+                      <Tag color="green" style={{ fontSize: 10 }}>
+                        ĐÃ GÁN ĐƠN
+                      </Tag>
+                    </div>
+                  )}
                 </Card>
               ))}
             </div>

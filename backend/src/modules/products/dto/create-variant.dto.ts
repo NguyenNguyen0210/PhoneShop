@@ -1,6 +1,6 @@
 import {
   IsBoolean, IsDecimal, IsNotEmpty, IsNumber, IsOptional,
-  IsString, IsUrl,
+  IsString, IsUrl, Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -34,18 +34,21 @@ export class CreateVariantDto {
   @ApiProperty({ type: Number })
   @Type(() => Number)
   @IsNumber()
+  @Min(0)
   price: number;
 
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  @Min(0)
   compareAtPrice?: number;
 
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  @Min(0)
   costPrice?: number;
 
   @ApiPropertyOptional()
@@ -57,6 +60,7 @@ export class CreateVariantDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  @Min(0)
   weight?: number;
 
   @ApiPropertyOptional({ default: true })

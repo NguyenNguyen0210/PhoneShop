@@ -16,7 +16,8 @@
     "prisma:validate": "prisma validate",
     "prisma:format": "prisma format",
     "prisma:seed": "prisma db seed",
-    "seed:phones": "tsx prisma/seed_24_phones.ts",
+    "seed:catalog": "tsx prisma/seed.ts",
+    "seed:phones": "tsx prisma/seed.ts",
     "test": "jest"
   },
   "prisma": {

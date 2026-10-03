@@ -8,10 +8,20 @@ dist/
 build/
 **/dist/
 **/dist
+*.tsbuildinfo
+**/*.tsbuildinfo
 
 # Testing
 coverage/
 e2e_screenshots/
+test_artifacts/
+**/test_artifacts/
+test_*.py
+**/test_*.py
+test_*.mjs
+**/test_*.mjs
+test_*.js
+**/test_*.js
 .superpowers/
 
 # Environment variables
@@ -21,11 +31,15 @@ e2e_screenshots/
 **/.env.*
 !.env.example
 !**/.env.example
-!.env.example.secrets
 
 # Logs
 logs
 *.log
+
+# Local docs & scratch (personal notes, plans, specs — not source)
+docs/
+**/docs/
+scratch/
 
 # Git Worktrees
 .worktrees/

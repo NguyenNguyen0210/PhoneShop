@@ -1,9 +1,15 @@
-import { Controller, Get, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Query, ParseIntPipe, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums/role.enum';
 
 @ApiTags('Reports')
 @ApiBearerAuth('access-token')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN)
 @Controller('reports')
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
@@ -19,14 +25,21 @@ export class ReportsController {
   @ApiQuery({ name: 'from', required: true, example: '2026-01-01' })
   @ApiQuery({ name: 'to', required: true, example: '2026-12-31' })
   getRevenue(@Query('from') from: string, @Query('to') to: string) {
-    return this.reportsService.getRevenueReport(new Date(from), new Date(to));
+    // M11: YYYY-MM-DD validated + interpreted as VN-local days in service.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(to || '')) {
+      throw new BadRequestException('Invalid date range (expected YYYY-MM-DD)');
+    }
+    return this.reportsService.getRevenueReport(from, to);
   }
 
   @Get('top-products')
   @ApiOperation({ summary: 'Get top selling products (Admin)' })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   getTopProducts(@Query('limit') limit?: string) {
-    return this.reportsService.getTopSellingProducts(limit ? parseInt(limit) : 10);
+    // M11: clamp — unbounded groupBy pulled the whole sales history.
+    const parsed = parseInt(limit || '10', 10);
+    const safe = Number.isFinite(parsed) ? Math.min(100, Math.max(1, parsed)) : 10;
+    return this.reportsService.getTopSellingProducts(safe);
   }
 
   @Get('order-status')

@@ -15,10 +15,19 @@ import { PrismaModule } from '../../prisma/prisma.module';
     ConfigModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'super-secret',
-        signOptions: { expiresIn: '15m' },
-      }),
+      useFactory: async (configService: ConfigService) => {
+        // M12: fail closed — never boot with a publicly known default secret.
+        // Previously every site fell back to 'super-secret'/'super-refresh-secret'
+        // (published in source), so any env missing the vars minted forgeable JWTs.
+        const secret = configService.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('FATAL: JWT_SECRET must be set (refusing to use default secret)');
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: '15m', algorithm: 'HS256' as const },
+        };
+      },
       inject: [ConfigService],
     }),
   ],

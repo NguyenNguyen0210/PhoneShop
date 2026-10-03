@@ -58,6 +58,21 @@ export class OrdersProcessor extends WorkerHost {
       if (affected.count === 0) return; // Order was already confirmed, paid, or cancelled
       cancelled = true;
 
+      // H2: give the voucher use back together with the stock release
+      if ((order as any).voucherCode) {
+        const voucher = await tx.voucher.findUnique({
+          where: { code: (order as any).voucherCode },
+          select: { id: true },
+        });
+        if (voucher) {
+          await tx.voucher.update({
+            where: { id: voucher.id },
+            data: { usageCount: { decrement: 1 } },
+          });
+        }
+        await tx.voucherUsage.deleteMany({ where: { orderId } });
+      }
+
       for (const item of order.items) {
         if (item.imeiDeviceId) {
           await tx.imeiDevice.updateMany({

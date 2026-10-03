@@ -1,8 +1,10 @@
 import { Module, Global } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { CachingService } from './caching.service';
 
+// NOTE: the CachingService wrapper was removed (dead code — nothing injected
+// it, and an in-memory cache would not share across instances anyway).
+// CacheModule stays registered for future use with explicit invalidation.
 @Global()
 @Module({
   imports: [
@@ -19,7 +21,7 @@ import { CachingService } from './caching.service';
       },
     }),
   ],
-  providers: [CachingService],
-  exports: [CachingService, CacheModule],
+  providers: [],
+  exports: [CacheModule],
 })
 export class CachingModule {}

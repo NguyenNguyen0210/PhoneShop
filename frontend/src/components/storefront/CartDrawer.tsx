@@ -35,14 +35,16 @@ export const CartDrawer: React.FC = () => {
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
         <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-slate-900 text-white">
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5 text-blue-400" />
-              <h2 className="text-lg font-semibold tracking-wide">Giỏ hàng của bạn ({totalCount()})</h2>
+          <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-200 bg-white text-slate-900">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+              <h2 className="text-base font-bold text-slate-900 tracking-tight">Giỏ hàng ({totalCount()})</h2>
             </div>
             <button
               onClick={() => setDrawerOpen(false)}
-              className="p-1 rounded-full text-gray-400 hover:text-white hover:bg-slate-800 transition"
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
               aria-label="Đóng giỏ hàng"
             >
               <X className="w-5 h-5" />
@@ -75,11 +77,16 @@ export const CartDrawer: React.FC = () => {
                     <img
                       src={
                         item.variant.images?.[0] ||
+                        (item.variant as any).imageUrl ||
                         item.product.thumbnail ||
-                        'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&w=200&q=80'
+                        (item.product as any).thumbnailUrl ||
+                        '/images/products/iphone-16-pro-max.png'
                       }
                       alt={item.product.name}
-                      className="w-18 h-18 object-cover rounded-lg border border-gray-100 bg-gray-50 shrink-0"
+                      className="w-18 h-18 object-contain rounded-lg border border-gray-100 bg-gray-50 shrink-0"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/images/products/iphone-16-pro-max.png';
+                      }}
                     />
                     <div className="flex-1 min-w-0">
                       <h4 className="text-sm font-semibold text-gray-900 truncate">
@@ -128,25 +135,24 @@ export const CartDrawer: React.FC = () => {
 
           {/* Footer */}
           {items.length > 0 && (
-            <div className="border-t border-gray-100 bg-gray-50 p-6 space-y-4">
+            <div className="border-t border-slate-200 bg-slate-50/80 p-6 space-y-4">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Tạm tính:</span>
-                <span className="text-lg font-bold text-gray-900">{formatPrice(totalAmount())}</span>
+                <span className="text-slate-600 font-medium">Tạm tính:</span>
+                <span className="text-xl font-black font-mono text-blue-600 tabular-nums">{formatPrice(totalAmount())}</span>
               </div>
-              <p className="text-xs text-gray-500">
-                Chưa bao gồm giảm giá voucher và phí vận chuyển. Thiết bị sẽ được khóa IMEI trong 15
-                phút ở bước thanh toán.
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Chưa bao gồm giảm giá voucher và ưu đãi vận chuyển. Quý khách có thể áp dụng mã ưu đãi ở bước thanh toán.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={handleViewCart}
-                  className="w-full py-2.5 px-4 border border-gray-300 hover:border-gray-400 text-gray-700 bg-white font-medium text-sm rounded-lg transition text-center shadow-xs"
+                  className="w-full py-3 px-4 border border-slate-200 hover:border-slate-300 text-slate-700 bg-white font-bold text-xs sm:text-sm rounded-xl transition text-center shadow-2xs hover:bg-slate-50 cursor-pointer"
                 >
                   Xem chi tiết giỏ
                 </button>
                 <button
                   onClick={handleCheckout}
-                  className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white font-medium text-sm rounded-lg transition flex items-center justify-center gap-1.5 shadow-md shadow-red-200"
+                  className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer"
                 >
                   <span>Thanh toán</span>
                   <ArrowRight className="w-4 h-4" />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Row, Col, Card, Statistic, Table, Tag, Typography, Button, Space } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -14,82 +14,58 @@ import {
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { orderService } from '../../../services/orderService';
-import type { Order } from '../../../types';
+import { imeiService } from '../../../services/imeiService';
+import { productService } from '../../../services/productService';
+import type { Order, ImeiDevice } from '../../../types';
 
 const { Title, Text } = Typography;
 
 export const AdminDashboardPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [imeis, setImeis] = useState<ImeiDevice[]>([]);
+  const [productsCount, setProductsCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    orderService
-      .getAllOrdersAdmin()
-      .then((data) => {
-        if (data && data.length > 0) {
-          setOrders(data);
-        } else {
-          // Mock recent orders for preview
-          setOrders([
-            {
-              id: 'ord-101',
-              orderNumber: 'ORD-202610-A91',
-              userId: 'u1',
-              customerName: 'Hoàng Văn Thắng',
-              shippingPhone: '0908123456',
-              shippingAddress: '123 Lê Lợi, Quận 1, TP.HCM',
-              status: 'CONFIRMED',
-              paymentMethod: 'VIETQR',
-              paymentStatus: 'PAID',
-              subtotal: 29990000,
-              shippingFee: 0,
-              discount: 0,
-              totalAmount: 29990000,
-              createdAt: new Date().toISOString(),
-              items: [],
-            },
-            {
-              id: 'ord-102',
-              orderNumber: 'ORD-202610-B42',
-              userId: 'u2',
-              customerName: 'Đặng Mai Phương',
-              shippingPhone: '0987654321',
-              shippingAddress: '45 Cầu Giấy, Hà Nội',
-              status: 'PENDING',
-              paymentMethod: 'COD',
-              paymentStatus: 'PENDING',
-              subtotal: 27990000,
-              shippingFee: 0,
-              discount: 50000,
-              totalAmount: 27940000,
-              createdAt: new Date(Date.now() - 3600000).toISOString(),
-              items: [],
-            },
-            {
-              id: 'ord-103',
-              orderNumber: 'ORD-202610-C77',
-              userId: 'u3',
-              customerName: 'Nguyễn Tấn Dũng',
-              shippingPhone: '0912389123',
-              shippingAddress: '88 Nguyễn Huệ, Đà Nẵng',
-              status: 'SHIPPING',
-              paymentMethod: 'VNPAY',
-              paymentStatus: 'PAID',
-              subtotal: 35990000,
-              shippingFee: 0,
-              discount: 0,
-              totalAmount: 35990000,
-              createdAt: new Date(Date.now() - 86400000).toISOString(),
-              items: [],
-            },
-          ]);
+    Promise.all([
+      orderService.getAllOrdersAdmin(),
+      imeiService.getAllImeis(),
+      productService.getAllProductsAdmin(),
+    ])
+      .then(([ordersData, imeisData, prodsData]) => {
+        if (Array.isArray(ordersData)) {
+          setOrders(ordersData);
+        }
+        if (Array.isArray(imeisData)) {
+          setImeis(imeisData);
+        }
+        if (prodsData?.total) {
+          setProductsCount(prodsData.total);
         }
       })
-      .catch(() => {
-        // Mock fallback
+      .catch((err) => {
+        console.error('Failed to load dashboard data from database API:', err);
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const totalRevenue = useMemo(() => {
+    return orders
+      .filter((o) => o.status !== 'CANCELLED')
+      .reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+  }, [orders]);
+
+  const availableImeisCount = useMemo(() => {
+    return imeis.filter((i) => i.status === 'AVAILABLE').length;
+  }, [imeis]);
+
+  const reservedImeisCount = useMemo(() => {
+    return imeis.filter((i) => i.status === 'RESERVED').length;
+  }, [imeis]);
+
+  const soldImeisCount = useMemo(() => {
+    return imeis.filter((i) => i.status === 'SOLD').length;
+  }, [imeis]);
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
@@ -308,7 +284,7 @@ export const AdminDashboardPage: React.FC = () => {
                   Tổng doanh thu
                 </span>
               }
-              value={385420000}
+              value={totalRevenue}
               precision={0}
               valueStyle={{
                 color: '#0f172a',
@@ -322,10 +298,10 @@ export const AdminDashboardPage: React.FC = () => {
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
               <span style={{ color: '#059669', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <RiseOutlined /> +18.5%
+                <RiseOutlined /> Thực tế
               </span>
               <Text style={{ fontSize: 11, color: '#64748b' }}>
-                so với tháng trước
+                từ {orders.filter((o) => o.status !== 'CANCELLED').length} đơn hàng
               </Text>
             </div>
           </Card>
@@ -358,10 +334,10 @@ export const AdminDashboardPage: React.FC = () => {
             <Statistic
               title={
                 <span style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
-                  Đơn hàng mới trong ngày
+                  Tổng số đơn hàng
                 </span>
               }
-              value={24}
+              value={orders.length}
               valueStyle={{
                 color: '#0f172a',
                 fontWeight: 800,
@@ -374,7 +350,7 @@ export const AdminDashboardPage: React.FC = () => {
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
               <span style={{ color: '#d97706', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <LockOutlined /> 5 đơn giữ chỗ 15p
+                <LockOutlined /> {reservedImeisCount} đơn giữ chỗ 15p
               </span>
               <Text style={{ fontSize: 11, color: '#64748b' }}>
                 (RESERVED)
@@ -383,7 +359,7 @@ export const AdminDashboardPage: React.FC = () => {
           </Card>
         </Col>
 
-        {/* KPI 3: Low Inventory Alert */}
+        {/* KPI 3: Available Inventory Devices */}
         <Col xs={24} sm={12} lg={6}>
           <Card
             bordered={false}
@@ -410,10 +386,10 @@ export const AdminDashboardPage: React.FC = () => {
             <Statistic
               title={
                 <span style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
-                  Cảnh báo tồn kho thấp
+                  Thiết bị sẵn sàng xuất kho
                 </span>
               }
-              value={4}
+              value={availableImeisCount}
               valueStyle={{
                 color: '#0f172a',
                 fontWeight: 800,
@@ -422,17 +398,17 @@ export const AdminDashboardPage: React.FC = () => {
                 letterSpacing: -0.5,
               }}
               prefix={<AlertOutlined style={{ color: '#f59e0b', fontSize: 20, marginRight: 6 }} />}
-              suffix={<span style={{ fontSize: 14, color: '#64748b' }}>mã SKU</span>}
+              suffix={<span style={{ fontSize: 14, color: '#64748b' }}>máy</span>}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-              <Text style={{ fontSize: 11, color: '#dc2626' }}>
-                Cần nhập thêm lô IMEI mới
+              <Text style={{ fontSize: 11, color: '#059669' }}>
+                {productsCount} sản phẩm, {imeis.length} IMEI định danh
               </Text>
             </div>
           </Card>
         </Col>
 
-        {/* KPI 4: Concurrency Locks */}
+        {/* KPI 4: Concurrency Locks & Sold Devices */}
         <Col xs={24} sm={12} lg={6}>
           <Card
             bordered={false}
@@ -459,10 +435,10 @@ export const AdminDashboardPage: React.FC = () => {
             <Statistic
               title={
                 <span style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
-                  Khóa giữ chỗ IMEI tức thời
+                  Thiết bị đã xuất bán
                 </span>
               }
-              value={7}
+              value={soldImeisCount}
               valueStyle={{
                 color: '#0f172a',
                 fontWeight: 800,
@@ -475,10 +451,10 @@ export const AdminDashboardPage: React.FC = () => {
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
               <span style={{ color: '#2563eb', fontSize: 11, fontWeight: 600 }}>
-                SKIP LOCKED Active
+                Đang giữ chỗ giỏ hàng
               </span>
               <Text style={{ fontSize: 11, color: '#64748b' }}>
-                Concurrency an toàn
+                {reservedImeisCount} máy chờ thanh toán
               </Text>
             </div>
           </Card>
@@ -519,7 +495,7 @@ export const AdminDashboardPage: React.FC = () => {
                 marginBottom: 6,
               }}
             >
-              <ThunderboltOutlined /> Quy trình vận hành IMEI độc quyền & Khóa Concurrency
+              <ThunderboltOutlined /> Quy trình quản lý kho &amp; Thiết bị chính hãng
             </div>
             <div
               style={{
@@ -532,7 +508,7 @@ export const AdminDashboardPage: React.FC = () => {
               Nhập lô IMEI hoặc điều phối giao hàng nhanh
             </div>
             <div style={{ color: '#64748b', fontSize: 12, marginTop: 4 }}>
-              Kiểm tra tính hợp lệ thuật toán Luhn 15 số trước khi đưa thiết bị vào trạng thái sẵn sàng xuất kho
+              Kiểm tra định dạng IMEI chuẩn 15 số quốc tế trước khi đưa thiết bị vào trạng thái sẵn sàng xuất kho
             </div>
           </div>
           <Space size="middle">

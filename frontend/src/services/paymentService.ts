@@ -62,17 +62,7 @@ export const paymentService = {
     amount: number;
     orderInfo?: string;
   }): Promise<{ paymentUrl: string }> {
-    try {
-      const response = await apiClient.post('/payments/vnpay/create-url', data);
-      return response.data?.data ?? response.data;
-    } catch {
-      // Mock / fallback sandbox URL for verification if backend payments module is offline
-      const mockUrl = `https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=${
-        data.amount * 100
-      }&vnp_Command=pay&vnp_CreateDate=${Date.now()}&vnp_CurrCode=VND&vnp_TxnRef=${
-        data.orderId
-      }&vnp_OrderInfo=${encodeURIComponent(data.orderInfo || 'Thanh toan don hang')}`;
-      return { paymentUrl: mockUrl };
-    }
+    const response = await apiClient.post('/payments/vnpay/create-url', data);
+    return response.data?.data ?? response.data;
   },
 };

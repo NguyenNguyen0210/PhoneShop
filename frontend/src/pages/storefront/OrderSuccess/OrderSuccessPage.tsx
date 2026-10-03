@@ -84,7 +84,7 @@ export const OrderSuccessPage: React.FC = () => {
         window.location.href = res.paymentUrl;
       }
     } catch {
-      alert('Chuyển hướng cổng VNPay Sandbox đang được kết nối...');
+      alert('Đang kết nối cổng thanh toán VNPAY...');
     }
   };
 
@@ -96,7 +96,7 @@ export const OrderSuccessPage: React.FC = () => {
     );
   }
 
-  const orderNum = order?.orderNumber || id || 'ORD-98234-A7F';
+  const orderNum = order?.orderNumber || id || 'ĐƠN HÀNG MỚI';
   const total = order?.totalAmount || 0;
   const method = order?.paymentMethod || 'VIETQR';
 
@@ -116,8 +116,9 @@ export const OrderSuccessPage: React.FC = () => {
             Cảm ơn bạn đã tin chọn MobileCommerce!
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-lg mx-auto">
-            Hệ thống đã khóa giữ thiết bị IMEI cho đơn hàng{' '}
-            <strong className="text-slate-900 font-mono">{orderNum}</strong>.
+            Đơn hàng{' '}
+            <strong className="text-slate-900 font-mono">{orderNum}</strong>{' '}
+            của bạn đã được tiếp nhận thành công. PhoneShop sẽ liên hệ sớm nhất để xác nhận và giao hàng.
           </p>
         </div>
 
@@ -289,7 +290,7 @@ export const OrderSuccessPage: React.FC = () => {
             <CreditCard className="w-8 h-8" />
           </div>
           <h3 className="text-lg font-bold text-slate-900">
-            Cổng thanh toán điện tử VNPay Sandbox
+            Cổng thanh toán điện tử VNPAY
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
             Vui lòng nhấn nút bên dưới để chuyển hướng đến cổng thanh toán VNPay và hoàn tất giao dịch.

@@ -45,6 +45,13 @@ export class UpdateReviewDto {
   content?: string;
 }
 
+export class CreateReplyDto {
+  @ApiProperty({ description: 'Reply content (shop response or customer follow-up)' })
+  @IsString()
+  @IsNotEmpty()
+  content: string;
+}
+
 export class ModerateReviewDto {
   @ApiPropertyOptional()
   @IsOptional()

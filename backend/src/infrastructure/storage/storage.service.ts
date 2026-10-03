@@ -41,7 +41,7 @@ export class StorageService implements OnModuleInit {
     if (this.isMock) {
       this.logger.warn(
         'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not configured. ' +
-          'Running in mock mode — storage calls will return placeholder URLs.',
+          'Storage uploads will fail fast — configure Supabase instead of returning fake URLs.',
       );
       return;
     }
@@ -64,6 +64,16 @@ export class StorageService implements OnModuleInit {
 
       if (!metadata.format) {
         throw new BadRequestException('Invalid image buffer');
+      }
+
+      // M15: magic-byte check — the real format comes from parsing the bytes,
+      // not the client-supplied mimetype. SVG/active content is rejected even
+      // though sharp could rasterize it; output below is always plain WebP.
+      const ALLOWED_INPUT_FORMATS = ['jpeg', 'png', 'webp', 'avif', 'gif'];
+      if (!ALLOWED_INPUT_FORMATS.includes(metadata.format)) {
+        throw new BadRequestException(
+          `Unsupported image format: ${metadata.format}. Allowed: JPG, PNG, WebP, AVIF, GIF.`,
+        );
       }
 
       const optimized = await pipeline
@@ -110,11 +120,9 @@ export class StorageService implements OnModuleInit {
     const path = `${folder}/${Date.now()}-${baseName}.${ext}`;
 
     if (this.isMock) {
-      this.logger.log(`[STORAGE MOCK] Uploading: ${path} (${mimeType}, ${finalBuffer.length} bytes)`);
-      return {
-        url: `https://placeholder.supabase.co/storage/v1/object/public/${this.bucket}/${path}`,
-        path,
-      };
+      throw new InternalServerErrorException(
+        'Storage is not configured (missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). Upload rejected to avoid fake placeholder URLs.',
+      );
     }
 
     const { error } = await this.supabase.storage
@@ -140,8 +148,9 @@ export class StorageService implements OnModuleInit {
    */
   async deleteFile(path: string): Promise<void> {
     if (this.isMock) {
-      this.logger.log(`[STORAGE MOCK] Deleting: ${path}`);
-      return;
+      throw new InternalServerErrorException(
+        'Storage is not configured (missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). Delete rejected.',
+      );
     }
 
     const { error } = await this.supabase.storage.from(this.bucket).remove([path]);
