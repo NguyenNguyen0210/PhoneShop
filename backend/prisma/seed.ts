@@ -22,6 +22,12 @@ const prisma = new PrismaClient({ adapter });
 import { generateLuhnImei, validateImei } from '../src/common/utils/imei.util';
 export { generateLuhnImei, validateImei };
 
+// R2 public base URL for seeded product/variant images.
+// Deterministic key convention: products/<source-basename-without-ext>.webp
+const R2 =
+  process.env.CLOUDFLARE_R2_PUBLIC_URL ??
+  'https://pub-dcd7bf5fa7c74b97a10cdc8dfadc4064.r2.dev';
+
 // ============================================================
 // MAIN SEED SCRIPT
 // ============================================================
@@ -242,7 +248,7 @@ async function main() {
       category: 'Flagship',
       description: 'iPhone 15 Pro Max sở hữu khung viền Titan chuẩn hàng không vũ trụ, chip A17 Pro đem lại hiệu năng đồ họa thế hệ mới, nút Tác Vụ đa năng và camera zoom quang học 5x sắc nét.',
       shortDescription: 'Flagship đỉnh cao khung viền Titan từ Apple',
-      thumbnailUrl: 'https://store.storeimages.cdn-apple.com/8756/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-7inch-naturaltitanium?wid=5120&hei=2880&fmt=p-jpg',
+      thumbnailUrl: `${R2}/products/iphone-15-pro-max.webp`,
       variants: [
         {
           sku: 'IPHONE15PM-256-NAT',
@@ -253,7 +259,7 @@ async function main() {
           price: 29990000,
           compareAtPrice: 34990000,
           costPrice: 26000000,
-          imageUrl: 'https://store.storeimages.cdn-apple.com/8756/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-7inch-naturaltitanium?wid=5120&hei=2880&fmt=p-jpg',
+          imageUrl: `${R2}/products/iphone-15-pro-max.webp`,
         },
         {
           sku: 'IPHONE15PM-512-NAT',
@@ -264,7 +270,7 @@ async function main() {
           price: 35990000,
           compareAtPrice: 40990000,
           costPrice: 31000000,
-          imageUrl: 'https://store.storeimages.cdn-apple.com/8756/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-7inch-naturaltitanium?wid=5120&hei=2880&fmt=p-jpg',
+          imageUrl: `${R2}/products/iphone-15-pro-max.webp`,
         },
         {
           sku: 'IPHONE15PM-1TB-NAT',
@@ -275,7 +281,7 @@ async function main() {
           price: 41990000,
           compareAtPrice: 46990000,
           costPrice: 36000000,
-          imageUrl: 'https://store.storeimages.cdn-apple.com/8756/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-7inch-naturaltitanium?wid=5120&hei=2880&fmt=p-jpg',
+          imageUrl: `${R2}/products/iphone-15-pro-max.webp`,
         },
         {
           sku: 'IPHONE15PM-256-BLU',
@@ -286,7 +292,7 @@ async function main() {
           price: 29990000,
           compareAtPrice: 34990000,
           costPrice: 26000000,
-          imageUrl: 'https://store.storeimages.cdn-apple.com/8756/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-7inch-bluetitanium?wid=5120&hei=2880&fmt=p-jpg',
+          imageUrl: `${R2}/products/iphone-15-pro-max.webp`,
         },
         {
           sku: 'IPHONE15PM-512-BLU',
@@ -297,7 +303,7 @@ async function main() {
           price: 35990000,
           compareAtPrice: 40990000,
           costPrice: 31000000,
-          imageUrl: 'https://store.storeimages.cdn-apple.com/8756/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-7inch-bluetitanium?wid=5120&hei=2880&fmt=p-jpg',
+          imageUrl: `${R2}/products/iphone-15-pro-max.webp`,
         },
         {
           sku: 'IPHONE15PM-1TB-BLU',
@@ -308,7 +314,7 @@ async function main() {
           price: 41990000,
           compareAtPrice: 46990000,
           costPrice: 36000000,
-          imageUrl: 'https://store.storeimages.cdn-apple.com/8756/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-7inch-bluetitanium?wid=5120&hei=2880&fmt=p-jpg',
+          imageUrl: `${R2}/products/iphone-15-pro-max.webp`,
         },
       ],
     },
@@ -319,7 +325,7 @@ async function main() {
       category: 'Flagship',
       description: 'Galaxy S24 Ultra khởi nguyên quyền năng Galaxy AI mới, trang bị chip Snapdragon 8 Gen 3 for Galaxy, khung viền Titan và bút S Pen thần thánh.',
       shortDescription: 'Quyền năng Galaxy AI, thiết kế Titan đột phá',
-      thumbnailUrl: 'https://images.samsung.com/is/image/samsung/p6pim/vn/2401/gallery/vn-galaxy-s24-s928-sm-s928bztcxxv-thumb-539304917',
+      thumbnailUrl: `${R2}/products/samsung-galaxy-s24-ultra.webp`,
       variants: [
         {
           sku: 'S24U-12-256-GRY',
@@ -330,7 +336,7 @@ async function main() {
           price: 27990000,
           compareAtPrice: 31990000,
           costPrice: 24000000,
-          imageUrl: 'https://images.samsung.com/is/image/samsung/p6pim/vn/2401/gallery/vn-galaxy-s24-s928-sm-s928bztcxxv-thumb-539304917',
+          imageUrl: `${R2}/products/samsung-galaxy-s24-ultra.webp`,
         },
         {
           sku: 'S24U-12-512-GRY',
@@ -341,7 +347,7 @@ async function main() {
           price: 31990000,
           compareAtPrice: 36990000,
           costPrice: 27500000,
-          imageUrl: 'https://images.samsung.com/is/image/samsung/p6pim/vn/2401/gallery/vn-galaxy-s24-s928-sm-s928bztcxxv-thumb-539304917',
+          imageUrl: `${R2}/products/samsung-galaxy-s24-ultra.webp`,
         },
         {
           sku: 'S24U-12-256-BLK',
@@ -352,7 +358,7 @@ async function main() {
           price: 27990000,
           compareAtPrice: 31990000,
           costPrice: 24000000,
-          imageUrl: 'https://images.samsung.com/is/image/samsung/p6pim/vn/2401/gallery/vn-galaxy-s24-s928-sm-s928bzkcxxv-thumb-539304900',
+          imageUrl: `${R2}/products/samsung-galaxy-s24-ultra.webp`,
         },
         {
           sku: 'S24U-12-512-BLK',
@@ -363,7 +369,7 @@ async function main() {
           price: 31990000,
           compareAtPrice: 36990000,
           costPrice: 27500000,
-          imageUrl: 'https://images.samsung.com/is/image/samsung/p6pim/vn/2401/gallery/vn-galaxy-s24-s928-sm-s928bzkcxxv-thumb-539304900',
+          imageUrl: `${R2}/products/samsung-galaxy-s24-ultra.webp`,
         },
       ],
     },
@@ -374,7 +380,7 @@ async function main() {
       category: 'Flagship',
       description: 'Xiaomi 14 Ultra đồng chế tác Leica với 4 camera 50MP, cảm biến chính 1 inch LYT-900 khẩu độ vô cấp f/1.63-f/4.0, chip Snapdragon 8 Gen 3 cực đỉnh.',
       shortDescription: 'Đỉnh cao nhiếp ảnh di động đồng chế tác cùng Leica',
-      thumbnailUrl: 'https://i02.appmifile.com/832_operator_sg/22/02/2024/79b19b78fa710787a74797171d9d9595.png',
+      thumbnailUrl: `${R2}/products/xiaomi-14-ultra.webp`,
       variants: [
         {
           sku: 'MI14U-16-512-BLK',
@@ -385,7 +391,7 @@ async function main() {
           price: 26990000,
           compareAtPrice: 29990000,
           costPrice: 23000000,
-          imageUrl: 'https://i02.appmifile.com/832_operator_sg/22/02/2024/79b19b78fa710787a74797171d9d9595.png',
+          imageUrl: `${R2}/products/xiaomi-14-ultra.webp`,
         },
         {
           sku: 'MI14U-16-512-WHT',
@@ -396,7 +402,7 @@ async function main() {
           price: 26990000,
           compareAtPrice: 29990000,
           costPrice: 23000000,
-          imageUrl: 'https://i02.appmifile.com/832_operator_sg/22/02/2024/79b19b78fa710787a74797171d9d9595.png',
+          imageUrl: `${R2}/products/xiaomi-14-ultra.webp`,
         },
       ],
     },
