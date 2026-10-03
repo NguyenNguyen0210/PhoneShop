@@ -11,6 +11,8 @@ import {
   message,
   Descriptions,
   Divider,
+  Tabs,
+  Input,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -19,6 +21,7 @@ import {
   SyncOutlined,
   CarOutlined,
   BarcodeOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import { orderService } from '../../../services/orderService';
 import type { Order, OrderStatus } from '../../../types';
@@ -31,19 +34,35 @@ export const AdminOrdersPage: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
+  // Server-side pagination & filter states
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(10);
+  const [total, setTotal] = useState<number>(0);
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
+
   const loadOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await orderService.getAllOrdersAdmin();
-      if (Array.isArray(data)) {
-        setOrders(data);
+      const res = await orderService.getAllOrdersAdmin({
+        page,
+        limit,
+        status: statusFilter === 'ALL' ? undefined : statusFilter,
+        search: searchKeyword.trim() || undefined,
+      });
+      if (res && Array.isArray(res.data)) {
+        setOrders(res.data);
+        setTotal(res.total ?? res.data.length);
+      } else if (Array.isArray(res)) {
+        setOrders(res);
+        setTotal(res.length);
       }
     } catch (err) {
       console.error('Failed to load orders from database API:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, limit, statusFilter, searchKeyword]);
 
   useEffect(() => {
     void loadOrders();
@@ -68,6 +87,7 @@ export const AdminOrdersPage: React.FC = () => {
         setSelectedOrder((prev) => (prev ? { ...prev, status: resultingStatus } : null));
       }
       message.success(`Đã cập nhật trạng thái đơn sang ${resultingStatus}`);
+      void loadOrders();
     } catch (err: any) {
       message.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
     }
@@ -188,6 +208,17 @@ export const AdminOrdersPage: React.FC = () => {
     },
   ];
 
+  const statusTabs = [
+    { key: 'ALL', label: 'Tất cả đơn hàng' },
+    { key: 'PENDING', label: 'Chờ xử lý' },
+    { key: 'CONFIRMED', label: 'Đã xác nhận' },
+    { key: 'PROCESSING', label: 'Đang đóng gói' },
+    { key: 'SHIPPING', label: 'Đang giao hàng' },
+    { key: 'DELIVERED', label: 'Đã giao' },
+    { key: 'COMPLETED', label: 'Hoàn tất' },
+    { key: 'CANCELLED', label: 'Đã hủy' },
+  ];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Title */}
@@ -200,13 +231,72 @@ export const AdminOrdersPage: React.FC = () => {
         </Text>
       </div>
 
+      {/* Filter and Search Bar */}
+      <Card
+        bordered={false}
+        style={{
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: 16,
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+        }}
+      >
+        <Tabs
+          activeKey={statusFilter}
+          onChange={(key) => {
+            setStatusFilter(key);
+            setPage(1);
+          }}
+          items={statusTabs}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+          <Input
+            placeholder="Tìm theo mã đơn hàng, người nhận, số điện thoại..."
+            prefix={<SearchOutlined style={{ color: '#64748b' }} />}
+            value={searchKeyword}
+            onChange={(e) => {
+              setSearchKeyword(e.target.value);
+              setPage(1);
+            }}
+            style={{ width: 360, borderRadius: 8, background: '#ffffff', borderColor: '#e2e8f0' }}
+            allowClear
+          />
+          <Tag
+            style={{
+              borderRadius: 6,
+              padding: '3px 8px',
+              background: '#eff6ff',
+              borderColor: '#bfdbfe',
+              color: '#2563eb',
+              fontWeight: 600,
+            }}
+          >
+            Tổng số đơn: {total}
+          </Tag>
+        </div>
+      </Card>
+
       {/* Orders Table */}
       <Table
         columns={columns}
         dataSource={orders}
         rowKey="id"
         loading={loading}
-        pagination={{ pageSize: 8 }}
+        pagination={{
+          current: page,
+          pageSize: limit,
+          total: total,
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50'],
+          showTotal: (total, range) => `${range[0]}-${range[1]} trên tổng số ${total} đơn hàng`,
+          onChange: (newPage, newPageSize) => {
+            setPage(newPage);
+            if (newPageSize !== limit) {
+              setLimit(newPageSize);
+              setPage(1);
+            }
+          },
+        }}
       />
 
       {/* Modal: Order Detail & Assigned IMEI */}

@@ -35,7 +35,13 @@ export const AdminImeiPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [variantId, setVariantId] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Server-side pagination state
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(10);
+  const [total, setTotal] = useState<number>(0);
 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importForm] = Form.useForm();
@@ -60,26 +66,44 @@ export const AdminImeiPage: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [imeiData, prodData] = await Promise.all([
-        imeiService.getAllImeis(),
-        productService.getAllProductsAdmin(),
-      ]);
-      if (Array.isArray(imeiData)) {
-        setImeis(imeiData);
-      }
-      if (prodData.items) {
-        setProducts(prodData.items);
+      const imeiRes = await imeiService.getImeis({
+        page,
+        limit,
+        status: statusFilter === 'ALL' ? undefined : (statusFilter as ImeiStatus),
+        variantId: variantId === 'ALL' ? undefined : variantId,
+        search: searchQuery.trim() || undefined,
+      });
+      if (imeiRes && Array.isArray(imeiRes.data)) {
+        setImeis(imeiRes.data);
+        setTotal(imeiRes.total ?? imeiRes.data.length);
+      } else if (Array.isArray(imeiRes)) {
+        setImeis(imeiRes);
+        setTotal(imeiRes.length);
       }
     } catch (err) {
-      console.error('Failed to load IMEIs or products from database API:', err);
+      console.error('Failed to load IMEIs from database API:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, limit, statusFilter, variantId, searchQuery]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  // Load products list for variant selector options once
+  useEffect(() => {
+    productService
+      .getAllProductsAdmin()
+      .then((prodData) => {
+        if (prodData.items) {
+          setProducts(prodData.items);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load products for variants:', err);
+      });
+  }, []);
 
   // Live validator for pasted text in textarea
   const handleImeiTextChange = (text: string) => {
@@ -157,6 +181,7 @@ export const AdminImeiPage: React.FC = () => {
         prev.map((i) => (i.id === record.id ? { ...i, status: nextStatus } : i))
       );
       message.info(`Đã cập nhật trạng thái IMEI ${record.imeiNumber} sang ${nextStatus}`);
+      void loadData();
     } catch (err: any) {
       message.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
     }
@@ -235,18 +260,6 @@ export const AdminImeiPage: React.FC = () => {
         return <Tag color="default">{status}</Tag>;
     }
   };
-
-  // Filtered
-  const filteredImeis = imeis.filter((i) => {
-    if (statusFilter !== 'ALL' && i.status !== statusFilter) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchImei = i.imeiNumber.toLowerCase().includes(q);
-      const matchProd = i.variant?.product?.name.toLowerCase().includes(q);
-      if (!matchImei && !matchProd) return false;
-    }
-    return true;
-  });
 
   const columns: ColumnsType<ImeiDevice> = [
     {
@@ -454,17 +467,41 @@ export const AdminImeiPage: React.FC = () => {
             placeholder="Tìm theo mã số IMEI (15 số)..."
             prefix={<SearchOutlined style={{ color: '#64748b' }} />}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: 280, borderRadius: 8, background: '#ffffff', borderColor: '#e2e8f0' }}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(1);
+            }}
+            style={{ width: 260, borderRadius: 8, background: '#ffffff', borderColor: '#e2e8f0' }}
             allowClear
           />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 12, color: '#475569' }}>Lọc biến thể:</Text>
+            <Select
+              value={variantId}
+              onChange={(val) => {
+                setVariantId(val);
+                setPage(1);
+              }}
+              style={{ width: 240 }}
+              showSearch
+              optionFilterProp="label"
+              options={[
+                { value: 'ALL', label: 'Tất cả biến thể' },
+                ...allVariants.map((v) => ({ value: v.variantId, label: v.label })),
+              ]}
+            />
+          </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Text style={{ fontSize: 12, color: '#475569' }}>Lọc trạng thái:</Text>
             <Select
               value={statusFilter}
-              onChange={setStatusFilter}
-              style={{ width: 220 }}
+              onChange={(val) => {
+                setStatusFilter(val);
+                setPage(1);
+              }}
+              style={{ width: 200 }}
               options={[
                 { value: 'ALL', label: 'Tất cả trạng thái' },
                 { value: 'AVAILABLE', label: 'Sẵn sàng (AVAILABLE)' },
@@ -480,37 +517,13 @@ export const AdminImeiPage: React.FC = () => {
               style={{
                 borderRadius: 6,
                 padding: '3px 8px',
-                background: '#ecfdf5',
-                borderColor: '#a7f3d0',
-                color: '#059669',
+                background: '#eff6ff',
+                borderColor: '#bfdbfe',
+                color: '#2563eb',
                 fontWeight: 600,
               }}
             >
-              Tổng có sẵn: {imeis.filter((i) => i.status === 'AVAILABLE').length}
-            </Tag>
-            <Tag
-              style={{
-                borderRadius: 6,
-                padding: '3px 8px',
-                background: '#fffbeb',
-                borderColor: '#fde68a',
-                color: '#d97706',
-                fontWeight: 600,
-              }}
-            >
-              Đang khóa 15p: {imeis.filter((i) => i.status === 'RESERVED').length}
-            </Tag>
-            <Tag
-              style={{
-                borderRadius: 6,
-                padding: '3px 8px',
-                background: '#f1f5f9',
-                borderColor: '#cbd5e1',
-                color: '#475569',
-                fontWeight: 600,
-              }}
-            >
-              Đã xuất kho: {imeis.filter((i) => i.status === 'SOLD').length}
+              Tổng thiết bị: {total}
             </Tag>
           </div>
         </div>
@@ -528,10 +541,24 @@ export const AdminImeiPage: React.FC = () => {
       >
         <Table
           columns={columns}
-          dataSource={filteredImeis}
+          dataSource={imeis}
           rowKey="id"
           loading={loading}
-          pagination={{ pageSize: 8 }}
+          pagination={{
+            current: page,
+            pageSize: limit,
+            total: total,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50'],
+            showTotal: (total, range) => `${range[0]}-${range[1]} trên tổng số ${total} thiết bị`,
+            onChange: (newPage, newPageSize) => {
+              setPage(newPage);
+              if (newPageSize !== limit) {
+                setLimit(newPageSize);
+                setPage(1);
+              }
+            },
+          }}
           style={{ background: 'transparent' }}
         />
       </Card>

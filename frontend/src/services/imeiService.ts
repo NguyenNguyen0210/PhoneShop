@@ -1,5 +1,23 @@
 import { apiClient } from './apiClient';
-import type { ImeiDevice } from '../types';
+import type { ImeiDevice, ImeiStatus } from '../types';
+
+export interface PaginatedImeis {
+  data: ImeiDevice[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+const mapImeiItem = (item: any): ImeiDevice => ({
+  id: item.id,
+  imeiNumber: item.imeiNumber || item.imei || '',
+  variantId: item.variantId,
+  status: item.status,
+  variant: item.variant,
+  createdAt: item.createdAt,
+  soldAt: item.soldAt,
+});
 
 export const imeiService = {
   validateLuhn(imei: string): boolean {
@@ -15,19 +33,45 @@ export const imeiService = {
     return sum % 10 === 0;
   },
 
-  async getAllImeis(params?: { variantId?: string; status?: string }): Promise<ImeiDevice[]> {
+  async getImeis(params?: {
+    variantId?: string;
+    status?: ImeiStatus;
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<PaginatedImeis> {
     const response = await apiClient.get('/imei', { params });
-    const data = response.data?.data ?? response.data;
-    const rawList = Array.isArray(data) ? data : data?.items ?? [];
-    return rawList.map((item: any) => ({
-      id: item.id,
-      imeiNumber: item.imei || item.imeiNumber,
-      variantId: item.variantId,
-      status: item.status,
-      variant: item.variant,
-      createdAt: item.createdAt,
-      soldAt: item.soldAt,
-    }));
+    const resData = response.data?.data ?? response.data;
+    if (Array.isArray(resData)) {
+      const mapped = resData.map(mapImeiItem);
+      return Object.assign([...mapped], {
+        data: mapped,
+        total: mapped.length,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? (mapped.length || 10),
+        totalPages: 1,
+      }) as unknown as PaginatedImeis;
+    }
+    const rawList = Array.isArray(resData?.data)
+      ? resData.data
+      : Array.isArray(resData?.items)
+      ? resData.items
+      : [];
+    const mapped = rawList.map(mapImeiItem);
+    const limit = resData?.limit ?? params?.limit ?? 10;
+    const total = resData?.total ?? mapped.length;
+    return Object.assign([...mapped], {
+      data: mapped,
+      total,
+      page: resData?.page ?? params?.page ?? 1,
+      limit,
+      totalPages: resData?.totalPages ?? (limit > 0 ? Math.ceil(total / limit) : 1),
+    }) as unknown as PaginatedImeis;
+  },
+
+  async getAllImeis(params?: { variantId?: string; status?: string }): Promise<ImeiDevice[]> {
+    const res = await this.getImeis(params as any);
+    return res.data;
   },
 
   async searchImei(imei: string): Promise<ImeiDevice> {

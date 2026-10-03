@@ -12,6 +12,14 @@ export interface CheckoutPayload {
   addressId?: string;
 }
 
+export interface PaginatedOrders {
+  data: Order[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export const orderService = {
   async checkout(payload: CheckoutPayload): Promise<Order> {
     let addressId = payload.addressId;
@@ -76,10 +84,37 @@ export const orderService = {
     }
   },
 
-  async getAllOrdersAdmin(): Promise<Order[]> {
-    const response = await apiClient.get('/orders');
-    const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : data?.items ?? [];
+  async getAllOrdersAdmin(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  }): Promise<PaginatedOrders> {
+    const response = await apiClient.get('/orders', { params });
+    const resData = response.data?.data ?? response.data;
+    if (Array.isArray(resData)) {
+      return Object.assign([...resData], {
+        data: resData,
+        total: resData.length,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? (resData.length || 10),
+        totalPages: 1,
+      }) as unknown as PaginatedOrders;
+    }
+    const data = Array.isArray(resData?.data)
+      ? resData.data
+      : Array.isArray(resData?.items)
+      ? resData.items
+      : [];
+    const limit = resData?.limit ?? params?.limit ?? 10;
+    const total = resData?.total ?? data.length;
+    return Object.assign([...data], {
+      data,
+      total,
+      page: resData?.page ?? params?.page ?? 1,
+      limit,
+      totalPages: resData?.totalPages ?? (limit > 0 ? Math.ceil(total / limit) : 1),
+    }) as unknown as PaginatedOrders;
   },
 
   async updateOrderStatus(
