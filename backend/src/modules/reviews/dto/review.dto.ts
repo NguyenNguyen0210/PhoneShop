@@ -1,28 +1,45 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+  IsArray,
+  ArrayMaxSize,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class CreateReviewDto {
-  @ApiProperty()
+  @ApiProperty({ description: 'ID of the product being reviewed' })
   @IsUUID()
   productId: string;
 
-  @ApiProperty({ minimum: 1, maximum: 5 })
+  @ApiProperty({ minimum: 1, maximum: 5, description: 'Rating from 1 to 5' })
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(5)
   rating: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Optional short summary/title' })
   @IsOptional()
   @IsString()
   title?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Detailed review content' })
   @IsOptional()
   @IsString()
   content?: string;
+
+  @ApiPropertyOptional({ type: [String], description: 'List of image URLs (max 5)' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(5)
+  images?: string[];
 }
 
 export class UpdateReviewDto {
@@ -43,6 +60,13 @@ export class UpdateReviewDto {
   @IsOptional()
   @IsString()
   content?: string;
+
+  @ApiPropertyOptional({ type: [String], description: 'List of image URLs (max 5)' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(5)
+  images?: string[];
 }
 
 export class CreateReplyDto {
