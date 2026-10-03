@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateShippingDto, UpdateShippingStatusDto, ShippingStatus } from './dto/shipping.dto';
+import { CreateShippingDto, UpdateShippingStatusDto, UpdateOrderShippingDto, ShippingStatus } from './dto/shipping.dto';
 import { Role } from '../../common/enums/role.enum';
 import { STANDARD_SHIPPING_FEE } from '../../common/constants';
 
@@ -117,6 +117,29 @@ export class ShippingService {
     return this.prisma.shipping.findMany({
       include: { order: { select: { orderNumber: true, userId: true, totalAmount: true } } },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateByOrder(orderId: string, dto: UpdateOrderShippingDto) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+
+    const updateData: any = {};
+    if (dto.providerName) updateData.providerName = dto.providerName;
+    if (dto.trackingNumber !== undefined) updateData.trackingNumber = dto.trackingNumber;
+    if (dto.estimatedDeliveryDate) {
+      updateData.estimatedDeliveryDate = new Date(dto.estimatedDeliveryDate);
+    }
+
+    return this.prisma.shipping.upsert({
+      where: { orderId },
+      update: updateData,
+      create: {
+        orderId,
+        providerName: dto.providerName || 'Giao hàng Tiêu chuẩn',
+        trackingNumber: dto.trackingNumber,
+        estimatedDeliveryDate: dto.estimatedDeliveryDate ? new Date(dto.estimatedDeliveryDate) : undefined,
+      },
     });
   }
 }

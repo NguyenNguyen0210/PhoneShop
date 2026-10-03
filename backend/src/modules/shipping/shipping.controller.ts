@@ -3,7 +3,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ShippingService } from './shipping.service';
-import { CreateShippingDto, UpdateShippingStatusDto } from './dto/shipping.dto';
+import { CreateShippingDto, UpdateShippingStatusDto, UpdateOrderShippingDto } from './dto/shipping.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -55,5 +55,15 @@ export class ShippingController {
     @Body() dto: UpdateShippingStatusDto,
   ) {
     return this.shippingService.updateStatus(id, dto);
+  }
+
+  @Patch('order/:orderId')
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Update shipping info (carrier, tracking) for an order (STAFF+)' })
+  updateByOrder(
+    @Param('orderId', ParseUUIDPipe) orderId: string,
+    @Body() dto: UpdateOrderShippingDto,
+  ) {
+    return this.shippingService.updateByOrder(orderId, dto);
   }
 }
