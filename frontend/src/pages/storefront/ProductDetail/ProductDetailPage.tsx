@@ -231,7 +231,7 @@ export const ProductDetailPage: React.FC = () => {
                   onClick={() => setActiveImage(img)}
                   className={`w-20 h-20 rounded-2xl border-2 p-1.5 bg-white shrink-0 overflow-hidden transition-all cursor-pointer ${
                     activeImage === img
-                      ? 'border-rose-500 shadow-sm ring-2 ring-rose-500/20'
+                      ? 'border-blue-600 shadow-sm ring-2 ring-blue-500/20'
                       : 'border-slate-200 opacity-70 hover:opacity-100 hover:border-slate-300'
                   }`}
                 >
@@ -307,8 +307,8 @@ export const ProductDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Commercial Price Box (#E11D48 / text-rose-600) */}
-            <div className="bg-rose-50/50 border border-rose-200/80 rounded-2xl p-4 sm:p-5 flex flex-wrap items-baseline gap-3.5 shadow-xs">
+            {/* Commercial Price Box - Clean slate background and soft border */}
+            <div className="bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 sm:p-5 flex flex-wrap items-baseline gap-3.5 shadow-xs">
               <span className="text-3xl sm:text-4xl font-black text-rose-600 tabular-nums font-mono">
                 {formatPrice(selectedVariant.price)}
               </span>
@@ -318,7 +318,7 @@ export const ProductDetailPage: React.FC = () => {
                 </span>
               )}
               {discountPercent && (
-                <span className="text-xs font-extrabold px-2 py-0.5 bg-rose-100 text-rose-700 rounded-full border border-rose-200">
+                <span className="text-xs font-extrabold px-2 py-0.5 bg-rose-50 text-rose-600 rounded-full border border-rose-200/60">
                   -{discountPercent}%
                 </span>
               )}
@@ -333,7 +333,7 @@ export const ProductDetailPage: React.FC = () => {
                 <label className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   1. Chọn màu sắc:
                 </label>
-                <span className="text-xs font-semibold text-rose-600">
+                <span className="text-xs font-semibold text-slate-800">
                   {selectedVariant.color}
                 </span>
               </div>
@@ -350,7 +350,7 @@ export const ProductDetailPage: React.FC = () => {
                       onClick={() => handleColorChange(color)}
                       className={`relative flex items-center gap-2.5 px-3.5 py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-xs ${
                         isSelected
-                          ? 'border-rose-500 bg-rose-50/50 text-rose-950 ring-2 ring-rose-500/20'
+                          ? 'border-blue-600 bg-blue-50/40 text-blue-950 ring-2 ring-blue-500/20'
                           : 'border-slate-200 bg-white hover:border-slate-300 text-slate-800'
                       }`}
                     >
@@ -360,7 +360,7 @@ export const ProductDetailPage: React.FC = () => {
                       />
                       <span>{color}</span>
                       {isSelected && (
-                        <span className="w-3.5 h-3.5 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0 ml-0.5">
+                        <span className="w-3.5 h-3.5 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 ml-0.5">
                           <Check className="w-2 h-2 stroke-[3]" />
                         </span>
                       )}
@@ -396,12 +396,12 @@ export const ProductDetailPage: React.FC = () => {
                       onClick={() => handleStorageChange(storage)}
                       className={`relative p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between shadow-xs ${
                         isSelected
-                          ? 'border-rose-500 bg-rose-50/40 text-rose-950 ring-2 ring-rose-500/20'
+                          ? 'border-blue-600 bg-blue-50/30 text-slate-900 ring-2 ring-blue-500/20'
                           : 'border-slate-200 bg-white hover:border-slate-300 text-slate-800'
                       }`}
                     >
                       {isSelected && (
-                        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-xs">
+                        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-xs">
                           <Check className="w-2.5 h-2.5 stroke-[3]" />
                         </span>
                       )}
@@ -409,7 +409,7 @@ export const ProductDetailPage: React.FC = () => {
                         <span className="text-xs font-extrabold tracking-tight text-slate-900">
                           {storage} {v?.ram ? `• ${v.ram}` : ''}
                         </span>
-                        <Cpu className={`w-3.5 h-3.5 ${isSelected ? 'text-rose-600' : 'text-slate-400'}`} />
+                        <Cpu className={`w-3.5 h-3.5 ${isSelected ? 'text-blue-600' : 'text-slate-400'}`} />
                       </div>
 
                       <div className="mt-1.5">
