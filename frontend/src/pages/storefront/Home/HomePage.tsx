@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   ShieldCheck,
   Sparkles,
@@ -20,9 +20,17 @@ import { ProductCard } from '../../../components/storefront/ProductCard';
 import { BrandLogo } from '../../../components/common/BrandLogo';
 import { ProductFilterSidebar } from '../../../components/storefront/ProductFilterSidebar';
 import { ProductSortToolbar } from '../../../components/storefront/ProductSortToolbar';
+import { StorefrontPagination } from '../../../components/storefront/StorefrontPagination';
 import { FALLBACK_PRODUCT_IMAGE, r2Url } from '../../../utils/imageFallback';
 
 export const HomePage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pageParam = parseInt(searchParams.get('page') || '1', 10);
+  const currentPage = isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
+  const PAGE_SIZE = 12;
+
+  const productGridRef = useRef<HTMLDivElement>(null);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -127,16 +135,73 @@ export const HomePage: React.FC = () => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
   };
 
+  const handlePageChange = (newPage: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('page', String(newPage));
+      return next;
+    });
+    productGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const resetPageToFirst = () => {
+    setSearchParams((prev) => {
+      if (!prev.has('page') || prev.get('page') === '1') {
+        return prev;
+      }
+      const next = new URLSearchParams(prev);
+      next.set('page', '1');
+      return next;
+    });
+  };
+
+  const handleSelectBrand = (brandName: string) => {
+    setSelectedBrand(brandName);
+    resetPageToFirst();
+  };
+
+  const handlePriceRangeChange = (range: [number, number]) => {
+    setPriceRange(range);
+    resetPageToFirst();
+  };
+
   const toggleStorage = (storage: string) => {
     setSelectedStorages((prev) =>
       prev.includes(storage) ? prev.filter((s) => s !== storage) : [...prev, storage]
     );
+    resetPageToFirst();
   };
 
   const toggleRam = (ram: string) => {
     setSelectedRams((prev) =>
       prev.includes(ram) ? prev.filter((r) => r !== ram) : [...prev, ram]
     );
+    resetPageToFirst();
+  };
+
+  const handleInStockChange = (val: boolean) => {
+    setInStockOnly(val);
+    resetPageToFirst();
+  };
+
+  const handleOnSaleChange = (val: boolean) => {
+    setOnSaleOnly(val);
+    resetPageToFirst();
+  };
+
+  const handleMinRatingChange = (val: number | null) => {
+    setMinRating(val);
+    resetPageToFirst();
+  };
+
+  const handleSearchChange = (kw: string) => {
+    setSearchKeyword(kw);
+    resetPageToFirst();
+  };
+
+  const handleSortChange = (sort: 'default' | 'price-asc' | 'price-desc' | 'rating' | 'newest') => {
+    setSortBy(sort);
+    resetPageToFirst();
   };
 
   const hasActiveFilters =
@@ -160,6 +225,12 @@ export const HomePage: React.FC = () => {
     setMinRating(null);
     setSearchKeyword('');
     setSortBy('default');
+    setSearchParams((prev) => {
+      if (!prev.has('page')) return prev;
+      const next = new URLSearchParams(prev);
+      next.delete('page');
+      return next;
+    });
   };
 
   const getMinVariantPrice = (p: Product): number => {
@@ -269,6 +340,29 @@ export const HomePage: React.FC = () => {
     minRating,
     sortBy,
   ]);
+
+  const totalCount = filteredProducts.length;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const safeCurrentPage = totalPages > 0 ? Math.min(Math.max(1, currentPage), totalPages) : 1;
+
+  const paginatedProducts = useMemo(() => {
+    const start = (safeCurrentPage - 1) * PAGE_SIZE;
+    return filteredProducts.slice(start, start + PAGE_SIZE);
+  }, [filteredProducts, safeCurrentPage]);
+
+  // Adjust URL page if out of bounds
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('page', String(totalPages));
+          return next;
+        },
+        { replace: true }
+      );
+    }
+  }, [currentPage, totalPages, setSearchParams]);
 
   return (
     <div className="space-y-12 sm:space-y-16 pb-20 bg-[#F8FAFC] text-slate-800 min-h-screen">
@@ -438,7 +532,7 @@ export const HomePage: React.FC = () => {
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none pt-1">
             <button
               type="button"
-              onClick={() => setSelectedBrand('all')}
+              onClick={() => handleSelectBrand('all')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-2 ${
                 selectedBrand === 'all'
                   ? 'bg-slate-900 text-white shadow-md'
@@ -456,7 +550,7 @@ export const HomePage: React.FC = () => {
                 <button
                   key={b.id || b.slug}
                   type="button"
-                  onClick={() => setSelectedBrand(b.name)}
+                  onClick={() => handleSelectBrand(b.name)}
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
                     isSelected
                       ? 'bg-slate-900 text-white shadow-md'
@@ -477,23 +571,23 @@ export const HomePage: React.FC = () => {
         </div>
 
         {/* 2-Column Responsive Layout: Sidebar Filter + Main Products Column */}
-        <div className="flex flex-col lg:flex-row items-start gap-6 pt-2">
+        <div ref={productGridRef} className="scroll-mt-24 flex flex-col lg:flex-row items-start gap-6 pt-2">
           {/* Left Column: Filter Sidebar (Desktop) */}
           <div className="hidden lg:block w-72 shrink-0 sticky top-24 self-start">
             <ProductFilterSidebar
               showBrands={false}
               priceRange={priceRange}
-              onPriceRangeChange={setPriceRange}
+              onPriceRangeChange={handlePriceRangeChange}
               selectedStorages={selectedStorages}
               onToggleStorage={toggleStorage}
               selectedRams={selectedRams}
               onToggleRam={toggleRam}
               inStockOnly={inStockOnly}
-              onToggleInStock={setInStockOnly}
+              onToggleInStock={handleInStockChange}
               onSaleOnly={onSaleOnly}
-              onToggleOnSale={setOnSaleOnly}
+              onToggleOnSale={handleOnSaleChange}
               minRating={minRating}
-              onSelectMinRating={setMinRating}
+              onSelectMinRating={handleMinRatingChange}
               hasActiveFilters={hasActiveFilters}
               onResetFilters={resetFilters}
             />
@@ -503,9 +597,9 @@ export const HomePage: React.FC = () => {
           <div className="flex-1 w-full min-w-0 space-y-5">
             <ProductSortToolbar
               searchKeyword={searchKeyword}
-              onSearchChange={setSearchKeyword}
+              onSearchChange={handleSearchChange}
               sortBy={sortBy}
-              onSortChange={setSortBy}
+              onSortChange={handleSortChange}
               totalCount={filteredProducts.length}
               onToggleMobileFilter={() => setShowMobileFilter(true)}
             />
@@ -551,11 +645,22 @@ export const HomePage: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {paginatedProducts.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+
+                <StorefrontPagination
+                  currentPage={safeCurrentPage}
+                  totalPages={totalPages}
+                  totalCount={totalCount}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={handlePageChange}
+                  className="mt-6"
+                />
+              </>
             )}
           </div>
         </div>
@@ -589,17 +694,17 @@ export const HomePage: React.FC = () => {
               <ProductFilterSidebar
                 showBrands={false}
                 priceRange={priceRange}
-                onPriceRangeChange={setPriceRange}
+                onPriceRangeChange={handlePriceRangeChange}
                 selectedStorages={selectedStorages}
                 onToggleStorage={toggleStorage}
                 selectedRams={selectedRams}
                 onToggleRam={toggleRam}
                 inStockOnly={inStockOnly}
-                onToggleInStock={setInStockOnly}
+                onToggleInStock={handleInStockChange}
                 onSaleOnly={onSaleOnly}
-                onToggleOnSale={setOnSaleOnly}
+                onToggleOnSale={handleOnSaleChange}
                 minRating={minRating}
-                onSelectMinRating={setMinRating}
+                onSelectMinRating={handleMinRatingChange}
                 hasActiveFilters={hasActiveFilters}
                 onResetFilters={resetFilters}
                 className="border-0 shadow-none p-0"

@@ -57,27 +57,36 @@ export const normalizeProduct = (p: any): Product => {
 
 export const productService = {
   async getProducts(params?: ProductFilterParams): Promise<PaginatedProducts> {
-    const response = await apiClient.get('/products', { params });
+    const queryParams: ProductFilterParams = {
+      limit: 12,
+      ...params,
+    };
+    const response = await apiClient.get('/products', { params: queryParams });
     const data = response.data?.data ?? response.data;
     // Backend might return an array or { items, total, ... }
     if (Array.isArray(data)) {
       const items = data.map(normalizeProduct);
+      const limit = queryParams.limit ?? 12;
+      const total = items.length;
       return {
         items,
-        total: items.length,
-        page: 1,
-        limit: items.length,
-        totalPages: 1,
+        total,
+        page: queryParams.page ?? 1,
+        limit,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
       };
     }
     const rawItems = data.items || data.data || data.products || [];
     const items = rawItems.map(normalizeProduct);
+    const limit = data.limit ?? queryParams.limit ?? 12;
+    const total = data.total ?? items.length;
+    const totalPages = data.totalPages ?? Math.max(1, Math.ceil(total / limit));
     return {
       items,
-      total: data.total ?? items.length,
-      page: data.page ?? 1,
-      limit: data.limit ?? 50,
-      totalPages: data.totalPages ?? 1,
+      total,
+      page: data.page ?? queryParams.page ?? 1,
+      limit,
+      totalPages,
     };
   },
 
