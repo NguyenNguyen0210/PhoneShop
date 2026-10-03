@@ -1,7 +1,27 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateImeiDto, UpdateImeiStatusDto, ImportImeiDto } from './dto/imei.dto';
-import { ImeiStatus } from '@prisma/client';
+import { ImeiStatus, Prisma } from '@prisma/client';
+import { PaginationQueryDto, PaginatedResponse } from '../../common/dto/pagination.dto';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+
+export class QueryImeiDto extends PaginationQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  variantId?: string;
+
+  @ApiPropertyOptional({ enum: ImeiStatus })
+  @IsOptional()
+  @IsEnum(ImeiStatus)
+  status?: ImeiStatus;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  search?: string;
+}
 
 @Injectable()
 export class ImeiService {
@@ -89,15 +109,44 @@ export class ImeiService {
     });
   }
 
-  async findAll(variantId?: string, status?: ImeiStatus) {
-    const where: any = {};
-    if (variantId) where.variantId = variantId;
-    if (status)    where.status    = status;
-    return this.prisma.imeiDevice.findMany({
-      where,
-      include: { variant: { include: { product: { select: { id: true, name: true } } } } },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(query: QueryImeiDto = {}): Promise<PaginatedResponse<any>> {
+    const page = Number(query?.page) > 0 ? Number(query.page) : 1;
+    const limit = Number(query?.limit) > 0 ? Number(query.limit) : 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ImeiDeviceWhereInput = {};
+    if (query?.variantId) {
+      where.variantId = query.variantId;
+    }
+    if (query?.status) {
+      where.status = query.status;
+    }
+    if (query?.search && query.search.trim()) {
+      const searchTerm = query.search.trim();
+      where.OR = [
+        { imei: { contains: searchTerm, mode: 'insensitive' } },
+        { serialNumber: { contains: searchTerm, mode: 'insensitive' } },
+      ];
+    }
+
+    const [total, data] = await Promise.all([
+      this.prisma.imeiDevice.count({ where }),
+      this.prisma.imeiDevice.findMany({
+        where,
+        skip,
+        take: limit,
+        include: { variant: { include: { product: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
   }
 
   async findOne(id: string) {

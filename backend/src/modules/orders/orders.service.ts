@@ -12,6 +12,21 @@ import { CreateOrderDto, CancelOrderDto } from './dto/order.dto';
 import { OrderStatus, VoucherType, ImeiStatus, WarrantyStatus, Prisma, PaymentStatus, PaymentMethod, TransactionStatus, TransactionType, RefundStatus, InstallmentStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { STANDARD_SHIPPING_FEE } from '../../common/constants';
+import { PaginationQueryDto, PaginatedResponse } from '../../common/dto/pagination.dto';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+
+export class QueryOrdersDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ enum: OrderStatus })
+  @IsOptional()
+  @IsEnum(OrderStatus)
+  status?: OrderStatus;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  search?: string;
+}
 
 const CANCELLABLE_STATUSES: OrderStatus[] = [
   OrderStatus.PENDING,
@@ -521,24 +536,51 @@ export class OrdersService {
     return order;
   }
 
-  async findAll() {
-    const orders = await this.prisma.order.findMany({
-      include: {
-        user: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } },
-        address: true,
-        items: {
-          include: {
-            variant: { include: { product: true } },
-            imeiDevice: true,
-          },
-        },
-        payments: true,
-        installmentApplication: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(query: QueryOrdersDto = {}): Promise<PaginatedResponse<any>> {
+    const page = Number(query?.page) > 0 ? Number(query.page) : 1;
+    const limit = Number(query?.limit) > 0 ? Number(query.limit) : 10;
+    const skip = (page - 1) * limit;
 
-    return orders.map((o) => {
+    const where: Prisma.OrderWhereInput = {};
+
+    if (query?.status) {
+      where.status = query.status;
+    }
+
+    if (query?.search && query.search.trim()) {
+      const searchTerm = query.search.trim();
+      where.OR = [
+        { orderNumber: { contains: searchTerm, mode: 'insensitive' } },
+        { address: { recipientName: { contains: searchTerm, mode: 'insensitive' } } },
+        { address: { phone: { contains: searchTerm, mode: 'insensitive' } } },
+        { user: { phone: { contains: searchTerm, mode: 'insensitive' } } },
+        { user: { email: { contains: searchTerm, mode: 'insensitive' } } },
+      ];
+    }
+
+    const [total, orders] = await Promise.all([
+      this.prisma.order.count({ where }),
+      this.prisma.order.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: true,
+          address: true,
+          items: {
+            include: {
+              variant: { include: { product: true } },
+              imeiDevice: true,
+            },
+          },
+          payments: true,
+          installmentApplication: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const data = orders.map((o) => {
       const customerName =
         o.address?.recipientName ||
         (o.user ? `${o.user.lastName || ''} ${o.user.firstName || ''}`.trim() : 'Khách hàng');
@@ -557,6 +599,14 @@ export class OrdersService {
         paymentStatus: primaryPayment?.status || 'PENDING',
       };
     });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
   }
 
   async findOne(id: string) {

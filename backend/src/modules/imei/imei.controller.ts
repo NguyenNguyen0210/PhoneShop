@@ -1,7 +1,9 @@
 import { Controller, Get, Post, Body, Param, UseGuards, Put, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { ImeiService } from './imei.service';
+import { ImeiService, QueryImeiDto } from './imei.service';
 import { CreateImeiDto, UpdateImeiStatusDto, ImportImeiDto } from './dto/imei.dto';
+
+export { QueryImeiDto };
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -18,13 +20,8 @@ export class ImeiController {
   @Get()
   @Roles(Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'View all IMEI devices (MANAGER/ADMIN)' })
-  @ApiQuery({ name: 'variantId', required: false })
-  @ApiQuery({ name: 'status', required: false, enum: ImeiStatus })
-  findAll(
-    @Query('variantId') variantId?: string,
-    @Query('status') status?: ImeiStatus,
-  ) {
-    return this.imeiService.findAll(variantId, status);
+  findAll(@Query() query: QueryImeiDto) {
+    return this.imeiService.findAll(query);
   }
 
   @Get('search')
