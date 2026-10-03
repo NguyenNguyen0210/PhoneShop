@@ -580,12 +580,20 @@ export async function seedFeedbackAndAftersales(
     const template = reviewTemplates[idx % reviewTemplates.length];
     usedUserProductPairs.add(`${pair.userId}_${pair.productId}`);
 
+    const attachImages = idx % 3 === 0
+      ? [
+          'https://images.unsplash.com/photo-1511707171634-5f897ff02545?auto=format&fit=crop&w=800&q=80',
+          'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?auto=format&fit=crop&w=800&q=80',
+        ].slice(0, (idx % 2) + 1)
+      : [];
+
     reviewsToInsert.push({
       userId: pair.userId,
       productId: pair.productId,
       rating: template.rating,
       title: template.title,
       content: template.content,
+      images: attachImages,
       status: ReviewStatus.APPROVED,
       isVerified: true,
       createdAt: new Date(Date.now() - (idx * 2 + 1) * 3600000),
