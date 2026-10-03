@@ -14,6 +14,7 @@ import {
   MenuFoldOutlined,
   ThunderboltOutlined,
   CreditCardOutlined,
+  UndoOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
 
@@ -52,6 +53,11 @@ export const AdminLayout: React.FC = () => {
       label: 'Quản lý Đơn hàng',
     },
     {
+      key: '/admin/returns',
+      icon: <UndoOutlined style={{ fontSize: 16 }} />,
+      label: 'Quản lý Đổi trả',
+    },
+    {
       key: '/admin/installments',
       icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
       label: 'Hồ sơ trả góp',
@@ -85,6 +91,7 @@ export const AdminLayout: React.FC = () => {
     if (location.pathname === '/admin/products') return 'Quản lý Sản phẩm & Biến thể';
     if (location.pathname === '/admin/imei') return 'Quản trị Kho Thiết bị & Quản lý IMEI';
     if (location.pathname === '/admin/orders') return 'Quản lý Đơn hàng & Điều phối';
+    if (location.pathname === '/admin/returns') return 'Quản lý Đổi trả & Hoàn tiền';
     if (location.pathname === '/admin/installments') return 'Quản lý Hồ sơ trả góp & Thẩm định';
     return 'Tổng quan hệ thống (Dashboard)';
   };
