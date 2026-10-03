@@ -27,6 +27,7 @@ export interface Brand {
   name: string;
   slug: string;
   logo?: string;
+  logoUrl?: string;
   description?: string;
   isActive?: boolean;
 }
