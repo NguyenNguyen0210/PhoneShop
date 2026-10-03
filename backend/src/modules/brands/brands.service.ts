@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { UpdateBrandDto } from './dto/update-brand.dto';
@@ -37,6 +37,11 @@ export class BrandsService {
 
     return this.prisma.brand.findMany({
       where,
+      include: {
+        _count: {
+          select: { products: true },
+        },
+      },
       orderBy: { name: 'asc' },
     });
   }
@@ -71,7 +76,25 @@ export class BrandsService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    const brand = await this.prisma.brand.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: { products: true },
+        },
+      },
+    });
+
+    if (!brand) {
+      throw new NotFoundException('Brand not found');
+    }
+
+    if (brand._count && brand._count.products > 0) {
+      throw new BadRequestException(
+        `Không thể xóa thương hiệu "${brand.name}" vì đang có ${brand._count.products} sản phẩm liên kết. Vui lòng chuyển hoặc xóa sản phẩm trước.`,
+      );
+    }
+
     return this.prisma.brand.delete({
       where: { id },
     });
