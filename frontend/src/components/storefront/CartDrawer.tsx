@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Trash2, ShoppingBag, Plus, Minus, ArrowRight } from 'lucide-react';
 import { useCartStore } from '../../stores/useCartStore';
+import { FALLBACK_PRODUCT_IMAGE } from '../../utils/imageFallback';
 
 export const CartDrawer: React.FC = () => {
   const navigate = useNavigate();
@@ -80,12 +81,12 @@ export const CartDrawer: React.FC = () => {
                         (item.variant as any).imageUrl ||
                         item.product.thumbnail ||
                         (item.product as any).thumbnailUrl ||
-                        '/images/products/iphone-16-pro-max.png'
+                        FALLBACK_PRODUCT_IMAGE
                       }
                       alt={item.product.name}
                       className="w-18 h-18 object-contain rounded-lg border border-gray-100 bg-gray-50 shrink-0"
                       onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = '/images/products/iphone-16-pro-max.png';
+                        (e.currentTarget as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
                       }}
                     />
                     <div className="flex-1 min-w-0">

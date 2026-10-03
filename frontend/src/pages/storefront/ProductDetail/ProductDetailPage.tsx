@@ -17,6 +17,7 @@ import { productService } from '../../../services/productService';
 import type { Product, ProductVariant } from '../../../types';
 import { useCartStore } from '../../../stores/useCartStore';
 import { resolveColorHex } from '../../../utils/colorHelper';
+import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 
 export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -149,7 +150,7 @@ export const ProductDetailPage: React.FC = () => {
     );
   }
 
-  const fallbackImg = '/images/products/iphone-16-pro-max.png';
+  const fallbackImg = FALLBACK_PRODUCT_IMAGE;
 
   const imagesList = product.images?.length
     ? product.images

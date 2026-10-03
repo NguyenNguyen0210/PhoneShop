@@ -19,6 +19,7 @@ import {
 import { useCartStore } from '../../../stores/useCartStore';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { orderService } from '../../../services/orderService';
+import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 
 export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
@@ -497,12 +498,12 @@ export const CheckoutPage: React.FC = () => {
                           (it.variant as any).imageUrl ||
                           it.product.thumbnail ||
                           (it.product as any).thumbnailUrl ||
-                          '/images/products/iphone-16-pro-max.png'
+                          FALLBACK_PRODUCT_IMAGE
                         }
                         alt={it.product.name}
                         className="w-full h-full object-contain"
                         onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = '/images/products/iphone-16-pro-max.png';
+                          (e.currentTarget as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
                         }}
                       />
                     </div>

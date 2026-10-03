@@ -13,6 +13,7 @@ import {
 import { productService } from '../../../services/productService';
 import type { Product, Brand } from '../../../types';
 import { ProductCard } from '../../../components/storefront/ProductCard';
+import { FALLBACK_PRODUCT_IMAGE, r2Url } from '../../../utils/imageFallback';
 
 export const HomePage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -34,7 +35,7 @@ export const HomePage: React.FC = () => {
       price: 30990000,
       comparePrice: 34990000,
       monthlyPay: '2.580.000₫/tháng',
-      image: '/images/products/iphone-16-pro-max.png',
+      image: FALLBACK_PRODUCT_IMAGE,
       badge: 'Flagship Mới Nhất 2026',
       stockStatus: 'Còn 5 suất ưu đãi tại kho – Giao hỏa tốc hôm nay',
     },
@@ -48,7 +49,7 @@ export const HomePage: React.FC = () => {
       price: 25290000,
       comparePrice: 31990000,
       monthlyPay: '2.107.000₫/tháng',
-      image: '/images/products/samsung-s24-ultra.png',
+      image: r2Url('products/samsung-s24-ultra.webp'),
       badge: 'Galaxy AI Đỉnh Cao',
       stockStatus: 'Còn 8 máy tại kho – Sẵn sàng xuất kho ngay',
     },
@@ -62,7 +63,7 @@ export const HomePage: React.FC = () => {
       price: 37590000,
       comparePrice: 43990000,
       monthlyPay: '3.132.000₫/tháng',
-      image: '/images/products/samsung-z-fold6.png',
+      image: r2Url('products/samsung-z-fold6.webp'),
       badge: 'Đột Phá Màn Hình Gập',
       stockStatus: 'Còn 4 máy tại kho – Đặt giữ ưu đãi ngay',
     },

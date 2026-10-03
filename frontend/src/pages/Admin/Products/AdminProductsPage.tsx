@@ -540,7 +540,7 @@ export const AdminProductsPage: React.FC = () => {
 
           <Form.Item
             name="thumbnail"
-            label="Ảnh đại diện thiết bị (Tự động nén WebP & lưu Supabase CDN)"
+            label="Ảnh đại diện thiết bị (Tự động nén WebP & lưu Cloudflare R2)"
           >
             <ImageUploadDragger folder="products" />
           </Form.Item>

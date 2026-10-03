@@ -22,6 +22,7 @@ import { voucherService, type VoucherInfo } from '../../../services/voucherServi
 import { productService } from '../../../services/productService';
 import type { Product } from '../../../types';
 import { resolveColorHex } from '../../../utils/colorHelper';
+import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 
 export const CartPage: React.FC = () => {
   const navigate = useNavigate();
@@ -210,7 +211,7 @@ export const CartPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {suggestedProducts.map((p) => {
                   const v0 = p.variants?.[0];
-                  const thumb = p.thumbnail || p.thumbnailUrl || v0?.imageUrl || '/images/products/iphone-16-pro-max.png';
+                  const thumb = p.thumbnail || p.thumbnailUrl || v0?.imageUrl || FALLBACK_PRODUCT_IMAGE;
                   return (
                     <div
                       key={p.id}
@@ -396,7 +397,7 @@ export const CartPage: React.FC = () => {
                     item.variant?.imageUrl ||
                     item.product?.thumbnail ||
                     item.product?.thumbnailUrl ||
-                    '/images/products/iphone-16-pro-max.png';
+                    FALLBACK_PRODUCT_IMAGE;
 
                   return (
                     <div
@@ -416,7 +417,7 @@ export const CartPage: React.FC = () => {
                             loading="lazy"
                             onError={(e) => {
                               (e.currentTarget as HTMLImageElement).src =
-                                '/images/products/iphone-16-pro-max.png';
+                                FALLBACK_PRODUCT_IMAGE;
                             }}
                           />
                         </Link>

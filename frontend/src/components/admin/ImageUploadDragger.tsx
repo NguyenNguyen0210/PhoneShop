@@ -76,7 +76,7 @@ export const ImageUploadDragger: React.FC<ImageUploadDraggerProps> = ({
             <div className="max-w-xs truncate">
               <p className="text-xs text-slate-500 font-medium truncate">{value}</p>
               <span className="inline-block mt-1 px-2 py-0.5 text-[10px] bg-emerald-100 text-emerald-700 rounded font-semibold">
-                Supabase CDN (WebP)
+                Cloudflare R2 (WebP)
               </span>
             </div>
           </div>
@@ -118,7 +118,7 @@ export const ImageUploadDragger: React.FC<ImageUploadDraggerProps> = ({
           {loading && (
             <div className="mt-3 px-6">
               <Progress percent={percent} size="small" status="active" />
-              <p className="text-xs text-blue-600 mt-1">Đang tối ưu & đẩy lên Supabase Storage...</p>
+              <p className="text-xs text-blue-600 mt-1">Đang tối ưu & đẩy lên Cloudflare R2...</p>
             </div>
           )}
         </Dragger>

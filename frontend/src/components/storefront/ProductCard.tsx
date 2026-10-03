@@ -4,6 +4,7 @@ import { ShoppingCart, Star, Check } from 'lucide-react';
 import type { Product } from '../../types';
 import { useCartStore } from '../../stores/useCartStore';
 import { getDistinctColors } from '../../utils/colorHelper';
+import { FALLBACK_PRODUCT_IMAGE } from '../../utils/imageFallback';
 
 interface ProductCardProps {
   product: Product;
@@ -69,7 +70,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     product.thumbnailUrl ||
     primaryVariant?.images?.[0] ||
     primaryVariant?.imageUrl ||
-    '/images/products/iphone-16-pro-max.png';
+    FALLBACK_PRODUCT_IMAGE;
 
   return (
     <div className="group relative flex flex-col justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-slate-300">
@@ -101,7 +102,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
             loading="lazy"
             onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = '/images/products/iphone-16-pro-max.png';
+              (e.currentTarget as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
             }}
           />
         </Link>

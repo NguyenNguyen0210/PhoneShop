@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient';
 import type { Product, Brand, Category, ProductVariant } from '../types';
+import { FALLBACK_PRODUCT_IMAGE } from '../utils/imageFallback';
 
 export interface ProductFilterParams {
   search?: string;
@@ -31,7 +32,7 @@ export const normalizeProduct = (p: any): Product => {
     p.images?.[0] ||
     p.variants?.[0]?.imageUrl ||
     p.variants?.[0]?.images?.[0] ||
-    '/images/products/iphone-16-pro-max.png';
+    FALLBACK_PRODUCT_IMAGE;
 
   const images = Array.isArray(p.images) && p.images.length > 0
     ? p.images
