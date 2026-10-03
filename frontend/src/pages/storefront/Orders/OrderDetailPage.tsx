@@ -15,11 +15,21 @@ import {
   MapPin,
   ChevronLeft,
   ShieldCheck,
+  Printer,
+  RotateCcw,
+  Ban,
+  Undo2,
+  Check,
 } from 'lucide-react';
 import { orderService } from '../../../services/orderService';
 import { installmentService } from '../../../services/installmentService';
 import type { Order, InstallmentApplication, InstallmentStatus } from '../../../types';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
+import { OrderTrackingTimeline } from './components/OrderTrackingTimeline';
+import { OrderInvoiceModal } from './components/OrderInvoiceModal';
+import { OrderCancelModal } from './components/OrderCancelModal';
+import { ReturnRequestModal } from './components/ReturnRequestModal';
+import { reorderOrderItems } from './utils/reorderHelper';
 
 export const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +37,12 @@ export const OrderDetailPage: React.FC = () => {
   const [installment, setInstallment] = useState<InstallmentApplication | null>(null);
   const [loading, setLoading] = useState(() => Boolean(id));
   const [error, setError] = useState<string | null>(null);
+
+  // Modals & Action States
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [reorderSuccessMsg, setReorderSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -135,11 +151,23 @@ export const OrderDetailPage: React.FC = () => {
   const isInstallment = order.paymentMethod === 'INSTALLMENT' || Boolean(installment);
   const instApp = installment || order.installmentApplication;
 
+  const canCancel = ['PENDING', 'CONFIRMED'].includes(order.status) && order.paymentStatus !== 'PAID';
+  const isReturnEligible =
+    ['DELIVERED', 'COMPLETED'].includes(order.status) &&
+    Date.now() - new Date(order.deliveredAt || order.completedAt || order.createdAt).getTime() <=
+      7 * 24 * 60 * 60 * 1000;
+
+  const handleReorder = () => {
+    const result = reorderOrderItems(order);
+    setReorderSuccessMsg(`Đã thêm ${result.addedCount} sản phẩm vào giỏ hàng`);
+    setTimeout(() => setReorderSuccessMsg(null), 4000);
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 py-8 sm:py-10">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         {/* Navigation Breadcrumb / Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200">
           <div className="space-y-1">
             <Link
               to="/profile#orders"
@@ -156,12 +184,68 @@ export const OrderDetailPage: React.FC = () => {
                 {order.status}
               </span>
             </div>
+            <p className="text-xs text-slate-500 flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-slate-400" />
+              <span>Ngày đặt: {new Date(order.createdAt).toLocaleString('vi-VN')}</span>
+            </p>
           </div>
-          <span className="text-xs text-slate-500 flex items-center gap-1.5">
-            <Calendar className="w-4 h-4 text-slate-400" />
-            <span>Ngày đặt: {new Date(order.createdAt).toLocaleString('vi-VN')}</span>
-          </span>
+
+          {/* Header Action Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsInvoiceModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 shadow-xs transition cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5 text-slate-500" />
+              <span>Xem & In hóa đơn</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleReorder}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl border border-blue-200 transition cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Mua lại đơn này</span>
+            </button>
+
+            {canCancel && (
+              <button
+                type="button"
+                onClick={() => setIsCancelModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition cursor-pointer"
+              >
+                <Ban className="w-3.5 h-3.5" />
+                <span>Hủy đơn hàng</span>
+              </button>
+            )}
+
+            {isReturnEligible && (
+              <button
+                type="button"
+                onClick={() => setIsReturnModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-200 transition cursor-pointer"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+                <span>Yêu cầu đổi trả</span>
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Reorder Notification Toast */}
+        {reorderSuccessMsg && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 flex items-center justify-between animate-in fade-in duration-200">
+            <span className="flex items-center gap-2 font-medium">
+              <Check className="w-4 h-4 text-emerald-600" />
+              {reorderSuccessMsg}
+            </span>
+          </div>
+        )}
+
+        {/* ORDER TRACKING TIMELINE */}
+        <OrderTrackingTimeline order={order} />
 
         {/* ELEVATED INSTALLMENT STATUS BANNER */}
         {isInstallment && (
@@ -412,6 +496,33 @@ export const OrderDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* MODALS */}
+        <OrderCancelModal
+          order={order}
+          isOpen={isCancelModalOpen}
+          onClose={() => setIsCancelModalOpen(false)}
+          onCancelled={(updated) => {
+            setOrder(updated);
+          }}
+        />
+
+        <OrderInvoiceModal
+          order={order}
+          isOpen={isInvoiceModalOpen}
+          onClose={() => setIsInvoiceModalOpen(false)}
+        />
+
+        <ReturnRequestModal
+          order={order}
+          isOpen={isReturnModalOpen}
+          onClose={() => setIsReturnModalOpen(false)}
+          onSubmitted={() => {
+            if (id) {
+              orderService.getOrderById(id).then(setOrder).catch(() => {});
+            }
+          }}
+        />
       </div>
     </div>
   );

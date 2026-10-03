@@ -242,8 +242,67 @@ export interface Order {
   holdExpiresAt?: string;
   items: OrderItem[];
   installmentApplication?: InstallmentApplication;
+  shipping?: Shipping;
+  returns?: ReturnRequest[];
+  deliveredAt?: string;
+  completedAt?: string;
+  cancelledAt?: string;
+  cancelledReason?: string;
   createdAt: string;
   updatedAt?: string;
+}
+
+export type ShippingStatus = 'PENDING' | 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED' | 'RETURNED';
+
+export interface Shipping {
+  id: string;
+  orderId: string;
+  providerName: string;
+  trackingNumber?: string;
+  status: ShippingStatus;
+  shippingFee: number;
+  estimatedDeliveryDate?: string;
+  shippedAt?: string;
+  deliveredAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type ReturnStatus =
+  | 'REQUESTED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'SHIPPING'
+  | 'RECEIVED'
+  | 'INSPECTING'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
+export interface ReturnItem {
+  id: string;
+  returnId: string;
+  orderItemId: string;
+  quantity: number;
+  reason?: string;
+  condition?: string;
+  orderItem?: OrderItem;
+}
+
+export interface ReturnRequest {
+  id: string;
+  orderId: string;
+  userId: string;
+  returnNumber: string;
+  status: ReturnStatus;
+  reason: string;
+  customerNote?: string;
+  adminNote?: string;
+  requestedAt: string;
+  approvedAt?: string;
+  receivedAt?: string;
+  completedAt?: string;
+  items: ReturnItem[];
+  order?: Order;
 }
 
 export type ImeiStatus = 'AVAILABLE' | 'RESERVED' | 'SOLD' | 'WARRANTY' | 'DEFECTIVE';

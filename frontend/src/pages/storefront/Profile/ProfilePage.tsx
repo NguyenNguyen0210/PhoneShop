@@ -3,7 +3,11 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { storageService } from '../../../services/storageService';
 import { apiClient } from '../../../services/apiClient';
 import { orderService } from '../../../services/orderService';
-import type { Order } from '../../../types';
+import { returnService } from '../../../services/returnService';
+import type { Order, ReturnRequest } from '../../../types';
+import { ReturnCard } from '../Orders/components/ReturnCard';
+import { OrderCancelModal } from '../Orders/components/OrderCancelModal';
+import { reorderOrderItems } from '../Orders/utils/reorderHelper';
 import {
   Camera,
   CheckCircle2,
@@ -15,6 +19,9 @@ import {
   Clock,
   ChevronRight,
   BadgeCheck,
+  RotateCcw,
+  Ban,
+  Undo2,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChangePasswordCard } from './components/ChangePasswordCard';
@@ -25,6 +32,9 @@ export const ProfilePage: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(() => Boolean(user));
+  const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
+  const [loadingReturns, setLoadingReturns] = useState(() => Boolean(user));
+  const [cancellingOrder, setCancellingOrder] = useState<Order | null>(null);
   const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -33,12 +43,30 @@ export const ProfilePage: React.FC = () => {
       setTimeout(() => {
         document.getElementById('orders-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 200);
+    } else if (location.hash === '#returns') {
+      setTimeout(() => {
+        document.getElementById('returns-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
     }
   }, [location.pathname, location.hash]);
 
   useEffect(() => {
     fetchProfile().catch(() => {});
   }, [fetchProfile]);
+
+  const fetchReturns = () => {
+    if (!user) return;
+    setLoadingReturns(true);
+    returnService
+      .getMyReturns()
+      .then(setReturnRequests)
+      .catch(() => setReturnRequests([]))
+      .finally(() => setLoadingReturns(false));
+  };
+
+  useEffect(() => {
+    fetchReturns();
+  }, [user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -356,23 +384,117 @@ export const ProfilePage: React.FC = () => {
                       <span className="font-bold text-slate-700">{ord.paymentMethod}</span>
                     </p>
                   </div>
-                  <div className="flex items-center gap-4 justify-between sm:justify-end">
+                  <div className="flex items-center gap-3 justify-between sm:justify-end flex-wrap">
                     <span className="font-mono font-black text-blue-600 text-sm tabular-nums">
                       {formatPrice(ord.totalAmount)}
                     </span>
-                    <Link
-                      to={`/orders/${ord.id}`}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-                      title="Xem chi tiết đơn"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Link>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const result = reorderOrderItems(ord);
+                          setMessage({
+                            type: 'success',
+                            text: `Đã thêm ${result.addedCount} sản phẩm từ đơn #${ord.orderNumber || ord.id.slice(0, 8)} vào giỏ hàng`,
+                          });
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition cursor-pointer"
+                        title="Mua lại đơn này"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Mua lại</span>
+                      </button>
+
+                      {['PENDING', 'CONFIRMED'].includes(ord.status) && ord.paymentStatus !== 'PAID' && (
+                        <button
+                          type="button"
+                          onClick={() => setCancellingOrder(ord)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition cursor-pointer"
+                          title="Hủy đơn hàng"
+                        >
+                          <Ban className="w-3 h-3" />
+                          <span>Hủy đơn</span>
+                        </button>
+                      )}
+
+                      <Link
+                        to={`/orders/${ord.id}`}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                        title="Xem chi tiết đơn"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+
+        {/* Returns & Refund Section */}
+        <div id="returns-section" className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-5 scroll-mt-24">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+            <div className="flex items-center gap-2">
+              <Undo2 className="w-5 h-5 text-blue-600" />
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 uppercase tracking-wider">
+                Yêu cầu Đổi trả & Hoàn tiền
+              </h3>
+            </div>
+            <span className="text-xs font-mono text-slate-500">
+              {returnRequests.length} Yêu cầu
+            </span>
+          </div>
+
+          {loadingReturns ? (
+            <div className="py-8 text-center text-slate-500 text-xs flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <span>Đang tải danh sách đổi trả...</span>
+            </div>
+          ) : returnRequests.length === 0 ? (
+            <div className="py-8 text-center space-y-2">
+              <Clock className="w-8 h-8 text-slate-400 mx-auto" />
+              <p className="text-sm font-semibold text-slate-800">Chưa có yêu cầu đổi trả nào</p>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Khi cần đổi trả sản phẩm trong vòng 7 ngày kể từ khi nhận hàng, bạn có thể gửi yêu cầu trực tiếp tại trang chi tiết đơn hàng tương ứng.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {returnRequests.map((ret) => (
+                <ReturnCard
+                  key={ret.id}
+                  returnRequest={ret}
+                  onCancel={async (returnId) => {
+                    try {
+                      await returnService.cancelReturn(returnId);
+                      fetchReturns();
+                      setMessage({ type: 'success', text: 'Hủy yêu cầu đổi trả thành công!' });
+                    } catch (err: any) {
+                      setMessage({ type: 'error', text: err.response?.data?.message || 'Không thể hủy yêu cầu.' });
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Cancel Modal */}
+        {cancellingOrder && (
+          <OrderCancelModal
+            order={cancellingOrder}
+            isOpen={Boolean(cancellingOrder)}
+            onClose={() => setCancellingOrder(null)}
+            onCancelled={(updated) => {
+              setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+              setMessage({
+                type: 'success',
+                text: `Hủy đơn hàng #${updated.orderNumber || updated.id.slice(0, 8)} thành công!`,
+              });
+            }}
+          />
+        )}
       </div>
     </div>
   );

@@ -121,6 +121,11 @@ export const orderService = {
     }) as unknown as PaginatedOrders;
   },
 
+  async cancelMyOrder(id: string, reason: string): Promise<Order> {
+    const response = await apiClient.put(`/orders/my/${id}/cancel`, { reason });
+    return response.data?.data ?? response.data;
+  },
+
   async updateOrderStatus(
     id: string,
     action: 'confirm' | 'process' | 'ship' | 'deliver' | 'complete' | 'cancel',

@@ -612,7 +612,12 @@ export class OrdersService {
     const order = await this.prisma.order.findFirst({
       where: { id, userId },
       include: {
-        items: { include: { variant: true } },
+        items: {
+          include: {
+            variant: { include: { product: true } },
+            imeiDevice: true,
+          },
+        },
         payments: true,
         address: true,
         installmentApplication: true,
