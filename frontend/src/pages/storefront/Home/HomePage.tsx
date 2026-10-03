@@ -14,6 +14,7 @@ import {
 import { productService } from '../../../services/productService';
 import type { Product, Brand } from '../../../types';
 import { ProductCard } from '../../../components/storefront/ProductCard';
+import { BrandLogo } from '../../../components/common/BrandLogo';
 import { FALLBACK_PRODUCT_IMAGE, r2Url } from '../../../utils/imageFallback';
 
 export const HomePage: React.FC = () => {
@@ -289,7 +290,6 @@ export const HomePage: React.FC = () => {
 
             {brands.map((b) => {
               const isSelected = selectedBrand.toLowerCase() === b.name.toLowerCase();
-              const logo = b.logoUrl || b.logo;
 
               return (
                 <button
@@ -302,24 +302,12 @@ export const HomePage: React.FC = () => {
                       : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
-                  <span
-                    className={`w-5 h-5 rounded-full flex items-center justify-center p-0.5 shrink-0 transition-colors ${
-                      isSelected ? 'bg-white' : 'bg-slate-100'
-                    }`}
-                  >
-                    {logo ? (
-                      <img
-                        src={logo}
-                        alt={b.name}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <span className="text-[10px] font-bold text-slate-600">{b.name.charAt(0)}</span>
-                    )}
-                  </span>
+                  <BrandLogo
+                    name={b.name}
+                    slug={b.slug}
+                    logoUrl={b.logoUrl || b.logo}
+                    isSelected={isSelected}
+                  />
                   <span>{b.name}</span>
                 </button>
               );
