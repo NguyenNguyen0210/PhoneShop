@@ -31,6 +31,14 @@ export class ReviewsController {
 
   // ── USER ──────────────────────────────────────────────
 
+  @Get('product/:productId/my-review')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user review and review eligibility for a product' })
+  getMyReviewStatus(@CurrentUser() user: any, @Param('productId') productId: string) {
+    return this.reviewsService.getMyReviewStatus(user.id, productId);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.USER, Role.ADMIN)
