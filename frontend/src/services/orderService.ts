@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import type { Order, PaymentMethod, InstallmentFormData } from '../types';
+import type { Order, PaymentMethod, InstallmentFormData, ShippingMethod } from '../types';
 
 export interface CheckoutPayload {
   customerName: string;
@@ -11,6 +11,7 @@ export interface CheckoutPayload {
   voucherCode?: string;
   addressId?: string;
   selectedItemIds?: string[];
+  shippingMethod?: ShippingMethod;
 }
 
 export interface PaginatedOrders {
@@ -49,6 +50,7 @@ export const orderService = {
       paymentMethod: payload.paymentMethod,
       installmentData: payload.installmentData,
       selectedItemIds: payload.selectedItemIds,
+      shippingMethod: payload.shippingMethod,
     });
 
     const orderData: Order = orderRes.data?.data ?? orderRes.data;
