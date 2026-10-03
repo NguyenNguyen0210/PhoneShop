@@ -10,6 +10,8 @@ import {
   ArrowRight,
   ExternalLink,
   Check,
+  Building2,
+  Clock,
 } from 'lucide-react';
 import { paymentService, type VietQrData } from '../../../services/paymentService';
 import { orderService } from '../../../services/orderService';
@@ -320,6 +322,53 @@ export const OrderSuccessPage: React.FC = () => {
               Bạn vui lòng kiểm tra hộp niêm phong và đối chiếu mã IMEI máy trước khi thanh toán cho nhân
               viên bưu tá.
             </p>
+          </div>
+        </div>
+      )}
+
+      {method === 'INSTALLMENT' && (
+        <div className="bg-white rounded-3xl border-2 border-blue-200 p-6 sm:p-8 shadow-md shadow-blue-500/5 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl border border-blue-200">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Hồ sơ trả góp 0% qua công ty tài chính
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Đơn hàng đang được áp dụng chính sách xét duyệt và giữ máy 24 giờ
+                </p>
+              </div>
+            </div>
+            <div>
+              <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold rounded-lg flex items-center gap-1.5 animate-pulse">
+                <Clock className="w-4 h-4 text-amber-600" />
+                <span>Chờ thẩm định hồ sơ (24h)</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl flex items-start gap-3 text-xs text-amber-900">
+            <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <span className="font-bold block text-sm">Lưu ý quan trọng từ bộ phận thẩm định:</span>
+              <p className="leading-relaxed">
+                Nhân viên thẩm định sẽ liên hệ qua số điện thoại để xác nhận thông tin trước khi giao máy.
+                Vui lòng giữ máy liên lạc trong 24 giờ tới.
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-2 flex justify-end">
+            <Link
+              to={`/orders/${id}`}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl border border-blue-200 transition"
+            >
+              <span>Xem chi tiết hồ sơ trả góp</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
       )}

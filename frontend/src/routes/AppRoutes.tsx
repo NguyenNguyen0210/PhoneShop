@@ -12,6 +12,7 @@ import { ProductDetailPage } from '../pages/storefront/ProductDetail/ProductDeta
 import { CartPage } from '../pages/storefront/Cart/CartPage';
 import { CheckoutPage } from '../pages/storefront/Checkout/CheckoutPage';
 import { OrderSuccessPage } from '../pages/storefront/OrderSuccess/OrderSuccessPage';
+import { OrderDetailPage } from '../pages/storefront/Orders/OrderDetailPage';
 import { WarrantyLookupPage } from '../pages/storefront/WarrantyLookup/WarrantyLookupPage';
 import { ProfilePage } from '../pages/storefront/Profile/ProfilePage';
 
@@ -25,10 +26,13 @@ import { AdminDashboard } from '../pages/Admin/Dashboard/AdminDashboard';
 import { AdminProductsPage } from '../pages/Admin/Products/AdminProductsPage';
 import { AdminImeiPage } from '../pages/Admin/InventoryImei/AdminImeiPage';
 import { AdminOrdersPage } from '../pages/Admin/Orders/AdminOrdersPage';
+import { AdminInstallmentsPage } from '../pages/Admin/Installments/AdminInstallmentsPage';
 
 // Route Guards
 import { AdminRoute } from './AdminRoute';
 import { ProtectedRoute } from './ProtectedRoute';
+import { RoleGuard } from './RoleGuard';
+import { ROLES } from '../types';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -48,6 +52,7 @@ export const AppRoutes: React.FC = () => {
           }
         />
         <Route path="/order-success/:id" element={<OrderSuccessPage />} />
+        <Route path="/orders/:id" element={<OrderDetailPage />} />
         <Route path="/warranty-lookup" element={<WarrantyLookupPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/orders" element={<ProfilePage />} />
@@ -65,6 +70,14 @@ export const AppRoutes: React.FC = () => {
           <Route path="/admin/products" element={<AdminProductsPage />} />
           <Route path="/admin/imei" element={<AdminImeiPage />} />
           <Route path="/admin/orders" element={<AdminOrdersPage />} />
+          <Route
+            path="/admin/installments"
+            element={
+              <RoleGuard allowedRoles={[ROLES.STAFF, ROLES.ADMIN]}>
+                <AdminInstallmentsPage />
+              </RoleGuard>
+            }
+          />
         </Route>
       </Route>
 

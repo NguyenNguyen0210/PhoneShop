@@ -357,7 +357,7 @@ export const ProfilePage: React.FC = () => {
                       {formatPrice(ord.totalAmount)}
                     </span>
                     <Link
-                      to={`/order-success/${ord.id}`}
+                      to={`/orders/${ord.id}`}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
                       title="Xem chi tiết đơn"
                     >

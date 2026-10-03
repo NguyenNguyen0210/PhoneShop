@@ -1,5 +1,12 @@
 export type Role = 'ADMIN' | 'STAFF' | 'MANAGER' | 'USER';
 
+export const ROLES = {
+  ADMIN: 'ADMIN',
+  STAFF: 'STAFF',
+  MANAGER: 'MANAGER',
+  USER: 'USER',
+} as const;
+
 export interface User {
   id: string;
   email: string;
@@ -147,7 +154,54 @@ export type OrderStatus =
   | 'COMPLETED'
   | 'CANCELLED';
 
-export type PaymentMethod = 'COD' | 'VIETQR' | 'VNPAY';
+export type PaymentMethod = 'COD' | 'VIETQR' | 'VNPAY' | 'INSTALLMENT';
+
+export type InstallmentProvider = 'HOME_CREDIT' | 'FE_CREDIT';
+export type InstallmentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+export interface InstallmentApplication {
+  id: string;
+  orderId: string;
+  userId: string;
+  provider: InstallmentProvider;
+  status: InstallmentStatus;
+  termMonths: number;
+  prepayPercent: number;
+  prepayAmount: number;
+  loanAmount: number;
+  monthlyAmount: number;
+  fullName: string;
+  citizenId: string;
+  birthDate: string;
+  phoneNumber: string;
+  currentAddress: string;
+  incomeRange: string;
+  cccdFrontUrl: string;
+  cccdBackUrl: string;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  staffNotes?: string | null;
+  rejectionReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  order?: any;
+  user?: any;
+  reviewer?: any;
+}
+
+export interface InstallmentFormData {
+  provider: InstallmentProvider;
+  termMonths: number;
+  prepayPercent: number;
+  fullName: string;
+  citizenId: string;
+  birthDate: string;
+  phoneNumber: string;
+  currentAddress: string;
+  incomeRange: string;
+  cccdFrontUrl: string;
+  cccdBackUrl: string;
+}
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
 
@@ -186,6 +240,7 @@ export interface Order {
   totalAmount: number;
   holdExpiresAt?: string;
   items: OrderItem[];
+  installmentApplication?: InstallmentApplication;
   createdAt: string;
   updatedAt?: string;
 }

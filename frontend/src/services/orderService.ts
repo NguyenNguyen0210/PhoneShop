@@ -1,12 +1,13 @@
 import { apiClient } from './apiClient';
-import type { Order } from '../types';
+import type { Order, PaymentMethod, InstallmentFormData } from '../types';
 
 export interface CheckoutPayload {
   customerName: string;
   shippingPhone: string;
   shippingAddress: string;
   notes?: string;
-  paymentMethod: 'COD' | 'VIETQR' | 'VNPAY';
+  paymentMethod?: PaymentMethod | string;
+  installmentData?: InstallmentFormData | any;
   voucherCode?: string;
   addressId?: string;
 }
@@ -36,12 +37,14 @@ export const orderService = {
       addressId: addressId || '00000000-0000-0000-0000-000000000000',
       voucherCode: payload.voucherCode || undefined,
       customerNote: payload.notes || undefined,
+      paymentMethod: payload.paymentMethod,
+      installmentData: payload.installmentData,
     });
 
     const orderData: Order = orderRes.data?.data ?? orderRes.data;
 
-    // Attach chosen payment method if provided
-    if (payload.paymentMethod && orderData?.id) {
+    // Attach chosen payment method if provided (backend handles INSTALLMENT in order transaction)
+    if (payload.paymentMethod && payload.paymentMethod !== 'INSTALLMENT' && orderData?.id) {
       try {
         await apiClient.post('/payments', {
           orderId: orderData.id,
