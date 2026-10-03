@@ -22,7 +22,7 @@ const adminMenuItems: MenuProps['items'] = [
     label: 'Quản lý Sản phẩm',
   },
   {
-    key: '/admin/imei',
+    key: '/admin/inventory',
     icon: <BarcodeOutlined style={{ fontSize: 16 }} />,
     label: 'Quản lý Kho & IMEI',
   },
@@ -50,11 +50,15 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false })
     navigate(e.key);
   };
 
+  const currentKey = location.pathname.startsWith('/admin/inventory') || location.pathname.startsWith('/admin/imei')
+    ? '/admin/inventory'
+    : location.pathname;
+
   return (
     <div style={{ padding: '12px 0' }}>
       <Menu
         mode="inline"
-        selectedKeys={[location.pathname]}
+        selectedKeys={[currentKey]}
         items={adminMenuItems}
         onClick={handleMenuClick}
         inlineCollapsed={collapsed}
