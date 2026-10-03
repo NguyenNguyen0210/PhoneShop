@@ -6,6 +6,7 @@ vi.mock('../apiClient', () => ({
   apiClient: {
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
     patch: vi.fn(),
     delete: vi.fn(),
   },
@@ -128,6 +129,66 @@ describe('reviewService', () => {
         'https://cdn.example.com/test1.jpg',
         'https://cdn.example.com/test2.png',
       ]);
+    });
+  });
+
+  describe('Admin and Reply operations', () => {
+    it('getAdminReviews calls GET /reviews/admin/all with params', async () => {
+      const mockResult = {
+        data: [{ id: 'rev-1', rating: 5, productId: 'p1', userId: 'u1', createdAt: '2026-10-03' }],
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      };
+      vi.mocked(apiClient.get).mockResolvedValueOnce({ data: mockResult });
+
+      const res = await reviewService.getAdminReviews({ status: 'PENDING', page: 1, limit: 10 });
+      expect(apiClient.get).toHaveBeenCalledWith('/reviews/admin/all', {
+        params: { status: 'PENDING', page: 1, limit: 10 },
+      });
+      expect(res).toEqual(mockResult);
+    });
+
+    it('approveReview calls PUT /reviews/:id/approve', async () => {
+      const mockApproved = { id: 'rev-1', status: 'APPROVED' };
+      vi.mocked(apiClient.put).mockResolvedValueOnce({ data: mockApproved });
+
+      const res = await reviewService.approveReview('rev-1');
+      expect(apiClient.put).toHaveBeenCalledWith('/reviews/rev-1/approve');
+      expect(res).toEqual(mockApproved);
+    });
+
+    it('rejectReview calls PUT /reviews/:id/reject', async () => {
+      const mockRejected = { id: 'rev-1', status: 'REJECTED' };
+      vi.mocked(apiClient.put).mockResolvedValueOnce({ data: mockRejected });
+
+      const res = await reviewService.rejectReview('rev-1');
+      expect(apiClient.put).toHaveBeenCalledWith('/reviews/rev-1/reject');
+      expect(res).toEqual(mockRejected);
+    });
+
+    it('createReply calls POST /reviews/:id/replies with content', async () => {
+      const mockReply = { id: 'rep-1', reviewId: 'rev-1', content: 'Cảm ơn bạn!' };
+      vi.mocked(apiClient.post).mockResolvedValueOnce({ data: mockReply });
+
+      const res = await reviewService.createReply('rev-1', 'Cảm ơn bạn!');
+      expect(apiClient.post).toHaveBeenCalledWith('/reviews/rev-1/replies', { content: 'Cảm ơn bạn!' });
+      expect(res).toEqual(mockReply);
+    });
+
+    it('deleteReply calls DELETE /reviews/replies/:replyId', async () => {
+      vi.mocked(apiClient.delete).mockResolvedValueOnce({ data: { success: true } });
+
+      await reviewService.deleteReply('rep-1');
+      expect(apiClient.delete).toHaveBeenCalledWith('/reviews/replies/rep-1');
+    });
+
+    it('deleteReviewAdmin calls DELETE /reviews/:id', async () => {
+      vi.mocked(apiClient.delete).mockResolvedValueOnce({ data: { success: true } });
+
+      await reviewService.deleteReviewAdmin('rev-1');
+      expect(apiClient.delete).toHaveBeenCalledWith('/reviews/rev-1');
     });
   });
 });

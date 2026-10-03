@@ -131,8 +131,14 @@ export class ReviewsService {
       this.prisma.review.findMany({
         where,
         include: {
-          user: { select: { id: true, email: true, firstName: true, lastName: true } },
-          product: { select: { id: true, name: true } },
+          user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } },
+          product: { select: { id: true, name: true, thumbnailUrl: true } },
+          replies: {
+            include: {
+              user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,

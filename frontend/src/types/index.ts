@@ -115,6 +115,13 @@ export interface Review {
     firstName?: string;
     lastName?: string;
     avatarUrl?: string;
+    email?: string;
+  };
+  product?: {
+    id: string;
+    name?: string;
+    thumbnail?: string;
+    thumbnailUrl?: string;
   };
   replies?: ReviewReply[];
 }
