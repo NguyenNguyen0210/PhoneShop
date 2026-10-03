@@ -94,14 +94,35 @@ describe('OrderTrackingTimeline', () => {
     expect(screen.getByText('Đã đặt hàng')).toBeTruthy();
     expect(screen.getByText('Hiện tại')).toBeTruthy();
 
+    rerender(<OrderTrackingTimeline order={{ ...baseOrder, status: 'CONFIRMED' }} />);
+    expect(screen.getByText('Đã xác nhận')).toBeTruthy();
+
     rerender(<OrderTrackingTimeline order={{ ...baseOrder, status: 'PROCESSING' }} />);
-    expect(screen.getByText('Đã xác nhận & Đóng gói')).toBeTruthy();
+    expect(screen.getByText('Đang chuẩn bị')).toBeTruthy();
+
+    rerender(<OrderTrackingTimeline order={{ ...baseOrder, status: 'PACKED' }} />);
+    expect(screen.getByText('Đã đóng gói')).toBeTruthy();
+    expect(
+      screen.getByText('Kiện hàng đã được đóng gói cẩn thận và đang chờ bàn giao cho đơn vị vận chuyển.')
+    ).toBeTruthy();
+
+    rerender(<OrderTrackingTimeline order={{ ...baseOrder, status: 'SHIPPING' }} />);
+    expect(screen.getByText('Đang vận chuyển')).toBeTruthy();
 
     rerender(<OrderTrackingTimeline order={{ ...baseOrder, status: 'DELIVERED' }} />);
     expect(screen.getByText('Đã giao hàng')).toBeTruthy();
 
     rerender(<OrderTrackingTimeline order={{ ...baseOrder, status: 'COMPLETED' }} />);
     expect(screen.getByText('Hoàn tất & Bảo hành')).toBeTruthy();
+  });
+
+  it('highlights PACKED step correctly when order status is PACKED', () => {
+    const packedOrder = { ...baseOrder, status: 'PACKED' as const };
+    render(<OrderTrackingTimeline order={packedOrder} />);
+    expect(screen.getByText('Đã đóng gói')).toBeTruthy();
+    expect(
+      screen.getByText('Kiện hàng đã được đóng gói cẩn thận và đang chờ bàn giao cho đơn vị vận chuyển.')
+    ).toBeTruthy();
   });
 
   it('renders active return request banner when returns are present', () => {

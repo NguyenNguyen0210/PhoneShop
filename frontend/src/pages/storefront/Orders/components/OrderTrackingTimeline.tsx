@@ -3,6 +3,7 @@ import {
   Check,
   Clock,
   Package,
+  PackageCheck,
   Truck,
   CheckCircle2,
   XCircle,
@@ -24,7 +25,9 @@ interface StepItem {
 
 const STEPS: StepItem[] = [
   { id: 'PENDING', label: 'Đã đặt hàng', icon: Clock },
-  { id: 'CONFIRMED', label: 'Đã xác nhận & Đóng gói', icon: Package },
+  { id: 'CONFIRMED', label: 'Đã xác nhận', icon: CheckCircle2 },
+  { id: 'PROCESSING', label: 'Đang chuẩn bị', icon: Package },
+  { id: 'PACKED', label: 'Đã đóng gói', icon: PackageCheck },
   { id: 'SHIPPING', label: 'Đang vận chuyển', icon: Truck },
   { id: 'DELIVERED', label: 'Đã giao hàng', icon: CheckCircle2 },
   { id: 'COMPLETED', label: 'Hoàn tất & Bảo hành', icon: Check },
@@ -38,15 +41,18 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({ or
       case 'PENDING':
         return 0;
       case 'CONFIRMED':
-      case 'PROCESSING':
         return 1;
+      case 'PROCESSING':
+        return 2;
+      case 'PACKED':
+        return 3;
       case 'SHIPPING':
       case 'SHIPPED':
-        return 2;
-      case 'DELIVERED':
-        return 3;
-      case 'COMPLETED':
         return 4;
+      case 'DELIVERED':
+        return 5;
+      case 'COMPLETED':
+        return 6;
       default:
         return 0;
     }
@@ -144,6 +150,14 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({ or
         </div>
       )}
 
+      {/* Informative box for PACKED status */}
+      {order.status === 'PACKED' && (
+        <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-800">
+          <PackageCheck className="w-4 h-4 text-purple-600 shrink-0" />
+          <span>Kiện hàng đã được đóng gói cẩn thận và đang chờ bàn giao cho đơn vị vận chuyển.</span>
+        </div>
+      )}
+
       {/* Active Return Banner if applicable */}
       {activeReturn && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3.5 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
@@ -166,7 +180,7 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({ or
           style={{ width: `${(activeIndex / (STEPS.length - 1)) * 90}%` }}
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 sm:gap-2 relative z-10">
+        <div className="grid grid-cols-1 sm:grid-cols-7 gap-4 sm:gap-2 relative z-10">
           {STEPS.map((step, idx) => {
             const isCompleted = idx <= activeIndex;
             const isCurrent = idx === activeIndex;
