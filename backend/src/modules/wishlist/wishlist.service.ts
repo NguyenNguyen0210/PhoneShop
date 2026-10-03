@@ -2,6 +2,25 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { PrismaService } from '../../prisma/prisma.service';
 import { AddToWishlistDto } from './dto/wishlist.dto';
 
+const WISHLIST_INCLUDE = {
+  items: {
+    include: {
+      product: {
+        include: {
+          brand: true,
+          category: true,
+          variants: {
+            where: { isActive: true },
+            include: { inventory: true },
+            orderBy: { price: 'asc' as const },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' as const },
+  },
+};
+
 @Injectable()
 export class WishlistService {
   constructor(private prisma: PrismaService) {}
@@ -9,12 +28,12 @@ export class WishlistService {
   private async getOrCreateWishlist(userId: string) {
     let wishlist = await this.prisma.wishlist.findUnique({
       where: { userId },
-      include: { items: { include: { product: true } } },
+      include: WISHLIST_INCLUDE,
     });
     if (!wishlist) {
       wishlist = await this.prisma.wishlist.create({
         data: { userId },
-        include: { items: { include: { product: true } } },
+        include: WISHLIST_INCLUDE,
       });
     }
     return wishlist;
@@ -34,7 +53,7 @@ export class WishlistService {
 
     return this.prisma.wishlistItem.create({
       data: { wishlistId: wishlist.id, productId: dto.productId },
-      include: { product: true },
+      include: WISHLIST_INCLUDE.items.include,
     });
   }
 
