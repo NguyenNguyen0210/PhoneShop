@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import type { Payment, PaymentTransaction } from '../types';
 
 export interface CreatePaymentDto {
   orderId: string;
@@ -63,6 +64,29 @@ export const paymentService = {
     orderInfo?: string;
   }): Promise<{ paymentUrl: string }> {
     const response = await apiClient.post('/payments/vnpay/create-url', data);
+    return response.data?.data ?? response.data;
+  },
+
+  // Admin methods
+  async getAllPaymentsAdmin(): Promise<Payment[]> {
+    const response = await apiClient.get('/payments');
+    const data = response.data?.data ?? response.data;
+    return Array.isArray(data) ? data : data?.items ?? [];
+  },
+
+  async getTransactionHistoryAdmin(): Promise<PaymentTransaction[]> {
+    const response = await apiClient.get('/payments/transactions');
+    const data = response.data?.data ?? response.data;
+    return Array.isArray(data) ? data : data?.items ?? [];
+  },
+
+  async confirmPaymentAdmin(paymentId: string, providerRef: string): Promise<Payment> {
+    const response = await apiClient.put(`/payments/${paymentId}/confirm`, { providerRef });
+    return response.data?.data ?? response.data;
+  },
+
+  async failPaymentAdmin(paymentId: string): Promise<Payment> {
+    const response = await apiClient.put(`/payments/${paymentId}/fail`);
     return response.data?.data ?? response.data;
   },
 };

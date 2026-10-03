@@ -287,6 +287,45 @@ export interface InstallmentFormData {
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
 
+export type TransactionType = 'PAYMENT' | 'REFUND';
+export type TransactionStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
+
+export interface PaymentTransaction {
+  id: string;
+  paymentId: string;
+  transactionCode: string;
+  type: TransactionType;
+  status: TransactionStatus;
+  amount: number;
+  providerReference?: string | null;
+  responseData?: any;
+  createdAt: string;
+  payment?: Payment;
+}
+
+export interface Payment {
+  id: string;
+  orderId: string;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  amount: number;
+  paidAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  order?: {
+    id: string;
+    orderNumber: string;
+    userId: string;
+    user?: {
+      id: string;
+      email: string;
+      firstName?: string;
+      lastName?: string;
+    };
+  };
+  transactions?: PaymentTransaction[];
+}
+
 export interface OrderItem {
   id: string;
   orderId: string;
