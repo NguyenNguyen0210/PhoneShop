@@ -46,6 +46,44 @@ describe('Payments Unit Tests', () => {
         'https://img.vietqr.io/image/970407-19033333333333-compact2.png?amount=15000000&addInfo=ORD-CUSTOM&accountName=NGUYEN%20VAN%20A',
       );
     });
+
+    it('should throw BadRequestException in generateQrAsync when PAYMENT_VIETQR_ENABLED is false', async () => {
+      const mockConfigService: any = { get: () => undefined };
+      const mockSettingsService: any = {
+        get: jest.fn().mockImplementation((...args: any[]) => {
+          const [key, def] = args;
+          if (key === 'PAYMENT_VIETQR_ENABLED') return Promise.resolve('false');
+          return Promise.resolve(def);
+        }),
+      };
+
+      const vietqrService = new VietqrService(mockConfigService, mockSettingsService);
+      await expect(vietqrService.generateQrAsync(10000, 'ORD-TEST')).rejects.toThrow(
+        new BadRequestException('Phương thức thanh toán VietQR đang tạm ngưng'),
+      );
+    });
+
+    it('should use dynamic settings in generateQrAsync when enabled', async () => {
+      const mockConfigService: any = { get: () => undefined };
+      const mockSettingsService: any = {
+        get: jest.fn().mockImplementation((...args: any[]) => {
+          const [key, def] = args;
+          if (key === 'PAYMENT_VIETQR_ENABLED') return Promise.resolve('true');
+          if (key === 'VIETQR_BANK_ID') return Promise.resolve('970407');
+          if (key === 'VIETQR_ACCOUNT_NO') return Promise.resolve('123456789');
+          if (key === 'VIETQR_ACCOUNT_NAME') return Promise.resolve('TEST SHOP');
+          if (key === 'VIETQR_TEMPLATE') return Promise.resolve('compact');
+          return Promise.resolve(def);
+        }),
+      };
+
+      const vietqrService = new VietqrService(mockConfigService, mockSettingsService);
+      const res = await vietqrService.generateQrAsync(50000, 'ORD-DYNAMIC');
+      expect(res.bankId).toBe('970407');
+      expect(res.accountNo).toBe('123456789');
+      expect(res.accountName).toBe('TEST SHOP');
+      expect(res.qrUrl).toContain('970407-123456789-compact.png');
+    });
   });
 
   describe('VNPay Signature & Checksum Verification', () => {
@@ -217,6 +255,93 @@ describe('Payments Unit Tests', () => {
         Message: 'Confirm Success',
       });
       expect(result).toEqual({ RspCode: '00', Message: 'Confirm Success' });
+    });
+  });
+
+  describe('VNPay Dynamic Settings', () => {
+    it('should throw BadRequestException when PAYMENT_VNPAY_ENABLED is false in createVnpayPaymentUrl', async () => {
+      const mockPrisma: any = {
+        order: {
+          findUnique: jest.fn().mockImplementation(() =>
+            Promise.resolve({
+              id: 'ord-vnp-1',
+              orderNumber: 'ORD-VNP-1',
+              totalAmount: 100000,
+              status: OrderStatus.PENDING,
+              createdAt: new Date(),
+              payments: [],
+            }),
+          ),
+        },
+      };
+      const mockConfig: any = { get: () => undefined };
+      const mockEmail: any = {};
+      const mockVietqr: any = {};
+      const mockSettingsService: any = {
+        get: jest.fn().mockImplementation((...args: any[]) => {
+          const [key, def] = args;
+          if (key === 'PAYMENT_VNPAY_ENABLED') return Promise.resolve('false');
+          return Promise.resolve(def);
+        }),
+      };
+
+      const paymentsService = new PaymentsService(
+        mockPrisma,
+        mockVietqr,
+        mockEmail,
+        mockConfig,
+        mockSettingsService,
+      );
+
+      await expect(
+        paymentsService.createVnpayPaymentUrl({ orderId: 'ord-vnp-1' }),
+      ).rejects.toThrow(
+        new BadRequestException('Cổng thanh toán VNPay đang tạm thời đóng để bảo trì'),
+      );
+    });
+
+    it('should use dynamic values for TMN code and URL from SystemSettingsService', async () => {
+      const mockPrisma: any = {
+        order: {
+          findUnique: jest.fn().mockImplementation(() =>
+            Promise.resolve({
+              id: 'ord-vnp-2',
+              orderNumber: 'ORD-VNP-2',
+              totalAmount: 200000,
+              status: OrderStatus.PENDING,
+              createdAt: new Date(),
+              payments: [],
+            }),
+          ),
+        },
+      };
+      const mockConfig: any = { get: () => undefined };
+      const mockEmail: any = {};
+      const mockVietqr: any = {};
+      const mockSettingsService: any = {
+        get: jest.fn().mockImplementation((...args: any[]) => {
+          const [key, def] = args;
+          if (key === 'PAYMENT_VNPAY_ENABLED') return Promise.resolve('true');
+          if (key === 'VNPAY_TMN_CODE') return Promise.resolve('CUSTOM_TMN');
+          if (key === 'VNPAY_HASH_SECRET') return Promise.resolve('CUSTOM_SECRET');
+          if (key === 'VNPAY_URL') return Promise.resolve('https://custom.vnpay.vn/pay');
+          if (key === 'VNPAY_RETURN_URL') return Promise.resolve('https://myshop.vn/return');
+          return Promise.resolve(def);
+        }),
+      };
+
+      const paymentsService = new PaymentsService(
+        mockPrisma,
+        mockVietqr,
+        mockEmail,
+        mockConfig,
+        mockSettingsService,
+      );
+
+      const res = await paymentsService.createVnpayPaymentUrl({ orderId: 'ord-vnp-2' });
+      expect(res.paymentUrl).toContain('https://custom.vnpay.vn/pay?');
+      expect(res.paymentUrl).toContain('vnp_TmnCode=CUSTOM_TMN');
+      expect(res.orderNumber).toBe('ORD-VNP-2');
     });
   });
 });

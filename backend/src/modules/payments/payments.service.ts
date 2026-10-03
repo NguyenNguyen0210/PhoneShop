@@ -3,11 +3,13 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { VietqrService } from './vietqr.service';
 import { EmailService } from '../../infrastructure/email/email.service';
+import { SystemSettingsService } from '../settings/settings.service';
 import {
   CreatePaymentDto,
   CreateVnpayUrlDto,
@@ -59,6 +61,7 @@ export class PaymentsService {
     private readonly vietqrService: VietqrService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    @Optional() private readonly settingsService?: SystemSettingsService,
   ) {
     // LOW: in production, refuse to sign/verify VNPay traffic with the
     // publicly visible sandbox placeholders. Dev keeps working with sandbox.
@@ -106,7 +109,9 @@ export class PaymentsService {
     }
 
     const amount = Number(order.totalAmount);
-    const qrData = this.vietqrService.generateQr(amount, order.orderNumber);
+    const qrData = this.vietqrService.generateQrAsync
+      ? await this.vietqrService.generateQrAsync(amount, order.orderNumber)
+      : this.vietqrService.generateQr(amount, order.orderNumber);
 
     // Find or create pending payment record for VietQR transfer
     let payment = order.payments.find(
@@ -282,19 +287,44 @@ export class PaymentsService {
       throw new BadRequestException('Order has already been paid and confirmed');
     }
 
-    const tmnCode = this.configService.get<string>('VNPAY_TMN_CODE', 'SANDBOX1');
-    const hashSecret = this.configService.get<string>(
-      'VNPAY_HASH_SECRET',
-      'SANDBOX_SECRET_KEY_1234567890ABCDEF',
-    );
-    const vnpUrl = this.configService.get<string>(
-      'VNPAY_URL',
-      'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
-    );
-    const returnUrl = this.configService.get<string>(
-      'VNPAY_RETURN_URL',
-      'http://localhost:5173/order/vnpay-return',
-    );
+    const isVnpayEnabled = this.settingsService
+      ? (await this.settingsService.get('PAYMENT_VNPAY_ENABLED', 'true')) === 'true'
+      : (this.configService.get<string>('PAYMENT_VNPAY_ENABLED', 'true')) === 'true';
+
+    if (!isVnpayEnabled) {
+      throw new BadRequestException('Cổng thanh toán VNPay đang tạm thời đóng để bảo trì');
+    }
+
+    const tmnCode = this.settingsService
+      ? await this.settingsService.get('VNPAY_TMN_CODE', 'SANDBOX1')
+      : this.configService.get<string>('VNPAY_TMN_CODE', 'SANDBOX1');
+    const hashSecret = this.settingsService
+      ? await this.settingsService.get(
+          'VNPAY_HASH_SECRET',
+          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
+        )
+      : this.configService.get<string>(
+          'VNPAY_HASH_SECRET',
+          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
+        );
+    const vnpUrl = this.settingsService
+      ? await this.settingsService.get(
+          'VNPAY_URL',
+          'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
+        )
+      : this.configService.get<string>(
+          'VNPAY_URL',
+          'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
+        );
+    const returnUrl = this.settingsService
+      ? await this.settingsService.get(
+          'VNPAY_RETURN_URL',
+          'http://localhost:5173/order/vnpay-return',
+        )
+      : this.configService.get<string>(
+          'VNPAY_RETURN_URL',
+          'http://localhost:5173/order/vnpay-return',
+        );
 
     const now = new Date();
     const createDate =
@@ -340,10 +370,15 @@ export class PaymentsService {
     this.logger.log(`Received VNPay IPN webhook: ${JSON.stringify(query)}`);
 
     const secureHash = query['vnp_SecureHash'];
-    const hashSecret = this.configService.get<string>(
-      'VNPAY_HASH_SECRET',
-      'SANDBOX_SECRET_KEY_1234567890ABCDEF',
-    );
+    const hashSecret = this.settingsService
+      ? await this.settingsService.get(
+          'VNPAY_HASH_SECRET',
+          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
+        )
+      : this.configService.get<string>(
+          'VNPAY_HASH_SECRET',
+          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
+        );
 
     const cleanParams: Record<string, string> = {};
     for (const [key, value] of Object.entries(query)) {
@@ -554,10 +589,15 @@ export class PaymentsService {
 
   async handleVnpayReturn(query: Record<string, any>) {
     const secureHash = query['vnp_SecureHash'];
-    const hashSecret = this.configService.get<string>(
-      'VNPAY_HASH_SECRET',
-      'SANDBOX_SECRET_KEY_1234567890ABCDEF',
-    );
+    const hashSecret = this.settingsService
+      ? await this.settingsService.get(
+          'VNPAY_HASH_SECRET',
+          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
+        )
+      : this.configService.get<string>(
+          'VNPAY_HASH_SECRET',
+          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
+        );
 
     const cleanParams: Record<string, string> = {};
     for (const [key, value] of Object.entries(query)) {
