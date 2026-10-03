@@ -155,6 +155,7 @@ export type OrderStatus =
   | 'CANCELLED';
 
 export type PaymentMethod = 'COD' | 'VIETQR' | 'VNPAY' | 'INSTALLMENT';
+export type ShippingMethod = 'ECONOMY' | 'STANDARD' | 'EXPRESS_2H';
 
 export type InstallmentProvider = 'HOME_CREDIT' | 'FE_CREDIT';
 export type InstallmentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
@@ -300,5 +301,35 @@ export interface WishlistResponse {
   items: WishlistItem[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Address {
+  id: string;
+  userId: string;
+  type: 'HOME' | 'WORK' | 'OTHER';
+  recipientName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string;
+  ward?: string;
+  district?: string;
+  city: string;
+  province?: string;
+  postalCode?: string;
+  country: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAddressPayload {
+  recipientName: string;
+  phone: string;
+  addressLine1: string;
+  ward?: string;
+  district?: string;
+  city: string;
+  type?: 'HOME' | 'WORK' | 'OTHER';
+  isDefault?: boolean;
 }
 
