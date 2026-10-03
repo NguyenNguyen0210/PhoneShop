@@ -17,6 +17,7 @@ import {
   BadgeCheck,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { ChangePasswordCard } from './components/ChangePasswordCard';
 
 export const ProfilePage: React.FC = () => {
   const { user, updateUser, fetchProfile } = useAuthStore();
@@ -300,6 +301,9 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Change Password Card */}
+        <ChangePasswordCard />
 
         {/* Order History Section */}
         <div id="orders-section" className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-5 scroll-mt-24">
