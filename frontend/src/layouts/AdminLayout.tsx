@@ -17,6 +17,7 @@ import {
   UndoOutlined,
   CommentOutlined,
   CustomerServiceOutlined,
+  FolderOpenOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
 
@@ -43,6 +44,11 @@ export const AdminLayout: React.FC = () => {
       key: '/admin/products',
       icon: <ShoppingOutlined style={{ fontSize: 16 }} />,
       label: 'Quản lý Sản phẩm',
+    },
+    {
+      key: '/admin/categories',
+      icon: <FolderOpenOutlined style={{ fontSize: 16 }} />,
+      label: 'Quản lý Danh mục',
     },
     {
       key: '/admin/imei',
@@ -106,6 +112,7 @@ export const AdminLayout: React.FC = () => {
   // Dynamic breadcrumb labels
   const getBreadcrumbTitle = () => {
     if (location.pathname === '/admin/products') return 'Quản lý Sản phẩm & Biến thể';
+    if (location.pathname === '/admin/categories') return 'Quản lý Danh mục Smartphone';
     if (location.pathname === '/admin/imei') return 'Quản trị Kho Thiết bị & Quản lý IMEI';
     if (location.pathname === '/admin/orders') return 'Quản lý Đơn hàng & Điều phối';
     if (location.pathname === '/admin/returns') return 'Quản lý Đổi trả & Hoàn tiền';

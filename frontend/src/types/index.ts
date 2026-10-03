@@ -43,9 +43,32 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
-  description?: string;
-  isActive?: boolean;
+  description?: string | null;
+  imageUrl?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  parentId?: string | null;
+  parent?: Category | null;
+  children?: Category[];
+  _count?: {
+    products: number;
+    children: number;
+  };
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+export interface CreateCategoryInput {
+  name: string;
+  slug: string;
+  parentId?: string | null;
+  description?: string;
+  imageUrl?: string;
+  isActive?: boolean;
+  sortOrder?: number;
+}
+
+export interface UpdateCategoryInput extends Partial<CreateCategoryInput> {}
 
 export interface ProductVariant {
   id: string;
