@@ -302,3 +302,42 @@ export interface WishlistResponse {
   updatedAt: string;
 }
 
+export type NotificationType =
+  | 'ORDER'
+  | 'PAYMENT'
+  | 'SHIPPING'
+  | 'PROMOTION'
+  | 'SYSTEM'
+  | 'WARRANTY'
+  | 'RETURN';
+
+export type NotificationChannel = 'IN_APP' | 'EMAIL' | 'SMS' | 'PUSH';
+
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  channel: NotificationChannel;
+  title: string;
+  message: string;
+  data?: Record<string, any> | null;
+  isRead: boolean;
+  readAt?: string | null;
+  createdAt: string;
+}
+
+export interface NotificationPaginationResponse {
+  data: NotificationItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface NotificationFilterParams {
+  page?: number;
+  limit?: number;
+  type?: NotificationType;
+  isRead?: boolean;
+}
+
+
