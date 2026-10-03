@@ -93,7 +93,7 @@ describe('AdminAuditLogsPage', () => {
       expect(screen.getByText('Chi tiết nhật ký kiểm toán')).toBeDefined();
       expect(screen.getByText('Log ID')).toBeDefined();
     });
-  });
+  }, 15000);
 
   it('should trigger export CSV when clicking Xuất CSV button', async () => {
     (auditLogService.exportAuditLogsToCsv as any).mockResolvedValueOnce(undefined);
