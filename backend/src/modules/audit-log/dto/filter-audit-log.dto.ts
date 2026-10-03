@@ -24,17 +24,32 @@ export class FilterAuditLogDto {
   @IsString()
   userId?: string;
 
+  @ApiPropertyOptional({ description: 'Start date in ISO format' })
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ description: 'End date in ISO format' })
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @ApiPropertyOptional({ description: 'Fuzzy search keyword' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @ApiPropertyOptional({ type: Number, default: 1 })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
-  page?: number;
+  page?: number = 1;
 
   @ApiPropertyOptional({ type: Number, default: 50 })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
-  limit?: number;
+  limit?: number = 50;
 }

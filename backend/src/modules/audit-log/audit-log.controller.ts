@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuditLogService } from './audit-log.service';
 import { FilterAuditLogDto } from './dto/filter-audit-log.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -14,6 +14,12 @@ import { Role } from '../../common/enums/role.enum';
 @Roles(Role.ADMIN) // System audit logs are strictly for ADMIN
 export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}
+
+  @Get('stats')
+  @ApiOperation({ summary: 'Get overview statistics for audit logs (ADMIN)' })
+  getStats() {
+    return this.auditLogService.getStats();
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get all audit logs with filters (ADMIN)' })
