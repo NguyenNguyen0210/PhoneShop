@@ -1,4 +1,11 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  BadRequestException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -409,13 +416,11 @@ export class AuthService {
 
     if (!user) {
       this.logger.warn(
-        `Password reset requested for non-existent email: "${normalizedEmail}". No email will be sent. (If testing, register this email first)`,
+        `Password reset requested for non-existent email: "${normalizedEmail}".`,
       );
-      return {
-        success: true,
-        message:
-          'Nếu địa chỉ email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi đến hộp thư của bạn.',
-      };
+      throw new NotFoundException(
+        'Địa chỉ email này chưa được đăng ký trong hệ thống. Vui lòng kiểm tra lại hoặc tạo tài khoản mới.',
+      );
     }
 
     // Invalidate existing unused tokens for this user

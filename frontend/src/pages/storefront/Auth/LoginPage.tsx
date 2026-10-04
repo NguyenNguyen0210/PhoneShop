@@ -137,7 +137,7 @@ export const LoginPage: React.FC = () => {
           <Link to="/" className="inline-flex items-center group mb-3" aria-label="PhoneShop">
             <img
               src="/logo-horizontal.png"
-              alt="PhoneShop"
+              alt="PhoneShop - Smartphone • Better Life"
               className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
             />
           </Link>
@@ -366,9 +366,22 @@ export const LoginPage: React.FC = () => {
                 </div>
 
                 {forgotError && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{forgotError}</span>
+                  <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                    <div className="flex-1">
+                      <span className="font-medium leading-relaxed block">{forgotError}</span>
+                      {forgotError.includes('đăng ký') && (
+                        <div className="mt-2 pt-2 border-t border-rose-200/70">
+                          <Link
+                            to="/register"
+                            onClick={() => setShowForgotModal(false)}
+                            className="font-bold text-rose-800 hover:text-rose-900 hover:underline inline-flex items-center gap-1"
+                          >
+                            Tạo tài khoản mới ngay &rarr;
+                          </Link>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
