@@ -199,7 +199,12 @@ export class ShippingService {
           await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.SHIPPING);
         }
 
-        if (this.emailService && order?.user?.email) {
+        const isFirstShippingNotice =
+          (dto.status === ShippingStatus.PICKED_UP || dto.status === ShippingStatus.IN_TRANSIT) &&
+          shipping.status !== ShippingStatus.PICKED_UP &&
+          shipping.status !== ShippingStatus.IN_TRANSIT;
+
+        if (this.emailService && order?.user?.email && isFirstShippingNotice) {
           try {
             await this.emailService.sendShippingNotification(
               order.user.email,

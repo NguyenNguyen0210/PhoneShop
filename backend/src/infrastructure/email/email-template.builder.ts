@@ -11,8 +11,9 @@ export function escapeHtml(value?: string | null): string {
   });
 }
 
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
+export function formatCurrency(amount?: number | null): string {
+  const num = Number(amount) || 0;
+  return new Intl.NumberFormat('vi-VN').format(num) + ' đ';
 }
 
 // ── CUSTOMER EMAIL LAYOUT ─────────────────────────────────────────────

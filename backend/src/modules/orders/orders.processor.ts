@@ -36,6 +36,7 @@ export class OrdersProcessor extends WorkerHost {
       include: {
         items: true,
         user: { select: { email: true, firstName: true, lastName: true } },
+        installmentApplication: { select: { id: true } },
       },
     });
 
@@ -116,10 +117,15 @@ export class OrdersProcessor extends WorkerHost {
           const u = (order as any).user;
           const recipientName =
             [u.firstName, u.lastName].filter(Boolean).join(' ') || undefined;
+          const isInstallment = Boolean((order as any).installmentApplication);
+          const holdReason = isInstallment
+            ? 'Hết thời hạn 24 giờ thẩm định hồ sơ trả góp'
+            : 'Quá thời hạn 15 phút giữ hàng chưa hoàn tất thanh toán';
+
           await this.emailService.sendOrderCancelled(u.email, {
             orderNumber: order.orderNumber,
             recipientName,
-            cancelledReason: 'Quá thời hạn 15 phút giữ hàng chưa hoàn tất thanh toán',
+            cancelledReason: holdReason,
             voucherRestored: Boolean((order as any).voucherCode),
           });
         } catch (emailErr) {

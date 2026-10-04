@@ -584,7 +584,10 @@ export class OrdersService {
       if (typeof (timer as any)?.unref === 'function') (timer as any).unref();
     }
 
-    if (this.emailService) {
+    // P3: send confirmation email to the buyer (safe-catch: never break creation).
+    // For VNPAY, confirmation is dispatched upon verified payment via PaymentsService.handleVnpayIpn
+    // to avoid duplicate emails or false confirmations for abandoned payment sessions.
+    if (this.emailService && dto.paymentMethod !== PaymentMethod.VNPAY) {
       try {
         const user = await this.prisma.user.findUnique({
           where: { id: userId },
@@ -603,16 +606,15 @@ export class OrdersService {
             }
           }
 
+          const paymentMethod = dto.paymentMethod as PaymentMethod;
           const paymentMethodLabel =
-            dto.paymentMethod === PaymentMethod.COD
+            paymentMethod === PaymentMethod.COD
               ? 'Thanh toán khi nhận hàng (COD)'
-              : dto.paymentMethod === PaymentMethod.BANK_TRANSFER
+              : paymentMethod === PaymentMethod.BANK_TRANSFER
                 ? 'Chuyển khoản VietQR / Ngân hàng'
-                : dto.paymentMethod === PaymentMethod.VNPAY
-                  ? 'Thanh toán điện tử VNPAY'
-                  : dto.paymentMethod === PaymentMethod.INSTALLMENT
-                    ? 'Mua trả góp 0%'
-                    : 'Tiêu chuẩn';
+                : paymentMethod === PaymentMethod.INSTALLMENT
+                  ? 'Mua trả góp 0%'
+                  : 'Tiêu chuẩn';
 
           const items = (order.items || []).map((it: any) => ({
             name: it.productName,
@@ -656,6 +658,7 @@ export class OrdersService {
       include: {
         items: true,
         user: { select: { email: true, firstName: true, lastName: true } },
+        installmentApplication: { select: { id: true } },
       },
     });
     if (!order || order.status !== OrderStatus.PENDING) return false;
@@ -710,10 +713,15 @@ export class OrdersService {
           const u = (order as any).user;
           const recipientName =
             [u.firstName, u.lastName].filter(Boolean).join(' ') || undefined;
+          const isInstallment = Boolean((order as any).installmentApplication);
+          const holdReason = isInstallment
+            ? 'Hết thời hạn 24 giờ thẩm định hồ sơ trả góp'
+            : 'Quá thời hạn 15 phút giữ hàng chưa hoàn tất thanh toán';
+
           await emailService.sendOrderCancelled(u.email, {
             orderNumber: order.orderNumber,
             recipientName,
-            cancelledReason: 'Quá thời hạn 15 phút giữ hàng chưa hoàn tất thanh toán',
+            cancelledReason: holdReason,
             voucherRestored: Boolean((order as any).voucherCode),
           });
         } catch (emailErr) {
@@ -1185,7 +1193,7 @@ export class OrdersService {
             cancelledReason: reason || 'Đơn hàng đã được hủy bởi quản trị viên',
             voucherRestored: Boolean((order as any).voucherCode),
           });
-        } else if (newStatus === OrderStatus.DELIVERED || newStatus === OrderStatus.COMPLETED) {
+        } else if (newStatus === OrderStatus.DELIVERED && oldStatus !== OrderStatus.DELIVERED) {
           const itemIds = (order.items || []).map((it: any) => it.id);
           const warranties = await this.prisma.warranty.findMany({
             where: { orderItemId: { in: itemIds } },

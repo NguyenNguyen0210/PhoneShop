@@ -115,10 +115,12 @@ export const LoginPage: React.FC = () => {
       await authService.forgotPassword(forgotEmail.trim());
       setForgotSubmitted(true);
     } catch (err: any) {
+      const rawMsg = err.response?.data?.message || err.message;
       setForgotError(
-        err.response?.data?.message ||
-        err.message ||
-        'Không thể gửi email khôi phục. Vui lòng kiểm tra lại địa chỉ email hoặc thử lại sau.'
+        Array.isArray(rawMsg)
+          ? rawMsg.join(', ')
+          : rawMsg ||
+            'Không thể gửi email khôi phục. Vui lòng kiểm tra lại địa chỉ email hoặc thử lại sau.'
       );
     } finally {
       setForgotLoading(false);
@@ -326,6 +328,7 @@ export const LoginPage: React.FC = () => {
               onClick={() => {
                 setShowForgotModal(false);
                 setForgotError(null);
+                setForgotSubmitted(false);
               }}
               className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 disabled:opacity-50 p-1.5 rounded-full hover:bg-slate-100 transition cursor-pointer"
             >

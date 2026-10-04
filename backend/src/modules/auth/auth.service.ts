@@ -36,9 +36,10 @@ export class AuthService {
     private emailService: EmailService,
   ) {}
   async register(dto: RegisterDto) {
+    const normalizedEmail = dto.email.toLowerCase().trim();
     const existingUser = await this.prisma.user.findFirst({
       where: {
-        OR: [{ email: dto.email }, { phone: dto.phone }],
+        OR: [{ email: normalizedEmail }, { phone: dto.phone }],
       },
     });
 
@@ -61,7 +62,7 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
+        email: normalizedEmail,
         passwordHash: hashedPassword,
         firstName: dto.firstName,
         lastName: dto.lastName,
@@ -90,8 +91,9 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
+    const normalizedEmail = dto.email.toLowerCase().trim();
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email: normalizedEmail },
       include: {
         roles: { include: { role: true } },
       },
@@ -423,6 +425,12 @@ export class AuthService {
       );
     }
 
+    if (user.status !== 'ACTIVE') {
+      throw new BadRequestException(
+        'Tài khoản của bạn hiện đang bị tạm khóa hoặc chưa được kích hoạt. Vui lòng liên hệ bộ phận hỗ trợ.',
+      );
+    }
+
     // Invalidate existing unused tokens for this user
     await this.prisma.passwordResetToken.updateMany({
       where: { userId: user.id, usedAt: null },
@@ -508,25 +516,30 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.newPassword, 10);
 
-    // Update user's password
-    await this.prisma.user.update({
-      where: { id: resetTokenRecord.userId },
-      data: { passwordHash },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      // Guarded single-use write
+      const updatedToken = await tx.passwordResetToken.updateMany({
+        where: { id: resetTokenRecord.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+      if (updatedToken.count === 0) {
+        throw new BadRequestException('Liên kết đã hết hạn hoặc đã được sử dụng');
+      }
 
-    // Mark the reset token as used
-    await this.prisma.passwordResetToken.update({
-      where: { id: resetTokenRecord.id },
-      data: { usedAt: new Date() },
-    });
+      // Update user's password
+      await tx.user.update({
+        where: { id: resetTokenRecord.userId },
+        data: { passwordHash },
+      });
 
-    // Revoke all active refresh tokens for the user
-    await this.prisma.refreshToken.updateMany({
-      where: {
-        userId: resetTokenRecord.userId,
-        revokedAt: null,
-      },
-      data: { revokedAt: new Date() },
+      // Revoke all active refresh tokens for the user
+      await tx.refreshToken.updateMany({
+        where: {
+          userId: resetTokenRecord.userId,
+          revokedAt: null,
+        },
+        data: { revokedAt: new Date() },
+      });
     });
 
     return {
