@@ -15,6 +15,7 @@ import { reviewService, type MyReviewStatusResponse } from '../../../services/re
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { ReviewModal, ReviewDeleteDialog } from '../reviews';
 import { apiClient } from '../../../services/apiClient';
+import { notifyError } from '../../../utils/notify';
 
 export interface ProductHighlightsSectionProps {
   product: Product;
@@ -150,8 +151,8 @@ export const ProductHighlightsSection: React.FC<ProductHighlightsSectionProps> =
       }
       setReplyingReviewId(null);
       setReplyText('');
-    } catch {
-      alert('Không thể gửi phản hồi. Vui lòng thử lại!');
+    } catch (err) {
+      notifyError(err, 'Không thể gửi phản hồi. Vui lòng thử lại!');
     } finally {
       setIsSubmittingReply(false);
     }

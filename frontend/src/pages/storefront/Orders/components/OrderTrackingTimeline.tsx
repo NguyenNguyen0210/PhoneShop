@@ -295,20 +295,20 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({ or
 
       {/* Special Alert: Cancelled Order */}
       {order.status === 'CANCELLED' && (
-        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4.5 shadow-xs space-y-2">
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4.5 shadow-xs space-y-2">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-rose-100 text-rose-600 rounded-xl shrink-0">
+            <div className="p-2.5 bg-slate-200 text-slate-500 rounded-xl shrink-0">
               <XCircle className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-rose-900">Đơn hàng đã bị hủy</h4>
-              <p className="text-xs text-rose-700 mt-0.5">
+              <h4 className="text-sm font-bold text-slate-900">Đơn hàng đã bị hủy</h4>
+              <p className="text-xs text-slate-600 mt-0.5">
                 Thời gian hủy: {order.cancelledAt ? new Date(order.cancelledAt).toLocaleString('vi-VN') : 'Đã hủy'}
               </p>
             </div>
           </div>
           {order.cancelledReason && (
-            <div className="bg-white/80 rounded-xl p-2.5 border border-rose-200 text-xs text-rose-800">
+            <div className="bg-white rounded-xl p-2.5 border border-slate-200 text-xs text-slate-700">
               <span className="font-semibold">Lý do hủy: </span>
               <span>{order.cancelledReason}</span>
             </div>
@@ -318,13 +318,13 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({ or
 
       {/* Special Alert: Delivery Failed */}
       {shipping?.status === 'FAILED' && (
-        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-center gap-3 text-xs text-rose-800 shadow-xs">
-          <div className="p-2 bg-rose-100 text-rose-600 rounded-xl shrink-0">
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center gap-3 text-xs text-slate-700 shadow-xs">
+          <div className="p-2 bg-slate-200 text-slate-500 rounded-xl shrink-0">
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-rose-900">Giao hàng không thành công</h4>
-            <p className="text-xs text-rose-700 mt-0.5">
+            <h4 className="text-sm font-bold text-slate-900">Giao hàng không thành công</h4>
+            <p className="text-xs text-slate-600 mt-0.5">
               Đơn vị vận chuyển không thể phát kiện hàng tới địa chỉ nhận. Vui lòng liên hệ bộ phận hỗ trợ khách hàng để được xử lý.
             </p>
           </div>

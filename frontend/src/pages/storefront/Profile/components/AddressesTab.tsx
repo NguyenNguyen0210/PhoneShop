@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Plus, Star, Trash2, Home, Building2, Loader2, AlertCircle } from 'lucide-react';
+import { MapPin, Plus, Star, Trash2, Home, Building2, Loader2 } from 'lucide-react';
 import { addressService } from '../../../../services/addressService';
+import { notifyError, notifySuccess } from '../../../../utils/notify';
 import { AddressCreateModal } from './AddressCreateModal';
 import type { Address } from '../../../../types';
 
@@ -11,19 +12,17 @@ export interface AddressesTabProps {
 export const AddressesTab: React.FC<AddressesTabProps> = ({ onAddressesLoaded }) => {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   const fetchAddresses = async () => {
     setLoading(true);
-    setError(null);
     try {
       const data = await addressService.getAddresses();
       setAddresses(data);
       onAddressesLoaded?.(data.length);
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Không thể tải danh sách địa chỉ.');
+      notifyError(err, 'Không thể tải danh sách địa chỉ.');
     } finally {
       setLoading(false);
     }
@@ -38,8 +37,9 @@ export const AddressesTab: React.FC<AddressesTabProps> = ({ onAddressesLoaded })
     try {
       await addressService.setDefaultAddress(id);
       await fetchAddresses();
+      notifySuccess('Đã đặt địa chỉ mặc định.');
     } catch (err: any) {
-      alert(err?.response?.data?.message || err?.message || 'Không thể đặt địa chỉ mặc định.');
+      notifyError(err, 'Không thể đặt địa chỉ mặc định.');
     } finally {
       setActionLoadingId(null);
     }
@@ -51,8 +51,9 @@ export const AddressesTab: React.FC<AddressesTabProps> = ({ onAddressesLoaded })
     try {
       await addressService.deleteAddress(id);
       await fetchAddresses();
+      notifySuccess('Đã xóa địa chỉ.');
     } catch (err: any) {
-      alert(err?.response?.data?.message || err?.message || 'Không thể xóa địa chỉ.');
+      notifyError(err, 'Không thể xóa địa chỉ.');
     } finally {
       setActionLoadingId(null);
     }
@@ -85,18 +86,6 @@ export const AddressesTab: React.FC<AddressesTabProps> = ({ onAddressesLoaded })
         <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           <p className="text-xs font-medium">Đang tải sổ địa chỉ...</p>
-        </div>
-      ) : error ? (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-3 text-xs sm:text-sm font-medium">
-          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-          <div className="flex-1">{error}</div>
-          <button
-            type="button"
-            onClick={fetchAddresses}
-            className="text-xs font-bold text-rose-700 underline cursor-pointer"
-          >
-            Thử lại
-          </button>
         </div>
       ) : addresses.length === 0 ? (
         <div className="py-16 text-center bg-slate-50/60 rounded-3xl border border-dashed border-slate-200 p-8 space-y-3">

@@ -386,8 +386,8 @@ export const OrderDetailPage: React.FC = () => {
 
             {/* Rejection notice if rejected */}
             {instApp?.status === 'REJECTED' && instApp?.rejectionReason && (
-              <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 space-y-1">
-                <span className="font-bold text-sm block text-rose-900">Lý do từ chối hồ sơ:</span>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-700 space-y-1">
+                <span className="font-bold text-sm block text-slate-900">Lý do từ chối hồ sơ:</span>
                 <p>{instApp.rejectionReason}</p>
               </div>
             )}

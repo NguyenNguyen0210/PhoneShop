@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { MessageCircle, Minus, X, Send, Loader2, Headphones, AlertCircle } from 'lucide-react';
+import { MessageCircle, Minus, X, Send, Loader2, Headphones } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { ticketService } from '../../services/ticketService';
+import { notifyError } from '../../utils/notify';
 import type { Ticket, TicketCategory, TicketMessage } from '../../types/ticket';
 
 const extractItems = (res: any): Ticket[] => {
@@ -20,7 +21,6 @@ export const LiveSupportChatWidget: React.FC = () => {
 
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
   const [isLoadingTicket, setIsLoadingTicket] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Starter form state
   const [selectedCategory, setSelectedCategory] = useState<TicketCategory>('PRODUCT_INQUIRY');
@@ -47,7 +47,6 @@ export const LiveSupportChatWidget: React.FC = () => {
 
     const fetchActiveTicket = async () => {
       setIsLoadingTicket(true);
-      setError(null);
       try {
         const res = await ticketService.getMyTickets({ limit: 10 });
         const tickets = extractItems(res);
@@ -68,7 +67,7 @@ export const LiveSupportChatWidget: React.FC = () => {
       } catch (err) {
         if (isMounted) {
           console.error('Failed to load live chat tickets:', err);
-          setError('Không thể tải dữ liệu hỗ trợ. Vui lòng thử lại sau.');
+          notifyError(err, 'Không thể tải dữ liệu hỗ trợ. Vui lòng thử lại sau.');
         }
       } finally {
         if (isMounted) {
@@ -121,7 +120,6 @@ export const LiveSupportChatWidget: React.FC = () => {
     if (!trimmedMessage || isStarting) return;
 
     setIsStarting(true);
-    setError(null);
     try {
       const payload = {
         title: '[Live Chat] Hỗ trợ khách hàng',
@@ -139,11 +137,7 @@ export const LiveSupportChatWidget: React.FC = () => {
       setInitialMessage('');
     } catch (err: any) {
       console.error('Failed to create ticket:', err);
-      const apiMessage = err?.response?.data?.message;
-      const displayMsg = Array.isArray(apiMessage)
-        ? apiMessage.join(', ')
-        : apiMessage || 'Không thể tạo yêu cầu hỗ trợ. Vui lòng thử lại.';
-      setError(displayMsg);
+      notifyError(err, 'Không thể tạo yêu cầu hỗ trợ. Vui lòng thử lại.');
     } finally {
       setIsStarting(false);
     }
@@ -275,31 +269,6 @@ export const LiveSupportChatWidget: React.FC = () => {
               <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                 <Loader2 className="w-7 h-7 text-blue-600 animate-spin mb-3" />
                 <p className="text-sm text-slate-500 font-medium">Đang tải cuộc trò chuyện...</p>
-              </div>
-            ) : error ? (
-              /* Error State */
-              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
-                <p className="text-sm text-slate-600 mb-4 max-w-[280px]">{error}</p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setError(null)}
-                    className="px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-                  >
-                    Thử lại
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setError(null);
-                      setIsOpen(false);
-                    }}
-                    className="px-4 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
-                  >
-                    Đóng
-                  </button>
-                </div>
               </div>
             ) : !activeTicket ? (
               /* Starter Form */
