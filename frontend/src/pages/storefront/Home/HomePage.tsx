@@ -21,7 +21,10 @@ import { ProductCard } from '../../../components/storefront/ProductCard';
 import { FlashSaleSection } from '../../../components/storefront/FlashSaleSection';
 import { BrandLogo } from '../../../components/common/BrandLogo';
 import { ProductFilterSidebar } from '../../../components/storefront/ProductFilterSidebar';
-import { ProductSortToolbar } from '../../../components/storefront/ProductSortToolbar';
+import {
+  ProductSortToolbar,
+  type ProductSortOption,
+} from '../../../components/storefront/ProductSortToolbar';
 import { StorefrontPagination } from '../../../components/storefront/StorefrontPagination';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 
@@ -43,11 +46,17 @@ export const HomePage: React.FC = () => {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000000]);
   const [selectedStorages, setSelectedStorages] = useState<string[]>([]);
   const [selectedRams, setSelectedRams] = useState<string[]>([]);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [has5GOnly, setHas5GOnly] = useState<boolean>(false);
+  const [selectedScreenRanges, setSelectedScreenRanges] = useState<string[]>([]);
+  const [selectedBatteryRanges, setSelectedBatteryRanges] = useState<string[]>([]);
+  const [selectedOs, setSelectedOs] = useState<string[]>([]);
+  const [selectedChipsets, setSelectedChipsets] = useState<string[]>([]);
   const [inStockOnly, setInStockOnly] = useState<boolean>(false);
   const [onSaleOnly, setOnSaleOnly] = useState<boolean>(false);
   const [minRating, setMinRating] = useState<number | null>(null);
   const [searchKeyword, setSearchKeyword] = useState<string>(() => searchParams.get('search') || '');
-  const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc' | 'rating' | 'newest'>('default');
+  const [sortBy, setSortBy] = useState<ProductSortOption>('default');
   const [showMobileFilter, setShowMobileFilter] = useState<boolean>(false);
 
   const lastScrolledParamsRef = useRef<string | null>(null);
@@ -213,6 +222,47 @@ export const HomePage: React.FC = () => {
     resetPageToFirst();
   };
 
+  const toggleColor = (color: string) => {
+    const lower = color.toLowerCase();
+    setSelectedColors((prev) =>
+      prev.includes(lower) ? prev.filter((c) => c !== lower) : [...prev, lower]
+    );
+    resetPageToFirst();
+  };
+
+  const toggle5G = (val: boolean) => {
+    setHas5GOnly(val);
+    resetPageToFirst();
+  };
+
+  const toggleScreenRange = (range: string) => {
+    setSelectedScreenRanges((prev) =>
+      prev.includes(range) ? prev.filter((r) => r !== range) : [...prev, range]
+    );
+    resetPageToFirst();
+  };
+
+  const toggleBatteryRange = (range: string) => {
+    setSelectedBatteryRanges((prev) =>
+      prev.includes(range) ? prev.filter((r) => r !== range) : [...prev, range]
+    );
+    resetPageToFirst();
+  };
+
+  const toggleOs = (os: string) => {
+    setSelectedOs((prev) =>
+      prev.includes(os) ? prev.filter((o) => o !== os) : [...prev, os]
+    );
+    resetPageToFirst();
+  };
+
+  const toggleChipset = (chip: string) => {
+    setSelectedChipsets((prev) =>
+      prev.includes(chip) ? prev.filter((c) => c !== chip) : [...prev, chip]
+    );
+    resetPageToFirst();
+  };
+
   const handleInStockChange = (val: boolean) => {
     setInStockOnly(val);
     resetPageToFirst();
@@ -233,7 +283,7 @@ export const HomePage: React.FC = () => {
     resetPageToFirst();
   };
 
-  const handleSortChange = (sort: 'default' | 'price-asc' | 'price-desc' | 'rating' | 'newest') => {
+  const handleSortChange = (sort: ProductSortOption) => {
     setSortBy(sort);
     resetPageToFirst();
   };
@@ -244,6 +294,12 @@ export const HomePage: React.FC = () => {
     priceRange[1] < 50000000 ||
     selectedStorages.length > 0 ||
     selectedRams.length > 0 ||
+    selectedColors.length > 0 ||
+    has5GOnly ||
+    selectedScreenRanges.length > 0 ||
+    selectedBatteryRanges.length > 0 ||
+    selectedOs.length > 0 ||
+    selectedChipsets.length > 0 ||
     inStockOnly ||
     onSaleOnly ||
     minRating !== null ||
@@ -254,6 +310,12 @@ export const HomePage: React.FC = () => {
     setPriceRange([0, 50000000]);
     setSelectedStorages([]);
     setSelectedRams([]);
+    setSelectedColors([]);
+    setHas5GOnly(false);
+    setSelectedScreenRanges([]);
+    setSelectedBatteryRanges([]);
+    setSelectedOs([]);
+    setSelectedChipsets([]);
     setInStockOnly(false);
     setOnSaleOnly(false);
     setMinRating(null);
@@ -273,6 +335,38 @@ export const HomePage: React.FC = () => {
       .map((v) => v.price)
       .filter((pr) => typeof pr === 'number' && !isNaN(pr));
     return prices.length > 0 ? Math.min(...prices) : 0;
+  };
+
+  const matchesScreen = (screenSize?: number, ranges?: string[]): boolean => {
+    if (!ranges || ranges.length === 0) return true;
+    if (!screenSize) return false;
+    return ranges.some((range) => {
+      if (range === '< 6.1"') return screenSize < 6.1;
+      if (range === '6.1" - 6.7"') return screenSize >= 6.1 && screenSize <= 6.7;
+      if (range === '> 6.7"') return screenSize > 6.7;
+      return true;
+    });
+  };
+
+  const matchesBattery = (battery?: number, ranges?: string[]): boolean => {
+    if (!ranges || ranges.length === 0) return true;
+    if (!battery) return false;
+    return ranges.some((range) => {
+      if (range === '< 4000 mAh') return battery < 4000;
+      if (range === '4000 - 5000 mAh') return battery >= 4000 && battery <= 5000;
+      if (range === '> 5000 mAh') return battery > 5000;
+      return true;
+    });
+  };
+
+  const matchesChipset = (chipset?: string, selected?: string[]): boolean => {
+    if (!selected || selected.length === 0) return true;
+    if (!chipset) return false;
+    const lower = chipset.toLowerCase();
+    return selected.some((c) => {
+      const chipLower = c.toLowerCase();
+      return lower.includes(chipLower) || (c.includes('Apple') && lower.includes('apple'));
+    });
   };
 
   // Filter & Sort products memo
@@ -321,6 +415,49 @@ export const HomePage: React.FC = () => {
         if (!matchesRam) return false;
       }
 
+      // Color filter
+      if (selectedColors.length > 0) {
+        const matchesColor = p.variants?.some((v) =>
+          v.color
+            ? selectedColors.some((c) => v.color?.toLowerCase().includes(c.toLowerCase()))
+            : false
+        );
+        if (!matchesColor) return false;
+      }
+
+      // 5G Network filter
+      if (has5GOnly) {
+        const specs: any = p.specs || {};
+        const is5G = specs.has5G === true || p.name.toUpperCase().includes('5G');
+        if (!is5G) return false;
+      }
+
+      // Screen size filter
+      if (selectedScreenRanges.length > 0) {
+        const specs: any = p.specs || {};
+        if (!matchesScreen(specs.screenSize, selectedScreenRanges)) return false;
+      }
+
+      // Battery capacity filter
+      if (selectedBatteryRanges.length > 0) {
+        const specs: any = p.specs || {};
+        if (!matchesBattery(specs.batteryCapacity, selectedBatteryRanges)) return false;
+      }
+
+      // OS filter
+      if (selectedOs.length > 0) {
+        const specs: any = p.specs || {};
+        const productOs = specs.os?.toLowerCase() || (p.name.includes('iPhone') ? 'ios' : 'android');
+        const hasOs = selectedOs.some((o) => productOs.includes(o.toLowerCase()));
+        if (!hasOs) return false;
+      }
+
+      // Chipset filter
+      if (selectedChipsets.length > 0) {
+        const specs: any = p.specs || {};
+        if (!matchesChipset(specs.chipset, selectedChipsets)) return false;
+      }
+
       // In stock only filter
       if (inStockOnly) {
         const inStock = p.variants?.some(
@@ -359,6 +496,24 @@ export const HomePage: React.FC = () => {
         (a, b) =>
           new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
       );
+    } else if (sortBy === 'best-seller') {
+      filtered.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+    } else if (sortBy === 'top-discount') {
+      filtered.sort((a, b) => {
+        const discountA = a.variants?.reduce((max, v) => {
+          if (typeof v.compareAtPrice === 'number' && v.compareAtPrice > v.price) {
+            return Math.max(max, (v.compareAtPrice - v.price) / v.compareAtPrice);
+          }
+          return max;
+        }, 0) || 0;
+        const discountB = b.variants?.reduce((max, v) => {
+          if (typeof v.compareAtPrice === 'number' && v.compareAtPrice > v.price) {
+            return Math.max(max, (v.compareAtPrice - v.price) / v.compareAtPrice);
+          }
+          return max;
+        }, 0) || 0;
+        return discountB - discountA;
+      });
     }
 
     return filtered;
@@ -369,6 +524,12 @@ export const HomePage: React.FC = () => {
     priceRange,
     selectedStorages,
     selectedRams,
+    selectedColors,
+    has5GOnly,
+    selectedScreenRanges,
+    selectedBatteryRanges,
+    selectedOs,
+    selectedChipsets,
     inStockOnly,
     onSaleOnly,
     minRating,
@@ -627,6 +788,18 @@ export const HomePage: React.FC = () => {
               onToggleStorage={toggleStorage}
               selectedRams={selectedRams}
               onToggleRam={toggleRam}
+              selectedColors={selectedColors}
+              onToggleColor={toggleColor}
+              has5GOnly={has5GOnly}
+              onToggle5G={toggle5G}
+              selectedScreenRanges={selectedScreenRanges}
+              onToggleScreenRange={toggleScreenRange}
+              selectedBatteryRanges={selectedBatteryRanges}
+              onToggleBatteryRange={toggleBatteryRange}
+              selectedOs={selectedOs}
+              onToggleOs={toggleOs}
+              selectedChipsets={selectedChipsets}
+              onToggleChipset={toggleChipset}
               inStockOnly={inStockOnly}
               onToggleInStock={handleInStockChange}
               onSaleOnly={onSaleOnly}
@@ -744,6 +917,18 @@ export const HomePage: React.FC = () => {
                 onToggleStorage={toggleStorage}
                 selectedRams={selectedRams}
                 onToggleRam={toggleRam}
+                selectedColors={selectedColors}
+                onToggleColor={toggleColor}
+                has5GOnly={has5GOnly}
+                onToggle5G={toggle5G}
+                selectedScreenRanges={selectedScreenRanges}
+                onToggleScreenRange={toggleScreenRange}
+                selectedBatteryRanges={selectedBatteryRanges}
+                onToggleBatteryRange={toggleBatteryRange}
+                selectedOs={selectedOs}
+                onToggleOs={toggleOs}
+                selectedChipsets={selectedChipsets}
+                onToggleChipset={toggleChipset}
                 inStockOnly={inStockOnly}
                 onToggleInStock={handleInStockChange}
                 onSaleOnly={onSaleOnly}
