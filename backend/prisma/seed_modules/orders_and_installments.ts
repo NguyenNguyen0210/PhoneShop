@@ -71,13 +71,16 @@ function getPaymentProviderName(
 /**
  * Builds exactly 200 order blueprints spanning the past 180 days.
  *
- * Status distribution:
- * - 130 COMPLETED
+ * Status distribution (covers ALL OrderStatus for filter testing):
+ * - 120 COMPLETED
  * - 20 DELIVERED
- * - 20 SHIPPING
+ * - 18 SHIPPING
  * - 10 PROCESSING
- * - 10 PENDING
- * - 10 CANCELLED
+ * - 6 CONFIRMED
+ * - 5 PACKED
+ * - 5 RETURNED
+ * - 8 PENDING
+ * - 8 CANCELLED
  *
  * Payment distribution:
  * - 20 INSTALLMENT (16 APPROVED, 2 PENDING, 2 REJECTED)
@@ -89,10 +92,10 @@ function getPaymentProviderName(
 function buildOrderBlueprints(): OrderBlueprint[] {
   const blueprints: OrderBlueprint[] = [];
 
-  // 1. COMPLETED: 130 orders (Ages from 178 days ago down to 8 days ago)
-  // Methods: 12 INSTALLMENT (APPROVED), 51 COD, 36 VNPAY, 19 MOMO, 12 BANK_TRANSFER
-  for (let i = 0; i < 130; i++) {
-    const ageDays = 178 - (i / 129) * (178 - 8);
+  // 1. COMPLETED: 120 orders (Ages from 178 days ago down to 8 days ago)
+  // Methods: 12 INSTALLMENT (APPROVED), 46 COD, 33 VNPAY, 17 MOMO, 12 BANK_TRANSFER
+  for (let i = 0; i < 120; i++) {
+    const ageDays = 178 - (i / 119) * (178 - 8);
     let paymentMethod: PaymentMethod;
     let installmentProvider: InstallmentProvider | undefined;
     let installmentStatus: InstallmentStatus | undefined;
@@ -101,11 +104,11 @@ function buildOrderBlueprints(): OrderBlueprint[] {
       paymentMethod = PaymentMethod.INSTALLMENT;
       installmentProvider = i % 2 === 0 ? InstallmentProvider.HOME_CREDIT : InstallmentProvider.FE_CREDIT;
       installmentStatus = InstallmentStatus.APPROVED;
-    } else if (i < 12 + 51) {
+    } else if (i < 12 + 46) {
       paymentMethod = PaymentMethod.COD;
-    } else if (i < 12 + 51 + 36) {
+    } else if (i < 12 + 46 + 33) {
       paymentMethod = PaymentMethod.VNPAY;
-    } else if (i < 12 + 51 + 36 + 19) {
+    } else if (i < 12 + 46 + 33 + 17) {
       paymentMethod = PaymentMethod.MOMO;
     } else {
       paymentMethod = PaymentMethod.BANK_TRANSFER;
@@ -149,10 +152,10 @@ function buildOrderBlueprints(): OrderBlueprint[] {
     });
   }
 
-  // 3. SHIPPING: 20 orders (Ages from 3 days ago down to 1.2 days ago)
-  // Methods: 2 INSTALLMENT (APPROVED), 8 COD, 5 VNPAY, 3 MOMO, 2 BANK_TRANSFER
-  for (let i = 0; i < 20; i++) {
-    const ageDays = 3 - (i / 19) * (3 - 1.2);
+  // 3. SHIPPING: 18 orders (Ages from 3 days ago down to 1.2 days ago)
+  // Methods: 2 INSTALLMENT (APPROVED), 7 COD, 5 VNPAY, 2 MOMO, 2 BANK_TRANSFER
+  for (let i = 0; i < 18; i++) {
+    const ageDays = 3 - (i / 17) * (3 - 1.2);
     let paymentMethod: PaymentMethod;
     let installmentProvider: InstallmentProvider | undefined;
     let installmentStatus: InstallmentStatus | undefined;
@@ -161,11 +164,11 @@ function buildOrderBlueprints(): OrderBlueprint[] {
       paymentMethod = PaymentMethod.INSTALLMENT;
       installmentProvider = i % 2 === 0 ? InstallmentProvider.HOME_CREDIT : InstallmentProvider.FE_CREDIT;
       installmentStatus = InstallmentStatus.APPROVED;
-    } else if (i < 2 + 8) {
+    } else if (i < 2 + 7) {
       paymentMethod = PaymentMethod.COD;
-    } else if (i < 2 + 8 + 5) {
+    } else if (i < 2 + 7 + 5) {
       paymentMethod = PaymentMethod.VNPAY;
-    } else if (i < 2 + 8 + 5 + 3) {
+    } else if (i < 2 + 7 + 5 + 2) {
       paymentMethod = PaymentMethod.MOMO;
     } else {
       paymentMethod = PaymentMethod.BANK_TRANSFER;
@@ -177,6 +180,37 @@ function buildOrderBlueprints(): OrderBlueprint[] {
       ageDays,
       installmentProvider,
       installmentStatus,
+    });
+  }
+
+  // 3b. CONFIRMED: 6 orders (Ages 1.0 -> 0.6 days) — paid online, awaiting packing
+  for (let i = 0; i < 6; i++) {
+    const ageDays = 1.0 - (i / 5) * (1.0 - 0.6);
+    blueprints.push({
+      status: OrderStatus.CONFIRMED,
+      paymentMethod: i % 2 === 0 ? PaymentMethod.VNPAY : PaymentMethod.MOMO,
+      ageDays,
+    });
+  }
+
+  // 3c. PACKED: 5 orders (Ages 0.9 -> 0.5 days) — packed, awaiting carrier pickup
+  for (let i = 0; i < 5; i++) {
+    const ageDays = 0.9 - (i / 4) * (0.9 - 0.5);
+    blueprints.push({
+      status: OrderStatus.PACKED,
+      paymentMethod: i % 2 === 0 ? PaymentMethod.COD : PaymentMethod.VNPAY,
+      ageDays,
+    });
+  }
+
+  // 3d. RETURNED: 5 orders (Ages 60 -> 10 days) — delivered then returned
+  const returnedAges = [60, 45, 30, 18, 10];
+  for (let i = 0; i < 5; i++) {
+    blueprints.push({
+      status: OrderStatus.RETURNED,
+      paymentMethod: i % 2 === 0 ? PaymentMethod.COD : PaymentMethod.VNPAY,
+      ageDays: returnedAges[i],
+      cancelledReason: 'Khách đổi ý sau khi nhận hàng, yêu cầu trả hàng',
     });
   }
 
@@ -211,10 +245,10 @@ function buildOrderBlueprints(): OrderBlueprint[] {
     });
   }
 
-  // 5. PENDING: 10 orders (Ages from 0.5 days ago down to 0.05 days / ~1 hour ago)
-  // Methods: 1 INSTALLMENT (PENDING), 4 COD, 3 VNPAY, 1 MOMO, 1 BANK_TRANSFER
-  for (let i = 0; i < 10; i++) {
-    const ageDays = 0.5 - (i / 9) * (0.5 - 0.05);
+  // 5. PENDING: 8 orders (Ages from 0.5 days ago down to 0.05 days / ~1 hour ago)
+  // Methods: 1 INSTALLMENT (PENDING), 3 COD, 2 VNPAY, 1 MOMO, 1 BANK_TRANSFER
+  for (let i = 0; i < 8; i++) {
+    const ageDays = 0.5 - (i / 7) * (0.5 - 0.05);
     let paymentMethod: PaymentMethod;
     let installmentProvider: InstallmentProvider | undefined;
     let installmentStatus: InstallmentStatus | undefined;
@@ -223,11 +257,11 @@ function buildOrderBlueprints(): OrderBlueprint[] {
       paymentMethod = PaymentMethod.INSTALLMENT;
       installmentProvider = InstallmentProvider.FE_CREDIT;
       installmentStatus = InstallmentStatus.PENDING;
-    } else if (i < 1 + 4) {
+    } else if (i < 1 + 3) {
       paymentMethod = PaymentMethod.COD;
-    } else if (i < 1 + 4 + 3) {
+    } else if (i < 1 + 3 + 2) {
       paymentMethod = PaymentMethod.VNPAY;
-    } else if (i < 1 + 4 + 3 + 1) {
+    } else if (i < 1 + 3 + 2 + 1) {
       paymentMethod = PaymentMethod.MOMO;
     } else {
       paymentMethod = PaymentMethod.BANK_TRANSFER;
@@ -242,12 +276,10 @@ function buildOrderBlueprints(): OrderBlueprint[] {
     });
   }
 
-  // 6. CANCELLED: 10 orders (Distributed across the 180 days)
-  // Methods: 2 INSTALLMENT (REJECTED), 3 COD, 3 VNPAY, 1 MOMO, 1 BANK_TRANSFER
-  const cancelledAges = [170, 145, 120, 95, 70, 45, 20, 8, 2, 0.2];
+  // 6. CANCELLED: 8 orders (Distributed across the 180 days)
+  // Methods: 2 INSTALLMENT (REJECTED), 2 COD, 2 VNPAY, 1 MOMO, 1 BANK_TRANSFER
+  const cancelledAges = [170, 145, 120, 95, 70, 45, 20, 0.2];
   const cancelledReasons = [
-    'Khách muốn đổi sang màu khác',
-    'Đặt nhầm dung lượng',
     'Khách muốn đổi sang màu khác',
     'Đặt nhầm dung lượng',
     'Khách muốn đổi sang màu khác',
@@ -258,7 +290,7 @@ function buildOrderBlueprints(): OrderBlueprint[] {
     'Điểm tín dụng CIC không đạt tiêu chuẩn',
   ];
 
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 8; i++) {
     let paymentMethod: PaymentMethod;
     let installmentProvider: InstallmentProvider | undefined;
     let installmentStatus: InstallmentStatus | undefined;
@@ -267,11 +299,11 @@ function buildOrderBlueprints(): OrderBlueprint[] {
       paymentMethod = PaymentMethod.INSTALLMENT;
       installmentProvider = i % 2 === 0 ? InstallmentProvider.HOME_CREDIT : InstallmentProvider.FE_CREDIT;
       installmentStatus = InstallmentStatus.REJECTED;
-    } else if (i < 2 + 3) {
+    } else if (i < 2 + 2) {
       paymentMethod = PaymentMethod.COD;
-    } else if (i < 2 + 3 + 3) {
+    } else if (i < 2 + 2 + 2) {
       paymentMethod = PaymentMethod.VNPAY;
-    } else if (i < 2 + 3 + 3 + 1) {
+    } else if (i < 2 + 2 + 2 + 1) {
       paymentMethod = PaymentMethod.MOMO;
     } else {
       paymentMethod = PaymentMethod.BANK_TRANSFER;
@@ -358,6 +390,7 @@ export async function seedOrdersAndInstallments(
 
     // Determine chronological sub-timestamps
     let confirmedAt: Date | null = null;
+    let packedAt: Date | null = null;
     let shippedAt: Date | null = null;
     let deliveredAt: Date | null = null;
     let completedAt: Date | null = null;
@@ -365,21 +398,38 @@ export async function seedOrdersAndInstallments(
 
     if (bp.status === OrderStatus.COMPLETED) {
       confirmedAt = new Date(createdAt.getTime() + 30 * 60 * 1000);
+      packedAt = new Date(createdAt.getTime() + 6 * 3600 * 1000);
       shippedAt = new Date(createdAt.getTime() + 24 * 3600 * 1000);
       deliveredAt = new Date(createdAt.getTime() + 3 * 24 * 3600 * 1000);
       completedAt = new Date(createdAt.getTime() + 5 * 24 * 3600 * 1000);
     } else if (bp.status === OrderStatus.DELIVERED) {
       confirmedAt = new Date(createdAt.getTime() + 30 * 60 * 1000);
+      packedAt = new Date(createdAt.getTime() + 6 * 3600 * 1000);
       shippedAt = new Date(createdAt.getTime() + 24 * 3600 * 1000);
       deliveredAt = new Date(
         Math.min(now.getTime() - 2 * 3600 * 1000, createdAt.getTime() + 2.5 * 24 * 3600 * 1000)
       );
+    } else if (bp.status === OrderStatus.RETURNED) {
+      confirmedAt = new Date(createdAt.getTime() + 30 * 60 * 1000);
+      packedAt = new Date(createdAt.getTime() + 6 * 3600 * 1000);
+      shippedAt = new Date(createdAt.getTime() + 24 * 3600 * 1000);
+      deliveredAt = new Date(createdAt.getTime() + 3 * 24 * 3600 * 1000);
     } else if (bp.status === OrderStatus.SHIPPING) {
       confirmedAt = new Date(createdAt.getTime() + 30 * 60 * 1000);
+      packedAt = new Date(createdAt.getTime() + 6 * 3600 * 1000);
       shippedAt = new Date(
         Math.min(now.getTime() - 2 * 3600 * 1000, createdAt.getTime() + 18 * 3600 * 1000)
       );
+    } else if (bp.status === OrderStatus.PACKED) {
+      confirmedAt = new Date(createdAt.getTime() + 30 * 60 * 1000);
+      packedAt = new Date(
+        Math.min(now.getTime() - 60 * 60 * 1000, createdAt.getTime() + 6 * 3600 * 1000)
+      );
     } else if (bp.status === OrderStatus.PROCESSING) {
+      confirmedAt = new Date(
+        Math.min(now.getTime() - 30 * 60 * 1000, createdAt.getTime() + 30 * 60 * 1000)
+      );
+    } else if (bp.status === OrderStatus.CONFIRMED) {
       confirmedAt = new Date(
         Math.min(now.getTime() - 30 * 60 * 1000, createdAt.getTime() + 30 * 60 * 1000)
       );
@@ -387,7 +437,7 @@ export async function seedOrdersAndInstallments(
       cancelledAt = new Date(createdAt.getTime() + 45 * 60 * 1000);
     }
 
-    const updatedAt = completedAt ?? deliveredAt ?? shippedAt ?? confirmedAt ?? cancelledAt ?? createdAt;
+    const updatedAt = completedAt ?? deliveredAt ?? shippedAt ?? packedAt ?? confirmedAt ?? cancelledAt ?? createdAt;
 
     // Pick 1 or 2 items using diverse variants
     const itemCount = i % 2 === 0 ? 2 : 1;
@@ -433,6 +483,7 @@ export async function seedOrdersAndInstallments(
         customerNote: customerNotes[i % customerNotes.length],
         cancelledReason: bp.cancelledReason ?? null,
         confirmedAt,
+        packedAt,
         shippedAt,
         deliveredAt,
         completedAt,
@@ -445,7 +496,11 @@ export async function seedOrdersAndInstallments(
     // Create OrderItems and assign sold IMEIs for delivered orders
     for (const v of selectedVariants) {
       let imeiDeviceId: string | null = null;
-      if (bp.status === OrderStatus.COMPLETED || bp.status === OrderStatus.DELIVERED) {
+      if (
+        bp.status === OrderStatus.COMPLETED ||
+        bp.status === OrderStatus.DELIVERED ||
+        bp.status === OrderStatus.RETURNED
+      ) {
         const imeiDevice = await createImeiForVariant(v.id, v.sku, v.costPrice, ImeiStatus.SOLD);
         imeiDeviceId = imeiDevice.id;
       }
@@ -491,8 +546,14 @@ export async function seedOrdersAndInstallments(
       let shippingStatus: ShippingStatus = ShippingStatus.PENDING;
       if (bp.status === OrderStatus.COMPLETED || bp.status === OrderStatus.DELIVERED) {
         shippingStatus = ShippingStatus.DELIVERED;
+      } else if (bp.status === OrderStatus.RETURNED) {
+        shippingStatus = ShippingStatus.RETURNED;
       } else if (bp.status === OrderStatus.SHIPPING) {
         shippingStatus = ShippingStatus.IN_TRANSIT;
+      } else if (bp.status === OrderStatus.PACKED) {
+        shippingStatus = ShippingStatus.READY_TO_SHIP;
+      } else if (bp.status === OrderStatus.CONFIRMED || bp.status === OrderStatus.PROCESSING) {
+        shippingStatus = ShippingStatus.PENDING;
       }
 
       await prisma.shipping.create({
@@ -512,18 +573,26 @@ export async function seedOrdersAndInstallments(
     }
 
     // Determine payment status
-    // Online methods on shipped/delivered/completed orders are PAID
-    // COD on completed orders is PAID
+    // Online methods on shipped/delivered/completed/returned/packed/confirmed orders are PAID
+    // COD on completed/delivered/returned orders is PAID
     // Otherwise PENDING
-    const isShippedOrDeliveredOrCompleted =
+    const isPaidFlow =
       bp.status === OrderStatus.COMPLETED ||
       bp.status === OrderStatus.DELIVERED ||
-      bp.status === OrderStatus.SHIPPING;
+      bp.status === OrderStatus.RETURNED ||
+      bp.status === OrderStatus.SHIPPING ||
+      bp.status === OrderStatus.PACKED ||
+      bp.status === OrderStatus.CONFIRMED;
 
     let paymentStatus: PaymentStatus = PaymentStatus.PENDING;
     if (bp.paymentMethod === PaymentMethod.COD) {
-      paymentStatus = bp.status === OrderStatus.COMPLETED ? PaymentStatus.PAID : PaymentStatus.PENDING;
-    } else if (isShippedOrDeliveredOrCompleted) {
+      paymentStatus =
+        bp.status === OrderStatus.COMPLETED ||
+        bp.status === OrderStatus.DELIVERED ||
+        bp.status === OrderStatus.RETURNED
+          ? PaymentStatus.PAID
+          : PaymentStatus.PENDING;
+    } else if (isPaidFlow) {
       paymentStatus = PaymentStatus.PAID;
     } else {
       paymentStatus = PaymentStatus.PENDING;

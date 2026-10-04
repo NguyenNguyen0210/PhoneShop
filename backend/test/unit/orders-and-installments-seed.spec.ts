@@ -165,20 +165,23 @@ describe('Orders and Installments Seed Module Unit Tests', () => {
     expect(createdOrders).toHaveLength(200);
     expect(createdOrderItems.length).toBeGreaterThanOrEqual(200);
     expect(createdPayments).toHaveLength(200);
-    expect(createdShippings).toHaveLength(190); // 200 - 10 CANCELLED = 190
+    expect(createdShippings).toHaveLength(192); // 200 - 8 CANCELLED = 192
     expect(createdInstallments).toHaveLength(20);
 
-    // 2. Order status distribution
+    // 2. Order status distribution (covers all 9 statuses)
     const statusCounts: Record<string, number> = {};
     for (const ord of createdOrders) {
       statusCounts[ord.status] = (statusCounts[ord.status] || 0) + 1;
     }
-    expect(statusCounts[OrderStatus.COMPLETED]).toBe(130);
+    expect(statusCounts[OrderStatus.COMPLETED]).toBe(120);
     expect(statusCounts[OrderStatus.DELIVERED]).toBe(20);
-    expect(statusCounts[OrderStatus.SHIPPING]).toBe(20);
+    expect(statusCounts[OrderStatus.SHIPPING]).toBe(18);
     expect(statusCounts[OrderStatus.PROCESSING]).toBe(10);
-    expect(statusCounts[OrderStatus.PENDING]).toBe(10);
-    expect(statusCounts[OrderStatus.CANCELLED]).toBe(10);
+    expect(statusCounts[OrderStatus.CONFIRMED]).toBe(6);
+    expect(statusCounts[OrderStatus.PACKED]).toBe(5);
+    expect(statusCounts[OrderStatus.RETURNED]).toBe(5);
+    expect(statusCounts[OrderStatus.PENDING]).toBe(8);
+    expect(statusCounts[OrderStatus.CANCELLED]).toBe(8);
 
     // 3. Payment method distribution
     const methodCounts: Record<string, number> = {};
@@ -186,8 +189,8 @@ describe('Orders and Installments Seed Module Unit Tests', () => {
       methodCounts[pay.method] = (methodCounts[pay.method] || 0) + 1;
     }
     expect(methodCounts[PaymentMethod.INSTALLMENT]).toBe(20);
-    expect(methodCounts[PaymentMethod.COD]).toBe(70);
-    expect(methodCounts[PaymentMethod.VNPAY]).toBe(60);
+    expect(methodCounts[PaymentMethod.COD]).toBe(68);
+    expect(methodCounts[PaymentMethod.VNPAY]).toBe(62);
     expect(methodCounts[PaymentMethod.MOMO]).toBe(30);
     expect(methodCounts[PaymentMethod.BANK_TRANSFER]).toBe(20);
 
@@ -246,7 +249,9 @@ describe('Orders and Installments Seed Module Unit Tests', () => {
       expect(ship.trackingNumber).toMatch(/^(GHN|VTP|GHTK)/);
       expect([
         ShippingStatus.DELIVERED,
+        ShippingStatus.RETURNED,
         ShippingStatus.IN_TRANSIT,
+        ShippingStatus.READY_TO_SHIP,
         ShippingStatus.PENDING,
       ]).toContain(ship.status);
     }

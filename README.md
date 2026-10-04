@@ -40,7 +40,7 @@
 2. **Hiện tượng Race Condition trong Flash Sale**: Ngăn chặn 2 khách hàng đồng thời thanh toán và sở hữu cùng một máy/IMEI khi mở bán sản phẩm hot.
 3. **Giữ hàng nguyên tử (Atomic Hold) có thời hạn**: Giữ máy cho khách hàng trong 15 phút để hoàn tất thủ tục thanh toán trực tuyến; tự động giải phóng tồn kho ngay lập tức nếu khách hàng bỏ đơn mà không làm nghẽn kho.
 4. **Hệ thống bảo hành điện tử (E-Warranty) minh bạch**: Khách hàng tra cứu lịch sử, xuất xứ và thời hạn bảo hành tức thì chỉ với dãy IMEI.
-5. **Dữ liệu thật 100% (No Mock Data)**: Toàn bộ danh mục 24 smartphone flagship và tầm trung (Apple iPhone 16 Pro/15/14, Samsung Galaxy S24 Ultra/Z Fold6/Z Flip6, Xiaomi 14 Ultra, Vivo X100 Pro, Oppo Find N3, ASUS ROG Phone 8 Pro, Sony Xperia 1 VI, Google Pixel 9 Pro XL...) cùng đầy đủ biến thể màu sắc, dung lượng và giá bán lẻ thực tế được lưu trữ và truy vấn trực tiếp từ PostgreSQL.
+5. **Dữ liệu thật 100% (No Mock Data)**: Toàn bộ danh mục 60 smartphone (Apple iPhone 17 Pro Max/17/16, Samsung Galaxy S26 Ultra/Z Fold7/Z Flip7, Xiaomi 16 Pro/15 Ultra, OPPO Find X9 Pro/N5, vivo X300 Pro/iQOO 13, Pixel 10 Pro XL, OnePlus 13, realme GT 7 Pro, ROG Phone 9 Pro, Xperia 1 VII...) với ~127 biến thể màu sắc/dung lượng/RAM, giá VND thực tế, specs đầy đủ (màn/pin/chipset/OS/5G) phủ kín mọi filter, được lưu trữ và truy vấn trực tiếp từ PostgreSQL.
 
 ---
 
@@ -475,13 +475,14 @@ npx prisma generate
 # 3. Đồng bộ schema sang Supabase PostgreSQL
 npx prisma db push
 
-# 4. Nạp dữ liệu mẫu (Roles, Admin/Staff/Customer, Thương hiệu, 24 Smartphone thực tế, IMEI kho, Vouchers)
+# 4. Nạp dữ liệu mẫu (Roles, Admin/Staff/40 Customers, 12 Brands, 6 Categories, 60 Smartphones/~127 Variants phủ kín filter, 200 Orders đủ 9 status, IMEI kho, Vouchers Active/Expired/Upcoming, Flash Sale, Reviews 5★-1★)
 npm run prisma:seed
 ```
 
 > **Ghi chú về hình ảnh sản phẩm:**  
-> Dữ liệu seed mặc định sử dụng đường dẫn hình ảnh tĩnh có sẵn trong `frontend/public/images/products/...`. Nhờ vậy, ngay sau khi seed xong, toàn bộ 24 smartphone đều hiển thị ảnh sắc nét lập tức mà **không yêu cầu phải tải trước ảnh lên Supabase Storage**.  
+> Dữ liệu seed dùng URL R2 deterministic (`CLOUDFLARE_R2_PUBLIC_URL/products/<slug>.webp`, fallback về ảnh mặc định khi chưa upload). Nhờ vậy ngay sau khi seed xong toàn bộ 60 smartphone đều có thumbnail/variant image hợp lệ mà **không yêu cầu tải trước ảnh lên Supabase Storage**.  
 > Supabase Storage được kích hoạt phục vụ cho các nghiệp vụ động trong quá trình vận hành: Quản trị viên thêm sản phẩm mới/upload thư viện ảnh (tự động nén WebP) và Khách hàng cập nhật ảnh đại diện (Avatar).
+> **Filter coverage:** mỗi giá trị RAM (4/6/8/12/16GB), Storage (64/128/256/512GB/1TB), Màu (Đen/Trắng/Xanh/Titan/Vàng/Tím/Xanh lá), Giá (<5/5-10/10-20/>20tr), Màn (<6.1/6.1-6.7/>6.7"), Pin (<4000/4000-5000/>5000mAh), OS (iOS/Android), Chipset (Apple/Snapdragon/Dimensity/Exynos), 5G on/off, onSale/inStock on/off, rating 5/4/3 đều có ≥5 products/variants để test thấy rõ.
 
 ---
 
@@ -507,13 +508,15 @@ Giao diện Storefront sẽ mở tại: **`http://localhost:5173`**
 
 ### 7.7. Tài Khoản Đăng Nhập Mặc Định
 
-Dữ liệu seed cung cấp sẵn các tài khoản demo tương ứng với 3 cấp độ phân quyền (RBAC):
+Dữ liệu seed chính (`prisma/seed.ts`, password chung `Password@123`) cung cấp sẵn các tài khoản demo tương ứng với 3 cấp độ phân quyền (RBAC):
 
 | Vai trò (Role) | Email đăng nhập | Mật khẩu mặc định | Quyền hạn truy cập |
 | :--- | :--- | :--- | :--- |
-| **Quản trị viên (ADMIN)** | `admin@mobilecommerce.vn` | `Admin@123456` | Toàn quyền truy cập Storefront và Admin Portal (`/admin/*`) |
-| **Nhân viên (STAFF)** | `staff@mobilecommerce.vn` | `Staff@123456` | Quản lý kho IMEI, cập nhật đơn hàng, phản hồi đánh giá |
-| **Khách hàng (CUSTOMER)** | `customer@gmail.com` | `Customer@123456` | Mua hàng, thanh toán, theo dõi đơn, gửi đánh giá, đổi avatar |
+| **Quản trị viên (ADMIN)** | `admin@mobilecommerce.vn` | `Password@123` | Toàn quyền truy cập Storefront và Admin Portal (`/admin/*`) |
+| **Nhân viên (STAFF)** | `staff@mobilecommerce.vn` | `Password@123` | Quản lý kho IMEI, cập nhật đơn hàng, phản hồi đánh giá |
+| **Khách hàng (CUSTOMER)** | `an.nguyen92@gmail.com` (và 39 customers khác trong `prisma/seed_modules/customers.ts`) | `Password@123` | Mua hàng, thanh toán, theo dõi đơn, gửi đánh giá, đổi avatar |
+
+> Legacy `prisma/seed/seed.ts` (không dùng bởi `prisma db seed`) dùng accounts `*@mobilecommerce.local` / `Admin@123456|Staff@123456|User@123456` — chỉ để tham khảo.
 
 ---
 

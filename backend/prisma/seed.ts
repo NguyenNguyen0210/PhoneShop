@@ -22,6 +22,7 @@ import { generateLuhnImei, validateImei } from '../src/common/utils/imei.util';
 export { generateLuhnImei, validateImei };
 
 import { seedCustomersAndAddresses } from './seed_modules/customers';
+import { seedCatalog } from './seed_modules/catalog';
 import { seedOrdersAndInstallments } from './seed_modules/orders_and_installments';
 import { seedFeedbackAndAftersales } from './seed_modules/feedback_and_warranties';
 
@@ -181,11 +182,12 @@ async function main() {
   );
   console.log(`  ✔ Seeded ${customers.length} verified customers with full addresses.`);
 
-  // 4. VERIFY CATALOG PRESERVATION
-  console.log('\n📱 [4/7] Checking Product Catalog & Variants...');
+  // 4. SEED CATALOG (brands, categories, 60 products, ~180 variants)
+  console.log('\n📱 [4/7] Seeding Product Catalog (filter-complete)...');
+  await seedCatalog(prisma);
   const totalProducts = await prisma.product.count();
   const totalVariants = await prisma.productVariant.count({ where: { isActive: true } });
-  console.log(`  ✔ Preserved ${totalProducts} products and ${totalVariants} active variants in database.`);
+  console.log(`  ✔ Catalog verified: ${totalProducts} products and ${totalVariants} active variants.`);
 
   if (totalVariants === 0) {
     throw new Error('No active product variants found in database to seed orders.');
@@ -250,10 +252,24 @@ async function main() {
 
   const allAvailableImeis: any[] = [];
   const inventoryPayloads: any[] = [];
-  const availableToAdd = 10; // 10 units in stock per variant = 1,290+ ready units
+  // Varied stock for inStock filter coverage: out (0) / low (2-5) / medium (10-15) / high (25-40).
+  // Deterministic by variant index so re-runs are stable.
+  const stockForIndex = (idx: number): number => {
+    const m = idx % 10;
+    if (m === 0) return 0; // ~10% out of stock → test "Hết hàng" + inStock=false
+    if (m === 1) return 2; // low stock
+    if (m === 2) return 5; // low stock
+    if (m === 3 || m === 4) return 10; // medium
+    if (m === 5 || m === 6) return 15; // medium
+    if (m === 7) return 25; // high
+    if (m === 8) return 40; // high
+    return 12; // medium
+  };
 
-  for (const v of activeVariants) {
+  for (let vi = 0; vi < activeVariants.length; vi++) {
+    const v = activeVariants[vi];
     const soldCount = soldCountMap.get(v.id) ?? 0;
+    const availableToAdd = stockForIndex(vi);
     const totalStock = soldCount + availableToAdd;
 
     for (let i = 0; i < availableToAdd; i++) {
