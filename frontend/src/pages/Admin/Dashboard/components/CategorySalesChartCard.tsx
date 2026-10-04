@@ -28,6 +28,34 @@ const formatVND = (val: number): string => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
 };
 
+const OTHER_COLOR = '#94a3b8';
+const TOP_N = 5;
+
+const colorFor = (index: number, isOther: boolean): string =>
+  isOther ? OTHER_COLOR : CATEGORY_PALETTE[index % CATEGORY_PALETTE.length];
+
+function groupTopCategories(
+  items: CategorySalesItem[],
+  totalAll: number
+): CategorySalesItem[] {
+  const sorted = [...items].sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+  const top = sorted.slice(0, TOP_N);
+  const rest = sorted.slice(TOP_N);
+  if (rest.length === 0) return top;
+  const restRevenue = rest.reduce((s, c) => s + (c.revenue || 0), 0);
+  const restQty = rest.reduce((s, c) => s + (c.quantitySold || 0), 0);
+  return [
+    ...top,
+    {
+      categoryId: '__other__',
+      categoryName: 'Khác',
+      quantitySold: restQty,
+      revenue: restRevenue,
+      percentage: totalAll > 0 ? (restRevenue / totalAll) * 100 : 0,
+    },
+  ];
+}
+
 export const CategorySalesChartCard: React.FC<CategorySalesChartCardProps> = ({ data, loading }) => {
   const cardTitle = 'Doanh số theo Danh mục';
 
@@ -62,14 +90,16 @@ export const CategorySalesChartCard: React.FC<CategorySalesChartCardProps> = ({ 
 
   const categories = data?.categories || [];
   const totalRevenue = data?.totalRevenue ?? categories.reduce((s, c) => s + (c.revenue || 0), 0);
+  const totalAll = categories.reduce((s, c) => s + (c.revenue || 0), 0);
+  const displayCategories = groupTopCategories(categories, totalAll > 0 ? totalAll : totalRevenue);
 
   const columns: ColumnsType<CategorySalesItem> = [
     {
       title: 'Danh mục',
       dataIndex: 'categoryName',
       key: 'categoryName',
-      render: (name: string, _, index: number) => {
-        const color = CATEGORY_PALETTE[index % CATEGORY_PALETTE.length];
+      render: (name: string, record: CategorySalesItem, index: number) => {
+        const color = colorFor(index, record.categoryId === '__other__');
         return (
           <Space size={8}>
             <span
@@ -106,7 +136,7 @@ export const CategorySalesChartCard: React.FC<CategorySalesChartCardProps> = ({ 
       key: 'revenue',
       align: 'right',
       render: (rev: number) => (
-        <span style={{ fontWeight: 600, color: '#0ea5e9', fontFamily: 'monospace' }}>
+        <span style={{ fontWeight: 600, color: '#0ea5e9', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
           {formatVND(rev)}
         </span>
       ),
@@ -116,8 +146,8 @@ export const CategorySalesChartCard: React.FC<CategorySalesChartCardProps> = ({ 
       dataIndex: 'percentage',
       key: 'percentage',
       width: 140,
-      render: (pct: number, _, index: number) => {
-        const color = CATEGORY_PALETTE[index % CATEGORY_PALETTE.length];
+      render: (pct: number, record: CategorySalesItem, index: number) => {
+        const color = colorFor(index, record.categoryId === '__other__');
         const val = Number(pct) || 0;
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -164,17 +194,17 @@ export const CategorySalesChartCard: React.FC<CategorySalesChartCardProps> = ({ 
                   ]}
                 />
                 <Pie
-                  data={categories}
+                  data={displayCategories}
                   dataKey="revenue"
                   nameKey="categoryName"
                   innerRadius={55}
                   outerRadius={85}
                   paddingAngle={2}
                 >
-                  {categories.map((entry, index) => (
+                  {displayCategories.map((entry, index) => (
                     <Cell
                       key={`cat-cell-${entry.categoryId || entry.categoryName || index}`}
-                      fill={CATEGORY_PALETTE[index % CATEGORY_PALETTE.length]}
+                      fill={colorFor(index, entry.categoryId === '__other__')}
                     />
                   ))}
                 </Pie>
@@ -185,7 +215,7 @@ export const CategorySalesChartCard: React.FC<CategorySalesChartCardProps> = ({ 
 
         <Col xs={24} lg={15}>
           <Table<CategorySalesItem>
-            dataSource={categories}
+            dataSource={displayCategories}
             columns={columns}
             rowKey={(r) => r.categoryId || r.categoryName}
             pagination={false}

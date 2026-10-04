@@ -46,6 +46,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
   const fetchDashboardData = useCallback(async (from: string, to: string) => {
     setLoading(true);
@@ -85,6 +86,7 @@ export const AdminDashboardPage: React.FC = () => {
       message.error('Không thể tải toàn bộ dữ liệu báo cáo, vui lòng thử lại.');
     } finally {
       setLoading(false);
+      setUpdatedAt(new Date());
     }
   }, []);
 
@@ -121,58 +123,17 @@ export const AdminDashboardPage: React.FC = () => {
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Title level={3} style={{ margin: 0, color: '#0f172a', fontWeight: 800, letterSpacing: -0.3 }}>
-              Trung tâm Báo cáo &amp; Phân tích
-            </Title>
-            <span
-              style={{
-                fontSize: 11,
-                padding: '2px 8px',
-                borderRadius: 20,
-                background: '#eff6ff',
-                color: '#2563eb',
-                border: '1px solid #bfdbfe',
-                fontWeight: 600,
-              }}
-            >
-              Executive Analytics Hub
-            </span>
-          </div>
+          <Title level={3} style={{ margin: 0, color: '#0f172a', fontWeight: 800, letterSpacing: -0.3 }}>
+            Tổng quan kinh doanh
+          </Title>
           <Text style={{ fontSize: 13, color: '#64748b', marginTop: 4, display: 'block' }}>
-            Theo dõi doanh thu thuần, biến động tăng trưởng, thị phần thương hiệu và tình trạng vận hành kho thiết bị
+            Theo dõi doanh thu, đơn hàng, tồn kho và hiệu quả bán hàng
+            {updatedAt && (
+              <span style={{ color: '#94a3b8' }}>
+                {' '}• Cập nhật lúc {updatedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </Text>
-        </div>
-
-        {/* Engine status indicator */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '8px 14px',
-            borderRadius: 10,
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: '#10b981',
-                boxShadow: '0 0 6px rgba(16, 185, 129, 0.4)',
-              }}
-            />
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>Live Engine</span>
-          </div>
-          <span style={{ color: '#cbd5e1' }}>|</span>
-          <span style={{ fontSize: 12, color: '#2563eb', fontFamily: 'monospace', fontWeight: 600 }}>
-            Asia/Ho_Chi_Minh
-          </span>
         </div>
       </div>
 

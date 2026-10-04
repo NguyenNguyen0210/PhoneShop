@@ -142,11 +142,19 @@ export const RevenueChartCard: React.FC<RevenueChartCardProps> = ({ data, loadin
           </Tag>
         </Space>
       }
-      style={{ borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)' }}
+      style={{
+        borderRadius: 12,
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+      styles={{ body: { flex: 1, display: 'flex', flexDirection: 'column' } }}
       data-testid="revenue-chart-card"
     >
-      <div style={{ width: '100%', height: 320 }}>
-        <ResponsiveContainer width="100%" height={320}>
+      <div style={{ width: '100%', flex: 1, minHeight: 320 }}>
+        <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={data?.dailyBreakdown}
             margin={{ top: 12, right: 16, left: 4, bottom: 4 }}

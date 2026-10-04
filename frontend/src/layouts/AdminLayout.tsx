@@ -41,91 +41,121 @@ export const AdminLayout: React.FC = () => {
     navigate('/login');
   };
 
-  const menuItems = [
+  const menuItems: MenuProps['items'] = [
     {
-      key: '/admin',
-      icon: <DashboardOutlined style={{ fontSize: 16 }} />,
-      label: 'Tổng quan (Dashboard)',
+      type: 'group',
+      label: 'Tổng quan',
+      children: [
+        {
+          key: '/admin',
+          icon: <DashboardOutlined style={{ fontSize: 16 }} />,
+          label: 'Tổng quan (Dashboard)',
+        },
+      ],
     },
     {
-      key: '/admin/products',
-      icon: <ShoppingOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Sản phẩm',
+      type: 'group',
+      label: 'Bán hàng & Đơn hàng',
+      children: [
+        {
+          key: '/admin/orders',
+          icon: <OrderedListOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Đơn hàng',
+        },
+        {
+          key: '/admin/returns',
+          icon: <UndoOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Đổi trả',
+        },
+        {
+          key: '/admin/installments',
+          icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
+          label: 'Hồ sơ trả góp',
+        },
+      ],
     },
     {
-      key: '/admin/categories',
-      icon: <FolderOpenOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Danh mục',
+      type: 'group',
+      label: 'Kho vận & Sản phẩm',
+      children: [
+        {
+          key: '/admin/products',
+          icon: <ShoppingOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Sản phẩm',
+        },
+        {
+          key: '/admin/categories',
+          icon: <FolderOpenOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Danh mục',
+        },
+        {
+          key: '/admin/brands',
+          icon: <TagsOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Thương hiệu',
+        },
+        {
+          key: '/admin/inventory',
+          icon: <BarcodeOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Kho & IMEI',
+        },
+        {
+          key: '/admin/suppliers',
+          icon: <ShopOutlined style={{ fontSize: 16 }} />,
+          label: 'Nhà cung cấp',
+        },
+      ],
     },
     {
-      key: '/admin/brands',
-      icon: <TagsOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Thương hiệu',
+      type: 'group',
+      label: 'Marketing & CSKH',
+      children: [
+        {
+          key: '/admin/promotions',
+          icon: <TagOutlined style={{ fontSize: 16 }} />,
+          label: 'Khuyến mãi & Flash Sale',
+        },
+        {
+          key: '/admin/payments',
+          icon: <DollarOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Thanh toán',
+        },
+        {
+          key: '/admin/customers',
+          icon: <UserOutlined style={{ fontSize: 16 }} />,
+          label: 'Khách hàng (360°)',
+        },
+        {
+          key: '/admin/tickets',
+          icon: <CustomerServiceOutlined style={{ fontSize: 16 }} />,
+          label: 'Hỗ trợ khách hàng',
+        },
+        {
+          key: '/admin/reviews',
+          icon: <CommentOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Đánh giá',
+        },
+      ],
     },
     {
-      key: '/admin/suppliers',
-      icon: <ShopOutlined style={{ fontSize: 16 }} />,
-      label: 'Nhà cung cấp',
-    },
-    {
-      key: '/admin/inventory',
-      icon: <BarcodeOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Kho & IMEI',
-    },
-    {
-      key: '/admin/orders',
-      icon: <OrderedListOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Đơn hàng',
-    },
-    {
-      key: '/admin/promotions',
-      icon: <TagOutlined style={{ fontSize: 16 }} />,
-      label: 'Khuyến mãi & Flash Sale',
-    },
-    {
-      key: '/admin/payments',
-      icon: <DollarOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Thanh toán',
-    },
-    {
-      key: '/admin/returns',
-      icon: <UndoOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Đổi trả',
-    },
-    {
-      key: '/admin/customers',
-      icon: <UserOutlined style={{ fontSize: 16 }} />,
-      label: 'Khách hàng (360°)',
-    },
-    {
-      key: '/admin/tickets',
-      icon: <CustomerServiceOutlined style={{ fontSize: 16 }} />,
-      label: 'Hỗ trợ khách hàng',
-    },
-    {
-      key: '/admin/reviews',
-      icon: <CommentOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Đánh giá',
-    },
-    {
-      key: '/admin/installments',
-      icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
-      label: 'Hồ sơ trả góp',
-    },
-    {
-      key: '/admin/users',
-      icon: <TeamOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Người dùng',
-    },
-    {
-      key: '/admin/audit-logs',
-      icon: <SafetyCertificateOutlined style={{ fontSize: 16 }} />,
-      label: 'Nhật ký kiểm toán',
-    },
-    {
-      key: '/admin/settings',
-      icon: <SettingOutlined style={{ fontSize: 16 }} />,
-      label: 'Cấu hình Hệ thống',
+      type: 'group',
+      label: 'Hệ thống',
+      children: [
+        {
+          key: '/admin/users',
+          icon: <TeamOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Người dùng',
+        },
+        {
+          key: '/admin/audit-logs',
+          icon: <SafetyCertificateOutlined style={{ fontSize: 16 }} />,
+          label: 'Nhật ký kiểm toán',
+        },
+        {
+          key: '/admin/settings',
+          icon: <SettingOutlined style={{ fontSize: 16 }} />,
+          label: 'Cấu hình Hệ thống',
+        },
+      ],
     },
   ];
 
