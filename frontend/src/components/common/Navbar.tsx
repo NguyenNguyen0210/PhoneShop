@@ -20,7 +20,6 @@ import {
   LayoutDashboard,
   Copy,
   Check,
-  KeyRound,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useCartStore } from '../../stores/useCartStore';
@@ -409,7 +408,7 @@ export const Navbar: React.FC = () => {
                         </Link>
                       </div>
 
-                      {/* 3. NHÓM 2: CÀI ĐẶT & BẢO MẬT */}
+                      {/* 3. NHÓM 2: CÀI ĐẶT TÀI KHOẢN */}
                       <div className="py-1.5">
                         <Link
                           to="/profile"
@@ -421,18 +420,6 @@ export const Navbar: React.FC = () => {
                             <span>Cài đặt tài khoản</span>
                           </div>
                           <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-slate-700 transition-colors" />
-                        </Link>
-
-                        <Link
-                          to="/profile#password"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-amber-50 hover:text-amber-800"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <KeyRound className="h-4 w-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
-                            <span>Đổi mật khẩu</span>
-                          </div>
-                          <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-amber-600 transition-colors" />
                         </Link>
                       </div>
 
@@ -650,14 +637,6 @@ export const Navbar: React.FC = () => {
                 >
                   <Settings className="w-4 h-4 text-slate-500" />
                   <span>Cài đặt tài khoản</span>
-                </Link>
-                <Link
-                  to="/profile#password"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition flex items-center gap-2"
-                >
-                  <KeyRound className="w-4 h-4 text-slate-500" />
-                  <span>Đổi mật khẩu</span>
                 </Link>
                 {(user.role === 'ADMIN' || user.role === 'STAFF' || isStaffOrAdmin()) && (
                   <Link
