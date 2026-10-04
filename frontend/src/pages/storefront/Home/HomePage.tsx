@@ -20,7 +20,6 @@ import {
 } from '../../../components/storefront/ProductSortToolbar';
 import { StorefrontPagination } from '../../../components/storefront/StorefrontPagination';
 import { HeroBannerShowcase } from '../../../components/storefront/HeroBannerShowcase';
-import { StorefrontServiceBar } from '../../../components/storefront/StorefrontServiceBar';
 import { useCatalogStore } from '../../../stores/useCatalogStore';
 
 export const HomePage: React.FC = () => {
@@ -540,11 +539,6 @@ export const HomePage: React.FC = () => {
           1. FLAGSHIP HERO BANNER SHOWCASE (AMBIENT GLOW & THEMES)
           ───────────────────────────────────────────────────────────── */}
       <HeroBannerShowcase products={products} loading={loading} />
-
-      {/* ─────────────────────────────────────────────────────────────
-          1.2. COMMERCIAL SERVICE GUARANTEES BAR
-          ───────────────────────────────────────────────────────────── */}
-      <StorefrontServiceBar />
 
       {/* ─────────────────────────────────────────────────────────────
           1.5. FLASH SALE CAMPAIGN SECTION
