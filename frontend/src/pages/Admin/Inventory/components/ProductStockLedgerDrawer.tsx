@@ -9,9 +9,9 @@ import {
   Col,
   Statistic,
   Empty,
-  Alert,
   Tooltip,
   Button,
+  message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { HistoryOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -39,7 +39,6 @@ export const ProductStockLedgerDrawer: React.FC<ProductStockLedgerDrawerProps> =
 }) => {
   const [items, setItems] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Pagination
   const [page, setPage] = useState<number>(1);
@@ -52,7 +51,6 @@ export const ProductStockLedgerDrawer: React.FC<ProductStockLedgerDrawerProps> =
     async (currentPage: number = page, currentLimit: number = limit) => {
       if (!variantId) return;
       setLoading(true);
-      setError(null);
       try {
         const res = await inventoryService.getVariantLedger(variantId, {
           page: currentPage,
@@ -65,7 +63,7 @@ export const ProductStockLedgerDrawer: React.FC<ProductStockLedgerDrawerProps> =
           err?.response?.data?.message ||
           err?.message ||
           'Không thể tải lịch sử thẻ kho của biến thể';
-        setError(msg);
+        message.error(msg);
       } finally {
         setLoading(false);
       }
@@ -80,7 +78,6 @@ export const ProductStockLedgerDrawer: React.FC<ProductStockLedgerDrawerProps> =
     } else {
       setItems([]);
       setTotal(0);
-      setError(null);
     }
   }, [open, variantId, limit, fetchLedger]);
 
@@ -303,21 +300,6 @@ export const ProductStockLedgerDrawer: React.FC<ProductStockLedgerDrawerProps> =
           )}
         </div>
       </div>
-
-      {error && (
-        <Alert
-          type="error"
-          showIcon
-          title="Lỗi tải thẻ kho"
-          description={error}
-          action={
-            <Button size="small" danger onClick={handleRefresh}>
-              Thử lại
-            </Button>
-          }
-          style={{ marginBottom: 16 }}
-        />
-      )}
 
       {/* Movement Table */}
       <Table

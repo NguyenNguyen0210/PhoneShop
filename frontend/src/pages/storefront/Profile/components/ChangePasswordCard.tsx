@@ -5,11 +5,10 @@ import {
   Eye,
   EyeOff,
   Lock,
-  CheckCircle2,
-  AlertCircle,
   Loader2,
 } from 'lucide-react';
 import { userService } from '../../../../services/userService';
+import { notifyError, notifySuccess } from '../../../../utils/notify';
 
 export const ChangePasswordCard: React.FC = () => {
   const [oldPassword, setOldPassword] = useState('');
@@ -21,27 +20,23 @@ export const ChangePasswordCard: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
 
     // Client-side validations
     if (!oldPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-      setError('Vui lòng điền đầy đủ tất cả các trường mật khẩu.');
+      notifyError('Vui lòng điền đầy đủ tất cả các trường mật khẩu.');
       return;
     }
 
     if (newPassword.length < 6) {
-      setError('Mật khẩu mới phải có tối thiểu 6 ký tự.');
+      notifyError('Mật khẩu mới phải có tối thiểu 6 ký tự.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Xác nhận mật khẩu mới không trùng khớp.');
+      notifyError('Xác nhận mật khẩu mới không trùng khớp.');
       return;
     }
 
@@ -52,30 +47,18 @@ export const ChangePasswordCard: React.FC = () => {
         newPassword,
       });
 
-      setSuccess('Đổi mật khẩu thành công!');
+      notifySuccess('Đổi mật khẩu thành công!');
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      const responseData = err?.response?.data;
-      let errorMsg = 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại thông tin!';
-
-      if (responseData?.message) {
-        const rawMessage = responseData.message;
-        if (typeof rawMessage === 'string') {
-          if (rawMessage.toLowerCase().includes('invalid old password')) {
-            errorMsg = 'Mật khẩu hiện tại không chính xác.';
-          } else {
-            errorMsg = rawMessage;
-          }
-        } else if (Array.isArray(rawMessage)) {
-          errorMsg = rawMessage.join(', ');
-        }
-      } else if (err?.message) {
-        errorMsg = err.message;
+      const rawMessage = err?.response?.data?.message;
+      const rawStr = Array.isArray(rawMessage) ? rawMessage.join(', ') : rawMessage;
+      if (typeof rawStr === 'string' && rawStr.toLowerCase().includes('invalid old password')) {
+        notifyError('Mật khẩu hiện tại không chính xác.');
+      } else {
+        notifyError(err, 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại thông tin!');
       }
-
-      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -100,22 +83,6 @@ export const ChangePasswordCard: React.FC = () => {
           </p>
         </div>
       </div>
-
-      {/* Success Banner */}
-      {success && (
-        <div className="p-4 rounded-2xl flex items-center gap-3 text-xs sm:text-sm bg-emerald-50 text-emerald-800 border border-emerald-200">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span className="font-medium">{success}</span>
-        </div>
-      )}
-
-      {/* Error Banner */}
-      {error && (
-        <div className="p-4 rounded-2xl flex items-center gap-3 text-xs sm:text-sm bg-rose-50 text-rose-800 border border-rose-200">
-          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-          <span className="font-medium">{error}</span>
-        </div>
-      )}
 
       {/* Vertical Form Fields */}
       <form onSubmit={handleSubmit} className="space-y-4">

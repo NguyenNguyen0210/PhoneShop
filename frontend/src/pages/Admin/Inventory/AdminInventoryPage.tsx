@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Tabs, Typography, message, Alert } from 'antd';
+import { Card, Tabs, Typography, message } from 'antd';
 import { DatabaseOutlined, BarcodeOutlined, HistoryOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { inventoryService } from '../../../services/inventoryService';
@@ -19,19 +19,16 @@ export const AdminInventoryPage: React.FC = () => {
 
   const [items, setItems] = useState<InventoryRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [filterLowStockOnly, setFilterLowStockOnly] = useState<boolean>(false);
 
   const fetchInventory = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const data = await inventoryService.getInventoryList();
       setItems(Array.isArray(data) ? data : []);
     } catch (err: any) {
       console.error('Lỗi khi tải danh sách tồn kho:', err);
       const msg = err?.response?.data?.message || 'Không thể tải dữ liệu tồn kho từ máy chủ';
-      setError(msg);
       message.error(msg);
     } finally {
       setLoading(false);
@@ -67,17 +64,6 @@ export const AdminInventoryPage: React.FC = () => {
           Kiểm soát tồn kho sản phẩm, theo dõi ngưỡng cảnh báo nhập hàng và quản lý danh sách mã máy IMEI.
         </Text>
       </div>
-
-      {error && (
-        <Alert
-          type="error"
-          showIcon
-          message="Lỗi tải dữ liệu"
-          description={error}
-          style={{ marginBottom: 16 }}
-          closable
-        />
-      )}
 
       {/* 3 Thẻ thống kê tổng quan */}
       <InventoryStatsCards

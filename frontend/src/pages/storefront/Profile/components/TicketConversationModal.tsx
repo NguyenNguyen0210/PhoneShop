@@ -12,6 +12,7 @@ import {
   Alert,
   message,
   Image,
+  Empty,
 } from 'antd';
 import {
   SendOutlined,
@@ -23,6 +24,7 @@ import {
   FileImageOutlined,
 } from '@ant-design/icons';
 import { ticketService } from '../../../../services/ticketService';
+import { notifyError } from '../../../../utils/notify';
 import type { Ticket, TicketStatus } from '../../../../types/ticket';
 
 const { Text, Paragraph } = Typography;
@@ -43,7 +45,6 @@ export const TicketConversationModal: React.FC<Props> = ({
 }) => {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [replyMessage, setReplyMessage] = useState('');
   const [attachmentUrl, setAttachmentUrl] = useState('');
@@ -55,13 +56,12 @@ export const TicketConversationModal: React.FC<Props> = ({
     try {
       if (!silent) {
         setLoading(true);
-        setError(null);
       }
       const res = await ticketService.getTicketDetail(ticketId);
       setTicket(res);
     } catch (err: any) {
       if (!silent) {
-        setError(err.response?.data?.message || 'Không thể tải chi tiết yêu cầu hỗ trợ');
+        notifyError(err, 'Không thể tải chi tiết yêu cầu hỗ trợ');
       }
     } finally {
       if (!silent) {
@@ -173,8 +173,6 @@ export const TicketConversationModal: React.FC<Props> = ({
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <Spin tip="Đang tải trao đổi..." />
         </div>
-      ) : error ? (
-        <Alert type="error" message={error} showIcon style={{ margin: '16px 0' }} />
       ) : ticket ? (
         <div>
           {/* Related Order Banner */}
@@ -306,7 +304,17 @@ export const TicketConversationModal: React.FC<Props> = ({
             />
           )}
         </div>
-      ) : null}
+      ) : (
+        <Empty
+          description="Không thể tải chi tiết yêu cầu hỗ trợ"
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          style={{ margin: '24px 0' }}
+        >
+          <Button type="primary" onClick={() => loadTicket()}>
+            Thử lại
+          </Button>
+        </Empty>
+      )}
     </Modal>
   );
 };

@@ -28,6 +28,14 @@ vi.mock('../../../../services/authService', () => ({
   },
 }));
 
+vi.mock('../../../../utils/notify', () => ({
+  notifyError: vi.fn(),
+  notifySuccess: vi.fn(),
+  getErrorMessage: (err: unknown) => (err as any)?.message || 'Đã xảy ra lỗi. Vui lòng thử lại.',
+}));
+
+import { notifyError } from '../../../../utils/notify';
+
 describe('LoginPage (Centered Card Layout)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -57,7 +65,7 @@ describe('LoginPage (Centered Card Layout)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Đăng nhập/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Vui lòng nhập đầy đủ email và mật khẩu/i)).toBeDefined();
+      expect(notifyError).toHaveBeenCalledWith('Vui lòng nhập đầy đủ email và mật khẩu.');
     });
     expect(mockLogin).not.toHaveBeenCalled();
   });
@@ -78,7 +86,7 @@ describe('LoginPage (Centered Card Layout)', () => {
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith('user@example.com', 'pass123');
-      expect(mockNavigate).toHaveBeenCalledWith('/');
+      expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
     });
   });
 
@@ -97,7 +105,7 @@ describe('LoginPage (Centered Card Layout)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Đăng nhập/i }));
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/admin');
+      expect(mockNavigate).toHaveBeenCalledWith('/admin', { replace: true });
     });
   });
 

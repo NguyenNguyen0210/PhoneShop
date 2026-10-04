@@ -11,6 +11,14 @@ vi.mock('../../../../services/authService', () => ({
   },
 }));
 
+vi.mock('../../../../utils/notify', () => ({
+  notifyError: vi.fn(),
+  notifySuccess: vi.fn(),
+  getErrorMessage: (err: unknown) => (err as any)?.message || 'Đã xảy ra lỗi. Vui lòng thử lại.',
+}));
+
+import { notifyError } from '../../../../utils/notify';
+
 describe('EditProfileModal', () => {
   const mockUser: User = {
     id: 'user-1',
@@ -40,7 +48,7 @@ describe('EditProfileModal', () => {
     expect(screen.getByDisplayValue('customer@gmail.com')).toBeDefined();
   });
 
-  it('validates empty fullName and shows error', async () => {
+  it('validates empty fullName and shows error toast', async () => {
     render(<EditProfileModal {...defaultProps} />);
 
     const nameInput = screen.getByLabelText(/Họ và tên/i);
@@ -49,7 +57,9 @@ describe('EditProfileModal', () => {
     const submitBtn = screen.getByRole('button', { name: /Lưu thay đổi/i });
     fireEvent.click(submitBtn);
 
-    expect(await screen.findByText('Vui lòng nhập họ và tên của bạn.')).toBeDefined();
+    await waitFor(() => {
+      expect(notifyError).toHaveBeenCalledWith('Vui lòng nhập họ và tên của bạn.');
+    });
     expect(authService.updateProfile).not.toHaveBeenCalled();
   });
 
@@ -62,9 +72,11 @@ describe('EditProfileModal', () => {
     const submitBtn = screen.getByRole('button', { name: /Lưu thay đổi/i });
     fireEvent.click(submitBtn);
 
-    expect(
-      await screen.findByText(/Số điện thoại không hợp lệ/i)
-    ).toBeDefined();
+    await waitFor(() => {
+      expect(notifyError).toHaveBeenCalledWith(
+        expect.stringContaining('Số điện thoại không hợp lệ')
+      );
+    });
     expect(authService.updateProfile).not.toHaveBeenCalled();
   });
 
@@ -98,7 +110,7 @@ describe('EditProfileModal', () => {
     });
   });
 
-  it('displays API error message when updateProfile fails', async () => {
+  it('shows error toast when updateProfile fails', async () => {
     vi.mocked(authService.updateProfile).mockRejectedValue({
       response: {
         data: {
@@ -112,8 +124,8 @@ describe('EditProfileModal', () => {
     const submitBtn = screen.getByRole('button', { name: /Lưu thay đổi/i });
     fireEvent.click(submitBtn);
 
-    expect(
-      await screen.findByText('Số điện thoại này đã được đăng ký bởi tài khoản khác.')
-    ).toBeDefined();
+    await waitFor(() => {
+      expect(notifyError).toHaveBeenCalled();
+    });
   });
 });
