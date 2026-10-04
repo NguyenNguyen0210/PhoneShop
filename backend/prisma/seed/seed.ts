@@ -65,6 +65,7 @@ type ProductSeed = {
   slug: string;
   description: string;
   shortDescription: string;
+  specs?: Record<string, any>;
 };
 
 type VariantSeed = {
@@ -75,6 +76,7 @@ type VariantSeed = {
   storage: string;
   ram: string;
   price: number;
+  compareAtPrice?: number;
   costPrice: number;
 };
 
@@ -413,6 +415,19 @@ async function main() {
       slug: "iphone-15-pro",
       description: "Apple iPhone 15 Pro",
       shortDescription: "Premium Apple smartphone",
+      specs: {
+        screenSize: 6.1,
+        screenResolution: "FHD+",
+        screenTechnology: "Super Retina XDR OLED",
+        screenRefreshRate: 120,
+        chipset: "Apple A17 Pro",
+        os: "iOS",
+        has5G: true,
+        batteryCapacity: 3274,
+        mainCameraMp: 48,
+        rearCamera: "Chính 48 MP & Phụ 12 MP, 12 MP",
+        frontCamera: "12 MP",
+      },
     },
     {
       brand: "apple",
@@ -421,6 +436,19 @@ async function main() {
       slug: "iphone-15",
       description: "Apple iPhone 15",
       shortDescription: "Powerful everyday smartphone",
+      specs: {
+        screenSize: 6.1,
+        screenResolution: "FHD+",
+        screenTechnology: "Super Retina XDR OLED",
+        screenRefreshRate: 60,
+        chipset: "Apple A16 Bionic",
+        os: "iOS",
+        has5G: true,
+        batteryCapacity: 3349,
+        mainCameraMp: 48,
+        rearCamera: "Chính 48 MP & Phụ 12 MP",
+        frontCamera: "12 MP",
+      },
     },
     {
       brand: "samsung",
@@ -429,6 +457,19 @@ async function main() {
       slug: "galaxy-s24-ultra",
       description: "Samsung Galaxy S24 Ultra",
       shortDescription: "Samsung flagship smartphone",
+      specs: {
+        screenSize: 6.8,
+        screenResolution: "2K+",
+        screenTechnology: "Dynamic AMOLED 2X",
+        screenRefreshRate: 120,
+        chipset: "Snapdragon 8 Gen 3 for Galaxy",
+        os: "Android",
+        has5G: true,
+        batteryCapacity: 5000,
+        mainCameraMp: 200,
+        rearCamera: "Chính 200 MP & Phụ 50 MP, 12 MP, 10 MP",
+        frontCamera: "12 MP",
+      },
     },
     {
       brand: "samsung",
@@ -437,6 +478,19 @@ async function main() {
       slug: "galaxy-a55",
       description: "Samsung Galaxy A55",
       shortDescription: "Mid-range Samsung smartphone",
+      specs: {
+        screenSize: 6.6,
+        screenResolution: "FHD+",
+        screenTechnology: "Super AMOLED",
+        screenRefreshRate: 120,
+        chipset: "Exynos 1480",
+        os: "Android",
+        has5G: true,
+        batteryCapacity: 5000,
+        mainCameraMp: 50,
+        rearCamera: "Chính 50 MP & Phụ 12 MP, 5 MP",
+        frontCamera: "32 MP",
+      },
     },
     {
       brand: "xiaomi",
@@ -445,6 +499,19 @@ async function main() {
       slug: "xiaomi-14",
       description: "Xiaomi 14 smartphone",
       shortDescription: "High-performance Xiaomi smartphone",
+      specs: {
+        screenSize: 6.36,
+        screenResolution: "1.5K",
+        screenTechnology: "LTPO OLED",
+        screenRefreshRate: 120,
+        chipset: "Snapdragon 8 Gen 3",
+        os: "Android",
+        has5G: true,
+        batteryCapacity: 4610,
+        mainCameraMp: 50,
+        rearCamera: "Leica 50 MP & 50 MP, 50 MP",
+        frontCamera: "32 MP",
+      },
     },
     {
       brand: "oppo",
@@ -453,6 +520,19 @@ async function main() {
       slug: "oppo-reno-11",
       description: "OPPO Reno 11 smartphone",
       shortDescription: "Stylish OPPO smartphone",
+      specs: {
+        screenSize: 6.7,
+        screenResolution: "FHD+",
+        screenTechnology: "AMOLED",
+        screenRefreshRate: 120,
+        chipset: "MediaTek Dimensity 7050",
+        os: "Android",
+        has5G: true,
+        batteryCapacity: 5000,
+        mainCameraMp: 50,
+        rearCamera: "Chính 50 MP & Phụ 32 MP, 8 MP",
+        frontCamera: "32 MP",
+      },
     },
     {
       brand: "google",
@@ -461,6 +541,19 @@ async function main() {
       slug: "google-pixel-8",
       description: "Google Pixel 8",
       shortDescription: "Google AI smartphone",
+      specs: {
+        screenSize: 6.2,
+        screenResolution: "FHD+",
+        screenTechnology: "Actua OLED",
+        screenRefreshRate: 120,
+        chipset: "Google Tensor G3",
+        os: "Android",
+        has5G: true,
+        batteryCapacity: 4575,
+        mainCameraMp: 50,
+        rearCamera: "Chính 50 MP & Phụ 12 MP",
+        frontCamera: "10.5 MP",
+      },
     },
   ];
 
@@ -477,6 +570,7 @@ async function main() {
         name: item.name,
         description: item.description,
         shortDescription: item.shortDescription,
+        specs: item.specs ?? undefined,
         condition: ProductCondition.NEW,
         status: ProductStatus.ACTIVE,
         warrantyMonths: 12,
@@ -488,6 +582,7 @@ async function main() {
         slug: item.slug,
         description: item.description,
         shortDescription: item.shortDescription,
+        specs: item.specs ?? undefined,
         condition: ProductCondition.NEW,
         status: ProductStatus.ACTIVE,
         warrantyMonths: 12,
@@ -510,6 +605,7 @@ async function main() {
       storage: "256GB",
       ram: "8GB",
       price: 27990000,
+      compareAtPrice: 29990000,
       costPrice: 24000000,
     },
     {
@@ -530,6 +626,7 @@ async function main() {
       storage: "256GB",
       ram: "12GB",
       price: 29990000,
+      compareAtPrice: 33990000,
       costPrice: 25500000,
     },
     {
@@ -550,6 +647,7 @@ async function main() {
       storage: "256GB",
       ram: "12GB",
       price: 19990000,
+      compareAtPrice: 22990000,
       costPrice: 16500000,
     },
     {
@@ -589,6 +687,7 @@ async function main() {
           storage: item.storage,
           ram: item.ram,
           price: item.price,
+          compareAtPrice: item.compareAtPrice ?? null,
           costPrice: item.costPrice,
           isActive: true,
         },
@@ -600,6 +699,7 @@ async function main() {
           storage: item.storage,
           ram: item.ram,
           price: item.price,
+          compareAtPrice: item.compareAtPrice ?? null,
           costPrice: item.costPrice,
           isActive: true,
         },

@@ -100,9 +100,30 @@ export class ProductsService {
 
   async findAll(filter: FilterProductDto, publicOnly = false) {
     const {
-      search, brandId, categoryId, status, condition,
-      minPrice, maxPrice, page = 1, limit = 50,
-      sortBy = 'createdAt', sortOrder = 'desc',
+      search,
+      brandId,
+      categoryId,
+      status,
+      condition,
+      minPrice,
+      maxPrice,
+      ram,
+      storage,
+      color,
+      inStock,
+      onSale,
+      has5G,
+      os,
+      chipset,
+      minScreenSize,
+      maxScreenSize,
+      minBattery,
+      maxBattery,
+      minRating,
+      page = 1,
+      limit = 50,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
     } = filter;
 
     const where: any = {};
@@ -114,7 +135,7 @@ export class ProductsService {
     }
 
     if (condition) where.condition = condition;
-    if (brandId)   where.brandId   = brandId;
+    if (brandId) where.brandId = brandId;
     if (categoryId) where.categoryId = categoryId;
 
     if (search) {
@@ -124,15 +145,245 @@ export class ProductsService {
       ];
     }
 
+    // ── Variant Filtering ──────────────────────────────────
+    const variantWhere: any = { isActive: true };
+    let hasVariantFilter = false;
+
     if (minPrice !== undefined || maxPrice !== undefined) {
+      hasVariantFilter = true;
+      variantWhere.price = {
+        ...(minPrice !== undefined ? { gte: minPrice } : {}),
+        ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
+      };
+    }
+
+    if (ram && ram.length > 0) {
+      hasVariantFilter = true;
+      variantWhere.ram = { in: ram, mode: 'insensitive' };
+    }
+
+    if (storage && storage.length > 0) {
+      hasVariantFilter = true;
+      variantWhere.storage = { in: storage, mode: 'insensitive' };
+    }
+
+    if (color && color.length > 0) {
+      hasVariantFilter = true;
+      variantWhere.OR = [
+        { color: { in: color, mode: 'insensitive' } },
+        ...color.map((c) => ({ color: { contains: c, mode: 'insensitive' } })),
+      ];
+    }
+
+    if (inStock === true) {
+      hasVariantFilter = true;
+      variantWhere.inventory = {
+        availableQty: { gt: 0 },
+      };
+    }
+
+    if (onSale === true) {
+      hasVariantFilter = true;
+      if (this.prisma.productVariant?.fields?.price) {
+        variantWhere.compareAtPrice = { gt: this.prisma.productVariant.fields.price };
+      } else {
+        variantWhere.compareAtPrice = { not: null };
+      }
+    }
+
+    if (hasVariantFilter) {
       where.variants = {
-        some: {
-          price: {
-            ...(minPrice !== undefined ? { gte: minPrice } : {}),
-            ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
-          },
-          isActive: true,
+        some: variantWhere,
+      };
+    }
+
+    // ── Specs JSON Filtering ───────────────────────────────
+    const andConditions: any[] = [];
+
+    if (has5G !== undefined) {
+      andConditions.push({
+        OR: [
+          { specs: { path: ['has5G'], equals: has5G } },
+          { specs: { path: ['has5G'], equals: String(has5G) } },
+        ],
+      });
+    }
+
+    if (os && os.length > 0) {
+      andConditions.push({
+        OR: os.flatMap((item) => [
+          { specs: { path: ['os'], equals: item } },
+          { specs: { path: ['os'], string_contains: item } },
+        ]),
+      });
+    }
+
+    if (chipset && chipset.length > 0) {
+      andConditions.push({
+        OR: chipset.map((item) => ({
+          specs: { path: ['chipset'], string_contains: item },
+        })),
+      });
+    }
+
+    if (minScreenSize !== undefined || maxScreenSize !== undefined) {
+      const screenCond: any = {};
+      if (minScreenSize !== undefined) screenCond.gte = minScreenSize;
+      if (maxScreenSize !== undefined) screenCond.lte = maxScreenSize;
+      andConditions.push({
+        specs: {
+          path: ['screenSize'],
+          ...screenCond,
         },
+      });
+    }
+
+    if (minBattery !== undefined || maxBattery !== undefined) {
+      const batteryCond: any = {};
+      if (minBattery !== undefined) batteryCond.gte = minBattery;
+      if (maxBattery !== undefined) batteryCond.lte = maxBattery;
+      andConditions.push({
+        specs: {
+          path: ['batteryCapacity'],
+          ...batteryCond,
+        },
+      });
+    }
+
+    if (andConditions.length > 0) {
+      where.AND = [...(where.AND || []), ...andConditions];
+    }
+
+    // ── Reviews Filtering for minRating ────────────────────
+    if (minRating !== undefined && minRating > 0) {
+      where.reviews = { some: { status: ReviewStatus.APPROVED } };
+    }
+
+    // ── Sorting & Execution ────────────────────────────────
+    const isComputedSortOrFilter =
+      ['price-asc', 'price-desc', 'rating', 'best-seller', 'top-discount'].includes(sortBy) ||
+      minRating !== undefined ||
+      onSale === true;
+
+    if (isComputedSortOrFilter) {
+      let salesByVariant: Record<string, number> = {};
+      if (sortBy === 'best-seller') {
+        try {
+          if (typeof this.prisma.orderItem?.groupBy === 'function') {
+            const orderSales = await this.prisma.orderItem.groupBy({
+              by: ['variantId'],
+              _sum: { quantity: true },
+            });
+            for (const item of orderSales) {
+              salesByVariant[item.variantId] = item._sum?.quantity || 0;
+            }
+          }
+        } catch {
+          // Fallback if orderItem.groupBy is not available
+        }
+      }
+
+      const getProductSales = (p: any): number => {
+        if (!Array.isArray(p.variants)) return 0;
+        return p.variants.reduce((sum: number, v: any) => sum + (salesByVariant[v.id] || 0), 0);
+      };
+
+      const getProductMaxDiscount = (p: any): number => {
+        if (!Array.isArray(p.variants) || p.variants.length === 0) return 0;
+        let maxDiscount = 0;
+        for (const v of p.variants) {
+          const price = Number(v.price) || 0;
+          const compareAt = Number(v.compareAtPrice) || 0;
+          if (compareAt > price && compareAt > 0) {
+            const discount = ((compareAt - price) / compareAt) * 100;
+            if (discount > maxDiscount) maxDiscount = discount;
+          }
+        }
+        return maxDiscount;
+      };
+
+      const getProductMinPrice = (p: any): number => {
+        if (!Array.isArray(p.variants) || p.variants.length === 0) return 0;
+        const prices = p.variants
+          .map((v: any) => Number(v.price))
+          .filter((price: number) => !isNaN(price));
+        return prices.length > 0 ? Math.min(...prices) : 0;
+      };
+
+      const rawData = await this.prisma.product.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          brand: true,
+          category: true,
+          variants: { where: { isActive: true }, include: { inventory: true } },
+          reviews: reviewsWithRepliesInclude,
+        },
+      });
+
+      let formatted = rawData.map((p) => this.formatProduct(p));
+
+      // Filter minRating
+      if (minRating !== undefined) {
+        formatted = formatted.filter((p) => p.rating !== null && p.rating >= minRating);
+      }
+
+      // Filter onSale
+      if (onSale === true) {
+        formatted = formatted.filter(
+          (p) =>
+            Array.isArray(p.variants) &&
+            p.variants.some((v: any) => v.compareAtPrice && Number(v.compareAtPrice) > Number(v.price)),
+        );
+      }
+
+      // Sort
+      if (sortBy === 'best-seller') {
+        formatted.sort((a, b) => {
+          const diff = getProductSales(b) - getProductSales(a);
+          if (diff !== 0) return sortOrder === 'asc' ? -diff : diff;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+      } else if (sortBy === 'top-discount') {
+        formatted.sort((a, b) => {
+          const diff = getProductMaxDiscount(b) - getProductMaxDiscount(a);
+          if (diff !== 0) return sortOrder === 'asc' ? -diff : diff;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+      } else if (sortBy === 'price-asc') {
+        formatted.sort((a, b) => {
+          const diff = getProductMinPrice(a) - getProductMinPrice(b);
+          if (diff !== 0) return diff;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+      } else if (sortBy === 'price-desc') {
+        formatted.sort((a, b) => {
+          const diff = getProductMinPrice(b) - getProductMinPrice(a);
+          if (diff !== 0) return diff;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+      } else if (sortBy === 'rating') {
+        formatted.sort((a, b) => {
+          const rateA = a.rating ?? 0;
+          const rateB = b.rating ?? 0;
+          const diff = rateB - rateA;
+          if (diff !== 0) return sortOrder === 'asc' ? -diff : diff;
+          const reviewDiff = (b.reviewCount || 0) - (a.reviewCount || 0);
+          if (reviewDiff !== 0) return reviewDiff;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+      }
+
+      const total = formatted.length;
+      const skip = (page - 1) * limit;
+      const pagedData = formatted.slice(skip, skip + limit);
+
+      return {
+        data: pagedData,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       };
     }
 
