@@ -38,6 +38,7 @@ COPY --from=builder /app/dist ./dist
 
 # Copy Prisma schema + migrations so `prisma migrate deploy` can run at startup
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
 # Expose backend service port
 EXPOSE 3000
