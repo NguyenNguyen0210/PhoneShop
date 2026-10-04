@@ -378,6 +378,129 @@ export class PaymentsService {
     };
   }
 
+  // ── VNPAY SUCCESS SETTLEMENT (shared by IPN + Return) ────
+  // The order confirmation (PAID → CONFIRMED → IMEI SOLD → warranties)
+  // used to run ONLY inside the IPN webhook. If VNPay never calls the IPN
+  // (URL not registered / unreachable), a paid order stays PENDING until
+  // the hold expires — exactly the "paid but still waiting" symptom.
+  // The browser return URL carries the same HMAC-signed params, so it can
+  // safely perform the same settlement: the conditional PENDING → CONFIRMED
+  // claim makes double-calls (IPN + return, or return retries) no-ops via
+  // VNPAY_ALREADY_PROCESSED.
+  private async confirmVnpaySuccess(
+    order: { id: string; orderNumber: string; userId: string; totalAmount: any; items: any[]; payments: any[]; user?: any },
+    query: Record<string, any>,
+    source: string,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // H3: claim the order PENDING → CONFIRMED conditionally FIRST.
+      // A concurrent duplicate finds count===0 and bails out instead
+      // of writing a second SUCCESS transaction row.
+      const claimed = await tx.order.updateMany({
+        where: { id: order.id, status: OrderStatus.PENDING },
+        data: { status: OrderStatus.CONFIRMED, confirmedAt: new Date() },
+      });
+      if (claimed.count === 0) {
+        const dup: any = new Error(`Order already processed (concurrent ${source})`);
+        dup.code = 'VNPAY_ALREADY_PROCESSED';
+        throw dup;
+      }
+      // 1. Create or update payment
+      let payment = order.payments.find((p) => p.status === PaymentStatus.PENDING);
+      if (!payment) {
+        payment = await tx.payment.create({
+          data: {
+            orderId: order.id,
+            method: PaymentMethod.VNPAY,
+            status: PaymentStatus.PAID,
+            amount: order.totalAmount,
+            provider: 'VNPAY',
+            providerOrderId: query['vnp_TransactionNo'] || query['vnp_TxnRef'],
+            paidAt: new Date(),
+          },
+        });
+      } else {
+        payment = await tx.payment.update({
+          where: { id: payment.id },
+          data: {
+            method: PaymentMethod.VNPAY,
+            status: PaymentStatus.PAID,
+            provider: 'VNPAY',
+            providerOrderId: query['vnp_TransactionNo'] || query['vnp_TxnRef'],
+            paidAt: new Date(),
+          },
+        });
+      }
+
+      // 2. Record transaction
+      await tx.paymentTransaction.create({
+        data: {
+          paymentId: payment.id,
+          transactionCode: query['vnp_TransactionNo'] || this.generateTransactionCode(),
+          type: TransactionType.PAYMENT,
+          status: TransactionStatus.SUCCESS,
+          amount: order.totalAmount,
+          providerReference: query['vnp_BankTranNo'],
+          responseData: query,
+        },
+      });
+
+      // 3. Order status was already claimed PENDING → CONFIRMED at the top
+      // of this transaction (conditional updateMany).
+
+      // 4. Mark reserved IMEIs as SOLD (H6: conditional — never resurrect a
+      // unit that was meanwhile BLOCKED/released) and activate warranties
+      // from product policy instead of a hardcoded 365 days (H8).
+      const paidAt = new Date();
+      for (const item of order.items) {
+        if (item.imeiDeviceId) {
+          await tx.imeiDevice.updateMany({
+            where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
+            data: {
+              status: ImeiStatus.SOLD,
+              soldAt: paidAt,
+            },
+          });
+        }
+      }
+      await this.activateWarranties(
+        tx,
+        order,
+        paidAt,
+        'Tự động kích hoạt khi thanh toán VNPay thành công',
+      );
+    });
+
+    // 5. Trigger email notification (outside tx: never block settlement)
+    try {
+      if (order.user?.email) {
+        const recipientName =
+          [order.user.firstName, order.user.lastName].filter(Boolean).join(' ') || undefined;
+        const items = (order.items || []).map((it: any) => ({
+          name: it.productName,
+          quantity: it.quantity,
+          price: Number(it.unitPrice),
+        }));
+
+        await this.emailService.sendOrderConfirmation(
+          order.user.email,
+          order.orderNumber,
+          Number(order.totalAmount),
+          {
+            recipientName,
+            paymentMethod: 'Cổng thanh toán trực tuyến VNPAY (Đã thanh toán)',
+            items,
+          },
+        );
+      }
+    } catch (emailErr) {
+      this.logger.error(
+        `Failed to send order confirmation email:`,
+        (emailErr as Error).message,
+      );
+    }
+  }
+
   async handleVnpayIpn(query: Record<string, any>) {
     this.logger.log(`Received VNPay IPN webhook: ${JSON.stringify(query)}`);
 
@@ -458,126 +581,20 @@ export class PaymentsService {
 
     const responseCode = query['vnp_ResponseCode'];
     if (responseCode === '00') {
-      // Payment Successful
+      // Payment Successful — shared settlement (idempotent).
       try {
-        await this.prisma.$transaction(async (tx) => {
-          // H3(IPN): claim the order PENDING → CONFIRMED conditionally FIRST.
-          // A concurrent duplicate IPN finds count===0 and bails out instead
-          // of writing a second SUCCESS transaction row.
-          const claimed = await tx.order.updateMany({
-            where: { id: order.id, status: OrderStatus.PENDING },
-            data: { status: OrderStatus.CONFIRMED, confirmedAt: new Date() },
-          });
-          if (claimed.count === 0) {
-            const dup: any = new Error('Order already processed by another IPN');
-            dup.code = 'VNPAY_ALREADY_PROCESSED';
-            throw dup;
-          }
-        // 1. Create or update payment
-        let payment = order.payments.find((p) => p.status === PaymentStatus.PENDING);
-        if (!payment) {
-          payment = await tx.payment.create({
-            data: {
-              orderId: order.id,
-              method: PaymentMethod.VNPAY,
-              status: PaymentStatus.PAID,
-              amount: order.totalAmount,
-              provider: 'VNPAY',
-              providerOrderId: query['vnp_TransactionNo'] || query['vnp_TxnRef'],
-              paidAt: new Date(),
-            },
-          });
-        } else {
-          payment = await tx.payment.update({
-            where: { id: payment.id },
-            data: {
-              method: PaymentMethod.VNPAY,
-              status: PaymentStatus.PAID,
-              provider: 'VNPAY',
-              providerOrderId: query['vnp_TransactionNo'] || query['vnp_TxnRef'],
-              paidAt: new Date(),
-            },
-          });
+        await this.confirmVnpaySuccess(order, query, 'IPN');
+      } catch (txErr: any) {
+        // H3(IPN): duplicate concurrent success IPN — already handled.
+        if (txErr?.code === 'VNPAY_ALREADY_PROCESSED') {
+          this.logger.log(`VNPay IPN: Order ${orderNumber} already processed by concurrent IPN`);
+          return { RspCode: '02', Message: 'Order already confirmed' };
         }
-
-        // 2. Record transaction
-        await tx.paymentTransaction.create({
-          data: {
-            paymentId: payment.id,
-            transactionCode: query['vnp_TransactionNo'] || this.generateTransactionCode(),
-            type: TransactionType.PAYMENT,
-            status: TransactionStatus.SUCCESS,
-            amount: order.totalAmount,
-            providerReference: query['vnp_BankTranNo'],
-            responseData: query,
-          },
-        });
-
-        // 3. Order status was already claimed PENDING → CONFIRMED at the top
-        // of this transaction (conditional updateMany).
-
-        // 4. Mark reserved IMEIs as SOLD (H6: conditional — never resurrect a
-        // unit that was meanwhile BLOCKED/released) and activate warranties
-        // from product policy instead of a hardcoded 365 days (H8).
-        const paidAt = new Date();
-        for (const item of order.items) {
-          if (item.imeiDeviceId) {
-            await tx.imeiDevice.updateMany({
-              where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
-              data: {
-                status: ImeiStatus.SOLD,
-                soldAt: paidAt,
-              },
-            });
-          }
-        }
-        await this.activateWarranties(
-          tx,
-          order,
-          paidAt,
-          'Tự động kích hoạt khi thanh toán VNPay thành công',
-        );
-      });
-
-      // 5. Trigger email notification
-      try {
-        if (order.user?.email) {
-          const recipientName =
-            [order.user.firstName, order.user.lastName].filter(Boolean).join(' ') || undefined;
-          const items = (order.items || []).map((it: any) => ({
-            name: it.productName,
-            quantity: it.quantity,
-            price: Number(it.unitPrice),
-          }));
-
-          await this.emailService.sendOrderConfirmation(
-            order.user.email,
-            order.orderNumber,
-            Number(order.totalAmount),
-            {
-              recipientName,
-              paymentMethod: 'Cổng thanh toán trực tuyến VNPAY (Đã thanh toán)',
-              items,
-            },
-          );
-        }
-      } catch (emailErr) {
-        this.logger.error(
-          `Failed to send order confirmation email:`,
-          (emailErr as Error).message,
-        );
+        throw txErr;
       }
 
       this.logger.log(`VNPay IPN: Successfully processed order ${orderNumber}`);
       return { RspCode: '00', Message: 'Confirm Success' };
-      } catch (txErr: any) {
-      // H3(IPN): duplicate concurrent success IPN — already handled.
-      if (txErr?.code === 'VNPAY_ALREADY_PROCESSED') {
-        this.logger.log(`VNPay IPN: Order ${orderNumber} already processed by concurrent IPN`);
-        return { RspCode: '02', Message: 'Order already confirmed' };
-      }
-      throw txErr;
-    }
     } else {
       // Payment Failed — dedupe: VNPay retries IPNs, so record at most one
       // FAILED row per provider transaction instead of one per retry.
@@ -635,6 +652,53 @@ export class PaymentsService {
 
     const isValid = vnpSignaturesEqual(checkHash, secureHash);
     const isSuccess = isValid && query['vnp_ResponseCode'] === '00';
+
+    // Settle on return too (not only IPN): the return params carry the same
+    // HMAC signature, and the shared settlement is idempotent — if the IPN
+    // already confirmed the order this is a no-op. Without this, an IPN
+    // that never arrives leaves a paid order PENDING until hold expiry.
+    if (isSuccess) {
+      try {
+        const orderNumber = query['vnp_TxnRef'];
+        const order = await this.prisma.order.findUnique({
+          where: { orderNumber },
+          include: { items: true, payments: true, user: true },
+        });
+        if (order) {
+          const vnpAmount = Number(query['vnp_Amount']) / 100;
+          const amountOk =
+            Math.round(Number(order.totalAmount)) === Math.round(vnpAmount);
+          let payable =
+            order.status === OrderStatus.PENDING && amountOk;
+          if (payable) {
+            try {
+              await this.rejectIfHoldExpired(order);
+            } catch {
+              payable = false;
+            }
+          }
+          if (payable) {
+            try {
+              await this.confirmVnpaySuccess(order, query, 'RETURN');
+              this.logger.log(
+                `VNPay Return: settled order ${orderNumber} (IPN may not have arrived)`,
+              );
+            } catch (settleErr: any) {
+              if (settleErr?.code !== 'VNPAY_ALREADY_PROCESSED') throw settleErr;
+              this.logger.log(
+                `VNPay Return: order ${orderNumber} already settled`,
+              );
+            }
+          }
+        }
+      } catch (settleErr) {
+        // Never break the return page on settlement errors — signature is
+        // still valid, so report success and let IPN/retry finish the job.
+        this.logger.warn(
+          `VNPay Return: settlement deferred for ${query['vnp_TxnRef']}: ${(settleErr as Error).message}`,
+        );
+      }
+    }
 
     return {
       success: isSuccess,

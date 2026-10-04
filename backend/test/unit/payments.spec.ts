@@ -285,6 +285,106 @@ describe('Payments Unit Tests', () => {
     });
   });
 
+  describe('VNPay Return Settlement', () => {
+    it('should confirm a PENDING order when return signature is valid (not only via IPN)', async () => {
+      const hashSecret = 'SANDBOX_SECRET_KEY_1234567890ABCDEF';
+      const mockConfig: any = {
+        get: (key: string, defaultValue?: string) => {
+          if (key === 'VNPAY_HASH_SECRET') return hashSecret;
+          return defaultValue;
+        },
+      };
+      const pendingPayment = { id: 'pay-1', status: 'PENDING' };
+      const mockTx: any = {
+        order: { updateMany: jest.fn().mockImplementation(() => Promise.resolve({ count: 1 })) },
+        payment: {
+          update: jest.fn().mockImplementation((args: any) => Promise.resolve({ id: 'pay-1' })),
+          create: jest.fn(),
+        },
+        paymentTransaction: { create: jest.fn().mockImplementation(() => Promise.resolve({})) },
+        imeiDevice: { updateMany: jest.fn().mockImplementation(() => Promise.resolve({})) },
+        orderItem: { findMany: jest.fn().mockImplementation(() => Promise.resolve([])) },
+      };
+      const mockPrisma: any = {
+        order: {
+          findUnique: jest.fn().mockImplementation(() =>
+            Promise.resolve({
+              id: 'ord-pending-id',
+              orderNumber: 'ORD-PENDING',
+              userId: 'user-1',
+              totalAmount: 100000,
+              status: OrderStatus.PENDING,
+              holdExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
+              items: [],
+              payments: [pendingPayment],
+              user: { email: 'buyer@test.vn', firstName: 'A', lastName: 'Test' },
+            }),
+          ),
+        },
+        $transaction: jest.fn().mockImplementation((cb: any) => cb(mockTx)),
+      };
+      const mockEmail: any = { sendOrderConfirmation: jest.fn() };
+      const vietqrService = new VietqrService(mockConfig);
+      const paymentsService = new PaymentsService(
+        mockPrisma,
+        vietqrService,
+        mockEmail,
+        mockConfig,
+      );
+
+      const returnParams: Record<string, string> = {
+        vnp_Amount: '10000000',
+        vnp_Command: 'pay',
+        vnp_OrderInfo: 'Thanh toan don hang ORD-PENDING',
+        vnp_ResponseCode: '00',
+        vnp_TmnCode: 'SANDBOX1',
+        vnp_TxnRef: 'ORD-PENDING',
+        vnp_TransactionNo: '14108745',
+      };
+      const secureHash = hashVnpayParams(returnParams, hashSecret);
+      const query = { ...returnParams, vnp_SecureHash: secureHash };
+
+      const result = await paymentsService.handleVnpayReturn(query);
+
+      expect(result.success).toBe(true);
+      expect(mockTx.order.updateMany).toHaveBeenCalledWith({
+        where: { id: 'ord-pending-id', status: OrderStatus.PENDING },
+        data: { status: 'CONFIRMED', confirmedAt: expect.any(Date) },
+      });
+    });
+
+    it('should NOT settle when return signature is invalid', async () => {
+      const mockConfig: any = {
+        get: (key: string, defaultValue?: string) => {
+          if (key === 'VNPAY_HASH_SECRET') return 'REAL_SECRET';
+          return defaultValue;
+        },
+      };
+      const mockPrisma: any = {
+        order: { findUnique: jest.fn() },
+        $transaction: jest.fn(),
+      };
+      const mockEmail: any = { sendOrderConfirmation: jest.fn() };
+      const vietqrService = new VietqrService(mockConfig);
+      const paymentsService = new PaymentsService(
+        mockPrisma,
+        vietqrService,
+        mockEmail,
+        mockConfig,
+      );
+
+      const result = await paymentsService.handleVnpayReturn({
+        vnp_TxnRef: 'ORD-PENDING',
+        vnp_ResponseCode: '00',
+        vnp_SecureHash: 'forged',
+      });
+
+      expect(result.success).toBe(false);
+      expect(mockPrisma.order.findUnique).not.toHaveBeenCalled();
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    });
+  });
+
   describe('PaymentsController handleVnpayIpn Direct Response', () => {
     it('should bypass NestJS response interceptor by sending direct json via res.status(200).json', async () => {
       const mockPaymentsService: any = {
