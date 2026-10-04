@@ -1,7 +1,7 @@
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { InstallmentProvider, InstallmentStatus } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export class QueryInstallmentDto {
   @ApiPropertyOptional({ default: 1, minimum: 1 })
@@ -21,6 +21,7 @@ export class QueryInstallmentDto {
 
   @ApiPropertyOptional({ enum: InstallmentStatus })
   @IsOptional()
+  @Transform(({ value }) => (value === 'SUBMITTED' ? InstallmentStatus.PENDING : value))
   @IsEnum(InstallmentStatus)
   status?: InstallmentStatus;
 

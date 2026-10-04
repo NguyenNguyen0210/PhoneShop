@@ -55,8 +55,13 @@ export class ReturnsController {
   @Get()
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Get all returns (STAFF/MANAGER/ADMIN)' })
-  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
-    return this.returnsService.findAll(page, limit);
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.returnsService.findAll(page, limit, status, search);
   }
 
   @Get(':id')

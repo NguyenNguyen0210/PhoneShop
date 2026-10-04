@@ -39,8 +39,8 @@ export const StaffDashboardPage: React.FC = () => {
       await Promise.allSettled([
         orderService.getAllOrdersAdmin(),
         ticketService.getAdminTickets({ status: 'OPEN', limit: 10 }),
-        returnService.getAdminReturns({ status: 'PENDING', limit: 10 }),
-        installmentService.getInstallments({ status: 'SUBMITTED', limit: 10 }),
+        returnService.getAdminReturns({ status: 'REQUESTED', limit: 10 }),
+        installmentService.getInstallments({ status: 'PENDING', limit: 10 }),
         inventoryService.getStockLevels({ limit: 50 }),
       ]);
 
@@ -56,6 +56,7 @@ export const StaffDashboardPage: React.FC = () => {
         : [];
       setOrders(orderList);
     } else {
+      console.error('Failed to load orders:', ordersRes.reason);
       anyFailed = true;
     }
 
@@ -78,6 +79,7 @@ export const StaffDashboardPage: React.FC = () => {
           : ticketList.length;
       setOpenTicketsCount(totalCount);
     } else {
+      console.error('Failed to load tickets:', ticketsRes.reason);
       anyFailed = true;
     }
 
@@ -95,6 +97,7 @@ export const StaffDashboardPage: React.FC = () => {
         typeof val?.total === 'number' ? val.total : returnList.length;
       setPendingReturnsCount(totalCount);
     } else {
+      console.error('Failed to load returns:', returnsRes.reason);
       anyFailed = true;
     }
 
@@ -110,6 +113,7 @@ export const StaffDashboardPage: React.FC = () => {
         typeof val?.total === 'number' ? val.total : installmentList.length;
       setSubmittedInstallmentsCount(totalCount);
     } else {
+      console.error('Failed to load installments:', installmentsRes.reason);
       anyFailed = true;
     }
 
@@ -128,6 +132,7 @@ export const StaffDashboardPage: React.FC = () => {
       });
       setLowStockItems(lowStock);
     } else {
+      console.error('Failed to load inventory:', inventoryRes.reason);
       anyFailed = true;
     }
 

@@ -161,10 +161,10 @@ describe('StaffDashboardPage', () => {
 
   const mockInstallments = {
     items: [
-      { id: 'inst-1', status: 'SUBMITTED' },
-      { id: 'inst-2', status: 'SUBMITTED' },
-      { id: 'inst-3', status: 'SUBMITTED' },
-      { id: 'inst-4', status: 'SUBMITTED' },
+      { id: 'inst-1', status: 'PENDING' },
+      { id: 'inst-2', status: 'PENDING' },
+      { id: 'inst-3', status: 'PENDING' },
+      { id: 'inst-4', status: 'PENDING' },
     ],
     total: 4,
   };
@@ -239,8 +239,8 @@ describe('StaffDashboardPage', () => {
     // Verify operational services were called
     expect(orderService.getAllOrdersAdmin).toHaveBeenCalledTimes(1);
     expect(ticketService.getAdminTickets).toHaveBeenCalledWith({ status: 'OPEN', limit: 10 });
-    expect(returnService.getAdminReturns).toHaveBeenCalledWith({ status: 'PENDING', limit: 10 });
-    expect(installmentService.getInstallments).toHaveBeenCalledWith({ status: 'SUBMITTED', limit: 10 });
+    expect(returnService.getAdminReturns).toHaveBeenCalledWith({ status: 'REQUESTED', limit: 10 });
+    expect(installmentService.getInstallments).toHaveBeenCalledWith({ status: 'PENDING', limit: 10 });
     expect(inventoryService.getStockLevels).toHaveBeenCalledWith({ limit: 50 });
 
     // CRITICAL: reportService must NEVER be called
@@ -286,14 +286,14 @@ describe('StaffDashboardPage', () => {
     expect(screen.getByText('Đổi trả chờ xử lý')).toBeInTheDocument();
     const returnsCard = screen.getByTestId('card-pending-returns');
     expect(returnsCard).toBeInTheDocument();
-    expect(returnsCard.closest('a')?.getAttribute('href')).toBe('/staff/returns?status=PENDING');
+    expect(returnsCard.closest('a')?.getAttribute('href')).toBe('/staff/returns?status=REQUESTED');
     expect(screen.getByTestId('card-pending-returns-count').textContent).toContain('3');
 
     // 5. Submitted installments (4 submitted installments)
     expect(screen.getByText('Hồ sơ trả góp')).toBeInTheDocument();
     const installmentsCard = screen.getByTestId('card-submitted-installments');
     expect(installmentsCard).toBeInTheDocument();
-    expect(installmentsCard.closest('a')?.getAttribute('href')).toBe('/staff/installments?status=SUBMITTED');
+    expect(installmentsCard.closest('a')?.getAttribute('href')).toBe('/staff/installments?status=PENDING');
     expect(screen.getByTestId('card-submitted-installments-count').textContent).toContain('4');
   });
 
