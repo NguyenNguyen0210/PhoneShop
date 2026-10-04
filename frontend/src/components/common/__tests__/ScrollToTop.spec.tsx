@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act } from '@testing-library/react';
-import { MemoryRouter, Routes, Route, Link } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { ScrollToTop } from '../ScrollToTop';
 
 describe('ScrollToTop component', () => {
@@ -98,5 +98,51 @@ describe('ScrollToTop component', () => {
     );
 
     expect(window.history.scrollRestoration).toBe('manual');
+  });
+
+  it('restores saved scroll position when navigating back (POP)', async () => {
+    sessionStorage.setItem('scroll_/', '1450');
+
+    const BackButton = () => {
+      const navigate = useNavigate();
+      return <button onClick={() => navigate(-1)}>Back</button>;
+    };
+
+    const { getByText } = render(
+      <MemoryRouter initialEntries={['/', '/products/1']} initialIndex={1}>
+        <ScrollToTop />
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <div>
+                <h1>Home Page</h1>
+              </div>
+            }
+          />
+          <Route
+            path="/products/:id"
+            element={
+              <div>
+                <h1>Product Page</h1>
+                <BackButton />
+              </div>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    window.scrollTo = vi.fn();
+
+    // Trigger back
+    await act(async () => {
+      getByText('Back').click();
+    });
+
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 1450, left: 0, behavior: 'instant' });
+
+    // Clean up
+    sessionStorage.removeItem('scroll_/');
   });
 });

@@ -22,6 +22,7 @@ import { flashSaleService } from '../../../services/flashSaleService';
 import type { Product, ProductVariant, FlashSaleCampaign } from '../../../types';
 import { useCartStore } from '../../../stores/useCartStore';
 import { useWishlistStore } from '../../../stores/useWishlistStore';
+import { useCatalogStore } from '../../../stores/useCatalogStore';
 import { resolveColorStyle } from '../../../utils/colorHelper';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 import {
@@ -48,9 +49,16 @@ export const ProductDetailPage: React.FC = () => {
   const [justAdded, setJustAdded] = useState(false);
   const [isInstallmentModalOpen, setIsInstallmentModalOpen] = useState(false);
   const [isSpecsModalOpen, setIsSpecsModalOpen] = useState(false);
-  const [activeFlashSale, setActiveFlashSale] = useState<FlashSaleCampaign | null>(null);
+  const [activeFlashSale, setActiveFlashSale] = useState<FlashSaleCampaign | null>(
+    () => useCatalogStore.getState().activeFlashSale
+  );
   const [flashTimeLeft, setFlashTimeLeft] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
   const hasAutoSelectedVariantRef = useRef(false);
+  const activeFlashSaleRef = useRef<FlashSaleCampaign | null>(activeFlashSale);
+
+  useEffect(() => {
+    activeFlashSaleRef.current = activeFlashSale;
+  }, [activeFlashSale]);
 
   useEffect(() => {
     hasAutoSelectedVariantRef.current = false;
@@ -116,9 +124,9 @@ export const ProductDetailPage: React.FC = () => {
           }
 
           // 2. If no variant specified in URL, check if any variant is in active flash sale:
-          if (!targetVariant && activeFlashSale?.items) {
+          if (!targetVariant && activeFlashSaleRef.current?.items) {
             targetVariant = data.variants.find((v) =>
-              activeFlashSale.items.some(
+              activeFlashSaleRef.current!.items.some(
                 (fi) => fi.variantId === v.id && (Number(fi.stockLimit) - Number(fi.soldCount) > 0)
               )
             );
@@ -136,7 +144,7 @@ export const ProductDetailPage: React.FC = () => {
         console.error('Failed to fetch product from database API:', err);
       })
       .finally(() => setLoading(false));
-  }, [id, queryVariantId, activeFlashSale]);
+  }, [id, queryVariantId]);
 
   // Auto-select flash sale variant once if product has one and no specific variant was requested via URL
   useEffect(() => {

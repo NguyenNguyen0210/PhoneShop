@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { productService } from '../../../services/productService';
 import { flashSaleService } from '../../../services/flashSaleService';
-import type { Product, Brand, FlashSaleCampaign } from '../../../types';
+import type { Product } from '../../../types';
 import { ProductCard } from '../../../components/storefront/ProductCard';
 import { FlashSaleSection } from '../../../components/storefront/FlashSaleSection';
 import { BrandLogo } from '../../../components/common/BrandLogo';
@@ -21,6 +21,7 @@ import {
 import { StorefrontPagination } from '../../../components/storefront/StorefrontPagination';
 import { HeroBannerShowcase } from '../../../components/storefront/HeroBannerShowcase';
 import { StorefrontServiceBar } from '../../../components/storefront/StorefrontServiceBar';
+import { useCatalogStore } from '../../../stores/useCatalogStore';
 
 export const HomePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,30 +31,53 @@ export const HomePage: React.FC = () => {
 
   const productGridRef = useRef<HTMLDivElement>(null);
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [activeFlashSale, setActiveFlashSale] = useState<FlashSaleCampaign | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [selectedBrand, setSelectedBrand] = useState<string>(() => searchParams.get('brand') || 'all');
+  const {
+    products,
+    brands,
+    activeFlashSale,
+    hasLoaded,
+    selectedBrand,
+    priceRange,
+    selectedStorages,
+    selectedRams,
+    selectedColors,
+    has5GOnly,
+    selectedScreenRanges,
+    selectedBatteryRanges,
+    selectedOs,
+    selectedChipsets,
+    inStockOnly,
+    onSaleOnly,
+    minRating,
+    searchKeyword,
+    sortBy,
+    scrollPosition,
+    setCatalogData,
+    setSelectedBrand,
+    setPriceRange,
+    setSelectedStorages,
+    setSelectedRams,
+    setSelectedColors,
+    setHas5GOnly,
+    setSelectedScreenRanges,
+    setSelectedBatteryRanges,
+    setSelectedOs,
+    setSelectedChipsets,
+    setInStockOnly,
+    setOnSaleOnly,
+    setMinRating,
+    setSearchKeyword,
+    setSortBy,
+    resetFilters: resetStoreFilters,
+    setScrollPosition,
+  } = useCatalogStore();
 
-  // Advanced Filter & Sort states
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000000]);
-  const [selectedStorages, setSelectedStorages] = useState<string[]>([]);
-  const [selectedRams, setSelectedRams] = useState<string[]>([]);
-  const [selectedColors, setSelectedColors] = useState<string[]>([]);
-  const [has5GOnly, setHas5GOnly] = useState<boolean>(false);
-  const [selectedScreenRanges, setSelectedScreenRanges] = useState<string[]>([]);
-  const [selectedBatteryRanges, setSelectedBatteryRanges] = useState<string[]>([]);
-  const [selectedOs, setSelectedOs] = useState<string[]>([]);
-  const [selectedChipsets, setSelectedChipsets] = useState<string[]>([]);
-  const [inStockOnly, setInStockOnly] = useState<boolean>(false);
-  const [onSaleOnly, setOnSaleOnly] = useState<boolean>(false);
-  const [minRating, setMinRating] = useState<number | null>(null);
-  const [searchKeyword, setSearchKeyword] = useState<string>(() => searchParams.get('search') || '');
-  const [sortBy, setSortBy] = useState<ProductSortOption>('default');
+  const [loading, setLoading] = useState<boolean>(!hasLoaded);
   const [showMobileFilter, setShowMobileFilter] = useState<boolean>(false);
 
-  const lastScrolledParamsRef = useRef<string | null>(null);
+  const lastScrolledParamsRef = useRef<string | null>(
+    scrollPosition > 0 ? `${searchParams.get('search') ?? ''}__${searchParams.get('brand') ?? ''}` : null
+  );
 
   // Synchronize URL search params (?search=..., ?brand=...) and auto-scroll to products
   useEffect(() => {
@@ -95,22 +119,20 @@ export const HomePage: React.FC = () => {
   }, [showMobileFilter]);
 
   useEffect(() => {
-    setLoading(true);
+    if (!hasLoaded) {
+      setLoading(true);
+    }
     Promise.all([
       productService.getProducts({ limit: 100 }),
       productService.getBrands(),
       flashSaleService.getActiveCampaign().catch(() => null),
     ])
       .then(([prodRes, brandsRes, flashSaleRes]) => {
-        if (prodRes.items) {
-          setProducts(prodRes.items);
-        }
-        if (Array.isArray(brandsRes) && brandsRes.length > 0) {
-          setBrands(brandsRes);
-        }
-        if (flashSaleRes) {
-          setActiveFlashSale(flashSaleRes);
-        }
+        setCatalogData({
+          products: prodRes.items || [],
+          brands: Array.isArray(brandsRes) ? brandsRes : [],
+          activeFlashSale: flashSaleRes || null,
+        });
       })
       .catch((err) => {
         console.error('Failed to load catalog from database:', err);
@@ -118,7 +140,32 @@ export const HomePage: React.FC = () => {
       .finally(() => {
         setLoading(false);
       });
-  }, []);
+  }, [hasLoaded, setCatalogData]);
+
+  // Continuously record scroll position on HomePage
+  useEffect(() => {
+    const handleScroll = () => {
+      const y = window.scrollY || document.documentElement.scrollTop || 0;
+      setScrollPosition(y);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      handleScroll();
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [setScrollPosition]);
+
+  // Restore scroll position when returning to HomePage
+  useEffect(() => {
+    if (hasLoaded && scrollPosition > 0) {
+      window.scrollTo({ top: scrollPosition, left: 0, behavior: 'instant' });
+      const timer = setTimeout(() => {
+        window.scrollTo({ top: scrollPosition, left: 0, behavior: 'instant' });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [hasLoaded]);
 
   const handlePageChange = (newPage: number) => {
     setSearchParams((prev) => {
@@ -248,21 +295,7 @@ export const HomePage: React.FC = () => {
     searchKeyword.trim() !== '';
 
   const resetFilters = () => {
-    setSelectedBrand('all');
-    setPriceRange([0, 50000000]);
-    setSelectedStorages([]);
-    setSelectedRams([]);
-    setSelectedColors([]);
-    setHas5GOnly(false);
-    setSelectedScreenRanges([]);
-    setSelectedBatteryRanges([]);
-    setSelectedOs([]);
-    setSelectedChipsets([]);
-    setInStockOnly(false);
-    setOnSaleOnly(false);
-    setMinRating(null);
-    setSearchKeyword('');
-    setSortBy('default');
+    resetStoreFilters();
     setSearchParams((prev) => {
       if (!prev.has('page')) return prev;
       const next = new URLSearchParams(prev);
