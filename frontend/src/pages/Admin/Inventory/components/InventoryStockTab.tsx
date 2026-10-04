@@ -33,7 +33,13 @@ export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
   onToggleLowStockFilter = () => {},
 }) => {
   const { user } = useAuthStore();
-  const isManagerOrAdmin = user?.role === 'MANAGER' || user?.role === 'ADMIN';
+  const userRoles = ((user as any)?.roles as any[]) || [];
+  const roleNames = userRoles.map((r) => (typeof r === 'string' ? r : r?.role?.name || r?.name));
+  const isManagerOrAdmin =
+    user?.role === 'MANAGER' ||
+    user?.role === 'ADMIN' ||
+    roleNames.includes('MANAGER') ||
+    roleNames.includes('ADMIN');
 
   const [search, setSearch] = useState('');
   const [adjustItem, setAdjustItem] = useState<InventoryRecord | null>(null);
@@ -241,7 +247,7 @@ export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
       />
 
       <ReorderLevelModal
-        open={!!reorderItem}
+        open={!!reorderItem && isManagerOrAdmin}
         item={reorderItem}
         onClose={() => setReorderItem(null)}
         onSuccess={onRefresh}

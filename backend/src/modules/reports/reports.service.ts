@@ -18,6 +18,21 @@ export interface BrandSalesReport {
   brands: BrandSalesItem[];
 }
 
+export interface CategorySalesItem {
+  categoryId: string;
+  categoryName: string;
+  quantitySold: number;
+  revenue: number;
+  percentage: number;
+}
+
+export interface CategorySalesReport {
+  from?: string;
+  to?: string;
+  totalRevenue: number;
+  categories: CategorySalesItem[];
+}
+
 // M11: all money figures in this service are NET (paid minus completed
 // refunds) and day buckets follow Asia/Ho_Chi_Minh — never UTC.
 const VN_TIME_ZONE = 'Asia/Ho_Chi_Minh';
@@ -227,6 +242,93 @@ export class ReportsService {
       to: to || undefined,
       totalRevenue,
       brands,
+    };
+  }
+
+  async getCategorySalesReport(fromInput?: string, toInput?: string): Promise<CategorySalesReport> {
+    const from = fromInput?.trim();
+    const to = toInput?.trim();
+    let fromDate: Date | undefined;
+    let toDate: Date | undefined;
+
+    if (from || to) {
+      if (!from || !to) {
+        throw new BadRequestException('Both "from" and "to" must be provided');
+      }
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(from) || !dateRegex.test(to)) {
+        throw new BadRequestException('Invalid date format (expected YYYY-MM-DD)');
+      }
+      fromDate = new Date(`${from}T00:00:00+07:00`);
+      toDate = new Date(`${to}T23:59:59.999+07:00`);
+      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+        throw new BadRequestException('Invalid date range (expected YYYY-MM-DD)');
+      }
+      if (fromDate > toDate) {
+        throw new BadRequestException('"from" must not be after "to"');
+      }
+    }
+
+    const rows: Array<{
+      categoryId: string;
+      categoryName: string;
+      quantitySold: number;
+      revenue: number | string;
+    }> =
+      fromDate && toDate
+        ? await this.prisma.$queryRaw`
+            SELECT
+              c.id AS "categoryId",
+              c.name AS "categoryName",
+              SUM(oi.quantity)::int AS "quantitySold",
+              SUM(oi.total_price)::numeric AS revenue
+            FROM categories c
+            JOIN products p ON p.category_id = c.id
+            JOIN product_variants pv ON pv.product_id = p.id
+            JOIN order_items oi ON oi.variant_id = pv.id
+            JOIN orders o ON o.id = oi.order_id
+            WHERE o.status <> 'CANCELLED'
+              AND o.created_at >= ${fromDate}
+              AND o.created_at <= ${toDate}
+            GROUP BY c.id, c.name
+            ORDER BY revenue DESC
+          `
+        : await this.prisma.$queryRaw`
+            SELECT
+              c.id AS "categoryId",
+              c.name AS "categoryName",
+              SUM(oi.quantity)::int AS "quantitySold",
+              SUM(oi.total_price)::numeric AS revenue
+            FROM categories c
+            JOIN products p ON p.category_id = c.id
+            JOIN product_variants pv ON pv.product_id = p.id
+            JOIN order_items oi ON oi.variant_id = pv.id
+            JOIN orders o ON o.id = oi.order_id
+            WHERE o.status <> 'CANCELLED'
+            GROUP BY c.id, c.name
+            ORDER BY revenue DESC
+          `;
+
+    const totalRevenue = rows.reduce((acc, r) => acc + Number(r.revenue ?? 0), 0);
+
+    const categories: CategorySalesItem[] = rows.map((r) => {
+      const rev = Number(r.revenue ?? 0);
+      const percentage =
+        totalRevenue > 0 ? Number(((rev / totalRevenue) * 100).toFixed(1)) : 0;
+      return {
+        categoryId: r.categoryId,
+        categoryName: r.categoryName,
+        quantitySold: Number(r.quantitySold ?? 0),
+        revenue: rev,
+        percentage,
+      };
+    });
+
+    return {
+      from: from || undefined,
+      to: to || undefined,
+      totalRevenue,
+      categories,
     };
   }
 

@@ -55,6 +55,21 @@ export interface BrandSalesReport {
   brands: BrandSalesItem[];
 }
 
+export interface CategorySalesItem {
+  categoryId: string;
+  categoryName: string;
+  quantitySold: number;
+  revenue: number;
+  percentage: number;
+}
+
+export interface CategorySalesReport {
+  from?: string;
+  to?: string;
+  totalRevenue: number;
+  categories: CategorySalesItem[];
+}
+
 export interface LowStockItem {
   variantId: string;
   productName: string;

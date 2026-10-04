@@ -17,6 +17,7 @@ import {
   CustomerServiceOutlined,
   SearchOutlined,
   ThunderboltOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
 
@@ -69,6 +70,11 @@ export const StaffLayout: React.FC = () => {
       key: '/staff/reviews',
       icon: <CommentOutlined style={{ fontSize: 16 }} />,
       label: 'Đánh giá & Phản hồi',
+    },
+    {
+      key: '/staff/payments',
+      icon: <DollarOutlined style={{ fontSize: 16 }} />,
+      label: 'Tra cứu Thanh toán',
     },
     {
       key: '/staff/customers',
@@ -124,6 +130,7 @@ export const StaffLayout: React.FC = () => {
     if (location.pathname.startsWith('/staff/returns')) return 'Xử lý Yêu cầu Đổi trả';
     if (location.pathname.startsWith('/staff/installments')) return 'Thẩm định Hồ sơ Trả góp';
     if (location.pathname.startsWith('/staff/reviews')) return 'Quản lý Đánh giá & Phản hồi';
+    if (location.pathname.startsWith('/staff/payments')) return 'Tra cứu Giao dịch & Thanh toán';
     if (location.pathname.startsWith('/staff/customers')) return 'Tra cứu Thông tin Khách hàng';
     return 'Bàn làm việc Tổng quan';
   };
@@ -136,6 +143,7 @@ export const StaffLayout: React.FC = () => {
     if (path.startsWith('/staff/returns')) return '/staff/returns';
     if (path.startsWith('/staff/installments')) return '/staff/installments';
     if (path.startsWith('/staff/reviews')) return '/staff/reviews';
+    if (path.startsWith('/staff/payments')) return '/staff/payments';
     if (path.startsWith('/staff/customers')) return '/staff/customers';
     return '/staff';
   };

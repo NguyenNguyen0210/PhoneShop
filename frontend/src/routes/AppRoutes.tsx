@@ -213,6 +213,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/staff/returns" element={<AdminReturnsPage />} />
           <Route path="/staff/installments" element={<AdminInstallmentsPage />} />
           <Route path="/staff/reviews" element={<AdminReviewsPage />} />
+          <Route path="/staff/payments" element={<AdminPaymentsPage />} />
           <Route path="/staff/customers" element={<StaffCustomersPage />} />
           <Route path="/staff/customers/:id" element={<StaffCustomer360Page />} />
         </Route>

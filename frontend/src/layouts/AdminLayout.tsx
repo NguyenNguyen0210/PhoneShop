@@ -22,6 +22,8 @@ import {
   TagOutlined,
   TagsOutlined,
   SettingOutlined,
+  TeamOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
 
@@ -110,6 +112,16 @@ export const AdminLayout: React.FC = () => {
       label: 'Hồ sơ trả góp',
     },
     {
+      key: '/admin/users',
+      icon: <TeamOutlined style={{ fontSize: 16 }} />,
+      label: 'Quản lý Người dùng',
+    },
+    {
+      key: '/admin/audit-logs',
+      icon: <SafetyCertificateOutlined style={{ fontSize: 16 }} />,
+      label: 'Nhật ký kiểm toán',
+    },
+    {
       key: '/admin/settings',
       icon: <SettingOutlined style={{ fontSize: 16 }} />,
       label: 'Cấu hình Hệ thống',
@@ -152,6 +164,8 @@ export const AdminLayout: React.FC = () => {
     if (location.pathname.startsWith('/admin/customers')) return 'Hồ sơ Khách hàng Customer 360°';
     if (location.pathname.startsWith('/admin/tickets')) return 'Hệ thống Vé Hỗ trợ & Khiếu nại';
     if (location.pathname === '/admin/installments') return 'Quản lý Hồ sơ trả góp & Thẩm định';
+    if (location.pathname === '/admin/users') return 'Quản lý Người dùng & Phân quyền';
+    if (location.pathname === '/admin/audit-logs') return 'Nhật ký Hoạt động (Audit Logs)';
     if (location.pathname === '/admin/reviews') return 'Quản lý Đánh giá & Phản hồi';
     if (location.pathname === '/admin/settings') return 'Cấu hình & Tham số Hệ thống';
     return 'Tổng quan hệ thống (Dashboard)';

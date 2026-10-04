@@ -13,6 +13,7 @@ import type {
   TopProductItem,
   OrderStatusItem,
   BrandSalesReport,
+  CategorySalesReport,
   LowStockItem,
   DatePresetKey,
 } from '../../../types/report';
@@ -22,6 +23,7 @@ import {
   RevenueChartCard,
   OrderStatusChartCard,
   BrandSalesChartCard,
+  CategorySalesChartCard,
   TopProductsChartCard,
   DashboardAlertsAndOrders,
 } from './components';
@@ -39,6 +41,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [revenueData, setRevenueData] = useState<RevenueReport | null>(null);
   const [orderStatusData, setOrderStatusData] = useState<OrderStatusItem[]>([]);
   const [brandSalesData, setBrandSalesData] = useState<BrandSalesReport | null>(null);
+  const [categorySalesData, setCategorySalesData] = useState<CategorySalesReport | null>(null);
   const [topProducts, setTopProducts] = useState<TopProductItem[]>([]);
   const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -52,6 +55,7 @@ export const AdminDashboardPage: React.FC = () => {
         revenueRes,
         statusRes,
         brandRes,
+        categoryRes,
         topProdsRes,
         lowStockRes,
         ordersRes,
@@ -60,6 +64,7 @@ export const AdminDashboardPage: React.FC = () => {
         reportService.getRevenueReport(from, to),
         reportService.getOrderStatusReport(),
         reportService.getBrandSalesReport(from, to),
+        reportService.getCategorySalesReport(from, to),
         reportService.getTopSellingProducts(10),
         reportService.getLowStockReport(),
         orderService.getAllOrdersAdmin(),
@@ -69,6 +74,7 @@ export const AdminDashboardPage: React.FC = () => {
       if (revenueRes.status === 'fulfilled') setRevenueData(revenueRes.value);
       if (statusRes.status === 'fulfilled') setOrderStatusData(statusRes.value);
       if (brandRes.status === 'fulfilled') setBrandSalesData(brandRes.value);
+      if (categoryRes.status === 'fulfilled') setCategorySalesData(categoryRes.value);
       if (topProdsRes.status === 'fulfilled') setTopProducts(topProdsRes.value);
       if (lowStockRes.status === 'fulfilled') setLowStock(lowStockRes.value);
       if (ordersRes.status === 'fulfilled' && Array.isArray(ordersRes.value)) {
@@ -193,13 +199,20 @@ export const AdminDashboardPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Charts Grid Row 2: Top Selling Products Bar Chart + Brand Sales Donut */}
+      {/* Charts Grid Row 2: Top Selling Products Bar Chart */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} lg={14}>
+        <Col xs={24}>
           <TopProductsChartCard data={topProducts} loading={loading} />
         </Col>
-        <Col xs={24} lg={10}>
+      </Row>
+
+      {/* Charts Grid Row 3: Brand Sales Donut + Category Sales Donut */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={12}>
           <BrandSalesChartCard data={brandSalesData} loading={loading} />
+        </Col>
+        <Col xs={24} lg={12}>
+          <CategorySalesChartCard data={categorySalesData} loading={loading} />
         </Col>
       </Row>
 

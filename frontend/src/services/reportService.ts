@@ -6,6 +6,7 @@ import type {
   TopProductItem,
   OrderStatusItem,
   BrandSalesReport,
+  CategorySalesReport,
   LowStockItem,
   DatePresetKey,
 } from '../types/report';
@@ -40,6 +41,17 @@ export const getBrandSalesReport = async (from?: string, to?: string): Promise<B
   if (to) params.to = to;
 
   const response = await apiClient.get<BrandSalesReport>('/reports/brand-sales', {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  });
+  return (response.data as any)?.data ?? response.data;
+};
+
+export const getCategorySalesReport = async (from?: string, to?: string): Promise<CategorySalesReport> => {
+  const params: Record<string, string> = {};
+  if (from) params.from = from;
+  if (to) params.to = to;
+
+  const response = await apiClient.get<CategorySalesReport>('/reports/category-sales', {
     params: Object.keys(params).length > 0 ? params : undefined,
   });
   return (response.data as any)?.data ?? response.data;
@@ -83,6 +95,7 @@ export const reportService = {
   getTopSellingProducts,
   getOrderStatusReport,
   getBrandSalesReport,
+  getCategorySalesReport,
   getLowStockReport,
   getDatePresetRange,
 };
