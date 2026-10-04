@@ -106,6 +106,24 @@ export const ProductDetailPage: React.FC = () => {
       .finally(() => setLoading(false));
   }, [id]);
 
+  // Ensure scroll is at the top when entering product details or changing product id
+  useEffect(() => {
+    if (!location.hash) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    }
+  }, [id, location.hash]);
+
+  // Re-verify scroll is at the top once product details finish loading and replace skeleton/spinner
+  useEffect(() => {
+    if (product && !location.hash) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    }
+  }, [product, location.hash]);
+
   // Handle scroll for sticky purchase bar
   useEffect(() => {
     const handleScroll = () => {
