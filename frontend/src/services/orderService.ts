@@ -1,9 +1,48 @@
 import { apiClient } from './apiClient';
 import type { Order, PaymentMethod, InstallmentFormData, ShippingMethod } from '../types';
-import { toBackendPaymentMethod } from './paymentService';
+import { toBackendPaymentMethod, fromBackendPaymentMethod } from './paymentService';
 import { cartService } from './cartService';
 import { useCartStore } from '../stores/useCartStore';
 import { useAuthStore } from '../stores/useAuthStore';
+
+/** Normalize a raw backend order into the storefront Order shape.
+ * Backend stores VietQR as BANK_TRANSFER and (for older rows) may return
+ * discountAmount/customerNote/payments[] instead of the derived fields —
+ * always derive them here so the UI never falls back to COD by accident. */
+const normalizeOrder = (raw: any): Order => {
+  if (!raw || typeof raw !== 'object') return raw;
+  const payments = Array.isArray(raw.payments) ? raw.payments : [];
+  const primaryPayment = payments[0] ?? null;
+  const rawMethod: string | undefined =
+    raw.paymentMethod ?? primaryPayment?.method ?? undefined;
+  const paymentMethod = fromBackendPaymentMethod(rawMethod) as PaymentMethod;
+  const paymentStatus = raw.paymentStatus ?? primaryPayment?.status ?? 'PENDING';
+  const address = raw.address ?? null;
+  const customerName =
+    raw.customerName || address?.recipientName || raw.recipientName || '';
+  const shippingPhone = raw.shippingPhone || address?.phone || '';
+  const shippingAddress =
+    raw.shippingAddress ||
+    (address
+      ? [address.addressLine1, address.ward, address.district, address.city]
+          .filter(Boolean)
+          .join(', ')
+      : '');
+  const discount =
+    raw.discount ??
+    (raw.discountAmount !== undefined ? Number(raw.discountAmount) : 0);
+  const notes = raw.notes ?? raw.customerNote ?? undefined;
+  return {
+    ...raw,
+    paymentMethod,
+    paymentStatus,
+    customerName,
+    shippingPhone,
+    shippingAddress,
+    discount,
+    notes,
+  } as Order;
+};
 
 const VALID_PAYMENT_METHODS: Array<PaymentMethod | string> = [
   'COD',
@@ -95,7 +134,10 @@ export const orderService = {
 
     const orderData: Order = orderRes.data?.data ?? orderRes.data;
 
-    // Attach chosen payment method if provided (backend handles INSTALLMENT in order transaction)
+    // Backend now creates the PENDING payment row atomically inside checkout
+    // for every method (COD / BANK_TRANSFER / VNPAY / INSTALLMENT). The extra
+    // POST is kept as a dedup-safe backstop for orders created before that
+    // fix — PaymentsService.create reuses the pending row instead of stacking.
     if (backendPaymentMethod && backendPaymentMethod !== 'INSTALLMENT' && orderData?.id) {
       try {
         await apiClient.post('/payments', {
@@ -107,29 +149,36 @@ export const orderService = {
       }
     }
 
-    return orderData;
+    // Keep the storefront label (VIETQR) on the returned object so callers
+    // never see the backend BANK_TRANSFER enum.
+    if (payload.paymentMethod && orderData) {
+      (orderData as any).paymentMethod = payload.paymentMethod;
+    }
+
+    return normalizeOrder({ ...orderData, paymentMethod: payload.paymentMethod ?? (orderData as any).paymentMethod });
   },
 
   async getMyOrders(): Promise<Order[]> {
     const response = await apiClient.get('/orders/my');
     const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : data?.items ?? [];
+    const list: any[] = Array.isArray(data) ? data : data?.items ?? [];
+    return list.map(normalizeOrder);
   },
 
   async getOrderById(id: string): Promise<Order> {
     const isStaffOrAdmin = useAuthStore.getState().isStaffOrAdmin?.() || false;
     if (isStaffOrAdmin) {
       const response = await apiClient.get(`/orders/${id}`);
-      return response.data?.data ?? response.data;
+      return normalizeOrder(response.data?.data ?? response.data);
     }
 
     try {
       const response = await apiClient.get(`/orders/my/${id}`);
-      return response.data?.data ?? response.data;
+      return normalizeOrder(response.data?.data ?? response.data);
     } catch {
       // Fallback to admin/staff findOne if customer lookup fails or token allows
       const response = await apiClient.get(`/orders/${id}`);
-      return response.data?.data ?? response.data;
+      return normalizeOrder(response.data?.data ?? response.data);
     }
   },
 

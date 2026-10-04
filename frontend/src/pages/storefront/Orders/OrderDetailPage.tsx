@@ -592,7 +592,8 @@ export const OrderDetailPage: React.FC = () => {
                 <span className="font-bold text-slate-900">
                   {order.paymentMethod === 'INSTALLMENT'
                     ? 'Trả góp 0% qua công ty tài chính'
-                    : order.paymentMethod === 'VIETQR'
+                    : order.paymentMethod === 'VIETQR' ||
+                      (order as any).paymentMethod === 'BANK_TRANSFER'
                     ? 'Chuyển khoản VietQR'
                     : order.paymentMethod === 'VNPAY'
                     ? 'Cổng trực tuyến VNPAY'

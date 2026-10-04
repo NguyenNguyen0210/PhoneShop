@@ -98,7 +98,7 @@ export const OrderInvoiceModal: React.FC<OrderInvoiceModalProps> = ({ order, isO
                 Ngày đặt: {new Date(order.createdAt).toLocaleString('vi-VN')}
               </div>
               <div className="font-semibold text-emerald-700">
-                Trạng thái: {order.paymentStatus === 'PAID' ? 'ĐÃ THANH TOÁN' : 'CHỜ THANH TOÁN (COD)'}
+                Trạng thái: {order.paymentStatus === 'PAID' ? 'ĐÃ THANH TOÁN' : 'CHỜ THANH TOÁN'}
               </div>
             </div>
           </div>

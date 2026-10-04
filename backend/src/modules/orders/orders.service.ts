@@ -523,13 +523,20 @@ export class OrdersService {
         }
       }
 
-      // COD orders need a PENDING payment row at checkout so the delivery
-      // auto-PAID step (transitionStatus → DELIVERED) finds something to flip.
-      if (dto.paymentMethod === PaymentMethod.COD && tx.payment?.create) {
+      // Every non-installment order needs a PENDING payment row at checkout
+      // inside the same transaction: COD for the delivery auto-PAID step,
+      // BANK_TRANSFER (VietQR) for the manual-confirm/QR flow, VNPAY for the
+      // IPN flow. Without this the order has zero payments until the
+      // frontend's second POST /payments succeeds — if that request fails,
+      // readers fall back to 'COD' and the success page loses the method.
+      // INSTALLMENT already created its row above.
+      if (!isInstallment && tx.payment?.create) {
+        const methodForPayment =
+          dto.paymentMethod ?? PaymentMethod.COD;
         await tx.payment.create({
           data: {
             orderId: newOrder.id,
-            method: PaymentMethod.COD,
+            method: methodForPayment,
             status: PaymentStatus.PENDING,
             amount: totalAmount,
           },
@@ -650,9 +657,11 @@ export class OrdersService {
               ? 'Thanh toán khi nhận hàng (COD)'
               : paymentMethod === PaymentMethod.BANK_TRANSFER
                 ? 'Chuyển khoản VietQR / Ngân hàng'
-                : paymentMethod === PaymentMethod.INSTALLMENT
-                  ? 'Mua trả góp 0%'
-                  : 'Tiêu chuẩn';
+                : paymentMethod === PaymentMethod.VNPAY
+                  ? 'Cổng thanh toán trực tuyến VNPAY'
+                  : paymentMethod === PaymentMethod.INSTALLMENT
+                    ? 'Mua trả góp 0%'
+                    : 'Tiêu chuẩn';
 
           const items = (order.items || []).map((it: any) => ({
             name: it.productName,
@@ -774,12 +783,47 @@ export class OrdersService {
     return cancelled;
   }
 
+  private toClientOrder(o: any) {
+    const customerName =
+      o.address?.recipientName ||
+      (o.user
+        ? `${o.user.lastName || ''} ${o.user.firstName || ''}`.trim() ||
+          'Khách hàng'
+        : 'Khách hàng');
+    const shippingPhone = o.address?.phone || o.user?.phone || '';
+    const shippingAddress = o.address
+      ? `${o.address.addressLine1}, ${o.address.ward ? o.address.ward + ', ' : ''}${o.address.district ? o.address.district + ', ' : ''}${o.address.city}`
+      : '';
+    const primaryPayment = o.payments?.[0];
+    const discount =
+      o.discount ?? (o.discountAmount !== undefined ? Number(o.discountAmount) : 0);
+    const notes = o.notes ?? o.customerNote ?? undefined;
+
+    return {
+      ...o,
+      customerName,
+      shippingPhone,
+      shippingAddress,
+      paymentMethod: primaryPayment?.method || 'COD',
+      paymentStatus: primaryPayment?.status || 'PENDING',
+      discount,
+      notes,
+    };
+  }
+
   async findMyOrders(userId: string) {
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
       where: { userId },
-      include: { items: true, payments: true, installmentApplication: true, shipping: true },
+      include: {
+        items: true,
+        payments: true,
+        installmentApplication: true,
+        shipping: true,
+        address: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
+    return orders.map((o) => this.toClientOrder(o));
   }
 
   async findMyOrder(userId: string, id: string) {
@@ -799,7 +843,7 @@ export class OrdersService {
       },
     });
     if (!order) throw new NotFoundException('Order not found');
-    return order;
+    return this.toClientOrder(order);
   }
 
   async findAll(query: QueryOrdersDto = {}): Promise<PaginatedResponse<any>> {
