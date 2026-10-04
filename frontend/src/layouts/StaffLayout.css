@@ -1,0 +1,22 @@
+/* StaffLayout header responsive rules.
+   Full cluster fits >= 1280px. Below that, hide progressively
+   so nothing ever truncates or overflows the 64px header. */
+
+@media (max-width: 1240px) {
+  .staff-header-search {
+    width: 180px !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .staff-header-search {
+    display: none !important;
+  }
+}
+
+@media (max-width: 940px) {
+  .staff-header-role-tag,
+  .staff-header-storefront {
+    display: none !important;
+  }
+}

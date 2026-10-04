@@ -26,6 +26,7 @@ import {
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
+import './AdminLayout.css';
 
 const { Header, Sider, Content } = Layout;
 
@@ -67,7 +68,7 @@ export const AdminLayout: React.FC = () => {
       label: 'Nhà cung cấp',
     },
     {
-      key: '/admin/imei',
+      key: '/admin/inventory',
       icon: <BarcodeOutlined style={{ fontSize: 16 }} />,
       label: 'Quản lý Kho & IMEI',
     },
@@ -171,6 +172,30 @@ export const AdminLayout: React.FC = () => {
     return 'Tổng quan hệ thống (Dashboard)';
   };
 
+  // Map any nested admin path to its top-level menu key
+  // (detail pages /admin/orders/:id etc. keep the parent highlighted,
+  // and the legacy /admin/imei URL maps to the inventory entry).
+  const getSelectedKey = () => {
+    const path = location.pathname;
+    if (path.startsWith('/admin/inventory') || path.startsWith('/admin/imei')) return '/admin/inventory';
+    if (path.startsWith('/admin/orders')) return '/admin/orders';
+    if (path.startsWith('/admin/customers')) return '/admin/customers';
+    if (path.startsWith('/admin/tickets')) return '/admin/tickets';
+    if (path.startsWith('/admin/promotions')) return '/admin/promotions';
+    if (path.startsWith('/admin/products')) return '/admin/products';
+    if (path.startsWith('/admin/categories')) return '/admin/categories';
+    if (path.startsWith('/admin/brands')) return '/admin/brands';
+    if (path.startsWith('/admin/suppliers')) return '/admin/suppliers';
+    if (path.startsWith('/admin/payments')) return '/admin/payments';
+    if (path.startsWith('/admin/returns')) return '/admin/returns';
+    if (path.startsWith('/admin/installments')) return '/admin/installments';
+    if (path.startsWith('/admin/reviews')) return '/admin/reviews';
+    if (path.startsWith('/admin/users')) return '/admin/users';
+    if (path.startsWith('/admin/audit-logs')) return '/admin/audit-logs';
+    if (path.startsWith('/admin/settings')) return '/admin/settings';
+    return '/admin';
+  };
+
   return (
     <ConfigProvider
       theme={{
@@ -224,8 +249,8 @@ export const AdminLayout: React.FC = () => {
           collapsible
           collapsed={collapsed}
           width={250}
+          className="admin-sider"
           style={{
-            overflow: 'auto',
             height: '100vh',
             position: 'sticky',
             top: 0,
@@ -233,12 +258,16 @@ export const AdminLayout: React.FC = () => {
             zIndex: 100,
             background: '#ffffff',
             borderRight: '1px solid #e2e8f0',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
           }}
         >
           {/* Logo & Brand Header */}
           <div
             style={{
               height: 64,
+              flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
               padding: '0 20px',
@@ -289,10 +318,18 @@ export const AdminLayout: React.FC = () => {
           </div>
 
           {/* Navigation Menu */}
-          <div style={{ padding: '12px 0' }}>
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              padding: '12px 0',
+            }}
+          >
             <Menu
               mode="inline"
-              selectedKeys={[location.pathname]}
+              selectedKeys={[getSelectedKey()]}
               items={menuItems}
               onClick={handleMenuClick}
               style={{
@@ -306,10 +343,8 @@ export const AdminLayout: React.FC = () => {
           {!collapsed && (
             <div
               style={{
-                position: 'absolute',
-                bottom: 16,
-                left: 12,
-                right: 12,
+                flexShrink: 0,
+                margin: 12,
                 padding: '12px 14px',
                 borderRadius: 10,
                 background: '#f8fafc',

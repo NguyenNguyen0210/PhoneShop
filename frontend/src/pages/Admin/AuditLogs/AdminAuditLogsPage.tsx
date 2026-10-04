@@ -100,7 +100,7 @@ export const AdminAuditLogsPage: React.FC = () => {
   const fetchStats = useCallback(async () => {
     try {
       const data = await auditLogService.getAuditLogStats();
-      setStats(data);
+      setStats((data as any)?.data ?? data);
     } catch {
       // Ignore background stats fetch errors
     }
@@ -123,8 +123,9 @@ export const AdminAuditLogsPage: React.FC = () => {
       }
 
       const res = await auditLogService.getAuditLogs(params);
-      setLogs(res.data || []);
-      setTotal(res.total || 0);
+      const rows = (res as any)?.data?.data ?? (res as any)?.data ?? [];
+      setLogs(Array.isArray(rows) ? rows : []);
+      setTotal(((res as any)?.data?.total ?? (res as any)?.total) || 0);
     } catch {
       message.error('Không thể tải danh sách nhật ký kiểm toán. Vui lòng thử lại.');
       setLogs([]);

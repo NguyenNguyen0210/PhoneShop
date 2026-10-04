@@ -17,6 +17,9 @@ e2e_screenshots/
 test_artifacts/
 **/test_artifacts/
 .playwright-mcp/
+playwright-report/
+test-results/
+frontend/e2e/staff/.auth/
 test_*.py
 **/test_*.py
 test_*.mjs

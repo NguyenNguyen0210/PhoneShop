@@ -1,0 +1,9 @@
+/* Admin sider: AntD wraps Sider children in .ant-layout-sider-children,
+   so the flex column must live there — not on the <aside> itself.
+   Result: brand pinned top, menu scrolls internally, footer pinned
+   bottom and never overlaps the menu at short viewport heights. */
+.admin-sider .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
