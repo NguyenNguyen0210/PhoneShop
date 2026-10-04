@@ -61,6 +61,7 @@ describe('CheckoutPage Integration', () => {
           quantity: 1,
           unitPrice: 28000000,
           price: 28000000,
+          unitPrice: 28000000,
           product: { id: 'p-1', name: 'iPhone 15 Pro Max', thumbnail: '' } as any,
           variant: { id: 'v-1', color: 'Titan Tự Nhiên', storage: '256GB' } as any,
         },
