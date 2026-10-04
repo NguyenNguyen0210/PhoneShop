@@ -136,7 +136,8 @@ export class InventoryService {
         unitPrice: dto.unitPrice,
         performedBy: userId,
         note: dto.note,
-        referenceType: 'ADJUSTMENT',
+        referenceType: dto.referenceType || 'ADJUSTMENT',
+        referenceId: dto.referenceId,
       });
 
       const updatedInv = await tx.inventory.update({
@@ -154,7 +155,13 @@ export class InventoryService {
           entityId: variantId,
           userId: userId || null,
           oldData: { quantity: inv.quantity, availableQty: inv.availableQty },
-          newData: { quantity: newQty, availableQty: newAvailable, note: dto.note },
+          newData: {
+            quantity: newQty,
+            availableQty: newAvailable,
+            note: dto.note,
+            referenceType: dto.referenceType,
+            referenceId: dto.referenceId,
+          },
         },
       });
 

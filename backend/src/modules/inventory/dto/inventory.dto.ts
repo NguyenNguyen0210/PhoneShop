@@ -19,6 +19,16 @@ export class AdjustStockDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @ApiPropertyOptional({ description: 'Reference type, e.g. SUPPLIER, ADJUSTMENT, MANUAL' })
+  @IsOptional()
+  @IsString()
+  referenceType?: string;
+
+  @ApiPropertyOptional({ description: 'Reference ID, e.g. supplier ID, batch ID' })
+  @IsOptional()
+  @IsString()
+  referenceId?: string;
 }
 
 export class SetReorderLevelDto {
