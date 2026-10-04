@@ -61,7 +61,7 @@ describe('Navbar - User Menu Items', () => {
     } as any);
   });
 
-  it('contains "Đổi mật khẩu" linking to /profile#password and removes "Thiết bị & Bảo hành" from user dropdown', async () => {
+  it('removes "Thiết bị & Bảo hành" and "Đổi mật khẩu" from user dropdown, keeping "Cài đặt tài khoản" linking to /profile', async () => {
     await act(async () => {
       render(
         <MemoryRouter>
@@ -76,10 +76,13 @@ describe('Navbar - User Menu Items', () => {
       fireEvent.click(userButton);
     });
 
-    // Should include "Đổi mật khẩu"
-    const changePasswordLink = screen.getByText('Đổi mật khẩu');
-    expect(changePasswordLink).toBeDefined();
-    expect(changePasswordLink.closest('a')?.getAttribute('href')).toBe('/profile#password');
+    // Should have "Cài đặt tài khoản"
+    const settingsLink = screen.getByText('Cài đặt tài khoản');
+    expect(settingsLink).toBeDefined();
+    expect(settingsLink.closest('a')?.getAttribute('href')).toBe('/profile');
+
+    // Should NOT have "Đổi mật khẩu" directly in the dropdown
+    expect(screen.queryByText('Đổi mật khẩu')).toBeNull();
 
     // Should NOT have "Thiết bị & Bảo hành" in the user dropdown
     expect(screen.queryByText(/Thiết bị & Bảo hành/i)).toBeNull();
