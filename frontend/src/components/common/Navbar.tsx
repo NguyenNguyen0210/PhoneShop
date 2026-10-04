@@ -10,7 +10,6 @@ import {
   LogOut,
   Menu,
   X,
-  Sparkles,
   Command,
   Package,
   Ticket,
@@ -186,18 +185,12 @@ export const Navbar: React.FC = () => {
             </button>
 
             {/* Official PhoneShop Brand Logo */}
-            <Link to="/" className="flex items-center gap-2.5 sm:gap-3 shrink-0 group" aria-label="PhoneShop">
+            <Link to="/" className="flex items-center shrink-0 group" aria-label="PhoneShop">
               <img
                 src="/logo-horizontal.png"
-                alt="PhoneShop - Smartphone • Better Life"
+                alt="PhoneShop"
                 className="h-8 sm:h-9.5 w-auto object-contain transition-transform duration-200 group-hover:scale-102"
               />
-              <div className="hidden sm:flex flex-col">
-                <span className="text-[9px] uppercase font-bold tracking-widest text-blue-600 flex items-center gap-1">
-                  <span>Chính hãng 100%</span>
-                  <Sparkles className="w-2.5 h-2.5 text-blue-500 inline" />
-                </span>
-              </div>
             </Link>
 
             {/* Desktop Command Bar Search */}

@@ -78,7 +78,7 @@ export const OAuthCallbackPage: React.FC = () => {
         <Link to="/" className="inline-flex items-center justify-center group" aria-label="PhoneShop">
           <img
             src="/logo-horizontal.png"
-            alt="PhoneShop - Smartphone • Better Life"
+            alt="PhoneShop"
             className="h-10 w-auto object-contain"
           />
         </Link>

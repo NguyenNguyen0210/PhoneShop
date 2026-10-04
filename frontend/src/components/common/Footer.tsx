@@ -110,7 +110,7 @@ export const Footer: React.FC = () => {
           <div className="flex items-center gap-2.5 mb-4">
             <img
               src="/logo-horizontal.png"
-              alt="PhoneShop - Smartphone • Better Life"
+              alt="PhoneShop"
               className="h-8 w-auto object-contain"
             />
           </div>
