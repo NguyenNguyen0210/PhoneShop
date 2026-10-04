@@ -1,6 +1,6 @@
 # Hero Banner Ambient Glow & Service Bar Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development (recommended) or executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development (recommended) or executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Refactor and upgrade the storefront HomePage hero banner into a modern 3D Flagship Showcase with dynamic brand-driven ambient glow backdrops, floating specs badges, 5-second autoplay slider with hover pause, and an independent commercial service guarantee bar.
 
@@ -30,7 +30,7 @@
 - Create: `frontend/src/components/storefront/StorefrontServiceBar.tsx`
 - Test: `frontend/src/components/storefront/__tests__/StorefrontServiceBar.spec.tsx`
 
-- [ ] **Step 1: Write the failing test for StorefrontServiceBar**
+- [x] **Step 1: Write the failing test for StorefrontServiceBar**
 
 Create `frontend/src/components/storefront/__tests__/StorefrontServiceBar.spec.tsx` testing rendering of the 4 retail commercial guarantees:
 ```tsx
@@ -58,12 +58,12 @@ describe('StorefrontServiceBar', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm test -- src/components/storefront/__tests__/StorefrontServiceBar.spec.tsx --run` (in `frontend`)
 Expected: FAIL with "Cannot find module '../StorefrontServiceBar'"
 
-- [ ] **Step 3: Implement StorefrontServiceBar component**
+- [x] **Step 3: Implement StorefrontServiceBar component**
 
 Create `frontend/src/components/storefront/StorefrontServiceBar.tsx`:
 ```tsx
@@ -124,12 +124,12 @@ export const StorefrontServiceBar: React.FC = () => {
 };
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npm test -- src/components/storefront/__tests__/StorefrontServiceBar.spec.tsx --run` (in `frontend`)
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/components/storefront/StorefrontServiceBar.tsx frontend/src/components/storefront/__tests__/StorefrontServiceBar.spec.tsx
@@ -141,7 +141,7 @@ git commit -m "feat(storefront): add StorefrontServiceBar component with tests"
 - Create: `frontend/src/components/storefront/HeroBannerShowcase.tsx`
 - Test: `frontend/src/components/storefront/__tests__/HeroBannerShowcase.spec.tsx`
 
-- [ ] **Step 1: Write the failing test for HeroBannerShowcase**
+- [x] **Step 1: Write the failing test for HeroBannerShowcase**
 
 Create `frontend/src/components/storefront/__tests__/HeroBannerShowcase.spec.tsx`:
 ```tsx
@@ -276,12 +276,12 @@ describe('HeroBannerShowcase', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm test -- src/components/storefront/__tests__/HeroBannerShowcase.spec.tsx --run` (in `frontend`)
 Expected: FAIL with "Cannot find module '../HeroBannerShowcase'"
 
-- [ ] **Step 3: Implement HeroBannerShowcase component**
+- [x] **Step 3: Implement HeroBannerShowcase component**
 
 Create `frontend/src/components/storefront/HeroBannerShowcase.tsx`:
 ```tsx
@@ -619,12 +619,12 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({ products
 };
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npm test -- src/components/storefront/__tests__/HeroBannerShowcase.spec.tsx --run` (in `frontend`)
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/components/storefront/HeroBannerShowcase.tsx frontend/src/components/storefront/__tests__/HeroBannerShowcase.spec.tsx
@@ -636,12 +636,12 @@ git commit -m "feat(storefront): add HeroBannerShowcase component with ambient g
 - Modify: `frontend/src/pages/storefront/Home/HomePage.tsx`
 - Test: `frontend/src/pages/storefront/Home/__tests__/HomePageUrlFilter.spec.tsx`
 
-- [ ] **Step 1: Check existing HomePage test to establish baseline**
+- [x] **Step 1: Check existing HomePage test to establish baseline**
 
 Run: `npm test -- src/pages/storefront/Home/__tests__/HomePageUrlFilter.spec.tsx --run` (in `frontend`)
 Verify tests pass and note behavior.
 
-- [ ] **Step 2: Update HomePage.tsx to use HeroBannerShowcase and StorefrontServiceBar**
+- [x] **Step 2: Update HomePage.tsx to use HeroBannerShowcase and StorefrontServiceBar**
 
 Edit `frontend/src/pages/storefront/Home/HomePage.tsx`:
 - Import `HeroBannerShowcase` from `../../../components/storefront/HeroBannerShowcase`
@@ -661,12 +661,12 @@ Edit `frontend/src/pages/storefront/Home/HomePage.tsx`:
       <StorefrontServiceBar />
 ```
 
-- [ ] **Step 3: Run HomePage unit tests to verify no regression**
+- [x] **Step 3: Run HomePage unit tests to verify no regression**
 
 Run: `npm test -- src/pages/storefront/Home/__tests__/HomePageUrlFilter.spec.tsx --run` (in `frontend`)
 Expected: PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/pages/storefront/Home/HomePage.tsx
@@ -682,7 +682,7 @@ git commit -m "refactor(home): integrate HeroBannerShowcase and StorefrontServic
 - Test: `frontend/src/components/storefront/__tests__/StorefrontServiceBar.spec.tsx`
 - Test: `frontend/src/pages/storefront/Home/__tests__/HomePageUrlFilter.spec.tsx`
 
-- [ ] **Step 1: Run all related storefront tests**
+- [x] **Step 1: Run all related storefront tests**
 
 Run:
 ```bash
@@ -690,12 +690,12 @@ npm test -- src/components/storefront/__tests__/HeroBannerShowcase.spec.tsx src/
 ```
 Expected: All tests pass.
 
-- [ ] **Step 2: Run frontend build to verify type checking and bundling**
+- [x] **Step 2: Run frontend build to verify type checking and bundling**
 
 Run: `npm --prefix frontend run build` (or `npm run build` in `frontend`)
 Expected: Build passes with 0 errors.
 
-- [ ] **Step 3: Commit plan completion**
+- [x] **Step 3: Commit plan completion**
 
 ```bash
 git add docs/plans/2026-10-04-hero-banner-ambient-glow.md
