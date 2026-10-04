@@ -156,7 +156,7 @@ describe('HomePage URL Params & Auto-Scroll Synchronization', () => {
     expect(screen.queryByRole('heading', { level: 3, name: 'Samsung Galaxy S24' })).toBeNull();
 
     // Apple brand button should be active (contains bg-slate-900)
-    const appleButton = screen.getByRole('button', { name: /Apple/i });
+    const appleButton = screen.getByRole('button', { name: /^AppleApple$/i });
     expect(appleButton.className).toContain('bg-slate-900');
 
     // scrollIntoView should have been triggered
