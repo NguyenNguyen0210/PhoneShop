@@ -144,6 +144,23 @@ export interface CreateVariantDto {
   isActive?: boolean;
 }
 
+export interface ProductHardwareSpecs {
+  screenSize?: number;
+  screenResolution?: string;
+  screenTechnology?: string;
+  screenRefreshRate?: number;
+  chipset?: string;
+  os?: string;
+  osVersion?: string;
+  has5G?: boolean;
+  batteryCapacity?: number;
+  chargingSpeed?: number;
+  rearCamera?: string;
+  frontCamera?: string;
+  mainCameraMp?: number;
+  [key: string]: any;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -157,7 +174,7 @@ export interface Product {
   thumbnail?: string;
   thumbnailUrl?: string;
   images?: string[];
-  specs?: Record<string, string>;
+  specs?: ProductHardwareSpecs | Record<string, any>;
   rating?: number | null;
   reviewCount?: number;
   reviews?: Review[];
@@ -218,7 +235,7 @@ export interface CartItem {
   id: string;
   variantId: string;
   quantity: number;
-  unitPrice: number;
+  unitPrice?: number;
   /** Compat alias for unitPrice (legacy local-storage carts). */
   price?: number;
   product: Product;

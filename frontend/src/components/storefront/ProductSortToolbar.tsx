@@ -1,11 +1,20 @@
 import React from 'react';
 import { Search, X, SlidersHorizontal } from 'lucide-react';
 
+export type ProductSortOption =
+  | 'default'
+  | 'price-asc'
+  | 'price-desc'
+  | 'rating'
+  | 'newest'
+  | 'best-seller'
+  | 'top-discount';
+
 export interface ProductSortToolbarProps {
   searchKeyword: string;
   onSearchChange: (kw: string) => void;
-  sortBy: 'default' | 'price-asc' | 'price-desc' | 'rating' | 'newest';
-  onSortChange: (sort: 'default' | 'price-asc' | 'price-desc' | 'rating' | 'newest') => void;
+  sortBy: ProductSortOption | string;
+  onSortChange: (sort: ProductSortOption | any) => void;
   totalCount: number;
   onToggleMobileFilter?: () => void;
   className?: string;
@@ -71,12 +80,14 @@ export const ProductSortToolbar: React.FC<ProductSortToolbarProps> = ({
             value={sortBy}
             onChange={(e) =>
               onSortChange(
-                e.target.value as 'default' | 'price-asc' | 'price-desc' | 'rating' | 'newest'
+                e.target.value as ProductSortOption
               )
             }
             className="px-3 py-2 text-xs sm:text-sm font-medium bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-700 focus:outline-hidden focus:border-blue-500 cursor-pointer transition-colors"
           >
             <option value="default">Sắp xếp: Mặc định</option>
+            <option value="best-seller">🔥 Bán chạy nhất</option>
+            <option value="top-discount">💥 Khuyến mãi nhiều nhất</option>
             <option value="price-asc">Giá: Thấp đến Cao</option>
             <option value="price-desc">Giá: Cao đến Thấp</option>
             <option value="rating">Đánh giá cao nhất</option>

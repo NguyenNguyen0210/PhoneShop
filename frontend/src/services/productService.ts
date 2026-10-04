@@ -2,19 +2,41 @@ import { apiClient } from './apiClient';
 import type { Product, Brand, Category, ProductVariant, UpdateVariantDto, CreateVariantDto } from '../types';
 import { FALLBACK_PRODUCT_IMAGE } from '../utils/imageFallback';
 
-export interface ProductFilterParams {
+export interface GetProductsParams {
   search?: string;
   brandId?: string;
   categoryId?: string;
   minPrice?: number;
   maxPrice?: number;
-  storage?: string;
-  ram?: string;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  ram?: string[];
+  storage?: string[];
+  color?: string[];
+  inStock?: boolean;
+  onSale?: boolean;
+  has5G?: boolean;
+  os?: string[];
+  chipset?: string[];
+  minScreenSize?: number;
+  maxScreenSize?: number;
+  minBattery?: number;
+  maxBattery?: number;
+  minRating?: number;
   page?: number;
   limit?: number;
+  sortBy?:
+    | 'default'
+    | 'createdAt'
+    | 'name'
+    | 'price-asc'
+    | 'price-desc'
+    | 'rating'
+    | 'newest'
+    | 'best-seller'
+    | 'top-discount';
+  sortOrder?: 'asc' | 'desc';
 }
+
+export type ProductFilterParams = GetProductsParams;
 
 export interface PaginatedProducts {
   items: Product[];
@@ -56,12 +78,17 @@ export const normalizeProduct = (p: any): Product => {
 };
 
 export const productService = {
-  async getProducts(params?: ProductFilterParams): Promise<PaginatedProducts> {
-    const queryParams: ProductFilterParams = {
+  async getProducts(params?: GetProductsParams): Promise<PaginatedProducts> {
+    const queryParams: GetProductsParams = {
       limit: 12,
       ...params,
     };
-    const response = await apiClient.get('/products', { params: queryParams });
+    const response = await apiClient.get('/products', {
+      params: queryParams,
+      paramsSerializer: {
+        indexes: null,
+      },
+    });
     const data = response.data?.data ?? response.data;
     // Backend might return an array or { items, total, ... }
     if (Array.isArray(data)) {
@@ -109,8 +136,13 @@ export const productService = {
   },
 
   // Admin APIs
-  async getAllProductsAdmin(params?: ProductFilterParams): Promise<PaginatedProducts> {
-    const response = await apiClient.get('/products/admin/all', { params });
+  async getAllProductsAdmin(params?: GetProductsParams): Promise<PaginatedProducts> {
+    const response = await apiClient.get('/products/admin/all', {
+      params,
+      paramsSerializer: {
+        indexes: null,
+      },
+    });
     const data = response.data?.data ?? response.data;
     if (Array.isArray(data)) {
       const items = data.map(normalizeProduct);
