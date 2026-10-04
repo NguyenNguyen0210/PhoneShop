@@ -10,7 +10,6 @@ import {
   LogOut,
   Menu,
   X,
-  Command,
   Package,
   Ticket,
   Heart,
@@ -203,12 +202,9 @@ export const Navbar: React.FC = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Bạn tìm iPhone 16 Pro Max, Galaxy S24, Xiaomi..."
-                  className="w-full h-11 pl-10 pr-28 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none transition shadow-2xs"
+                  className="w-full h-11 pl-10 pr-24 py-2.5 bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none transition shadow-2xs"
                 />
-                <div className="absolute right-2 flex items-center gap-1.5">
-                  <kbd className="hidden xl:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-white border border-slate-200 rounded">
-                    <Command className="w-2.5 h-2.5" />K
-                  </kbd>
+                <div className="absolute right-2 flex items-center">
                   <button
                     type="submit"
                     className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer"
