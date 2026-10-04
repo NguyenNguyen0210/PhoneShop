@@ -85,13 +85,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const res = await authService.login({ email, password });
-      const user = res.user;
+      const normalized = normalizeUser(res.user) || res.user;
       const accessToken = res.accessToken;
       const refreshToken = res.refreshToken;
 
-      get().setAuth(user, accessToken, refreshToken);
+      get().setAuth(normalized, accessToken, refreshToken);
       set({ isLoading: false });
-      return user;
+      return normalized;
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Đăng nhập thất bại';
       set({ error: msg, isLoading: false });
@@ -103,13 +103,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const res = await authService.googleLogin(code, state);
-      const user = res.user;
+      const normalized = normalizeUser(res.user) || res.user;
       const accessToken = res.accessToken;
       const refreshToken = res.refreshToken;
 
-      get().setAuth(user, accessToken, refreshToken);
+      get().setAuth(normalized, accessToken, refreshToken);
       set({ isLoading: false });
-      return user;
+      return normalized;
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Đăng nhập Google thất bại';
       set({ error: msg, isLoading: false });
@@ -132,13 +132,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         lastName,
         phone: data.phone,
       });
-      const user = res.user;
+      const normalized = normalizeUser(res.user) || res.user;
       const accessToken = res.accessToken;
       const refreshToken = res.refreshToken;
 
-      get().setAuth(user, accessToken, refreshToken);
+      get().setAuth(normalized, accessToken, refreshToken);
       set({ isLoading: false });
-      return user;
+      return normalized;
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Đăng ký thất bại';
       set({ error: msg, isLoading: false });

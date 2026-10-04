@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Mail,
@@ -18,7 +18,7 @@ import { authService } from '../../../services/authService';
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuthStore();
+  const { user, login } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,6 +44,26 @@ export const LoginPage: React.FC = () => {
       ? `${fromState.pathname}${fromState.search || ''}`
       : '/';
 
+  // If already logged in, redirect directly to respective management portal
+  useEffect(() => {
+    if (user) {
+      const role = user.role || (user as any)?.roles?.[0];
+      const roles = Array.isArray((user as any)?.roles) ? (user as any).roles : [];
+      if (role === 'STAFF' || roles.includes('STAFF')) {
+        navigate('/staff', { replace: true });
+      } else if (
+        role === 'ADMIN' ||
+        role === 'MANAGER' ||
+        roles.includes('ADMIN') ||
+        roles.includes('MANAGER')
+      ) {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate(from === '/login' ? '/' : from, { replace: true });
+      }
+    }
+  }, [user, navigate, from]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -55,13 +75,20 @@ export const LoginPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const user = await login(email, password);
-      if (user.role === 'STAFF') {
-        navigate('/staff');
-      } else if (user.role === 'ADMIN' || user.role === 'MANAGER') {
-        navigate('/admin');
+      const loggedUser = await login(email, password);
+      const role = loggedUser?.role || (loggedUser as any)?.roles?.[0];
+      const roles = Array.isArray((loggedUser as any)?.roles) ? (loggedUser as any).roles : [];
+      if (role === 'STAFF' || roles.includes('STAFF')) {
+        navigate('/staff', { replace: true });
+      } else if (
+        role === 'ADMIN' ||
+        role === 'MANAGER' ||
+        roles.includes('ADMIN') ||
+        roles.includes('MANAGER')
+      ) {
+        navigate('/admin', { replace: true });
       } else {
-        navigate(from === '/login' ? '/' : from);
+        navigate(from === '/login' ? '/' : from, { replace: true });
       }
     } catch (err: any) {
       setError(err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');

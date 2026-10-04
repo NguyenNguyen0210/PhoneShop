@@ -52,12 +52,19 @@ export const OAuthCallbackPage: React.FC = () => {
         const user = await loginWithGoogle(code, returnedState);
         setStatus('success');
         setTimeout(() => {
-          if (user.role === 'STAFF') {
-            navigate('/staff');
-          } else if (user.role === 'ADMIN' || user.role === 'MANAGER') {
-            navigate('/admin');
+          const role = user?.role || (user as any)?.roles?.[0];
+          const roles = Array.isArray((user as any)?.roles) ? (user as any).roles : [];
+          if (role === 'STAFF' || roles.includes('STAFF')) {
+            navigate('/staff', { replace: true });
+          } else if (
+            role === 'ADMIN' ||
+            role === 'MANAGER' ||
+            roles.includes('ADMIN') ||
+            roles.includes('MANAGER')
+          ) {
+            navigate('/admin', { replace: true });
           } else {
-            navigate('/');
+            navigate('/', { replace: true });
           }
         }, 1200);
       } catch (err: any) {

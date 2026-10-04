@@ -313,21 +313,23 @@ export const Navbar: React.FC = () => {
 
                           {/* Loyalty / Voucher Pills — real API count only, no points system in backend */}
                           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setUserDropdownOpen(false);
-                                setVoucherModalOpen(true);
-                              }}
-                              className="inline-flex items-center gap-1 rounded-md bg-amber-50 hover:bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200/60 transition cursor-pointer"
-                              title="Xem ví voucher ưu đãi"
-                            >
-                              <span>
-                                {vouchersLoading
-                                  ? '🎁 Đang tải...'
-                                  : `🎁 ${availableVouchers.length} Voucher`}
-                              </span>
-                            </button>
+                            {!isStaffOrAdmin() && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUserDropdownOpen(false);
+                                  setVoucherModalOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-md bg-amber-50 hover:bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200/60 transition cursor-pointer"
+                                title="Xem ví voucher ưu đãi"
+                              >
+                                <span>
+                                  {vouchersLoading
+                                    ? '🎁 Đang tải...'
+                                    : `🎁 ${availableVouchers.length} Voucher`}
+                                </span>
+                              </button>
+                            )}
                             {(user.role === 'ADMIN' || user.role === 'STAFF' || isStaffOrAdmin()) && (
                               <span className="inline-flex items-center rounded-md bg-purple-50 px-1.5 py-0.5 text-[9px] font-extrabold text-purple-700 border border-purple-200 uppercase tracking-wider">
                                 {user.role === 'STAFF' ? 'Staff' : 'Admin'}
@@ -337,82 +339,7 @@ export const Navbar: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* 2. NHÓM 1: ĐƠN HÀNG & QUYỀN LỢI (Quan trọng nhất) */}
-                      <div className="py-1.5">
-                        <Link
-                          to="/orders"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-600"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Package className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
-                            <span>Đơn hàng của tôi</span>
-                          </div>
-                          {activeOrdersCount > 0 ? (
-                            <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                              {activeOrdersCount} Đang giao
-                            </span>
-                          ) : (
-                            <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-blue-600 transition-colors" />
-                          )}
-                        </Link>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUserDropdownOpen(false);
-                            setVoucherModalOpen(true);
-                          }}
-                          className="w-full group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-amber-50 hover:text-amber-700 cursor-pointer text-left"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Ticket className="h-4 w-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
-                            <span>Ví Voucher &amp; Ưu đãi</span>
-                          </div>
-                          {topVoucherLabel ? (
-                            <span className="text-[11px] font-bold text-amber-600 font-mono bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-200">
-                              {topVoucherLabel}
-                            </span>
-                          ) : (
-                            <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-amber-600 transition-colors" />
-                          )}
-                        </button>
-
-                        <Link
-                          to="/wishlist"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Heart className="h-4 w-4 text-slate-400 group-hover:text-rose-600 transition-colors" />
-                            <span>Sản phẩm yêu thích</span>
-                          </div>
-                          {wishlistCount > 0 ? (
-                            <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                              {wishlistCount}
-                            </span>
-                          ) : (
-                            <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-rose-600 transition-colors" />
-                          )}
-                        </Link>
-                      </div>
-
-                      {/* 3. NHÓM 2: CÀI ĐẶT TÀI KHOẢN */}
-                      <div className="py-1.5">
-                        <Link
-                          to="/profile"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Settings className="h-4 w-4 text-slate-400 group-hover:text-slate-700 transition-colors" />
-                            <span>Cài đặt tài khoản</span>
-                          </div>
-                          <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-slate-700 transition-colors" />
-                        </Link>
-                      </div>
-
-                      {/* 4. SHORTCUT DÀNH CHO ADMIN HOẶC STAFF */}
+                      {/* 2. SHORTCUT DÀNH CHO ADMIN HOẶC STAFF (Hiển thị đầu menu cho nhân sự) */}
                       {(user.role === 'ADMIN' || user.role === 'MANAGER' || (user as any).roles?.includes('ADMIN') || (user as any).roles?.includes('MANAGER')) && (
                         <div className="py-1.5">
                           <Link
@@ -447,6 +374,83 @@ export const Navbar: React.FC = () => {
                           </Link>
                         </div>
                       )}
+
+                      {/* 3. NHÓM ĐƠN HÀNG & QUYỀN LỢI (Chỉ dành cho khách hàng thường) */}
+                      {!isStaffOrAdmin() && (
+                        <div className="py-1.5">
+                          <Link
+                            to="/orders"
+                            onClick={() => setUserDropdownOpen(false)}
+                            className="group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <Package className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                              <span>Đơn hàng của tôi</span>
+                            </div>
+                            {activeOrdersCount > 0 ? (
+                              <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                                {activeOrdersCount} Đang giao
+                              </span>
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-blue-600 transition-colors" />
+                            )}
+                          </Link>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUserDropdownOpen(false);
+                              setVoucherModalOpen(true);
+                            }}
+                            className="w-full group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-amber-50 hover:text-amber-700 cursor-pointer text-left"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <Ticket className="h-4 w-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
+                              <span>Ví Voucher &amp; Ưu đãi</span>
+                            </div>
+                            {topVoucherLabel ? (
+                              <span className="text-[11px] font-bold text-amber-600 font-mono bg-amber-100/70 px-1.5 py-0.5 rounded border border-amber-200">
+                                {topVoucherLabel}
+                              </span>
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-amber-600 transition-colors" />
+                            )}
+                          </button>
+
+                          <Link
+                            to="/wishlist"
+                            onClick={() => setUserDropdownOpen(false)}
+                            className="group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <Heart className="h-4 w-4 text-slate-400 group-hover:text-rose-600 transition-colors" />
+                              <span>Sản phẩm yêu thích</span>
+                            </div>
+                            {wishlistCount > 0 ? (
+                              <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                                {wishlistCount}
+                              </span>
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-rose-600 transition-colors" />
+                            )}
+                          </Link>
+                        </div>
+                      )}
+
+                      {/* 4. CÀI ĐẶT TÀI KHOẢN */}
+                      <div className="py-1.5">
+                        <Link
+                          to="/profile"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Settings className="h-4 w-4 text-slate-400 group-hover:text-slate-700 transition-colors" />
+                            <span>Cài đặt tài khoản</span>
+                          </div>
+                          <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-slate-700 transition-colors" />
+                        </Link>
+                      </div>
 
                       {/* 5. NÚT ĐĂNG XUẤT */}
                       <div className="pt-1.5">
@@ -571,79 +575,19 @@ export const Navbar: React.FC = () => {
               <div className="pt-2 border-t border-slate-100 space-y-1">
                 <div className="px-3 py-1 flex items-center justify-between text-xs text-slate-500">
                   <span>Tài khoản: <strong className="text-slate-800">{user.fullName || user.email}</strong></span>
-                  <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[10px]">
-                    {vouchersLoading ? '🎁 Đang tải...' : `🎁 ${availableVouchers.length} Voucher`}
-                  </span>
+                  {!isStaffOrAdmin() && (
+                    <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[10px]">
+                      {vouchersLoading ? '🎁 Đang tải...' : `🎁 ${availableVouchers.length} Voucher`}
+                    </span>
+                  )}
+                  {isStaffOrAdmin() && (
+                    <span className="font-extrabold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 text-[10px] uppercase">
+                      {user.role === 'STAFF' ? 'Staff' : 'Admin'}
+                    </span>
+                  )}
                 </div>
-                <Link
-                  to="/notifications"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition flex items-center justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-blue-600" />
-                    <span>Thông báo</span>
-                  </span>
-                  {unreadCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px]">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
-                </Link>
-                <Link
-                  to="/orders"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition flex items-center justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-blue-600" />
-                    <span>Đơn hàng của tôi</span>
-                  </span>
-                  {activeOrdersCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white font-bold text-[10px]">
-                      {activeOrdersCount}
-                    </span>
-                  )}
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setVoucherModalOpen(true);
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition flex items-center justify-between cursor-pointer"
-                >
-                  <span className="flex items-center gap-2">
-                    <Ticket className="w-4 h-4 text-amber-600" />
-                    <span>Ví Voucher &amp; Ưu đãi</span>
-                  </span>
-                  {topVoucherLabel && (
-                    <span className="text-[10px] font-bold text-amber-600 font-mono">{topVoucherLabel}</span>
-                  )}
-                </button>
-                <Link
-                  to="/wishlist"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 text-xs font-semibold text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition flex items-center justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <Heart className="w-4 h-4 text-rose-500" />
-                    <span>Sản phẩm yêu thích</span>
-                  </span>
-                  {wishlistCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px]">
-                      {wishlistCount}
-                    </span>
-                  )}
-                </Link>
-                <Link
-                  to="/profile"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition flex items-center gap-2"
-                >
-                  <Settings className="w-4 h-4 text-slate-500" />
-                  <span>Cài đặt tài khoản</span>
-                </Link>
+
+                {/* Shortcut Quản trị dành cho Admin & Staff */}
                 {(user.role === 'ADMIN' || user.role === 'MANAGER' || (user as any).roles?.includes('ADMIN') || (user as any).roles?.includes('MANAGER')) && (
                   <Link
                     to="/admin"
@@ -674,6 +618,84 @@ export const Navbar: React.FC = () => {
                     </span>
                   </Link>
                 )}
+
+                {/* Menu mua hàng dành cho khách hàng thông thường */}
+                {!isStaffOrAdmin() && (
+                  <>
+                    <Link
+                      to="/orders"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition flex items-center justify-between"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Package className="w-4 h-4 text-blue-600" />
+                        <span>Đơn hàng của tôi</span>
+                      </span>
+                      {activeOrdersCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white font-bold text-[10px]">
+                          {activeOrdersCount}
+                        </span>
+                      )}
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setVoucherModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition flex items-center justify-between cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Ticket className="w-4 h-4 text-amber-600" />
+                        <span>Ví Voucher &amp; Ưu đãi</span>
+                      </span>
+                      {topVoucherLabel && (
+                        <span className="text-[10px] font-bold text-amber-600 font-mono">{topVoucherLabel}</span>
+                      )}
+                    </button>
+                    <Link
+                      to="/wishlist"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-3 py-2 text-xs font-semibold text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition flex items-center justify-between"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Heart className="w-4 h-4 text-rose-500" />
+                        <span>Sản phẩm yêu thích</span>
+                      </span>
+                      {wishlistCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px]">
+                          {wishlistCount}
+                        </span>
+                      )}
+                    </Link>
+                  </>
+                )}
+
+                <Link
+                  to="/notifications"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-blue-600" />
+                    <span>Thông báo</span>
+                  </span>
+                  {unreadCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px]">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </Link>
+
+                <Link
+                  to="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4 text-slate-500" />
+                  <span>Cài đặt tài khoản</span>
+                </Link>
+
                 <button
                   type="button"
                   onClick={handleLogout}
