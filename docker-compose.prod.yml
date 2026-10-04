@@ -37,6 +37,7 @@ services:
       - NODE_ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.5-flash-lite}
     depends_on:
       redis:
         condition: service_healthy
