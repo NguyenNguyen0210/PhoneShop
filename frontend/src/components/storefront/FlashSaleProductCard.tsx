@@ -26,7 +26,7 @@ export const FlashSaleProductCard: React.FC<FlashSaleProductCardProps> = ({ item
 
   const productTarget =
     variant?.product?.slug || variant?.product?.id || item.variantId;
-  const productUrl = `/products/${productTarget}`;
+  const productUrl = `/products/${productTarget}?variantId=${item.variantId}`;
 
   // Format currency VND with thousand separators (e.g. 11.871.000₫)
   const formatPrice = (amount: number | string) => {

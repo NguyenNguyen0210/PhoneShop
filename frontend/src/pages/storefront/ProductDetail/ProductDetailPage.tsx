@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import {
   Star,
   ShieldCheck,
@@ -34,6 +34,8 @@ import {
 
 export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const queryVariantId = searchParams.get('variantId') || searchParams.get('variant');
   const navigate = useNavigate();
   const location = useLocation();
   const { addItem } = useCartStore();
@@ -48,6 +50,11 @@ export const ProductDetailPage: React.FC = () => {
   const [isSpecsModalOpen, setIsSpecsModalOpen] = useState(false);
   const [activeFlashSale, setActiveFlashSale] = useState<FlashSaleCampaign | null>(null);
   const [flashTimeLeft, setFlashTimeLeft] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
+  const hasAutoSelectedVariantRef = useRef(false);
+
+  useEffect(() => {
+    hasAutoSelectedVariantRef.current = false;
+  }, [id]);
 
   const isInWishlist = useWishlistStore((state) => state.isInWishlist(product?.id || ''));
   const toggleWishlist = useWishlistStore((state) => state.toggleWishlist);
@@ -96,15 +103,58 @@ export const ProductDetailPage: React.FC = () => {
       .then((data) => {
         if (data && data.variants && data.variants.length > 0) {
           setProduct(data);
-          setSelectedVariant(data.variants[0]);
-          setActiveImage(data.images?.[0] || data.thumbnail || '');
+
+          // 1. If variantId is specified in URL query params:
+          let targetVariant: ProductVariant | undefined;
+          if (queryVariantId) {
+            targetVariant = data.variants.find(
+              (v) => v.id === queryVariantId || v.sku === queryVariantId
+            );
+            if (targetVariant) {
+              hasAutoSelectedVariantRef.current = true;
+            }
+          }
+
+          // 2. If no variant specified in URL, check if any variant is in active flash sale:
+          if (!targetVariant && activeFlashSale?.items) {
+            targetVariant = data.variants.find((v) =>
+              activeFlashSale.items.some(
+                (fi) => fi.variantId === v.id && (Number(fi.stockLimit) - Number(fi.soldCount) > 0)
+              )
+            );
+            if (targetVariant) {
+              hasAutoSelectedVariantRef.current = true;
+            }
+          }
+
+          const chosen = targetVariant || data.variants[0];
+          setSelectedVariant(chosen);
+          setActiveImage(chosen.images?.[0] || data.images?.[0] || data.thumbnail || '');
         }
       })
       .catch((err) => {
         console.error('Failed to fetch product from database API:', err);
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, queryVariantId, activeFlashSale]);
+
+  // Auto-select flash sale variant once if product has one and no specific variant was requested via URL
+  useEffect(() => {
+    if (!product || !activeFlashSale?.items || queryVariantId || hasAutoSelectedVariantRef.current) return;
+
+    const flashVariant = product.variants.find((v) =>
+      activeFlashSale.items.some(
+        (fi) => fi.variantId === v.id && (Number(fi.stockLimit) - Number(fi.soldCount) > 0)
+      )
+    );
+    if (flashVariant) {
+      hasAutoSelectedVariantRef.current = true;
+      setSelectedVariant(flashVariant);
+      if (flashVariant.images?.[0]) {
+        setActiveImage(flashVariant.images[0]);
+      }
+    }
+  }, [activeFlashSale, product, queryVariantId]);
 
   // Ensure scroll is at the top when entering product details or changing product id
   useEffect(() => {
@@ -196,20 +246,25 @@ export const ProductDetailPage: React.FC = () => {
     }
   };
 
-  const formatPrice = (val: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+  const formatPrice = (val: number | string) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(val) || 0);
   };
 
   // Flash sale matching item & active status
+  const isCampaignOngoing =
+    activeFlashSale &&
+    (!activeFlashSale.startAt || new Date(activeFlashSale.startAt).getTime() <= Date.now()) &&
+    (!activeFlashSale.endAt || new Date(activeFlashSale.endAt).getTime() > Date.now());
+
   const matchingFlashItem = activeFlashSale?.items?.find(
     (item) => item.variantId === selectedVariant.id
   );
   const flashQuotaLeft = matchingFlashItem
-    ? Math.max(0, matchingFlashItem.stockLimit - matchingFlashItem.soldCount)
+    ? Math.max(0, Number(matchingFlashItem.stockLimit) - Number(matchingFlashItem.soldCount))
     : 0;
   const isFlashSaleActive =
+    !!isCampaignOngoing &&
     !!matchingFlashItem &&
-    !!flashTimeLeft &&
     flashQuotaLeft > 0;
 
   const flashCountdownFormatted = flashTimeLeft
@@ -219,19 +274,19 @@ export const ProductDetailPage: React.FC = () => {
     : '00:00:00';
 
   const currentPrice = isFlashSaleActive
-    ? matchingFlashItem.flashPrice
-    : selectedVariant.price;
+    ? Number(matchingFlashItem.flashPrice)
+    : Number(selectedVariant.price);
 
   const originalPrice = isFlashSaleActive
-    ? selectedVariant.price
-    : selectedVariant.compareAtPrice;
+    ? Number(selectedVariant.price)
+    : Number(selectedVariant.compareAtPrice || 0);
 
   const handleAddToCart = () => {
     addItem(
       product,
       selectedVariant,
       1,
-      isFlashSaleActive ? matchingFlashItem.flashPrice : undefined,
+      isFlashSaleActive ? Number(matchingFlashItem.flashPrice) : undefined,
       isFlashSaleActive
     );
     setJustAdded(true);
@@ -244,7 +299,7 @@ export const ProductDetailPage: React.FC = () => {
       product,
       selectedVariant,
       1,
-      isFlashSaleActive ? matchingFlashItem.flashPrice : undefined,
+      isFlashSaleActive ? Number(matchingFlashItem.flashPrice) : undefined,
       isFlashSaleActive
     );
     navigate('/checkout');
@@ -293,14 +348,14 @@ export const ProductDetailPage: React.FC = () => {
 
   const discountPercent = isFlashSaleActive
     ? Math.round(
-        ((selectedVariant.price - matchingFlashItem.flashPrice) / selectedVariant.price) *
+        ((Number(selectedVariant.price) - Number(matchingFlashItem.flashPrice)) / Number(selectedVariant.price)) *
           100
       )
     : selectedVariant.compareAtPrice &&
-      selectedVariant.compareAtPrice > selectedVariant.price
+      Number(selectedVariant.compareAtPrice) > Number(selectedVariant.price)
     ? Math.round(
-        ((selectedVariant.compareAtPrice - selectedVariant.price) /
-          selectedVariant.compareAtPrice) *
+        ((Number(selectedVariant.compareAtPrice) - Number(selectedVariant.price)) /
+          Number(selectedVariant.compareAtPrice)) *
           100
       )
     : null;
@@ -643,8 +698,22 @@ export const ProductDetailPage: React.FC = () => {
                       </div>
 
                       <div className="mt-1.5">
-                        <div className="text-xs font-black text-red-600 font-mono">
-                          {v ? formatPrice(v.price) : 'Liên hệ'}
+                        <div className="text-xs font-black text-red-600">
+                          {(() => {
+                            if (!v) return 'Liên hệ';
+                            const fi = activeFlashSale?.items?.find(
+                              (item) => item.variantId === v.id && (Number(item.stockLimit) - Number(item.soldCount) > 0)
+                            );
+                            if (fi && isCampaignOngoing) {
+                              return (
+                                <span className="flex items-center gap-1.5 flex-wrap">
+                                  <span>{formatPrice(fi.flashPrice)}</span>
+                                  <span className="text-[10px] text-slate-400 line-through font-normal">{formatPrice(v.price)}</span>
+                                </span>
+                              );
+                            }
+                            return formatPrice(v.price);
+                          })()}
                         </div>
                       </div>
                     </button>
@@ -853,7 +922,7 @@ export const ProductDetailPage: React.FC = () => {
         open={isInstallmentModalOpen}
         onClose={() => setIsInstallmentModalOpen(false)}
         productName={`Điện thoại ${product.name} (${selectedVariant.color} - ${selectedVariant.storage})`}
-        price={selectedVariant.price}
+        price={currentPrice}
         onProceedCheckout={handleBuyNow}
       />
 
