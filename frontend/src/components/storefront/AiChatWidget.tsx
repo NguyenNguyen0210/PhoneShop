@@ -1,17 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Minus, X, Send, Loader2, Headphones } from 'lucide-react';
-import { chatbotService, type ChatHistoryItem, type ChatbotProduct } from '../../services/chatbotService';
+import { Sparkles, Minus, X, Send, Loader2, Headphones, Zap, Tag, ShieldCheck } from 'lucide-react';
+import {
+  chatbotService,
+  getFlashSaleInfo,
+  type ChatHistoryItem,
+  type ChatbotProduct,
+} from '../../services/chatbotService';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 interface UiMessage {
   role: 'user' | 'assistant';
   content: string;
   products?: ChatbotProduct[];
+  sources?: string[];
   escalate?: boolean;
 }
 
 const DEFAULT_SUGGESTIONS = [
+  '⚡ Flash sale nào đang chạy?',
+  '🏷️ Voucher nào dùng được hôm nay?',
   'iPhone dưới 20 triệu còn hàng?',
   'Đơn hàng của tôi đâu rồi?',
   'Tra bảo hành bằng IMEI?',
@@ -50,7 +58,13 @@ export const AiChatWidget: React.FC = () => {
       const res = await chatbotService.ask(content, nextHistory);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: res.reply, products: res.products, escalate: res.escalate },
+        {
+          role: 'assistant',
+          content: res.reply,
+          products: res.products,
+          sources: res.sources,
+          escalate: res.escalate,
+        },
       ]);
     } catch {
       setMessages((prev) => [
@@ -163,25 +177,76 @@ export const AiChatWidget: React.FC = () => {
                     <p className="whitespace-pre-wrap break-words">{m.content}</p>
                   </div>
 
+                  {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-1.5 px-0.5">
+                      {m.sources.includes('flash-sale') && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded-full">
+                          <Zap className="w-3 h-3 text-rose-500 fill-rose-500" /> Flash Sale
+                        </span>
+                      )}
+                      {m.sources.includes('voucher') && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">
+                          <Tag className="w-3 h-3 text-amber-500" /> Voucher
+                        </span>
+                      )}
+                      {m.sources.includes('warranty') && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-700 bg-sky-50 border border-sky-200/80 px-2 py-0.5 rounded-full">
+                          <ShieldCheck className="w-3 h-3 text-sky-500" /> Bảo hành IMEI
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {m.products && m.products.length > 0 && (
                     <div className="mt-2 space-y-2 w-full max-w-[90%]">
-                      {m.products.map((p) => (
-                        <Link
-                          key={p.slug}
-                          to={`/products/${p.slug}`}
-                          className="flex items-center gap-3 p-2 bg-white border border-slate-200 rounded-xl hover:border-violet-300 hover:shadow-sm transition-all"
-                        >
-                          <img src={p.image} alt={p.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-slate-800 truncate">
-                              {p.brand ? `${p.brand} ` : ''}{p.name}
-                            </p>
-                            <p className="text-xs font-bold text-violet-700">
-                              {Number(p.price).toLocaleString('vi-VN')}đ
-                            </p>
-                          </div>
-                        </Link>
-                      ))}
+                      {m.products.map((p) => {
+                        const flash = getFlashSaleInfo(p);
+                        const isFlash = flash.isFlashSale || (m.sources || []).includes('flash-sale');
+                        return (
+                          <Link
+                            key={p.slug}
+                            to={`/products/${p.slug}`}
+                            className={`group relative flex items-center gap-3 p-2.5 bg-white border rounded-xl hover:shadow-sm transition-all ${
+                              isFlash
+                                ? 'border-rose-200 hover:border-rose-300 bg-linear-to-r from-white to-rose-50/20'
+                                : 'border-slate-200 hover:border-violet-300'
+                            }`}
+                          >
+                            {isFlash && (
+                              <span className="absolute -top-2 -right-1 flex items-center gap-0.5 text-[10px] font-bold text-white bg-rose-600 px-1.5 py-0.5 rounded-full shadow-xs">
+                                <Zap className="w-2.5 h-2.5 fill-white" />
+                                Flash Sale
+                              </span>
+                            )}
+                            <img
+                              src={p.image}
+                              alt={p.name}
+                              className="w-12 h-12 rounded-lg object-cover shrink-0 border border-slate-100"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-violet-600 transition-colors">
+                                {p.brand ? `${p.brand} ` : ''}
+                                {p.name}
+                              </p>
+                              <div className="flex items-baseline gap-1.5 flex-wrap">
+                                <p className={`text-xs font-bold ${isFlash ? 'text-rose-600' : 'text-violet-700'}`}>
+                                  {Number(isFlash ? flash.flashPrice : p.price).toLocaleString('vi-VN')}đ
+                                </p>
+                                {isFlash && flash.originalPrice > flash.flashPrice && (
+                                  <p className="text-[11px] text-slate-400 line-through">
+                                    {Number(flash.originalPrice).toLocaleString('vi-VN')}đ
+                                  </p>
+                                )}
+                              </div>
+                              {p.specsSummary && (
+                                <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                                  {p.specsSummary}
+                                </p>
+                              )}
+                            </div>
+                          </Link>
+                        );
+                      })}
                     </div>
                   )}
 
