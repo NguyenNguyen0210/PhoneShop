@@ -144,7 +144,7 @@ export const OrderSuccessPage: React.FC = () => {
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">
-                Thanh toán qua mã VietQR Napas 247
+                Quét mã QR để thanh toán
               </h3>
               <p className="text-xs text-slate-500">
                 Mở ứng dụng ngân hàng của bạn và quét mã QR để thanh toán tự động
@@ -266,7 +266,7 @@ export const OrderSuccessPage: React.FC = () => {
                 <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center gap-2 font-medium">
                   <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>
-                    Đã ghi nhận thông báo chuyển tiền của bạn! Hệ thống đang đối soát và sẽ cập nhật
+                    Đã nhận được thông báo chuyển tiền của bạn! Shop đang xác nhận và sẽ cập nhật
                     sang ĐÃ THANH TOÁN trong giây lát.
                   </span>
                 </div>
@@ -290,16 +290,16 @@ export const OrderSuccessPage: React.FC = () => {
             <CreditCard className="w-8 h-8" />
           </div>
           <h3 className="text-lg font-bold text-slate-900">
-            Cổng thanh toán điện tử VNPAY
+            Thanh toán online qua VNPay
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Vui lòng nhấn nút bên dưới để chuyển hướng đến cổng thanh toán VNPay và hoàn tất giao dịch.
+            Nhấn nút bên dưới để qua trang VNPay và hoàn tất thanh toán nhé.
           </p>
           <button
             onClick={handleVNPayRedirect}
             className="inline-flex items-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition"
           >
-            <span>Chuyển tới cổng thanh toán VNPay</span>
+            <span>Tiếp tục thanh toán với VNPay</span>
             <ExternalLink className="w-4 h-4" />
           </button>
         </div>
@@ -311,14 +311,13 @@ export const OrderSuccessPage: React.FC = () => {
             <Truck className="w-6 h-6" />
           </div>
           <div className="text-xs text-slate-600 space-y-1">
-            <h3 className="text-sm font-bold text-slate-900">Thanh toán khi nhận hàng (COD)</h3>
+            <h3 className="text-sm font-bold text-slate-900">Thanh toán khi nhận hàng</h3>
             <p>
               Nhân viên chăm sóc khách hàng của Phone Shop sẽ gọi điện xác nhận đơn hàng trong vòng
               15 phút.
             </p>
             <p>
-              Bạn vui lòng kiểm tra hộp niêm phong và đối chiếu mã IMEI máy trước khi thanh toán cho nhân
-              viên bưu tá.
+              Bạn vui lòng mở hộp kiểm tra máy trước khi trả tiền cho shipper.
             </p>
           </div>
         </div>
@@ -336,14 +335,14 @@ export const OrderSuccessPage: React.FC = () => {
                   Hồ sơ trả góp 0% qua công ty tài chính
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Đơn hàng đang được áp dụng chính sách xét duyệt và giữ máy 24 giờ
+                  Shop đang giữ máy cho bạn trong 24 giờ để duyệt hồ sơ
                 </p>
               </div>
             </div>
             <div>
               <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold rounded-lg flex items-center gap-1.5 animate-pulse">
                 <Clock className="w-4 h-4 text-amber-600" />
-                <span>Chờ thẩm định hồ sơ (24h)</span>
+                <span>Đang duyệt hồ sơ (trong 24 giờ)</span>
               </span>
             </div>
           </div>
@@ -351,10 +350,10 @@ export const OrderSuccessPage: React.FC = () => {
           <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl flex items-start gap-3 text-xs text-amber-900">
             <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <span className="font-bold block text-sm">Lưu ý quan trọng từ bộ phận thẩm định:</span>
+              <span className="font-bold block text-sm">Lưu ý nhỏ:</span>
               <p className="leading-relaxed">
-                Nhân viên thẩm định sẽ liên hệ qua số điện thoại để xác nhận thông tin trước khi giao máy.
-                Vui lòng giữ máy liên lạc trong 24 giờ tới.
+                Nhân viên sẽ gọi cho bạn để xác nhận thông tin trước khi giao máy.
+                Bạn giữ điện thoại bên mình trong 24 giờ tới nhé.
               </p>
             </div>
           </div>
@@ -376,9 +375,9 @@ export const OrderSuccessPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <ShieldCheck className="w-6 h-6 text-emerald-600 shrink-0" />
           <div className="text-xs">
-            <span className="font-bold text-slate-900 block">Kích hoạt bảo hành điện tử</span>
+            <span className="font-bold text-slate-900 block">Bảo hành chính hãng</span>
             <span className="text-slate-500">
-              Mã bảo hành sẽ được kích hoạt ngay khi đơn hàng chuyển sang trạng thái Đã thanh toán.
+              Bảo hành có hiệu lực ngay khi bạn thanh toán xong.
             </span>
           </div>
         </div>

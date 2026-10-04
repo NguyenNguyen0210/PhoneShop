@@ -32,7 +32,7 @@ export const WarrantyLookupPage: React.FC = () => {
 
     const clean = query.trim();
     if (!clean) {
-      setError('Vui lòng nhập mã IMEI (15 chữ số) hoặc mã bảo hành.');
+      setError('Bạn nhập mã số trên máy hoặc vỏ hộp giúp shop nhé.');
       return;
     }
 
@@ -86,8 +86,8 @@ export const WarrantyLookupPage: React.FC = () => {
           </h1>
 
           <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto leading-relaxed">
-            Kiểm tra tình trạng bảo hành chính hãng, nguồn gốc máy và thời hạn còn lại qua mã IMEI 15
-            chữ số hoặc mã bảo hành (WRT-...).
+            Kiểm tra thời hạn bảo hành, nguồn gốc máy và thời gian còn lại bằng mã số trên máy
+            hoặc vỏ hộp.
           </p>
         </div>
 
@@ -97,9 +97,9 @@ export const WarrantyLookupPage: React.FC = () => {
           <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-100 text-slate-500">
             <span className="flex items-center gap-2 font-medium">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Hệ thống cơ sở dữ liệu uỷ quyền chính hãng 24/7</span>
+              <span>Tra cứu nhanh, chính xác</span>
             </span>
-            <span className="hidden sm:inline text-slate-400">Định dạng: IMEI 15 số hoặc mã WRT</span>
+            <span className="hidden sm:inline text-slate-400">Chỉ cần mã trên máy hoặc vỏ hộp</span>
           </div>
 
           {/* Form */}
@@ -109,7 +109,7 @@ export const WarrantyLookupPage: React.FC = () => {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Nhập mã IMEI (15 chữ số) hoặc mã WRT..."
+                placeholder="Nhập mã số trên máy hoặc vỏ hộp..."
                 className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-2xl text-xs sm:text-sm font-mono text-slate-900 placeholder-slate-400 focus:outline-hidden transition"
               />
               <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -141,7 +141,7 @@ export const WarrantyLookupPage: React.FC = () => {
               ) : (
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
                   <AlertTriangle className="w-4 h-4 text-amber-600" />
-                  <span>Số IMEI chưa đúng định dạng (Vui lòng kiểm tra lại 15 chữ số)</span>
+                  <span>Số này chưa đúng, bạn kiểm tra lại giúp shop nhé (mã gồm 15 số)</span>
                 </div>
               )}
             </div>
@@ -193,7 +193,7 @@ export const WarrantyLookupPage: React.FC = () => {
                 {result.status === 'ACTIVE' && !result.isExpired ? (
                   <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-full shadow-xs">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>BẢO HÀNH CHÍNH HÃNG CÒN HIỆU LỰC</span>
+                    <span>CÒN BẢO HÀNH CHÍNH HÃNG</span>
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 font-bold text-xs rounded-full">
@@ -208,7 +208,7 @@ export const WarrantyLookupPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80">
                   <span className="text-xs text-slate-500 font-medium block mb-1">
-                    Mã bảo hành điện tử
+                    Mã bảo hành
                   </span>
                   <span className="font-mono font-bold text-blue-600 text-xs sm:text-sm">
                     {result.warrantyCode}
@@ -217,10 +217,10 @@ export const WarrantyLookupPage: React.FC = () => {
 
                 <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80">
                   <span className="text-xs text-slate-500 font-medium block mb-1">
-                    Mã số IMEI thiết bị
+                    Mã số máy
                   </span>
                   <span className="font-mono font-bold text-slate-900 text-xs sm:text-sm">
-                    {result.imeiNumber || 'Thiết bị bảo hành điện tử'}
+                    {result.imeiNumber || 'Máy chính hãng'}
                   </span>
                 </div>
 
@@ -257,7 +257,7 @@ export const WarrantyLookupPage: React.FC = () => {
                         Thời gian bảo hành còn lại:
                       </span>
                       <span className="text-xs text-slate-500">
-                        Bảo hành toàn diện phần cứng & màn hình tại các TTBH chính hãng trên toàn quốc
+                        Được bảo hành phần cứng và màn hình tại các trung tâm bảo hành trên toàn quốc
                       </span>
                     </div>
                   </div>
@@ -286,7 +286,7 @@ export const WarrantyLookupPage: React.FC = () => {
                 </div>
                 <p>• 1 đổi 1 trong 30 ngày đầu tiên nếu máy phát sinh lỗi từ nhà sản xuất.</p>
                 <p>• Bảo hành thay thế linh kiện chính hãng 100% không thu phụ phí.</p>
-                <p>• Vui lòng xuất trình mã IMEI hoặc mã bảo hành này khi đến các trung tâm bảo hành đối tác.</p>
+                <p>• Vui lòng mang theo mã số này khi đến các trung tâm bảo hành.</p>
               </div>
             </div>
           </div>

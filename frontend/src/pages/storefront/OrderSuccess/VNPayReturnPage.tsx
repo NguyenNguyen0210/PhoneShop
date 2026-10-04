@@ -91,7 +91,7 @@ export const VNPayReturnPage: React.FC = () => {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 bg-slate-50 text-slate-700">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
-        <h2 className="text-xl font-bold text-slate-800">Đang đối soát thanh toán VNPAY...</h2>
+        <h2 className="text-xl font-bold text-slate-800">Đang xác nhận thanh toán...</h2>
         <p className="text-sm text-slate-500 mt-1">Hệ thống đang xác thực chữ ký số và cập nhật đơn hàng của bạn.</p>
       </div>
     );
@@ -123,7 +123,7 @@ export const VNPayReturnPage: React.FC = () => {
                   Thanh toán trực tuyến thành công
                 </span>
                 <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  Giao dịch VNPay hoàn tất!
+                  Thanh toán thành công!
                 </h1>
                 <p className="text-sm text-slate-600 max-w-md mx-auto">
                   Cảm ơn bạn đã lựa chọn mua sắm tại Phone Shop. Đơn hàng của bạn đã được xác nhận thanh toán tự động.
@@ -160,10 +160,10 @@ export const VNPayReturnPage: React.FC = () => {
               <span className="font-black text-blue-600 text-base">{formatPrice(amount)}</span>
             </div>
             <div className="flex justify-between items-center text-sm border-b border-slate-200 pb-2">
-              <span className="text-slate-500">Cổng thanh toán:</span>
+              <span className="text-slate-500">Thanh toán qua:</span>
               <span className="font-semibold text-slate-800 flex items-center gap-1.5">
                 <Building2 className="w-4 h-4 text-slate-500" />
-                VNPAY ({bankCode})
+                Qua VNPay ({bankCode})
               </span>
             </div>
             <div className="flex justify-between items-center text-sm border-b border-slate-200 pb-2">
@@ -228,8 +228,8 @@ export const VNPayReturnPage: React.FC = () => {
 
         {/* Support Note */}
         <p className="text-xs text-center text-slate-400">
-          Nếu có bất kỳ thắc mắc nào về giao dịch VNPay, vui lòng liên hệ hotline{' '}
-          <strong className="text-slate-600">1800 6868</strong> để được hỗ trợ kiểm tra đối soát 24/7.
+          Nếu có thắc mắc về khoản thanh toán này, bạn gọi hotline{' '}
+          <strong className="text-slate-600">1800 6868</strong> để được hỗ trợ nhé.
         </p>
       </div>
     </div>

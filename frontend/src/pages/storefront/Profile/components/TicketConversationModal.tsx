@@ -232,7 +232,7 @@ export const TicketConversationModal: React.FC<Props> = ({
                             style={{ backgroundColor: isCustomer ? '#1890ff' : '#52c41a' }}
                           />
                           <Text strong style={{ fontSize: 13 }}>
-                            {isCustomer ? 'Bạn' : 'CSKH HappyGarden'}
+                            {isCustomer ? 'Bạn' : 'Nhân viên PhoneShop'}
                           </Text>
                         </Space>
                         <Text type="secondary" style={{ fontSize: 11 }}>

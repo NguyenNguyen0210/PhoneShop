@@ -100,7 +100,7 @@ export const OAuthCallbackPage: React.FC = () => {
               Đang xác thực tài khoản Google...
             </h2>
             <p className="text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
-              Hệ thống đang liên kết bảo mật và đồng bộ thông tin của bạn. Vui lòng chờ trong giây lát.
+              Shop đang kết nối và đồng bộ thông tin của bạn. Chờ một chút nhé.
             </p>
           </div>
         )}

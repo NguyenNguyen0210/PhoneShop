@@ -105,7 +105,7 @@ describe('CheckoutPage Integration', () => {
 
     // 5. Payment method section
     expect(html).toContain('Phương thức thanh toán');
-    expect(html).toContain('Chuyển khoản VietQR động');
+    expect(html).toContain('Quét mã QR để chuyển khoản');
 
     // 6. Summary column
     expect(html).toContain('iPhone 15 Pro Max');

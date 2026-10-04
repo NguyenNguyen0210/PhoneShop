@@ -533,7 +533,7 @@ export const HomePage: React.FC = () => {
                 Danh Mục Smartphone Chính Hãng
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                {products.length} sản phẩm phân phối chính hãng • Đầy đủ hoá đơn VAT & kiểm định IMEI
+                {products.length} sản phẩm chính hãng • Đầy đủ hoá đơn VAT & máy nguyên seal
               </p>
             </div>
             <span className="text-xs font-semibold text-slate-500 hidden sm:inline-block">

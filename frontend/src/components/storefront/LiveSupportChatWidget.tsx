@@ -223,7 +223,7 @@ export const LiveSupportChatWidget: React.FC = () => {
                 <h3 className="text-sm font-semibold leading-tight">Hỗ trợ khách hàng PhoneShop</h3>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[11px] text-blue-100 font-medium">Trực tuyến</span>
+                  <span className="text-[11px] text-blue-100 font-medium">Đang online • trả lời trong vài phút</span>
                 </div>
               </div>
             </div>
@@ -306,10 +306,10 @@ export const LiveSupportChatWidget: React.FC = () => {
               <div className="flex-1 p-5 flex flex-col justify-center overflow-y-auto">
                 <div className="mb-4 text-center">
                   <h4 className="text-sm font-semibold text-slate-800">
-                    Bắt đầu yêu cầu tư vấn
+                    Bạn cần giúp gì?
                   </h4>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Chọn chủ đề và gửi tin nhắn để được hỗ trợ nhanh nhất
+                    Chọn chủ đề và nhắn cho shop, nhân viên sẽ trả lời bạn sớm nhất
                   </p>
                 </div>
 
@@ -412,7 +412,7 @@ export const LiveSupportChatWidget: React.FC = () => {
                                 {staffName}
                               </span>
                               <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold uppercase tracking-wider">
-                                CSKH
+                                Hỗ trợ
                               </span>
                             </div>
                           )}

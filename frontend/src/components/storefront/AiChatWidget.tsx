@@ -57,7 +57,7 @@ export const AiChatWidget: React.FC = () => {
         ...prev,
         {
           role: 'assistant',
-          content: 'AI đang bận. Bạn thử lại sau hoặc bấm nút chat xanh bên dưới để gặp nhân viên nhé.',
+          content: 'Tôi đang hơi bận một chút. Bạn thử lại sau nhé, hoặc chat với nhân viên hỗ trợ ở khung bên dưới.',
           escalate: true,
         },
       ]);
@@ -102,7 +102,7 @@ export const AiChatWidget: React.FC = () => {
                 <h3 className="text-sm font-semibold leading-tight">Trợ lý AI PhoneShop</h3>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[11px] text-violet-100 font-medium">Gemini Flash • 24/7</span>
+                  <span className="text-[11px] text-violet-100 font-medium">Luôn sẵn sàng giúp bạn</span>
                 </div>
               </div>
             </div>
@@ -134,7 +134,7 @@ export const AiChatWidget: React.FC = () => {
                 <div className="text-center pt-2">
                   <p className="text-sm font-semibold text-slate-800">Xin chào{user ? ` ${user.fullName || ''}` : ''}!</p>
                   <p className="text-xs text-slate-500 mt-1 mb-3">
-                    Hỏi về máy, giá/tồn thật, giao hàng, thanh toán, bảo hành IMEI. Đăng nhập để tra đơn cá nhân.
+                    Hỏi về máy, giá và ưu đãi, giao hàng, thanh toán, bảo hành. Đăng nhập để xem đơn của bạn.
                   </p>
                   <div className="flex flex-wrap gap-2 justify-center">
                     {suggestions.map((s) => (
@@ -188,7 +188,7 @@ export const AiChatWidget: React.FC = () => {
                   {m.escalate && (
                     <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
                       <Headphones className="w-3.5 h-3.5" />
-                      <span>Cần người thật? Bấm nút chat xanh bên dưới để gặp CSKH.</span>
+                      <span>Muốn gặp nhân viên? Nhấn vào khung chat hỗ trợ ở góc dưới nhé.</span>
                     </div>
                   )}
                 </div>
@@ -197,7 +197,7 @@ export const AiChatWidget: React.FC = () => {
               {isSending && (
                 <div className="flex items-center gap-2 text-slate-400 text-xs px-1">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>AI đang trả lời...</span>
+                  <span>Đang soạn câu trả lời...</span>
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -219,7 +219,7 @@ export const AiChatWidget: React.FC = () => {
                     send();
                   }
                 }}
-                placeholder="Hỏi AI: iPhone dưới 20tr? Đơn của tôi?"
+                placeholder="Nhắn câu hỏi của bạn... Ví dụ: iPhone dưới 20 triệu còn hàng không?"
                 rows={1}
                 disabled={isSending}
                 className="flex-1 max-h-24 min-h-[38px] resize-none border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 text-slate-800"

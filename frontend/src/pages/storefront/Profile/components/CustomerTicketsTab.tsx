@@ -95,7 +95,7 @@ export const CustomerTicketsTab: React.FC<Props> = ({ initialOrderId }) => {
         attachments,
       });
 
-      message.success('Đã gửi yêu cầu hỗ trợ thành công. Đội ngũ CSKH sẽ phản hồi sớm nhất!');
+      message.success('Đã gửi yêu cầu thành công. Nhân viên hỗ trợ sẽ phản hồi sớm nhất!');
       setIsCreateModalOpen(false);
       form.resetFields();
       loadTickets();
@@ -195,7 +195,7 @@ export const CustomerTicketsTab: React.FC<Props> = ({ initialOrderId }) => {
             Hỗ trợ & Khiếu nại (Support Tickets)
           </Title>
           <Text type="secondary">
-            Gửi yêu cầu giải quyết đơn hàng, kỹ thuật hoặc bảo hành trực tiếp tới CSKH
+            Gửi yêu cầu về đơn hàng, sản phẩm hoặc bảo hành cho nhân viên hỗ trợ
           </Text>
         </div>
         <Space>

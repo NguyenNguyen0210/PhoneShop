@@ -331,7 +331,7 @@ export const RegisterPage: React.FC = () => {
         {/* Cam kết bảo mật */}
         <div className="pt-2 text-center text-xs text-slate-400 flex items-center justify-center gap-1.5">
           <ShieldCheck className="w-4 h-4 text-slate-400" />
-          <span>Thông tin được bảo mật chuẩn mã hóa dữ liệu SSL.</span>
+          <span>Thông tin của bạn luôn được bảo mật.</span>
         </div>
       </div>
     </div>
