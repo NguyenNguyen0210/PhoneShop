@@ -100,6 +100,14 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
       productVariant: {
         findMany: jest.fn().mockImplementation(() => Promise.resolve(mockVariants)),
       },
+      flashSaleCampaign: {
+        upsert: jest.fn().mockImplementation((args: any) => Promise.resolve({ id: 'campaign-1', ...args.create })),
+        findFirst: jest.fn().mockImplementation(() => Promise.resolve(null)),
+        create: jest.fn().mockImplementation((args: any) => Promise.resolve({ id: 'campaign-1', ...args.data })),
+      },
+      flashSaleItem: {
+        upsert: jest.fn().mockImplementation(() => Promise.resolve({})),
+      },
       voucher: {
         upsert: jest.fn().mockImplementation((args: any) => {
           const record = { id: `voucher-uuid-${args.where.code}`, ...args.create };
@@ -263,10 +271,10 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
     } as unknown as PrismaClient;
   });
 
-  it('should seed exactly 6 realistic vouchers with correct values and constraints', async () => {
+  it('should seed exactly 9 realistic vouchers (active/expired/upcoming) with correct values and constraints', async () => {
     await seedFeedbackAndAftersales(mockPrisma, mockCustomers, mockOrderResult, staffUserId);
 
-    expect(upsertedVouchers).toHaveLength(6);
+    expect(upsertedVouchers).toHaveLength(9);
     const codes = upsertedVouchers.map((v) => v.code);
     expect(codes).toEqual([
       'WELCOME50',
@@ -275,6 +283,9 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
       'FLAGSHIP500',
       'SALEMIDMONTH',
       'APPFIRST',
+      'TET2025',
+      'SALE815',
+      'FREESHIP50',
     ]);
 
     const welcome = upsertedVouchers.find((v) => v.code === 'WELCOME50');
@@ -358,19 +369,23 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
     }
   });
 
-  it('should generate 120 verified reviews respecting unique userId-productId pairs with ~60 staff replies', async () => {
+  it('should generate 120 verified reviews (50/25/15/7/3 distribution) respecting unique userId-productId pairs with ~60 staff replies', async () => {
     await seedFeedbackAndAftersales(mockPrisma, mockCustomers, mockOrderResult, staffUserId);
 
     expect(upsertedReviews).toHaveLength(120);
 
-    // Verify rating distribution: 70% 5-star (~84), 20% 4-star (~24), 10% 3-star (~12)
+    // Verify rating distribution: 50% 5★ (60), 25% 4★ (30), 15% 3★ (18), 7% 2★ (8), 3% 1★ (4)
     const fiveStar = upsertedReviews.filter((r) => r.rating === 5);
     const fourStar = upsertedReviews.filter((r) => r.rating === 4);
     const threeStar = upsertedReviews.filter((r) => r.rating === 3);
+    const twoStar = upsertedReviews.filter((r) => r.rating === 2);
+    const oneStar = upsertedReviews.filter((r) => r.rating === 1);
 
-    expect(fiveStar.length).toBe(84);
-    expect(fourStar.length).toBe(24);
-    expect(threeStar.length).toBe(12);
+    expect(fiveStar.length).toBe(60);
+    expect(fourStar.length).toBe(30);
+    expect(threeStar.length).toBe(18);
+    expect(twoStar.length).toBe(8);
+    expect(oneStar.length).toBe(4);
 
     // Verify all reviews are verified and approved
     for (const rev of upsertedReviews) {

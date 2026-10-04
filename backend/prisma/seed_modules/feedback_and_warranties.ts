@@ -180,6 +180,36 @@ const THREE_STAR_REVIEWS: ReviewContentItem[] = [
   },
 ];
 
+const TWO_STAR_REVIEWS: ReviewContentItem[] = [
+  {
+    rating: 2,
+    title: 'Pin tụt nhanh hơn quảng cáo',
+    content:
+      'Mới mua 2 tuần mà pin tụt nhanh hơn kỳ vọng, on-screen chỉ tầm 5 tiếng. Shop bảo theo dõi thêm 1 tháng, hơi thất vọng.',
+  },
+  {
+    rating: 2,
+    title: 'Máy nóng + sạc chậm',
+    content:
+      'Chơi game nhẹ 30 phút đã nóng ran, sạc đầy mất gần 2 tiếng. Tầm giá này mình kỳ vọng tốt hơn.',
+  },
+];
+
+const ONE_STAR_REVIEWS: ReviewContentItem[] = [
+  {
+    rating: 1,
+    title: 'Màn ám vàng, đổi trả khó khăn',
+    content:
+      'Nhận máy thấy màn ám vàng nhẹ ở mép, liên hệ đổi thì phải chờ kiểm tra 7 ngày. Trải nghiệm chưa tốt, mong shop cải thiện.',
+  },
+  {
+    rating: 1,
+    title: 'Giao nhầm màu, hỗ trợ chậm',
+    content:
+      'Đặt màu đen giao màu xanh, gọi hotline 2 ngày mới có người xử lý. Máy thì ổn nhưng khâu vận hành cần tốt hơn.',
+  },
+];
+
 const STAFF_REPLIES: string[] = [
   'Dạ MobileCommerce chân thành cảm ơn quý khách đã tin tưởng và ủng hộ cửa hàng. Chúc quý khách có trải nghiệm tuyệt vời với thiết bị mới!',
   'Dạ cảm ơn phản hồi của quý khách! Cửa hàng luôn sẵn sàng hỗ trợ kỹ thuật qua hotline 1800 6868.',
@@ -233,9 +263,53 @@ export async function seedFeedbackAndAftersales(
   }
 
   // ============================================================
-  // 1. VOUCHERS & VOUCHER USAGES
+  // 1. VOUCHERS & VOUCHER USAGES (Active + Expired + Upcoming)
   // ============================================================
-  console.log('  1. Seeding 6 promotional vouchers and ~30 usages...');
+  console.log('  1. Seeding 9 promotional vouchers (active/expired/upcoming) and ~30 usages...');
+  const nowTs = Date.now();
+  const DAY = 86400000;
+  const EXTRA_VOUCHERS: typeof VOUCHER_SEEDS = [
+    {
+      code: 'TET2025',
+      name: 'Tết 2025 đã hết hạn',
+      description: 'Voucher Tết 2025 hết hạn để test lọc expired',
+      type: VoucherType.FIXED_AMOUNT,
+      value: 500000,
+      minOrderValue: 10000000,
+      maxDiscountAmount: 500000,
+      usageLimit: 200,
+      perUserLimit: 1,
+      startAt: new Date(nowTs - 400 * DAY),
+      endAt: new Date(nowTs - 300 * DAY),
+    },
+    {
+      code: 'SALE815',
+      name: 'Sale 8.8 sắp diễn ra',
+      description: 'Voucher sale sắp mở để test upcoming',
+      type: VoucherType.PERCENTAGE,
+      value: 15,
+      minOrderValue: 5000000,
+      maxDiscountAmount: 1500000,
+      usageLimit: 1000,
+      perUserLimit: 1,
+      startAt: new Date(nowTs + 30 * DAY),
+      endAt: new Date(nowTs + 60 * DAY),
+    },
+    {
+      code: 'FREESHIP50',
+      name: 'Freeship đơn 500k (expired)',
+      description: 'Freeship hết hạn để test expired freeship',
+      type: VoucherType.FREE_SHIPPING,
+      value: 30000,
+      minOrderValue: 500000,
+      maxDiscountAmount: 30000,
+      usageLimit: 2000,
+      perUserLimit: 2,
+      startAt: new Date(nowTs - 200 * DAY),
+      endAt: new Date(nowTs - 100 * DAY),
+    },
+  ];
+  const ALL_VOUCHERS = [...VOUCHER_SEEDS, ...EXTRA_VOUCHERS];
   const seededVouchers: Array<{
     id: string;
     code: string;
@@ -244,7 +318,7 @@ export async function seedFeedbackAndAftersales(
     maxDiscountAmount: any;
     [key: string]: any;
   }> = [];
-  for (const v of VOUCHER_SEEDS) {
+  for (const v of ALL_VOUCHERS) {
     const voucher = await prisma.voucher.upsert({
       where: { code: v.code },
       update: {
@@ -336,7 +410,70 @@ export async function seedFeedbackAndAftersales(
       voucherUsageCount++;
     }
   }
-  console.log(`    + Upserted 6 vouchers, created ${voucherUsageCount} new voucher usages.`);
+  console.log(`    + Upserted ${seededVouchers.length} vouchers, created ${voucherUsageCount} new voucher usages.`);
+
+  // ============================================================
+  // 1b. FLASH SALE CAMPAIGNS (Active + Expired) — top-discount sort testing
+  // ============================================================
+  console.log('  1b. Seeding Flash Sale campaigns...');
+  const flashVariants = await prisma.productVariant.findMany({
+    where: { isActive: true, compareAtPrice: { not: null } },
+    select: { id: true, price: true, compareAtPrice: true },
+    take: 12,
+  });
+  if (flashVariants.length >= 8) {
+    const activeCampaign = await prisma.flashSaleCampaign.upsert({
+      where: { id: '00000000-0000-4000-8000-flashsale01' } as any,
+      update: { name: 'Flash Sale Giữa Tháng', isActive: true },
+      create: {
+        name: 'Flash Sale Giữa Tháng',
+        description: 'Giảm sâu 8 variant hot nhất trong 7 ngày',
+        startAt: new Date(nowTs - 1 * DAY),
+        endAt: new Date(nowTs + 6 * DAY),
+        isActive: true,
+      },
+    }).catch(async () => {
+      const existing = await prisma.flashSaleCampaign.findFirst({ where: { name: 'Flash Sale Giữa Tháng' } });
+      return existing ?? (await prisma.flashSaleCampaign.create({
+        data: {
+          name: 'Flash Sale Giữa Tháng',
+          description: 'Giảm sâu 8 variant hot nhất trong 7 ngày',
+          startAt: new Date(nowTs - 1 * DAY),
+          endAt: new Date(nowTs + 6 * DAY),
+          isActive: true,
+        },
+      }));
+    });
+    for (let i = 0; i < 8; i++) {
+      const v = flashVariants[i];
+      const flashPrice = Math.round(Number(v.price) * 0.88 / 1000) * 1000;
+      await prisma.flashSaleItem.upsert({
+        where: { campaignId_variantId: { campaignId: (activeCampaign as any).id, variantId: v.id } },
+        update: { flashPrice, stockLimit: 20, soldCount: i * 2 },
+        create: { campaignId: (activeCampaign as any).id, variantId: v.id, flashPrice, stockLimit: 20, soldCount: i * 2 },
+      });
+    }
+    const expiredCampaign = await prisma.flashSaleCampaign.findFirst({ where: { name: 'Flash Sale Khai Trương' } })
+      ?? await prisma.flashSaleCampaign.create({
+        data: {
+          name: 'Flash Sale Khai Trương',
+          description: 'Campaign đã kết thúc để test expired',
+          startAt: new Date(nowTs - 60 * DAY),
+          endAt: new Date(nowTs - 53 * DAY),
+          isActive: false,
+        },
+      });
+    for (let i = 8; i < Math.min(12, flashVariants.length); i++) {
+      const v = flashVariants[i];
+      const flashPrice = Math.round(Number(v.price) * 0.9 / 1000) * 1000;
+      await prisma.flashSaleItem.upsert({
+        where: { campaignId_variantId: { campaignId: (expiredCampaign as any).id, variantId: v.id } },
+        update: {},
+        create: { campaignId: (expiredCampaign as any).id, variantId: v.id, flashPrice, stockLimit: 30, soldCount: 30 },
+      });
+    }
+    console.log('    + 1 ACTIVE + 1 EXPIRED flash sale campaigns.');
+  }
 
   // ============================================================
   // 2. ELECTRONIC WARRANTIES
@@ -545,17 +682,23 @@ export async function seedFeedbackAndAftersales(
     existingReviews.map((r) => `${r.userId}_${r.productId}`),
   );
 
-  // Generate 120 review content items (70% 5-star, 20% 4-star, 10% 3-star)
-  // 120 * 0.70 = 84 (5-star), 120 * 0.20 = 24 (4-star), 120 * 0.10 = 12 (3-star)
+  // Generate 120 review content items (50% 5★, 25% 4★, 15% 3★, 7% 2★, 3% 1★)
+  // 60 + 30 + 18 + 8 + 4 = 120 — realistic + covers minRating 5/4/3 + low-rated products
   const reviewTemplates: ReviewContentItem[] = [];
-  for (let i = 0; i < 84; i++) {
+  for (let i = 0; i < 60; i++) {
     reviewTemplates.push(FIVE_STAR_REVIEWS[i % FIVE_STAR_REVIEWS.length]);
   }
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 30; i++) {
     reviewTemplates.push(FOUR_STAR_REVIEWS[i % FOUR_STAR_REVIEWS.length]);
   }
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 18; i++) {
     reviewTemplates.push(THREE_STAR_REVIEWS[i % THREE_STAR_REVIEWS.length]);
+  }
+  for (let i = 0; i < 8; i++) {
+    reviewTemplates.push(TWO_STAR_REVIEWS[i % TWO_STAR_REVIEWS.length]);
+  }
+  for (let i = 0; i < 4; i++) {
+    reviewTemplates.push(ONE_STAR_REVIEWS[i % ONE_STAR_REVIEWS.length]);
   }
 
   // Generate candidate pairs from customers and products
