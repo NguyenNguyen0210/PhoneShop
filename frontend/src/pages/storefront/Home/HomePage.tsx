@@ -1,14 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
-  ShieldCheck,
-  Sparkles,
-  ShoppingCart,
-  ChevronRight,
-  Truck,
   RotateCcw,
-  ArrowLeftRight,
-  CreditCard,
   LayoutGrid,
   Smartphone,
   X,
@@ -26,7 +19,8 @@ import {
   type ProductSortOption,
 } from '../../../components/storefront/ProductSortToolbar';
 import { StorefrontPagination } from '../../../components/storefront/StorefrontPagination';
-import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
+import { HeroBannerShowcase } from '../../../components/storefront/HeroBannerShowcase';
+import { StorefrontServiceBar } from '../../../components/storefront/StorefrontServiceBar';
 
 export const HomePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -99,58 +93,6 @@ export const HomePage: React.FC = () => {
       document.body.style.overflow = '';
     };
   }, [showMobileFilter]);
-
-  // Featured flagship showcase index
-  const [heroIndex, setHeroIndex] = useState(0);
-
-  const formatPrice = (val: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
-  };
-
-  // STATIC_HERO marketing copy — paired with live catalog data below.
-  // Ids, names, prices and images always come from productService.getProducts(),
-  // never from hardcoded values, so the banner can never drift from the DB.
-  const HERO_COPY = [
-    {
-      tagline: 'Flagship nổi bật • Chính hãng 100%',
-      badge: 'Nổi Bật Nhất',
-      stockStatus: 'Sẵn hàng tại kho – Giao hỏa tốc hôm nay',
-    },
-    {
-      tagline: 'Công nghệ đỉnh cao • Trả góp 0%',
-      badge: 'Công Nghệ Đỉnh Cao',
-      stockStatus: 'Sẵn sàng xuất kho ngay',
-    },
-    {
-      tagline: 'Thiết kế đột phá • Ưu đãi hôm nay',
-      badge: 'Đáng Mua Nhất',
-      stockStatus: 'Đặt giữ ưu đãi ngay',
-    },
-  ];
-
-  const heroShowcases = useMemo(() => {
-    return products.slice(0, 3).map((p, i) => {
-      const primary = p.variants?.[0];
-      const price = primary?.price ?? 0;
-      const comparePrice = primary?.compareAtPrice ?? price;
-      const copy = HERO_COPY[i % HERO_COPY.length];
-      return {
-        id: p.id,
-        brand: p.brand?.name ?? '',
-        tagline: copy.tagline,
-        name: p.name,
-        description: p.description ?? '',
-        price,
-        comparePrice,
-        monthlyPay: `${new Intl.NumberFormat('vi-VN').format(Math.round(price / 12))}₫/tháng`,
-        image: p.thumbnail ?? p.thumbnailUrl ?? FALLBACK_PRODUCT_IMAGE,
-        badge: copy.badge,
-        stockStatus: copy.stockStatus,
-      };
-    });
-  }, [products]);
-
-  const currentHero = heroShowcases.length > 0 ? heroShowcases[heroIndex % heroShowcases.length] : null;
 
   useEffect(() => {
     setLoading(true);
@@ -562,153 +504,14 @@ export const HomePage: React.FC = () => {
   return (
     <div className="space-y-12 sm:space-y-16 pb-20 bg-[#F8FAFC] text-slate-800 min-h-screen">
       {/* ─────────────────────────────────────────────────────────────
-          1. CLEAN WHITE SHOWCASE HERO BANNER
+          1. FLAGSHIP HERO BANNER SHOWCASE (AMBIENT GLOW & THEMES)
           ───────────────────────────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
-        {currentHero ? (
-        <div className="relative rounded-3xl bg-white border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md transition-shadow duration-300">
-          {/* Subtle Ambient Tech Spotlight behind device */}
-          <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-96 h-96 bg-blue-50 rounded-full blur-3xl pointer-events-none" />
+      <HeroBannerShowcase products={products} loading={loading} />
 
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 items-center gap-8 p-6 sm:p-10 lg:p-12">
-            {/* Left Content (7 Cols) */}
-            <div className="lg:col-span-7 space-y-6">
-              {/* Badges & Trust signals */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold">
-                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                  <span>{currentHero.badge}</span>
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Chính hãng 100% Nguyên Seal</span>
-                </span>
-              </div>
-
-              {/* Headline & Subhead */}
-              <div className="space-y-2">
-                <p className="text-xs sm:text-sm font-bold uppercase tracking-wider text-blue-600">
-                  {currentHero.brand} • {currentHero.tagline}
-                </p>
-                <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.15]">
-                  {currentHero.name}
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-600 max-w-xl leading-relaxed pt-1">
-                  {currentHero.description}
-                </p>
-              </div>
-
-              {/* 4 Commercial Retail Guarantees */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50/80 border border-slate-200/60 text-xs font-medium text-slate-700 hover:bg-slate-100/60 transition-colors">
-                  <div className="w-7 h-7 rounded-lg bg-blue-100/80 text-blue-600 flex items-center justify-center shrink-0">
-                    <Truck className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="truncate font-semibold">Giao hỏa tốc 2h miễn phí</span>
-                </div>
-                <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50/80 border border-slate-200/60 text-xs font-medium text-slate-700 hover:bg-slate-100/60 transition-colors">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-100/80 text-emerald-600 flex items-center justify-center shrink-0">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="truncate font-semibold">Bảo hành 12T chính hãng toàn quốc</span>
-                </div>
-                <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50/80 border border-slate-200/60 text-xs font-medium text-slate-700 hover:bg-slate-100/60 transition-colors">
-                  <div className="w-7 h-7 rounded-lg bg-indigo-100/80 text-indigo-600 flex items-center justify-center shrink-0">
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="truncate font-semibold">1 đổi 1 30 ngày nếu lỗi NSX</span>
-                </div>
-                <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50/80 border border-slate-200/60 text-xs font-medium text-slate-700 hover:bg-slate-100/60 transition-colors">
-                  <div className="w-7 h-7 rounded-lg bg-amber-100/80 text-amber-600 flex items-center justify-center shrink-0">
-                    <ArrowLeftRight className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="truncate font-semibold">Thu cũ trợ giá đến 2.000.000₫</span>
-                </div>
-              </div>
-
-              {/* Price & Installment Group */}
-              <div className="pt-2 flex flex-wrap items-baseline gap-3 sm:gap-4 border-t border-slate-100">
-                <div className="text-3xl sm:text-4xl font-black text-slate-900 font-mono tracking-tight tabular-nums">
-                  {formatPrice(currentHero.price)}
-                </div>
-                <div className="text-sm sm:text-base text-slate-400 line-through font-mono tabular-nums">
-                  {formatPrice(currentHero.comparePrice)}
-                </div>
-                {currentHero.comparePrice > currentHero.price && (
-                  <span className="px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200/80 text-rose-600 text-xs font-bold font-mono">
-                    -{Math.round(((currentHero.comparePrice - currentHero.price) / currentHero.comparePrice) * 100)}%
-                  </span>
-                )}
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-50 border border-blue-200/60 text-blue-700 text-xs font-semibold">
-                  <CreditCard className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Trả góp 0% chỉ {currentHero.monthlyPay}</span>
-                </span>
-              </div>
-
-              {/* Action Buttons & Real-time Urgency */}
-              <div className="space-y-3 pt-2">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Link
-                    to={`/products/${currentHero.id}`}
-                    className="px-8 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-sm sm:text-base flex items-center gap-2 shadow-lg shadow-blue-500/25 transition cursor-pointer"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    <span>Mua ngay</span>
-                  </Link>
-
-                  <Link
-                    to={`/products/${currentHero.id}`}
-                    className="px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-sm sm:text-base flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                  >
-                    <span>Xem cấu hình chi tiết</span>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
-                  </Link>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-600 pt-0.5">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                  </span>
-                  <span>{currentHero.stockStatus}</span>
-                </div>
-              </div>
-
-              {/* Showcase Switcher Indicators */}
-              <div className="flex items-center gap-2 pt-2">
-                {heroShowcases.map((s, idx) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setHeroIndex(idx)}
-                    className={`h-2 rounded-full transition-all cursor-pointer ${
-                      heroIndex === idx ? 'w-8 bg-blue-600' : 'w-2 bg-slate-200 hover:bg-slate-300'
-                    }`}
-                    aria-label={`Showcase ${idx + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Right Product Showcase (5 Cols) */}
-            <div className="lg:col-span-5 flex items-center justify-center p-4">
-              <Link to={`/products/${currentHero.id}`} className="group relative block w-full max-w-sm">
-                <div className="relative aspect-square w-full flex items-center justify-center p-4">
-                  <img
-                    src={currentHero.image}
-                    alt={currentHero.name}
-                    className="max-h-full max-w-full object-contain filter drop-shadow-2xl group-hover:scale-105 transition-transform duration-500"
-                  />
-                </div>
-              </Link>
-            </div>
-          </div>
-        </div>
-        ) : (
-          <div className="relative rounded-3xl bg-white border border-slate-200/80 p-10 text-center text-sm text-slate-400 animate-pulse">
-            Đang tải sản phẩm nổi bật...
-          </div>
-        )}
-      </section>
+      {/* ─────────────────────────────────────────────────────────────
+          1.2. COMMERCIAL SERVICE GUARANTEES BAR
+          ───────────────────────────────────────────────────────────── */}
+      <StorefrontServiceBar />
 
       {/* ─────────────────────────────────────────────────────────────
           1.5. FLASH SALE CAMPAIGN SECTION
