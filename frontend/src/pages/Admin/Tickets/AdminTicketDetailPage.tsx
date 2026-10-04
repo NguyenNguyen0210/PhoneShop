@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Card,
   Row,
@@ -52,24 +52,75 @@ export const AdminTicketDetailPage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<TicketStatus>('OPEN');
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
-  const loadTicket = useCallback(async () => {
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const ticketRef = useRef<Ticket | null>(null);
+
+  const isScrolledToBottom = () => {
+    if (messagesContainerRef.current && messagesContainerRef.current.scrollHeight > messagesContainerRef.current.clientHeight) {
+      const el = messagesContainerRef.current;
+      return el.scrollHeight - el.scrollTop - el.clientHeight <= 150;
+    }
+    const scrollPosition = window.innerHeight + (window.scrollY || document.documentElement.scrollTop || 0);
+    const pageHeight = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+    return pageHeight - scrollPosition <= 150;
+  };
+
+  const loadTicket = useCallback(async (silent = false) => {
     if (!id) return;
     try {
-      setLoading(true);
-      setError(null);
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
       const res = await ticketService.getAdminTicketDetail(id);
+
+      const prevMessageCount = ticketRef.current?.messages?.length ?? 0;
+      const newMessageCount = res?.messages?.length ?? 0;
+      const hasNewMessages = newMessageCount > prevMessageCount;
+      const atBottom = isScrolledToBottom();
+
       setTicket(res);
+      ticketRef.current = res;
       setSelectedStatus(res.status);
+
+      if (hasNewMessages && atBottom) {
+        setTimeout(() => {
+          if (typeof messagesEndRef.current?.scrollIntoView === 'function') {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 50);
+      }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Không thể tải chi tiết vé');
+      if (!silent) {
+        setError(err.response?.data?.message || 'Không thể tải chi tiết vé');
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [id]);
 
   useEffect(() => {
+    ticketRef.current = ticket;
+  }, [ticket]);
+
+  useEffect(() => {
     loadTicket();
   }, [loadTicket]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const interval = setInterval(() => {
+      loadTicket(true);
+    }, 3500);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [id, loadTicket]);
 
   const handleSendMessage = async () => {
     if (!id || !replyMessage.trim()) return;
@@ -85,7 +136,7 @@ export const AdminTicketDetailPage: React.FC = () => {
       message.success(isInternalNote ? 'Đã lưu ghi chú nội bộ' : 'Đã gửi phản hồi đến khách hàng');
       setReplyMessage('');
       setAttachmentUrl('');
-      loadTicket();
+      await loadTicket(true);
     } catch (err: any) {
       message.error(err.response?.data?.message || 'Không thể gửi tin nhắn');
     } finally {
@@ -100,7 +151,7 @@ export const AdminTicketDetailPage: React.FC = () => {
       await ticketService.updateTicketStatus(id, status);
       message.success('Đã cập nhật trạng thái vé');
       setSelectedStatus(status);
-      loadTicket();
+      await loadTicket(true);
     } catch (err: any) {
       message.error(err.response?.data?.message || 'Cập nhật trạng thái thất bại');
     } finally {
@@ -164,7 +215,10 @@ export const AdminTicketDetailPage: React.FC = () => {
           </Card>
 
           {/* Conversation History */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+          <div
+            ref={messagesContainerRef}
+            style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}
+          >
             {ticket.messages && ticket.messages.length > 0 ? (
               ticket.messages.map((msg) => {
                 const isInternal = msg.isInternalNote;
@@ -235,6 +289,7 @@ export const AdminTicketDetailPage: React.FC = () => {
                 <Text type="secondary">Chưa có tin nhắn nào trong luồng hỗ trợ này.</Text>
               </Card>
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Composer Box */}

@@ -50,17 +50,23 @@ export const TicketConversationModal: React.FC<Props> = ({
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
 
-  const loadTicket = useCallback(async () => {
+  const loadTicket = useCallback(async (silent = false) => {
     if (!ticketId) return;
     try {
-      setLoading(true);
-      setError(null);
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
       const res = await ticketService.getTicketDetail(ticketId);
       setTicket(res);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Không thể tải chi tiết yêu cầu hỗ trợ');
+      if (!silent) {
+        setError(err.response?.data?.message || 'Không thể tải chi tiết yêu cầu hỗ trợ');
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [ticketId]);
 
@@ -68,6 +74,18 @@ export const TicketConversationModal: React.FC<Props> = ({
     if (open && ticketId) {
       loadTicket();
     }
+  }, [open, ticketId, loadTicket]);
+
+  useEffect(() => {
+    if (!open || !ticketId) return;
+
+    const interval = setInterval(() => {
+      loadTicket(true);
+    }, 3500);
+
+    return () => {
+      clearInterval(interval);
+    };
   }, [open, ticketId, loadTicket]);
 
   const handleSendReply = async () => {
@@ -83,7 +101,7 @@ export const TicketConversationModal: React.FC<Props> = ({
       message.success('Đã gửi phản hồi');
       setReplyMessage('');
       setAttachmentUrl('');
-      loadTicket();
+      await loadTicket(true);
       onTicketUpdated?.();
     } catch (err: any) {
       message.error(err.response?.data?.message || 'Không thể gửi tin nhắn');
@@ -98,7 +116,7 @@ export const TicketConversationModal: React.FC<Props> = ({
       setClosing(true);
       await ticketService.closeTicket(ticketId);
       message.success('Đã đóng yêu cầu hỗ trợ thành công');
-      loadTicket();
+      await loadTicket(true);
       onTicketUpdated?.();
     } catch (err: any) {
       message.error(err.response?.data?.message || 'Không thể đóng vé');
