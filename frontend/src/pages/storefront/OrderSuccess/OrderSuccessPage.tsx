@@ -391,7 +391,7 @@ export const OrderSuccessPage: React.FC = () => {
             Tra cứu bảo hành
           </Link>
           <Link
-            to="/products"
+            to="/"
             className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1"
           >
             <span>Tiếp tục mua hàng</span>

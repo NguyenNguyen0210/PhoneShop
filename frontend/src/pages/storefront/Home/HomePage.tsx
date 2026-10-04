@@ -37,7 +37,7 @@ export const HomePage: React.FC = () => {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [activeFlashSale, setActiveFlashSale] = useState<FlashSaleCampaign | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [selectedBrand, setSelectedBrand] = useState<string>('all');
+  const [selectedBrand, setSelectedBrand] = useState<string>(() => searchParams.get('brand') || 'all');
 
   // Advanced Filter & Sort states
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000000]);
@@ -46,9 +46,38 @@ export const HomePage: React.FC = () => {
   const [inStockOnly, setInStockOnly] = useState<boolean>(false);
   const [onSaleOnly, setOnSaleOnly] = useState<boolean>(false);
   const [minRating, setMinRating] = useState<number | null>(null);
-  const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [searchKeyword, setSearchKeyword] = useState<string>(() => searchParams.get('search') || '');
   const [sortBy, setSortBy] = useState<'default' | 'price-asc' | 'price-desc' | 'rating' | 'newest'>('default');
   const [showMobileFilter, setShowMobileFilter] = useState<boolean>(false);
+
+  const lastScrolledParamsRef = useRef<string | null>(null);
+
+  // Synchronize URL search params (?search=..., ?brand=...) and auto-scroll to products
+  useEffect(() => {
+    const searchParam = searchParams.get('search');
+    const brandParam = searchParams.get('brand');
+
+    if (searchParam !== null) {
+      setSearchKeyword(searchParam);
+    }
+
+    if (brandParam !== null) {
+      const matchedBrand = brands.find(
+        (b) =>
+          b.name.toLowerCase() === brandParam.toLowerCase() ||
+          b.slug?.toLowerCase() === brandParam.toLowerCase()
+      );
+      setSelectedBrand(matchedBrand ? matchedBrand.name : brandParam);
+    }
+
+    if (searchParam || brandParam) {
+      const currentParamKey = `${searchParam ?? ''}__${brandParam ?? ''}`;
+      if (lastScrolledParamsRef.current !== currentParamKey) {
+        lastScrolledParamsRef.current = currentParamKey;
+        productGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [searchParams, brands]);
 
   // Lock body scroll when mobile filter drawer is open
   useEffect(() => {

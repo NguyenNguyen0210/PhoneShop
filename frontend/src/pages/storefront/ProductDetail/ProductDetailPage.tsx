@@ -143,7 +143,7 @@ export const ProductDetailPage: React.FC = () => {
             Sản phẩm này có thể đã ngừng kinh doanh hoặc đường dẫn không chính xác.
           </p>
           <Link
-            to="/products"
+            to="/"
             className="inline-block mt-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition"
           >
             Quay lại danh mục sản phẩm
@@ -299,7 +299,7 @@ export const ProductDetailPage: React.FC = () => {
             Trang chủ
           </Link>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          <Link to="/products" className="hover:text-blue-600 transition-colors">
+          <Link to="/" className="hover:text-blue-600 transition-colors">
             Điện thoại
           </Link>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />

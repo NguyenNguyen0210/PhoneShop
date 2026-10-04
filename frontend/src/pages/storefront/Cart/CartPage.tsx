@@ -210,7 +210,7 @@ export const CartPage: React.FC = () => {
 
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
-                to="/products"
+                to="/"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md shadow-blue-500/20 transition cursor-pointer"
               >
                 <span>Khám phá danh mục điện thoại</span>
@@ -239,7 +239,7 @@ export const CartPage: React.FC = () => {
                   </p>
                 </div>
                 <Link
-                  to="/products"
+                  to="/"
                   className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
                 >
                   <span>Xem tất cả</span>
@@ -633,7 +633,7 @@ export const CartPage: React.FC = () => {
               {/* Table Bottom Navigation Bar */}
               <div className="p-4 bg-slate-50/80 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
                 <Link
-                  to="/products"
+                  to="/"
                   className="flex items-center gap-1.5 font-bold text-blue-600 hover:text-blue-700 hover:underline"
                 >
                   <ChevronLeft className="w-4 h-4" />

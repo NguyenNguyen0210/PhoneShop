@@ -152,7 +152,7 @@ export const Navbar: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+      navigate(`/?search=${encodeURIComponent(searchQuery.trim())}`);
       setMobileMenuOpen(false);
     }
   };
@@ -508,28 +508,28 @@ export const Navbar: React.FC = () => {
 
             <div className="space-y-1">
               <Link
-                to="/products"
+                to="/"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition"
               >
                 📱 Tất cả điện thoại
               </Link>
               <Link
-                to="/products?brand=Apple"
+                to="/?brand=Apple"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition"
               >
                 Apple (iPhone)
               </Link>
               <Link
-                to="/products?brand=Samsung"
+                to="/?brand=Samsung"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition"
               >
                 Samsung Galaxy
               </Link>
               <Link
-                to="/products?brand=Xiaomi"
+                to="/?brand=Xiaomi"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition"
               >

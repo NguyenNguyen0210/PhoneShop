@@ -371,7 +371,7 @@ export const ProfilePage: React.FC = () => {
               </p>
               <div className="pt-2">
                 <Link
-                  to="/products"
+                  to="/"
                   className="text-xs text-blue-600 hover:text-blue-700 font-bold hover:underline"
                 >
                   Khám phá danh mục sản phẩm &rarr;
