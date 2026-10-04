@@ -540,11 +540,7 @@ export const AdminTicketDetailPage: React.FC = () => {
                 type="link"
                 style={{ padding: 0, marginTop: 8 }}
                 onClick={() =>
-                  navigate(
-                    isStaff
-                      ? `/staff/orders?id=${ticket.order?.id}`
-                      : `/admin/orders?id=${ticket.order?.id}`
-                  )
+                  navigate(`${orderBasePath}?id=${ticket.order?.id}`)
                 }
               >
                 Mở Quản lý Đơn hàng →

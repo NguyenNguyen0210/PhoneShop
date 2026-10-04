@@ -7,7 +7,6 @@ import {
   EyeOutlined,
   ArrowRightOutlined,
   SyncOutlined,
-  CarOutlined,
 } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Order, OrderStatus } from '../../../../types';

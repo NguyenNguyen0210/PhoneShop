@@ -254,7 +254,8 @@ export type OrderStatus =
   | 'SHIPPING'
   | 'DELIVERED'
   | 'COMPLETED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'RETURNED';
 
 export type PaymentMethod = 'COD' | 'VIETQR' | 'VNPAY' | 'INSTALLMENT';
 export type ShippingMethod = 'ECONOMY' | 'STANDARD' | 'EXPRESS_2H';

@@ -22,14 +22,13 @@ import {
   ReloadOutlined,
   UserOutlined,
   CustomerServiceOutlined,
-  ClockCircleOutlined,
   CheckCircleOutlined,
   SyncOutlined,
   ShoppingOutlined,
   EyeOutlined,
   FileImageOutlined,
   LockOutlined,
-  ThunderboltsOutlined,
+  ThunderboltOutlined,
   InfoCircleOutlined,
   RightOutlined,
   LeftOutlined,
@@ -476,7 +475,11 @@ export const StaffLiveChatPage: React.FC = () => {
             minWidth: 320,
           }}
         >
-          {activeTicket ? (
+          {loadingDetail ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Spin tip="Đang tải đoạn hội thoại..." />
+            </div>
+          ) : activeTicket ? (
             <>
               {/* Chat Window Top Bar */}
               <div
@@ -779,7 +782,7 @@ export const StaffLiveChatPage: React.FC = () => {
                     </Tooltip>
 
                     <Dropdown menu={cannedMenu} trigger={['click']}>
-                      <Button size="small" icon={<ThunderboltsOutlined />}>
+                      <Button size="small" icon={<ThunderboltOutlined />}>
                         Mẫu trả lời nhanh
                       </Button>
                     </Dropdown>
