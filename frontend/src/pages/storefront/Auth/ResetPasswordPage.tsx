@@ -14,6 +14,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { authService } from '../../../services/authService';
+import { notifyError } from '../../../utils/notify';
 
 type ResetStatus = 'VERIFYING' | 'INVALID' | 'FORM' | 'SUCCESS';
 
@@ -29,7 +30,6 @@ export const ResetPasswordPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(3);
 
   // 1. Xác thực token khi mount
@@ -87,20 +87,19 @@ export const ResetPasswordPage: React.FC = () => {
   // 3. Xử lý submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg(null);
 
     if (!newPassword || !confirmPassword) {
-      setErrorMsg('Vui lòng nhập đầy đủ cả hai trường mật khẩu.');
+      notifyError('Vui lòng nhập đầy đủ cả hai trường mật khẩu.');
       return;
     }
 
     if (newPassword.length < 6) {
-      setErrorMsg('Mật khẩu mới phải có ít nhất 6 ký tự.');
+      notifyError('Mật khẩu mới phải có ít nhất 6 ký tự.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setErrorMsg('Mật khẩu xác nhận không khớp. Vui lòng kiểm tra lại.');
+      notifyError('Mật khẩu xác nhận không khớp. Vui lòng kiểm tra lại.');
       return;
     }
 
@@ -114,9 +113,8 @@ export const ResetPasswordPage: React.FC = () => {
       await authService.resetPassword({ token, newPassword });
       setStatus('SUCCESS');
     } catch (err: any) {
-      setErrorMsg(
-        err.response?.data?.message ||
-        err.message ||
+      notifyError(
+        err,
         'Không thể đặt lại mật khẩu. Liên kết có thể đã hết hạn hoặc không hợp lệ.'
       );
     } finally {
@@ -228,13 +226,6 @@ export const ResetPasswordPage: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {errorMsg && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Mật khẩu mới */}

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Loader2, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
+import { notifyError } from '../../../utils/notify';
 
 export const OAuthCallbackPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -21,18 +22,21 @@ export const OAuthCallbackPage: React.FC = () => {
     const error = searchParams.get('error');
 
     if (error) {
-      setStatus('error');
-      setErrorMessage(
+      const msg =
         error === 'access_denied'
           ? 'Bạn đã từ chối cấp quyền truy cập tài khoản Google.'
-          : `Lỗi xác thực Google: ${error}`
-      );
+          : `Lỗi xác thực Google: ${error}`;
+      setStatus('error');
+      setErrorMessage(msg);
+      notifyError(msg);
       return;
     }
 
     if (!code) {
+      const msg = 'Không tìm thấy mã xác thực Google hợp lệ (Thiếu tham số code).';
       setStatus('error');
-      setErrorMessage('Không tìm thấy mã xác thực Google hợp lệ (Thiếu tham số code).');
+      setErrorMessage(msg);
+      notifyError(msg);
       return;
     }
 
@@ -42,8 +46,10 @@ export const OAuthCallbackPage: React.FC = () => {
     const storedState = sessionStorage.getItem('oauth_state');
     sessionStorage.removeItem('oauth_state');
     if (!returnedState || !storedState || returnedState !== storedState) {
+      const msg = 'Phiên đăng nhập Google không hợp lệ (sai lệch state) — vui lòng thử đăng nhập lại.';
       setStatus('error');
-      setErrorMessage('Phiên đăng nhập Google không hợp lệ (sai lệch state) — vui lòng thử đăng nhập lại.');
+      setErrorMessage(msg);
+      notifyError(msg);
       return;
     }
 
@@ -68,10 +74,11 @@ export const OAuthCallbackPage: React.FC = () => {
           }
         }, 1200);
       } catch (err: any) {
+        const msg =
+          err.message || 'Xác thực tài khoản Google với hệ thống PhoneShop thất bại.';
         setStatus('error');
-        setErrorMessage(
-          err.message || 'Xác thực tài khoản Google với hệ thống PhoneShop thất bại.'
-        );
+        setErrorMessage(msg);
+        notifyError(err, 'Xác thực tài khoản Google với hệ thống PhoneShop thất bại.');
       }
     };
 
@@ -127,7 +134,7 @@ export const OAuthCallbackPage: React.FC = () => {
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">
               Đăng nhập Google thất bại
             </h2>
-            <p className="text-xs text-rose-600 bg-rose-50 border border-rose-200 p-3 rounded-xl leading-relaxed">
+            <p className="text-xs text-slate-500 leading-relaxed">
               {errorMessage}
             </p>
             <div className="pt-2">

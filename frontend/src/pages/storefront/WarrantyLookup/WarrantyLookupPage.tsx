@@ -13,12 +13,12 @@ import {
 } from 'lucide-react';
 import { warrantyService, type WarrantyLookupResult } from '../../../services/warrantyService';
 import { imeiService } from '../../../services/imeiService';
+import { notifyError } from '../../../utils/notify';
 
 export const WarrantyLookupPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<WarrantyLookupResult | null>(null);
-  const [error, setError] = useState('');
 
   // Real-time Luhn calculation
   const cleanInput = query.trim();
@@ -27,12 +27,11 @@ export const WarrantyLookupPage: React.FC = () => {
 
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setResult(null);
 
     const clean = query.trim();
     if (!clean) {
-      setError('Bạn nhập mã số trên máy hoặc vỏ hộp giúp shop nhé.');
+      notifyError('Bạn nhập mã số trên máy hoặc vỏ hộp giúp shop nhé.');
       return;
     }
 
@@ -48,7 +47,7 @@ export const WarrantyLookupPage: React.FC = () => {
       const data = await warrantyService.lookupWarranty(clean);
       setResult(data);
     } catch (err: any) {
-      setError(err.message || 'Không tìm thấy thông tin bảo hành cho mã này.');
+      notifyError(err, 'Không tìm thấy thông tin bảo hành cho mã này.');
     } finally {
       setLoading(false);
     }
@@ -144,12 +143,6 @@ export const WarrantyLookupPage: React.FC = () => {
                   <span>Số này chưa đúng, bạn kiểm tra lại giúp shop nhé (mã gồm 15 số)</span>
                 </div>
               )}
-            </div>
-          )}
-
-          {error && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800">
-              {error}
             </div>
           )}
 
