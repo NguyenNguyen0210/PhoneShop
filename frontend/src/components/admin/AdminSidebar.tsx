@@ -14,6 +14,7 @@ import {
   CustomerServiceOutlined,
   TeamOutlined,
   TagOutlined,
+  ShopOutlined,
   SettingOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
@@ -28,6 +29,11 @@ const adminMenuItems: MenuProps['items'] = [
     key: '/admin/products',
     icon: <ShoppingOutlined style={{ fontSize: 16 }} />,
     label: 'Quản lý Sản phẩm',
+  },
+  {
+    key: '/admin/suppliers',
+    icon: <ShopOutlined style={{ fontSize: 16 }} />,
+    label: 'Nhà cung cấp',
   },
   {
     key: '/admin/inventory',
@@ -100,6 +106,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false })
 
   const currentKey = location.pathname.startsWith('/admin/inventory') || location.pathname.startsWith('/admin/imei')
     ? '/admin/inventory'
+    : location.pathname.startsWith('/admin/suppliers')
+    ? '/admin/suppliers'
     : location.pathname;
 
   return (

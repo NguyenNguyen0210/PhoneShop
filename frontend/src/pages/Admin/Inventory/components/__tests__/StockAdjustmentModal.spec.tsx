@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vite
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { StockAdjustmentModal } from '../StockAdjustmentModal';
 import { inventoryService } from '../../../../../services/inventoryService';
+import { supplierService } from '../../../../../services/supplierService';
 
 // Mock ResizeObserver for Ant Design components
 class ResizeObserverMock {
@@ -36,6 +37,12 @@ vi.mock('../../../../../services/inventoryService', () => ({
   },
 }));
 
+vi.mock('../../../../../services/supplierService', () => ({
+  supplierService: {
+    getSuppliers: vi.fn(),
+  },
+}));
+
 describe('StockAdjustmentModal', () => {
   const mockItem: any = {
     id: 'inv-1',
@@ -61,6 +68,24 @@ describe('StockAdjustmentModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(supplierService.getSuppliers).mockResolvedValue([
+      {
+        id: 'sup-1',
+        name: 'Apple Vietnam',
+        contactName: 'Nguyen Van A',
+        isActive: true,
+        createdAt: '',
+        updatedAt: '',
+      },
+      {
+        id: 'sup-2',
+        name: 'Digiworld',
+        contactName: null,
+        isActive: true,
+        createdAt: '',
+        updatedAt: '',
+      },
+    ]);
   });
 
   afterEach(() => {
@@ -262,5 +287,97 @@ describe('StockAdjustmentModal', () => {
     );
 
     expect(container.firstChild).toBeNull();
+  });
+
+  it('renders supplier dropdown in ADD mode and includes supplier in note and payload on submit', async () => {
+    vi.mocked(inventoryService.adjustStock).mockResolvedValueOnce({} as any);
+
+    render(
+      <StockAdjustmentModal
+        open={true}
+        item={mockItem}
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+
+    // Verify supplierService.getSuppliers(true) was called
+    expect(supplierService.getSuppliers).toHaveBeenCalledWith(true);
+
+    // Supplier dropdown is rendered in ADD mode
+    const supplierSelect = screen.getByLabelText(/Nhà cung cấp \(Tùy chọn\)/i);
+    expect(supplierSelect).toBeDefined();
+
+    // Open select dropdown and choose supplier
+    fireEvent.mouseDown(supplierSelect);
+    const option = await screen.findByText('Apple Vietnam (Nguyen Van A)');
+    fireEvent.click(option);
+
+    // Enter note
+    const noteInput = screen.getByPlaceholderText(/VD: Nhập lô hàng mới đợt 2/i);
+    fireEvent.change(noteInput, { target: { value: 'Nhập lô tháng 10' } });
+
+    // Submit
+    const submitBtn = screen.getByRole('button', { name: /Xác nhận lưu/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(inventoryService.adjustStock).toHaveBeenCalledWith('v-1', {
+        quantity: 1,
+        unitPrice: 15000000,
+        note: '[NCC: Apple Vietnam] Nhập lô tháng 10',
+        referenceType: 'SUPPLIER',
+        referenceId: 'sup-1',
+      });
+    });
+  });
+
+  it('sets note to [NCC: supplierName] when no initial note is provided and supplier is selected', async () => {
+    vi.mocked(inventoryService.adjustStock).mockResolvedValueOnce({} as any);
+
+    render(
+      <StockAdjustmentModal
+        open={true}
+        item={mockItem}
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+
+    const supplierSelect = screen.getByLabelText(/Nhà cung cấp \(Tùy chọn\)/i);
+    fireEvent.mouseDown(supplierSelect);
+    const option = await screen.findByText('Digiworld');
+    fireEvent.click(option);
+
+    const submitBtn = screen.getByRole('button', { name: /Xác nhận lưu/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(inventoryService.adjustStock).toHaveBeenCalledWith('v-1', {
+        quantity: 1,
+        unitPrice: 15000000,
+        note: '[NCC: Digiworld]',
+        referenceType: 'SUPPLIER',
+        referenceId: 'sup-2',
+      });
+    });
+  });
+
+  it('does not render supplier dropdown in SUBTRACT mode', async () => {
+    render(
+      <StockAdjustmentModal
+        open={true}
+        item={mockItem}
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+
+    const subtractRadio = screen.getByText(/Xuất \/ Giảm/i);
+    fireEvent.click(subtractRadio);
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/Nhà cung cấp \(Tùy chọn\)/i)).toBeNull();
+    });
   });
 });

@@ -616,6 +616,8 @@ export interface AdjustStockPayload {
   quantity: number;
   unitPrice?: number;
   note?: string;
+  referenceType?: string;
+  referenceId?: string;
 }
 
 export interface SetReorderLevelPayload {

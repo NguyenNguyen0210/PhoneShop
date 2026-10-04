@@ -60,6 +60,11 @@ export const AdminLayout: React.FC = () => {
       label: 'Quản lý Thương hiệu',
     },
     {
+      key: '/admin/suppliers',
+      icon: <ShopOutlined style={{ fontSize: 16 }} />,
+      label: 'Nhà cung cấp',
+    },
+    {
       key: '/admin/imei',
       icon: <BarcodeOutlined style={{ fontSize: 16 }} />,
       label: 'Quản lý Kho & IMEI',
@@ -138,6 +143,7 @@ export const AdminLayout: React.FC = () => {
     if (location.pathname === '/admin/products') return 'Quản lý Sản phẩm & Biến thể';
     if (location.pathname === '/admin/categories') return 'Quản lý Danh mục Smartphone';
     if (location.pathname === '/admin/brands') return 'Quản lý Thương hiệu Smartphone';
+    if (location.pathname === '/admin/suppliers') return 'Quản lý Nhà cung cấp';
     if (location.pathname === '/admin/imei') return 'Quản trị Kho Thiết bị & Quản lý IMEI';
     if (location.pathname === '/admin/orders') return 'Quản lý Đơn hàng & Điều phối';
     if (location.pathname.startsWith('/admin/promotions')) return 'Quản lý Khuyến mãi & Flash Sale';
