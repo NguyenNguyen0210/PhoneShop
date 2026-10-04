@@ -254,7 +254,96 @@ export class ChatbotService {
   }
 
   private async searchProducts(message: string): Promise<ChatbotProduct[]> {
+    const isFlashSaleQuery = /flash\s*sale|giảm\s*sốc|săn\s*sale|khuyến\s*mãi\s*khung\s*giờ/i.test(message);
     const keywords = extractKeywords(message);
+
+    // Nếu hỏi về flash sale: ưu tiên lấy các sản phẩm đang chạy Flash Sale
+    if (isFlashSaleQuery) {
+      try {
+        const now = new Date();
+        const campaigns: any[] = await (this.prisma as any).flashSaleCampaign.findMany({
+          where: { isActive: true, startAt: { lte: now }, endAt: { gte: now } },
+          take: 3,
+          include: {
+            items: {
+              take: 10,
+              include: {
+                variant: {
+                  include: {
+                    inventory: { select: { availableQty: true } },
+                    product: {
+                      include: {
+                        brand: { select: { name: true } },
+                        variants: {
+                          where: { isActive: true },
+                          take: 5,
+                          include: { inventory: { select: { availableQty: true } } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        const flashProductsMap = new Map<string, ChatbotProduct>();
+        const IGNORED_FLASH_QUERY_WORDS = new Set([
+          'flash', 'sale', 'san', 'pham', 'sản', 'phẩm', 'mua', 'bán', 'ban',
+          'co', 'có', 'nao', 'nào', 'chay', 'chạy', 'đang', 'dang', 'shop',
+          'chuong', 'trinh', 'chương', 'trình', 'khuyen', 'mai', 'khuyến', 'mãi',
+          'giam', 'soc', 'giảm', 'sốc', 'gia', 'giá', 'xem', 'cac', 'các', 'cho',
+          'hien', 'hiện', 'tai', 'tại', 'hot', 'deal', 'deals', 'nhung', 'những',
+        ]);
+        const specificKeywords = keywords.filter((k) => !IGNORED_FLASH_QUERY_WORDS.has(k.toLowerCase()));
+
+        for (const c of campaigns || []) {
+          for (const it of c.items || []) {
+            const p = it.variant?.product;
+            if (!p || flashProductsMap.has(p.slug)) continue;
+
+            if (specificKeywords.length > 0) {
+              const textToMatch = `${p.name} ${p.brand?.name || ''}`.toLowerCase();
+              const matches = specificKeywords.some((kw) => textToMatch.includes(kw));
+              if (!matches) continue;
+            }
+
+            const flashPrice = Number(it.flashPrice);
+            flashProductsMap.set(p.slug, {
+              slug: p.slug,
+              name: p.name,
+              brand: p.brand?.name,
+              price: flashPrice,
+              image: it.variant?.imageUrl || p.thumbnailUrl || '/images/products/iphone-16-pro-max.png',
+              warrantyMonths: p.warrantyMonths ?? 12,
+              specsSummary: summarizeSpecs(p.specs) || undefined,
+              variants: (p.variants || [])
+                .filter((v: any) => (v.inventory?.availableQty || 0) > 0)
+                .map((v: any) => ({
+                  name: v.name,
+                  color: v.color ?? undefined,
+                  storage: v.storage ?? undefined,
+                  ram: v.ram ?? undefined,
+                  price: Number(v.price),
+                  compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : undefined,
+                  availableQty: v.inventory?.availableQty ?? 0,
+                  flashPrice: v.id === it.variant?.id ? flashPrice : undefined,
+                })),
+            });
+            if (flashProductsMap.size >= 3) break;
+          }
+          if (flashProductsMap.size >= 3) break;
+        }
+
+        if (flashProductsMap.size > 0) {
+          return Array.from(flashProductsMap.values());
+        }
+      } catch (err) {
+        this.logger.warn(`Flash sale searchProducts failed: ${(err as Error)?.message}`);
+      }
+    }
+
     if (keywords.length === 0) return [];
 
     const orConditions = keywords.slice(0, 4).flatMap((kw) => [
@@ -708,6 +797,7 @@ export class ChatbotService {
     return [
       `Bạn là trợ lý AI ${store.name}, trả lời tiếng Việt, ngắn gọn, thân thiện. Hotline ${store.hotline}, email ${store.email}, địa chỉ ${store.address}.`,
       'QUY TẮC BẮT BUỘC:',
+      '- Khi khách hỏi về Flash Sale / giảm giá / ưu đãi: hãy giới thiệu cụ thể các máy trong mục "Flash sale đang chạy" và CATALOG bên dưới (nêu rõ tên máy, giá flash, giá gốc, số suất còn). Tuyệt đối không nói shop không có flash sale nếu mục Flash sale bên dưới có dữ liệu.',
       '- Chỉ dùng giá/tồn/sản phẩm trong CATALOG dưới đây (giá theo từng bản màu/RAM/dung lượng, kèm tồn exact). Không bịa máy, giá, tồn kho.',
       '- Voucher/flash sale chỉ dùng danh sách VOUCHER / FLASH SALE dưới đây, ghi đúng mã, điều kiện, HSD, số suất còn.',
       '- Không bao giờ tiết lộ IMEI đầy đủ, chỉ dạng ***1234. IMEI chỉ tra cho chủ sở hữu đã login (xem WARRANTY).',
@@ -739,34 +829,45 @@ export class ChatbotService {
     warranty: ChatbotWarrantyLookup | null = null,
   ): Promise<string> {
     const apiKey = this.config.get<string>('GEMINI_API_KEY') || process.env.GEMINI_API_KEY || '';
-    const model = this.config.get<string>('GEMINI_MODEL') || process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+    const primaryModel = this.config.get<string>('GEMINI_MODEL') || process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+    const candidateModels = [primaryModel, 'gemini-2.5-flash'].filter((m, i, arr) => arr.indexOf(m) === i);
     const prompt = this.buildPrompt(message, history, faqs, products, personal, vouchers, flashSales, store, warranty);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: 'Trợ lý PhoneShop: trung thực, chỉ dùng dữ liệu shop, tiếng Việt.' }] },
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.4, maxOutputTokens: 768 },
-          }),
-        },
-      );
-      if (!res.ok) throw new Error(`Gemini HTTP ${res.status}`);
-      const data: any = await res.json();
-      const text: string =
-        data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('')?.trim() || '';
-      if (!text) throw new Error('Gemini empty response');
-      void maskImei;
-      return text;
-    } finally {
-      clearTimeout(timeout);
+    let lastError: any = null;
+    for (const model of candidateModels) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: 'Trợ lý PhoneShop: trung thực, chỉ dùng dữ liệu shop, tiếng Việt.' }] },
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.4, maxOutputTokens: 768 },
+            }),
+          },
+        );
+        if (!res.ok) {
+          throw new Error(`Gemini HTTP ${res.status}`);
+        }
+        const data: any = await res.json();
+        const text: string =
+          data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('')?.trim() || '';
+        if (!text) throw new Error('Gemini empty response');
+        void maskImei;
+        return text;
+      } catch (err: any) {
+        lastError = err;
+        this.logger.warn(`Gemini model ${model} failed: ${err?.message || err}`);
+      } finally {
+        clearTimeout(timeout);
+      }
     }
+
+    throw lastError || new Error('All Gemini candidate models failed');
   }
 }
