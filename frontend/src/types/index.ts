@@ -525,7 +525,7 @@ export interface WishlistResponse {
 export interface Address {
   id: string;
   userId: string;
-  type: 'HOME' | 'WORK' | 'OTHER';
+  type: 'HOME' | 'WORK' | 'OTHER' | 'OFFICE';
   recipientName: string;
   phone: string;
   addressLine1: string;
@@ -548,7 +548,7 @@ export interface CreateAddressPayload {
   ward?: string;
   district?: string;
   city: string;
-  type?: 'HOME' | 'WORK' | 'OTHER';
+  type?: 'HOME' | 'WORK' | 'OTHER' | 'OFFICE';
   isDefault?: boolean;
 }
 
