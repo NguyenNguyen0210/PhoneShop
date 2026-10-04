@@ -23,10 +23,13 @@ import {
   Ban,
   Undo2,
   Headphones,
+  Phone,
+  Pencil,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChangePasswordCard } from './components/ChangePasswordCard';
 import { CustomerTicketsTab } from './components/CustomerTicketsTab';
+import { EditProfileModal } from './components/EditProfileModal';
 
 export const ProfilePage: React.FC = () => {
   const { user, updateUser, fetchProfile } = useAuthStore();
@@ -37,6 +40,7 @@ export const ProfilePage: React.FC = () => {
   const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
   const [loadingReturns, setLoadingReturns] = useState(() => Boolean(user));
   const [cancellingOrder, setCancellingOrder] = useState<Order | null>(null);
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
   const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -315,26 +319,66 @@ export const ProfilePage: React.FC = () => {
               </div>
             )}
 
-            {/* Details Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-200">
-              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-1">
-                <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
-                  <User className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Họ và tên</span>
+            {/* Details Section */}
+            <div className="pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                    Thông tin cá nhân
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Quản lý họ tên, số điện thoại và email tài khoản
+                  </p>
                 </div>
-                <p className="text-slate-900 font-bold text-sm sm:text-base">
-                  {user.fullName || 'Chưa cập nhật'}
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsEditProfileModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition cursor-pointer self-start sm:self-auto"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Chỉnh sửa thông tin</span>
+                </button>
               </div>
 
-              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-1">
-                <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
-                  <Mail className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Địa chỉ Email</span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-1">
+                  <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
+                    <User className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Họ và tên</span>
+                  </div>
+                  <p className="text-slate-900 font-bold text-sm sm:text-base">
+                    {user.fullName || 'Chưa cập nhật'}
+                  </p>
                 </div>
-                <p className="text-slate-900 font-semibold text-sm sm:text-base">
-                  {user.email}
-                </p>
+
+                <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-1">
+                  <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
+                    <Phone className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Số điện thoại</span>
+                  </div>
+                  <p
+                    className={`text-sm sm:text-base ${
+                      user.phone
+                        ? 'text-slate-900 font-bold font-mono'
+                        : 'text-slate-400 italic font-medium'
+                    }`}
+                  >
+                    {user.phone || 'Chưa cập nhật'}
+                  </p>
+                </div>
+
+                <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-1">
+                  <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
+                    <Mail className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Địa chỉ Email</span>
+                  </div>
+                  <p
+                    className="text-slate-900 font-semibold text-sm sm:text-base truncate"
+                    title={user.email}
+                  >
+                    {user.email}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -500,6 +544,23 @@ export const ProfilePage: React.FC = () => {
           </div>
           <CustomerTicketsTab initialOrderId={new URLSearchParams(location.search).get('orderId')} />
         </div>
+
+        {/* Edit Profile Modal */}
+        {user && (
+          <EditProfileModal
+            isOpen={isEditProfileModalOpen}
+            onClose={() => setIsEditProfileModalOpen(false)}
+            user={user}
+            onSuccess={(updatedUser) => {
+              updateUser(updatedUser);
+              setMessage({
+                type: 'success',
+                text: 'Cập nhật thông tin cá nhân thành công!',
+              });
+              fetchProfile().catch(() => {});
+            }}
+          />
+        )}
 
         {/* Cancel Modal */}
         {cancellingOrder && (

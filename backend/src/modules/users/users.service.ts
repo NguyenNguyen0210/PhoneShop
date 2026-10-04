@@ -27,12 +27,31 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
-    const user = await this.prisma.user.update({
-      where: { id: userId },
-      data: dto,
-    });
-    delete (user as any).passwordHash;
-    return user;
+    const data: any = { ...dto };
+    if (data.phone !== undefined) {
+      const cleanPhone = typeof data.phone === 'string' ? data.phone.trim() : '';
+      data.phone = cleanPhone || null;
+    }
+    if (data.fullName && !data.firstName && !data.lastName) {
+      const parts = data.fullName.trim().split(/\s+/);
+      data.lastName = parts.length > 1 ? parts[0] : '';
+      data.firstName = parts.length > 1 ? parts.slice(1).join(' ') : parts[0] || '';
+      delete data.fullName;
+    }
+
+    try {
+      const user = await this.prisma.user.update({
+        where: { id: userId },
+        data,
+      });
+      delete (user as any).passwordHash;
+      return user;
+    } catch (err: any) {
+      if (err.code === 'P2002') {
+        throw new ConflictException('Số điện thoại này đã được đăng ký bởi tài khoản khác.');
+      }
+      throw err;
+    }
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto) {

@@ -380,6 +380,7 @@ export class AuthService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        phone: user.phone || null,
         avatarUrl: user.avatarUrl || null,
         avatar: user.avatarUrl || null,
         roles,
