@@ -6,8 +6,9 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Copy package files and install dependencies
+# (pin npm 11: package-lock was generated with npm 11, npm 10's `ci` mis-resolves it)
 COPY backend/package*.json ./
-RUN npm ci
+RUN npm install -g npm@11 && npm ci
 
 # Copy Prisma schema and generate client
 COPY backend/prisma ./prisma
