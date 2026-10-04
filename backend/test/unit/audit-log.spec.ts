@@ -15,6 +15,7 @@ describe('AuditLog Module Unit Tests', () => {
         count: jest.fn(),
         findMany: jest.fn(),
         findUnique: jest.fn(),
+        groupBy: jest.fn(),
       },
     };
 
@@ -202,6 +203,10 @@ describe('AuditLog Module Unit Tests', () => {
           .mockResolvedValueOnce(150) // totalLogs
           .mockResolvedValueOnce(25)  // todayLogs
           .mockResolvedValueOnce(12); // sensitiveOperations
+        (mockPrisma.auditLog.groupBy as any).mockResolvedValue([
+          { userId: 'u-1' },
+          { userId: 'u-2' },
+        ]); // activeOperators
 
         const result = await service.getStats();
 
@@ -232,6 +237,7 @@ describe('AuditLog Module Unit Tests', () => {
           totalLogs: 150,
           todayLogs: 25,
           sensitiveOperations: 12,
+          activeOperators: 2,
         });
       });
     });
@@ -239,7 +245,7 @@ describe('AuditLog Module Unit Tests', () => {
 
   describe('AuditLogController', () => {
     it('getStats should delegate to service.getStats', async () => {
-      const stats = { totalLogs: 100, todayLogs: 10, sensitiveOperations: 5 };
+      const stats = { totalLogs: 100, todayLogs: 10, sensitiveOperations: 5, activeOperators: 2 };
       jest.spyOn(service, 'getStats').mockResolvedValue(stats);
 
       const result = await controller.getStats();
