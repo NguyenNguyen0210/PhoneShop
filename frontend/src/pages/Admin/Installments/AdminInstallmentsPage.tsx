@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Card,
   Table,
@@ -31,6 +32,8 @@ import { InstallmentReviewModal } from './InstallmentReviewModal';
 const { Title, Text } = Typography;
 
 export const AdminInstallmentsPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const initialStatus = searchParams.get('status') || 'ALL';
   const [applications, setApplications] = useState<InstallmentApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -38,9 +41,16 @@ export const AdminInstallmentsPage: React.FC = () => {
   const [total, setTotal] = useState(0);
 
   // Filters
-  const [statusTab, setStatusTab] = useState<string>('ALL');
+  const [statusTab, setStatusTab] = useState<string>(initialStatus);
   const [providerFilter, setProviderFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam) {
+      setStatusTab(statusParam);
+    }
+  }, [searchParams]);
 
   // Selected for review modal
   const [selectedApp, setSelectedApp] = useState<InstallmentApplication | null>(null);

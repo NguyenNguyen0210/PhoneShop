@@ -142,11 +142,28 @@ export class ReturnsService {
     return ret;
   }
 
-  async findAll(page?: number | string, limit?: number | string) {
+  async findAll(page?: number | string, limit?: number | string, status?: string, search?: string) {
     const { page: safePage, limit: safeLimit, skip } = getPagination(page, limit, 10);
+    const where: any = {};
+    if (status && status !== 'ALL') {
+      const mappedStatus = status === 'PENDING' ? ReturnStatus.REQUESTED : status;
+      if (Object.values(ReturnStatus).includes(mappedStatus as ReturnStatus)) {
+        where.status = mappedStatus as ReturnStatus;
+      }
+    }
+    if (search?.trim()) {
+      const s = search.trim();
+      where.OR = [
+        { returnNumber: { contains: s, mode: 'insensitive' } },
+        { user: { email: { contains: s, mode: 'insensitive' } } },
+        { user: { phone: { contains: s } } },
+        { order: { orderNumber: { contains: s, mode: 'insensitive' } } },
+      ];
+    }
     const [total, data] = await Promise.all([
-      this.prisma.return.count(),
+      this.prisma.return.count({ where }),
       this.prisma.return.findMany({
+        where,
         include: {
           user: { select: { id: true, email: true, firstName: true, lastName: true } },
           items: true,

@@ -29,7 +29,11 @@ export const returnService = {
   async getMyReturns(): Promise<ReturnRequest[]> {
     const response = await apiClient.get('/returns/my');
     const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : data?.items ?? [];
+    return Array.isArray(data)
+      ? data
+      : Array.isArray(data?.data)
+      ? data.data
+      : data?.items ?? [];
   },
 
   async getMyReturnById(id: string): Promise<ReturnRequest> {
@@ -45,7 +49,11 @@ export const returnService = {
   async getAllReturnsAdmin(): Promise<ReturnRequest[]> {
     const response = await apiClient.get('/returns');
     const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : data?.items ?? [];
+    return Array.isArray(data)
+      ? data
+      : Array.isArray(data?.data)
+      ? data.data
+      : data?.items ?? [];
   },
 
   async getAdminReturns(params?: {
@@ -56,7 +64,11 @@ export const returnService = {
   }): Promise<ReturnRequest[]> {
     const response = await apiClient.get('/returns', { params });
     const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : data?.items ?? [];
+    return Array.isArray(data)
+      ? data
+      : Array.isArray(data?.data)
+      ? data.data
+      : data?.items ?? [];
   },
 
   async getReturnDetailAdmin(id: string): Promise<ReturnRequest> {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Card,
   Table,
@@ -24,13 +25,22 @@ import { ReturnDetailDrawer } from './components/ReturnDetailDrawer';
 const { Title, Text } = Typography;
 
 export const AdminReturnsPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const initialStatus = searchParams.get('status') || 'ALL';
   const [returns, setReturns] = useState<ReturnRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
 
   const [selectedReturn, setSelectedReturn] = useState<ReturnRequest | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam) {
+      setStatusFilter(statusParam);
+    }
+  }, [searchParams]);
 
   const loadReturns = useCallback(async () => {
     setLoading(true);

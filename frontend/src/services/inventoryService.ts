@@ -22,12 +22,21 @@ export const inventoryService = {
   }): Promise<InventoryRecord[]> => {
     const response = await apiClient.get('/inventory', { params });
     const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : data?.items ?? [];
+    return Array.isArray(data)
+      ? data
+      : Array.isArray(data?.data)
+      ? data.data
+      : data?.items ?? [];
   },
 
   getInventoryList: async (): Promise<InventoryRecord[]> => {
     const response = await apiClient.get('/inventory');
-    return response.data?.data ?? response.data;
+    const data = response.data?.data ?? response.data;
+    return Array.isArray(data)
+      ? data
+      : Array.isArray(data?.data)
+      ? data.data
+      : data?.items ?? [];
   },
 
   getLowStockAlerts: async (threshold?: number): Promise<InventoryRecord[]> => {
