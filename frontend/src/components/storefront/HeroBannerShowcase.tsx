@@ -20,11 +20,86 @@ interface BrandTheme {
   accentText: string;
 }
 
-const getBrandTheme = (brandName?: string, productName?: string): BrandTheme => {
+const getBrandTheme = (
+  brandName?: string,
+  productName?: string,
+  slug?: string,
+  variantColor?: string
+): BrandTheme => {
   const brand = (brandName || '').toLowerCase();
   const name = (productName || '').toLowerCase();
+  const s = (slug || '').toLowerCase();
+  const color = (variantColor || '').toLowerCase();
 
-  if (brand.includes('honor') || brand.includes('xiaomi') || name.includes('honor') || name.includes('xiaomi')) {
+  // 1. Specific flagship device overrides (seeded themes for hero banner models)
+  if (s.includes('honor-magic6') || name.includes('magic6')) {
+    // HONOR Magic6 Pro 5G Epi Green (Emerald / Jade Luxury Palette)
+    return {
+      bgGradient: 'from-emerald-50/90 via-teal-50/20 to-white',
+      glowColor: 'bg-emerald-500/30',
+      badgeStyle: 'bg-emerald-100 text-emerald-800 border-emerald-200/80',
+      primaryBtn: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25',
+      priceColor: 'text-emerald-600',
+      accentText: 'text-emerald-700',
+    };
+  }
+
+  if (s.includes('honor-x9b') || (name.includes('x9b') && !color.includes('black'))) {
+    // HONOR X9b Sunrise Orange
+    return {
+      bgGradient: 'from-orange-50/80 via-amber-50/20 to-white',
+      glowColor: 'bg-orange-500/35',
+      badgeStyle: 'bg-orange-100 text-orange-800 border-orange-200/60',
+      primaryBtn: 'bg-orange-600 hover:bg-orange-700 shadow-orange-500/25',
+      priceColor: 'text-orange-600',
+      accentText: 'text-orange-700',
+    };
+  }
+
+  if (s.includes('honor-200') || name.includes('honor 200')) {
+    // HONOR 200 Moonlight White / Marble Cyan
+    return {
+      bgGradient: 'from-sky-50/80 via-indigo-50/20 to-white',
+      glowColor: 'bg-cyan-500/25',
+      badgeStyle: 'bg-sky-100 text-sky-800 border-sky-200/70',
+      primaryBtn: 'bg-sky-600 hover:bg-sky-700 shadow-sky-500/25',
+      priceColor: 'text-sky-700',
+      accentText: 'text-sky-800',
+    };
+  }
+
+  if (s.includes('sony') || brand.includes('sony') || name.includes('xperia')) {
+    return {
+      bgGradient: 'from-slate-100/90 via-sky-50/20 to-white',
+      glowColor: 'bg-teal-500/25',
+      badgeStyle: 'bg-slate-100 text-slate-800 border-slate-200/80',
+      primaryBtn: 'bg-slate-900 hover:bg-black shadow-slate-900/25',
+      priceColor: 'text-slate-900',
+      accentText: 'text-slate-700',
+    };
+  }
+
+  // 2. Color keyword detection (e.g. Green, Emerald, Mint, Olive, Xanh lá)
+  if (
+    color.includes('green') ||
+    color.includes('xanh') ||
+    color.includes('emerald') ||
+    color.includes('mint') ||
+    color.includes('sage') ||
+    name.includes('green')
+  ) {
+    return {
+      bgGradient: 'from-emerald-50/90 via-teal-50/20 to-white',
+      glowColor: 'bg-emerald-500/30',
+      badgeStyle: 'bg-emerald-100 text-emerald-800 border-emerald-200/80',
+      primaryBtn: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25',
+      priceColor: 'text-emerald-600',
+      accentText: 'text-emerald-700',
+    };
+  }
+
+  // 3. Brand-level defaults
+  if (brand.includes('xiaomi') || name.includes('xiaomi')) {
     return {
       bgGradient: 'from-orange-50/80 via-amber-50/20 to-white',
       glowColor: 'bg-orange-500/35',
@@ -57,17 +132,6 @@ const getBrandTheme = (brandName?: string, productName?: string): BrandTheme => 
     };
   }
 
-  if (brand.includes('sony') || name.includes('xperia')) {
-    return {
-      bgGradient: 'from-slate-100/90 via-sky-50/20 to-white',
-      glowColor: 'bg-teal-500/25',
-      badgeStyle: 'bg-slate-100 text-slate-800 border-slate-200/80',
-      primaryBtn: 'bg-slate-900 hover:bg-black shadow-slate-900/25',
-      priceColor: 'text-slate-900',
-      accentText: 'text-slate-700',
-    };
-  }
-
   return {
     bgGradient: 'from-indigo-50/70 via-slate-50/30 to-white',
     glowColor: 'bg-indigo-500/25',
@@ -94,7 +158,7 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
       const monthlyPay = `${new Intl.NumberFormat('vi-VN').format(Math.round(price / 12))}₫/tháng`;
       const cutoutImage = getHeroCutoutImage(p);
       const fallbackImage = p.thumbnail ?? p.thumbnailUrl ?? FALLBACK_PRODUCT_IMAGE;
-      const theme = getBrandTheme(p.brand?.name, p.name);
+      const theme = getBrandTheme(p.brand?.name, p.name, p.slug, primaryVariant?.color);
 
       const specs: any = p.specs || {};
       const floatingBadges = [];
