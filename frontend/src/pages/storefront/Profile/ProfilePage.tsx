@@ -53,6 +53,10 @@ export const ProfilePage: React.FC = () => {
       setTimeout(() => {
         document.getElementById('tickets-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 200);
+    } else if (location.hash === '#password' || location.hash === '#change-password') {
+      setTimeout(() => {
+        document.getElementById('password-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
     }
   }, [location.pathname, location.hash, location.search]);
 
