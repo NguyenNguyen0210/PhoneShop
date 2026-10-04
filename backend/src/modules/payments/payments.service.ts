@@ -530,10 +530,23 @@ export class PaymentsService {
       // 5. Trigger email notification
       try {
         if (order.user?.email) {
+          const recipientName =
+            [order.user.firstName, order.user.lastName].filter(Boolean).join(' ') || undefined;
+          const items = (order.items || []).map((it: any) => ({
+            name: it.productName,
+            quantity: it.quantity,
+            price: Number(it.unitPrice),
+          }));
+
           await this.emailService.sendOrderConfirmation(
             order.user.email,
             order.orderNumber,
             Number(order.totalAmount),
+            {
+              recipientName,
+              paymentMethod: 'Cổng thanh toán trực tuyến VNPAY (Đã thanh toán)',
+              items,
+            },
           );
         }
       } catch (emailErr) {

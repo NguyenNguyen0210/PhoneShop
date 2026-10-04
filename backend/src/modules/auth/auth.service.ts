@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -20,6 +20,8 @@ const DUMMY_BCRYPT_HASH =
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
@@ -65,6 +67,17 @@ export class AuthService {
         roles: { include: { role: true } },
       },
     });
+
+    try {
+      await this.emailService.sendWelcomeEmail(
+        user.email,
+        `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Quý khách',
+      );
+    } catch (emailErr) {
+      this.logger.warn(
+        `Failed to send welcome email to ${user.email}: ${(emailErr as Error).message}`,
+      );
+    }
 
     return this.generateTokens(user);
   }
@@ -395,6 +408,9 @@ export class AuthService {
     });
 
     if (!user) {
+      this.logger.warn(
+        `Password reset requested for non-existent email: "${normalizedEmail}". No email will be sent. (If testing, register this email first)`,
+      );
       return {
         success: true,
         message:

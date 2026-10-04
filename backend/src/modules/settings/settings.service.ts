@@ -6,6 +6,7 @@ import type { Cache } from 'cache-manager';
 import { SettingItemDto, TestEmailDto, TestStorageDto, TestVietQrDto } from './dto/settings.dto';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import * as nodemailer from 'nodemailer';
+import { buildTestDiagnosticEmail } from '../../infrastructure/email/email-template.builder';
 
 export const MASKED_SECRET = '••••••••••••';
 
@@ -223,12 +224,19 @@ export class SystemSettingsService {
   }
 
   async testEmail(dto: TestEmailDto, adminEmail?: string): Promise<{ success: boolean; message: string }> {
-    const host = await this.get('EMAIL_HOST');
-    const port = Number(await this.get('EMAIL_PORT', '587'));
-    const secure = (await this.get('EMAIL_SECURE', 'false')) === 'true';
-    const user = await this.get('EMAIL_USER');
-    const pass = await this.get('EMAIL_PASS');
-    const from = await this.get('EMAIL_FROM', 'MobileCommerce <no-reply@mobilecommerce.vn>');
+    const rawHost = dto.host || (await this.get('EMAIL_HOST'));
+    const rawPort = dto.port !== undefined ? String(dto.port) : await this.get('EMAIL_PORT', '587');
+    const port = Number(rawPort?.replace(/^["']|["']$/g, '')) || 587;
+    const rawSecure = dto.secure !== undefined ? String(dto.secure) : await this.get('EMAIL_SECURE', 'false');
+    const secure = rawSecure === 'true' || port === 465;
+    const rawUser = dto.user || (await this.get('EMAIL_USER'));
+    const passCandidate = dto.pass && dto.pass !== MASKED_SECRET ? dto.pass : await this.get('EMAIL_PASS');
+    const rawFrom = dto.from || (await this.get('EMAIL_FROM', 'MobileCommerce <no-reply@mobilecommerce.vn>'));
+
+    const host = rawHost?.replace(/^["']|["']$/g, '').trim();
+    const user = rawUser?.replace(/^["']|["']$/g, '').trim();
+    const pass = passCandidate?.replace(/^["']|["']$/g, '').trim();
+    const from = rawFrom?.replace(/^["']|["']$/g, '').trim() || 'MobileCommerce <no-reply@mobilecommerce.vn>';
 
     const targetEmail = dto.toEmail || adminEmail || user;
     if (!targetEmail) {
@@ -245,11 +253,20 @@ export class SystemSettingsService {
       auth: { user, pass },
     });
 
+    const startTime = Date.now();
     await transporter.sendMail({
       from,
       to: targetEmail,
-      subject: '[MobileCommerce] Kiểm tra cấu hình máy chủ Email SMTP',
-      text: 'Xin chào, đây là email kiểm tra kết nối từ trang Quản trị Hệ thống MobileCommerce. Kết nối SMTP hoạt động tốt!',
+      subject: '[Hệ thống] Kiểm tra kết nối SMTP thành công',
+      html: buildTestDiagnosticEmail({
+        host,
+        port,
+        user,
+        from,
+        latencyMs: Math.max(1, Date.now() - startTime),
+        secure,
+        environment: process.env.NODE_ENV || 'development',
+      }),
     });
 
     return { success: true, message: `Email kiểm tra đã được gửi thành công đến ${targetEmail}` };

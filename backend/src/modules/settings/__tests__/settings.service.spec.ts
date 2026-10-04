@@ -126,4 +126,18 @@ describe('SystemSettingsService', () => {
     expect(cache.del).toHaveBeenCalledWith('settings:key:STORE_NAME');
     expect(prisma.auditLog.create).toHaveBeenCalled();
   });
+
+  it('testEmail should throw error if no target email', async () => {
+    await expect(service.testEmail({})).rejects.toThrow('Không có email nhận kiểm thử');
+  });
+
+  it('testEmail should throw error if credentials missing', async () => {
+    (cache.get as any).mockResolvedValue(null);
+    (prisma.systemSetting.findUnique as any).mockResolvedValue(null);
+    (config.get as any).mockReturnValue(undefined);
+
+    await expect(service.testEmail({ toEmail: 'test@example.com' })).rejects.toThrow(
+      'Thông số SMTP (HOST, USER, PASS) chưa được cấu hình đầy đủ',
+    );
+  });
 });

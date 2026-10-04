@@ -40,6 +40,12 @@ export interface TestStoragePayload {
 
 export interface TestEmailPayload {
   toEmail?: string;
+  host?: string;
+  port?: number | string;
+  secure?: boolean | string;
+  user?: string;
+  pass?: string;
+  from?: string;
 }
 
 export const settingsService = {

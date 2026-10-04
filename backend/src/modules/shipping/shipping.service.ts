@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../../infrastructure/email/email.service';
 import {
   CreateShippingDto,
   AssignShippingDto,
@@ -30,6 +31,8 @@ export class ShippingService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => OrdersService))
     private readonly ordersService: OrdersService,
+    @Optional()
+    private readonly emailService?: EmailService,
   ) {}
 
   /**
@@ -179,7 +182,10 @@ export class ShippingService {
 
     if (dto.status === ShippingStatus.PICKED_UP || dto.status === ShippingStatus.IN_TRANSIT) {
       try {
-        const order = await this.prisma.order.findUnique({ where: { id: shipping.orderId } });
+        const order = await this.prisma.order.findUnique({
+          where: { id: shipping.orderId },
+          include: { user: { select: { email: true } } },
+        });
         if (order && (order.status === OrderStatus.CONFIRMED || order.status === OrderStatus.PROCESSING)) {
           if (order.status === OrderStatus.CONFIRMED) {
             try {
@@ -191,6 +197,21 @@ export class ShippingService {
             }
           }
           await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.SHIPPING);
+        }
+
+        if (this.emailService && order?.user?.email) {
+          try {
+            await this.emailService.sendShippingNotification(
+              order.user.email,
+              order.orderNumber,
+              updated.trackingNumber || 'Đang cập nhật',
+              updated.providerName || 'Đơn vị vận chuyển',
+            );
+          } catch (e) {
+            this.logger.warn(
+              `Failed to send shipping email for order ${shipping.orderId}: ${(e as Error).message}`,
+            );
+          }
         }
       } catch (err) {
         this.logger.warn(

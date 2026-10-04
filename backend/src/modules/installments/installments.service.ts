@@ -4,8 +4,10 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../../infrastructure/email/email.service';
 import {
   CreateInstallmentApplicationDto,
   QueryInstallmentDto,
@@ -22,7 +24,10 @@ import {
 export class InstallmentsService {
   private readonly logger = new Logger(InstallmentsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly emailService?: EmailService,
+  ) {}
 
   async findAll(query: QueryInstallmentDto) {
     const page = Number(query.page) > 0 ? Number(query.page) : 1;
@@ -281,7 +286,7 @@ export class InstallmentsService {
       },
     };
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       if (dto.status === 'APPROVED') {
         // Approve only a live hold: the order must still be PENDING and its
         // hold must not have expired — approving a released/cancelled order
@@ -416,5 +421,49 @@ export class InstallmentsService {
         });
       }
     });
+
+    const emailService = this.emailService;
+    if (emailService && (result as any)?.user?.email && (result as any)?.order) {
+      try {
+        const u = (result as any).user;
+        const o = (result as any).order;
+        const recipientName =
+          [u.firstName, u.lastName].filter(Boolean).join(' ') ||
+          (result as any).fullName ||
+          undefined;
+
+        const providerLabel =
+          (result as any).provider === 'HOME_CREDIT'
+            ? 'Home Credit'
+            : (result as any).provider === 'FE_CREDIT'
+              ? 'FE Credit'
+              : String((result as any).provider);
+
+        if ((result as any).status === InstallmentStatus.APPROVED) {
+          await emailService.sendInstallmentApproved(u.email, {
+            orderNumber: o.orderNumber,
+            recipientName,
+            providerName: providerLabel,
+            prepayAmount: Number((result as any).prepayAmount || 0),
+            monthlyAmount: Number((result as any).monthlyAmount || 0),
+            termMonths: Number((result as any).termMonths || 0),
+          });
+        } else if ((result as any).status === InstallmentStatus.REJECTED) {
+          await emailService.sendInstallmentRejected(u.email, {
+            orderNumber: o.orderNumber,
+            recipientName,
+            rejectionReason:
+              (result as any).rejectionReason ||
+              'Hồ sơ chưa đạt tiêu chuẩn thẩm định tín dụng',
+          });
+        }
+      } catch (emailErr) {
+        this.logger.warn(
+          `Failed to dispatch installment email for application ${id}: ${(emailErr as Error).message}`,
+        );
+      }
+    }
+
+    return result;
   }
 }

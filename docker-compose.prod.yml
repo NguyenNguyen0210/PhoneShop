@@ -32,7 +32,7 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env.example # In production, use .env or pass through CI/CD
+      - .env # In production, use .env or pass through CI/CD
     environment:
       - NODE_ENV=production
       - REDIS_HOST=redis

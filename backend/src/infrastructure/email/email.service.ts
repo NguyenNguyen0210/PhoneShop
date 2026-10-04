@@ -1,18 +1,46 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma/prisma.service';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import {
+  OrderItemSummary,
+  OrderCancelledOptions,
+  OrderDeliveredOptions,
+  WarrantyItemSummary,
+  InstallmentApprovedOptions,
+  InstallmentRejectedOptions,
+  buildWelcomeEmail,
+  buildPasswordResetEmail,
+  buildOrderConfirmationEmail,
+  buildShippingNotificationEmail,
+  buildReturnApprovedEmail,
+  buildOrderCancelledEmail,
+  buildOrderDeliveredEmail,
+  buildInstallmentApprovedEmail,
+  buildInstallmentRejectedEmail,
+} from './email-template.builder';
+
+export {
+  OrderItemSummary,
+  OrderCancelledOptions,
+  OrderDeliveredOptions,
+  WarrantyItemSummary,
+  InstallmentApprovedOptions,
+  InstallmentRejectedOptions,
+};
 
 export interface SendEmailOptions {
   to: string | string[];
   subject: string;
   text?: string;
   html?: string;
+  from?: string;
 }
 
 // M16: minimal HTML escaper for staff/partner-entered values interpolated
 // into email templates.
-export function escapeHtml(value: string): string {
+export function escapeHtml(value?: string | null): string {
   return (value ?? '').replace(/[&<>"']/g, (c) => {
     switch (c) {
       case '&': return '&amp;';
@@ -28,40 +56,110 @@ export function escapeHtml(value: string): string {
 @Injectable()
 export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: Transporter;
-  private from: string;
-  private isMock: boolean;
+  private transporter: Transporter | null = null;
+  private currentConfigKey = '';
+  public isMock = true;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @Optional() private readonly prisma?: PrismaService,
+  ) {}
 
-  onModuleInit() {
-    const host = this.config.get<string>('EMAIL_HOST');
-    const user = this.config.get<string>('EMAIL_USER');
-    const pass = this.config.get<string>('EMAIL_PASS');
+  private clean(val?: string | null): string {
+    return (val ?? '').trim().replace(/^["']|["']$/g, '');
+  }
 
-    this.from = this.config.get<string>('EMAIL_FROM', 'no-reply@mobilecommerce.vn');
-    this.isMock = !host || !user || !pass;
+  async getResolvedConfig() {
+    let dbHost: string | undefined;
+    let dbUser: string | undefined;
+    let dbPass: string | undefined;
+    let dbPort: string | undefined;
+    let dbSecure: string | undefined;
+    let dbFrom: string | undefined;
 
-    if (this.isMock) {
+    if (this.prisma) {
+      try {
+        const records = await this.prisma.systemSetting.findMany({
+          where: { group: { equals: 'EMAIL', mode: 'insensitive' } },
+        });
+        for (const rec of records) {
+          if (rec.key === 'EMAIL_HOST') dbHost = rec.value;
+          if (rec.key === 'EMAIL_USER') dbUser = rec.value;
+          if (rec.key === 'EMAIL_PASS') dbPass = rec.value;
+          if (rec.key === 'EMAIL_PORT') dbPort = rec.value;
+          if (rec.key === 'EMAIL_SECURE') dbSecure = rec.value;
+          if (rec.key === 'EMAIL_FROM') dbFrom = rec.value;
+        }
+      } catch (err) {
+        // Fallback to ConfigService if DB query fails
+      }
+    }
+
+    const host = this.clean(dbHost || this.config.get<string>('EMAIL_HOST'));
+    const user = this.clean(dbUser || this.config.get<string>('EMAIL_USER'));
+    const pass = this.clean(dbPass || this.config.get<string>('EMAIL_PASS'));
+    const rawPort = this.clean(dbPort || String(this.config.get('EMAIL_PORT', 587)));
+    const port = Number(rawPort) || 587;
+    const rawSecure = this.clean(
+      dbSecure !== undefined ? dbSecure : String(this.config.get('EMAIL_SECURE', 'false')),
+    );
+    const secure = rawSecure === 'true' || port === 465;
+    const from =
+      this.clean(dbFrom || this.config.get<string>('EMAIL_FROM')) ||
+      'MobileCommerce <no-reply@mobilecommerce.vn>';
+
+    return { host, user, pass, port, secure, from };
+  }
+
+  async onModuleInit() {
+    try {
+      await this.initTransporter();
+    } catch (err) {
+      this.logger.warn(
+        `Failed to initialize email transporter on module init: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  async initTransporter(): Promise<{
+    transporter: Transporter | null;
+    from: string;
+    isMock: boolean;
+  }> {
+    const cfg = await this.getResolvedConfig();
+    const isMock = !cfg.host || !cfg.user || !cfg.pass;
+    this.isMock = isMock;
+
+    if (isMock) {
       this.logger.warn(
         'EMAIL credentials not set (EMAIL_HOST / EMAIL_USER / EMAIL_PASS). ' +
           'Running without SMTP — emails will only be logged to console, nothing is sent.',
       );
-      return;
+      this.transporter = null;
+      return { transporter: null, from: cfg.from, isMock: true };
     }
 
-    this.transporter = nodemailer.createTransport({
-      host,
-      port: this.config.get<number>('EMAIL_PORT', 587),
-      secure: this.config.get<string>('EMAIL_SECURE') === 'true',
-      auth: { user, pass },
-    });
+    const configKey = `${cfg.host}:${cfg.port}:${cfg.secure}:${cfg.user}:${cfg.pass}`;
+    if (!this.transporter || this.currentConfigKey !== configKey) {
+      this.transporter = nodemailer.createTransport({
+        host: cfg.host,
+        port: cfg.port,
+        secure: cfg.secure,
+        auth: { user: cfg.user, pass: cfg.pass },
+      });
+      this.currentConfigKey = configKey;
+      this.logger.log(
+        `Email transporter initialized (host=${cfg.host}, port=${cfg.port}, user=${cfg.user})`,
+      );
+    }
 
-    this.logger.log(`Email transporter initialized (host=${host})`);
+    return { transporter: this.transporter, from: cfg.from, isMock: false };
   }
 
   async send(options: SendEmailOptions): Promise<void> {
-    if (this.isMock) {
+    const { transporter, from, isMock } = await this.initTransporter();
+
+    if (isMock || !transporter) {
       this.logger.log(
         `[EMAIL MOCK] To: ${Array.isArray(options.to) ? options.to.join(', ') : options.to} | Subject: ${options.subject}`,
       );
@@ -69,8 +167,8 @@ export class EmailService implements OnModuleInit {
     }
 
     try {
-      await this.transporter.sendMail({
-        from: this.from,
+      await transporter.sendMail({
+        from: options.from || from,
         to: options.to,
         subject: options.subject,
         text: options.text,
@@ -83,20 +181,41 @@ export class EmailService implements OnModuleInit {
     }
   }
 
-  async sendOrderConfirmation(to: string, orderNumber: string, totalAmount: number): Promise<void> {
+  async sendWelcomeEmail(to: string, recipientName: string): Promise<void> {
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
     await this.send({
       to,
-      subject: `[MobileCommerce] Xác nhận đơn hàng #${orderNumber}`,
-      html: `
-        <div style="font-family:sans-serif;max-width:600px;margin:auto">
-          <h2 style="color:#1a1a2e">🎉 Cảm ơn bạn đã đặt hàng!</h2>
-          <p>Đơn hàng <strong>#${orderNumber}</strong> của bạn đã được xác nhận.</p>
-          <p>Tổng tiền: <strong style="color:#e94560">${totalAmount.toLocaleString('vi-VN')} đ</strong></p>
-          <p>Chúng tôi sẽ thông báo ngay khi đơn hàng được giao đi.</p>
-          <hr/>
-          <small style="color:#888">MobileCommerce — Chuyên thiết bị di động</small>
-        </div>
-      `,
+      subject: 'Chào mừng bạn đến với PhoneShop',
+      html: buildWelcomeEmail(recipientName, frontendUrl),
+    });
+  }
+
+  async sendOrderConfirmation(
+    to: string,
+    orderNumber: string,
+    totalAmount: number,
+    options?: {
+      recipientName?: string;
+      items?: OrderItemSummary[];
+      paymentMethod?: string;
+      shippingAddress?: string;
+      orderUrl?: string;
+    },
+  ): Promise<void> {
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
+    const orderUrl = options?.orderUrl || `${frontendUrl}/account/orders`;
+    await this.send({
+      to,
+      subject: `Xác nhận đơn hàng #${orderNumber}`,
+      html: buildOrderConfirmationEmail({
+        orderNumber,
+        totalAmount,
+        recipientName: options?.recipientName,
+        items: options?.items,
+        paymentMethod: options?.paymentMethod,
+        shippingAddress: options?.shippingAddress,
+        orderUrl,
+      }),
     });
   }
 
@@ -105,29 +224,13 @@ export class EmailService implements OnModuleInit {
     resetLink: string,
     recipientName?: string,
   ): Promise<void> {
-    const greeting = recipientName ? `Xin chào <strong>${escapeHtml(recipientName)}</strong>,` : 'Xin chào bạn,';
     if (this.isMock) {
       this.logger.log(`[EMAIL MOCK] Password reset link for ${to}: ${resetLink}`);
     }
     await this.send({
       to,
-      subject: '[PhoneShop] Yêu cầu đặt lại mật khẩu',
-      html: `
-        <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:16px">
-          <h2 style="color:#2563eb;margin-bottom:16px">🔐 Đặt lại mật khẩu tài khoản PhoneShop</h2>
-          <p>${greeting}</p>
-          <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản liên kết với địa chỉ email này.</p>
-          <div style="margin:28px 0;text-align:center">
-            <a href="${resetLink}" style="background-color:#2563eb;color:#ffffff;padding:12px 24px;font-weight:bold;text-decoration:none;border-radius:10px;display:inline-block">
-              Đặt lại mật khẩu
-            </a>
-          </div>
-          <p style="font-size:13px;color:#64748b">Liên kết này có hiệu lực trong <strong>15 phút</strong> và chỉ sử dụng được 01 lần duy nhất.</p>
-          <p style="font-size:12px;color:#94a3b8">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email. Mật khẩu hiện tại của bạn vẫn an toàn tuyệt đối.</p>
-          <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0"/>
-          <small style="color:#94a3b8">PhoneShop — Hệ thống bán lẻ thiết bị di động chính hãng</small>
-        </div>
-      `,
+      subject: 'Đặt lại mật khẩu tài khoản PhoneShop',
+      html: buildPasswordResetEmail(resetLink, recipientName, 15),
     });
   }
 
@@ -136,37 +239,68 @@ export class EmailService implements OnModuleInit {
     orderNumber: string,
     trackingNumber: string,
     providerName: string,
+    trackingUrl?: string,
   ): Promise<void> {
-    // M16: provider/tracking values are staff/partner-entered free text —
-    // escape before interpolating into HTML (stored XSS via email client).
-    const safeProvider = escapeHtml(providerName);
-    const safeTracking = escapeHtml(trackingNumber);
-    const safeOrder = escapeHtml(orderNumber);
     await this.send({
       to,
-      subject: `[MobileCommerce] Đơn hàng #${safeOrder} đang được giao`,
-      html: `
-        <div style="font-family:sans-serif;max-width:600px;margin:auto">
-          <h2 style="color:#1a1a2e">🚚 Đơn hàng đang trên đường!</h2>
-          <p>Đơn hàng <strong>#${safeOrder}</strong> đã được bàn giao cho <strong>${safeProvider}</strong>.</p>
-          <p>Mã vận đơn: <strong style="color:#e94560">${safeTracking}</strong></p>
-          <p>Bạn có thể tra cứu trạng thái giao hàng trên website của đơn vị vận chuyển.</p>
-        </div>
-      `,
+      subject: `Đơn hàng #${orderNumber} đang được giao`,
+      html: buildShippingNotificationEmail(orderNumber, trackingNumber, providerName, trackingUrl),
     });
   }
 
-  async sendReturnApproved(to: string, returnNumber: string): Promise<void> {
+  async sendReturnApproved(
+    to: string,
+    returnNumber: string,
+    returnAddress?: string,
+  ): Promise<void> {
     await this.send({
       to,
-      subject: `[MobileCommerce] Yêu cầu hoàn hàng #${returnNumber} đã được duyệt`,
-      html: `
-        <div style="font-family:sans-serif;max-width:600px;margin:auto">
-          <h2 style="color:#1a1a2e">✅ Yêu cầu hoàn hàng được chấp thuận</h2>
-          <p>Yêu cầu hoàn hàng <strong>#${returnNumber}</strong> của bạn đã được xét duyệt.</p>
-          <p>Vui lòng gửi hàng về địa chỉ của chúng tôi trong vòng <strong>3 ngày làm việc</strong>.</p>
-        </div>
-      `,
+      subject: `Cập nhật yêu cầu đổi trả #${returnNumber}`,
+      html: buildReturnApprovedEmail(returnNumber, returnAddress),
+    });
+  }
+
+  async sendOrderCancelled(
+    to: string,
+    options: OrderCancelledOptions,
+  ): Promise<void> {
+    await this.send({
+      to,
+      subject: `Thông báo hủy đơn hàng #${options.orderNumber}`,
+      html: buildOrderCancelledEmail(options),
+    });
+  }
+
+  async sendOrderDelivered(
+    to: string,
+    options: OrderDeliveredOptions,
+  ): Promise<void> {
+    await this.send({
+      to,
+      subject: `Đơn hàng #${options.orderNumber} đã giao thành công`,
+      html: buildOrderDeliveredEmail(options),
+    });
+  }
+
+  async sendInstallmentApproved(
+    to: string,
+    options: InstallmentApprovedOptions,
+  ): Promise<void> {
+    await this.send({
+      to,
+      subject: `Hồ sơ trả góp cho đơn hàng #${options.orderNumber} đã được phê duyệt`,
+      html: buildInstallmentApprovedEmail(options),
+    });
+  }
+
+  async sendInstallmentRejected(
+    to: string,
+    options: InstallmentRejectedOptions,
+  ): Promise<void> {
+    await this.send({
+      to,
+      subject: `Thông báo kết quả hồ sơ trả góp đơn hàng #${options.orderNumber}`,
+      html: buildInstallmentRejectedEmail(options),
     });
   }
 }

@@ -5,10 +5,12 @@ import {
   ForbiddenException,
   ConflictException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../../infrastructure/email/email.service';
 import { CreateOrderDto, CancelOrderDto } from './dto/order.dto';
 import {
   OrderStatus,
@@ -61,6 +63,7 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue('order-queue') private readonly orderQueue: Queue,
+    @Optional() private readonly emailService?: EmailService,
   ) {}
 
   private generateOrderNumber(): string {
@@ -581,6 +584,64 @@ export class OrdersService {
       if (typeof (timer as any)?.unref === 'function') (timer as any).unref();
     }
 
+    if (this.emailService) {
+      try {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { email: true, firstName: true, lastName: true },
+        });
+        if (user?.email) {
+          let addressText: string | undefined;
+          if (order.addressId) {
+            const addr = await this.prisma.address.findUnique({
+              where: { id: order.addressId },
+            });
+            if (addr) {
+              addressText = [addr.addressLine1, addr.ward, addr.district, addr.city]
+                .filter(Boolean)
+                .join(', ');
+            }
+          }
+
+          const paymentMethodLabel =
+            dto.paymentMethod === PaymentMethod.COD
+              ? 'Thanh toán khi nhận hàng (COD)'
+              : dto.paymentMethod === PaymentMethod.BANK_TRANSFER
+                ? 'Chuyển khoản VietQR / Ngân hàng'
+                : dto.paymentMethod === PaymentMethod.VNPAY
+                  ? 'Thanh toán điện tử VNPAY'
+                  : dto.paymentMethod === PaymentMethod.INSTALLMENT
+                    ? 'Mua trả góp 0%'
+                    : 'Tiêu chuẩn';
+
+          const items = (order.items || []).map((it: any) => ({
+            name: it.productName,
+            quantity: it.quantity,
+            price: Number(it.unitPrice),
+          }));
+
+          const recipientName =
+            [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined;
+
+          await this.emailService.sendOrderConfirmation(
+            user.email,
+            order.orderNumber,
+            Number(order.totalAmount),
+            {
+              recipientName,
+              items,
+              paymentMethod: paymentMethodLabel,
+              shippingAddress: addressText,
+            },
+          );
+        }
+      } catch (emailErr) {
+        this.logger.warn(
+          `Failed to send order confirmation email for ${order.id}: ${(emailErr as Error).message}`,
+        );
+      }
+    }
+
     return order;
   }
 
@@ -592,7 +653,10 @@ export class OrdersService {
   async releaseExpiredHold(orderId: string): Promise<boolean> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
-      include: { items: true },
+      include: {
+        items: true,
+        user: { select: { email: true, firstName: true, lastName: true } },
+      },
     });
     if (!order || order.status !== OrderStatus.PENDING) return false;
 
@@ -640,6 +704,24 @@ export class OrdersService {
 
     if (cancelled) {
       this.logger.log(`Fallback released expired hold for order ${orderId}`);
+      const emailService = this.emailService;
+      if (emailService && (order as any).user?.email) {
+        try {
+          const u = (order as any).user;
+          const recipientName =
+            [u.firstName, u.lastName].filter(Boolean).join(' ') || undefined;
+          await emailService.sendOrderCancelled(u.email, {
+            orderNumber: order.orderNumber,
+            recipientName,
+            cancelledReason: 'Quá thời hạn 15 phút giữ hàng chưa hoàn tất thanh toán',
+            voucherRestored: Boolean((order as any).voucherCode),
+          });
+        } catch (emailErr) {
+          this.logger.warn(
+            `Failed to send hold expired cancellation email for order ${orderId}: ${(emailErr as Error).message}`,
+          );
+        }
+      }
     }
     return cancelled;
   }
@@ -862,7 +944,7 @@ export class OrdersService {
     // silently dropping the request body (user-cancel already stores its own).
     if (newStatus === OrderStatus.CANCELLED && reason) data.cancelledReason = reason;
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // When transitioning from PENDING, CONFIRMED, PROCESSING, or PACKED to CANCELLED: release reserved IMEIs back to AVAILABLE and restore inventory availableQty
       if (
         newStatus === OrderStatus.CANCELLED &&
@@ -1088,10 +1170,62 @@ export class OrdersService {
       }
       return { ...order, ...data };
     });
+
+    const emailService = this.emailService;
+    if (emailService && (order as any).user?.email) {
+      try {
+        const u = (order as any).user;
+        const recipientName =
+          [u.firstName, u.lastName].filter(Boolean).join(' ') || undefined;
+
+        if (newStatus === OrderStatus.CANCELLED) {
+          await emailService.sendOrderCancelled(u.email, {
+            orderNumber: order.orderNumber,
+            recipientName,
+            cancelledReason: reason || 'Đơn hàng đã được hủy bởi quản trị viên',
+            voucherRestored: Boolean((order as any).voucherCode),
+          });
+        } else if (newStatus === OrderStatus.DELIVERED || newStatus === OrderStatus.COMPLETED) {
+          const itemIds = (order.items || []).map((it: any) => it.id);
+          const warranties = await this.prisma.warranty.findMany({
+            where: { orderItemId: { in: itemIds } },
+            include: {
+              orderItem: true,
+              imeiDevice: true,
+            },
+          });
+
+          const warrantySummaries = warranties.map((w) => ({
+            productName: w.orderItem?.productName || 'Thiết bị',
+            imei: w.imeiDevice?.imei || undefined,
+            warrantyCode: w.warrantyCode,
+            startDate: w.startDate ? new Date(w.startDate).toLocaleDateString('vi-VN') : undefined,
+            endDate: w.endDate ? new Date(w.endDate).toLocaleDateString('vi-VN') : '',
+          }));
+
+          await emailService.sendOrderDelivered(u.email, {
+            orderNumber: order.orderNumber,
+            recipientName,
+            warranties: warrantySummaries,
+          });
+        }
+      } catch (emailErr) {
+        this.logger.warn(
+          `Failed to dispatch email for order ${id} status transition ${newStatus}: ${(emailErr as Error).message}`,
+        );
+      }
+    }
+
+    return result;
   }
 
   async cancelMyOrder(userId: string, id: string, dto: CancelOrderDto) {
-    const order = await this.prisma.order.findFirst({ where: { id, userId } });
+    const order = await this.prisma.order.findFirst({
+      where: { id, userId },
+      include: {
+        user: { select: { email: true, firstName: true, lastName: true } },
+      },
+    });
     if (!order) throw new NotFoundException('Order not found');
 
     if (!CANCELLABLE_STATUSES.includes(order.status)) {
@@ -1158,6 +1292,28 @@ export class OrdersService {
       }
     });
 
-    return this.prisma.order.findUnique({ where: { id } });
+    const updated = await this.prisma.order.findUnique({ where: { id } });
+
+    const emailService = this.emailService;
+    if (emailService && (order as any).user?.email) {
+      try {
+        const u = (order as any).user;
+        const recipientName =
+          [u.firstName, u.lastName].filter(Boolean).join(' ') || undefined;
+
+        await emailService.sendOrderCancelled(u.email, {
+          orderNumber: order.orderNumber,
+          recipientName,
+          cancelledReason: dto.reason || 'Khách hàng yêu cầu hủy đơn hàng',
+          voucherRestored: Boolean((order as any).voucherCode),
+        });
+      } catch (emailErr) {
+        this.logger.warn(
+          `Failed to send order cancellation email for ${id}: ${(emailErr as Error).message}`,
+        );
+      }
+    }
+
+    return updated;
   }
 }

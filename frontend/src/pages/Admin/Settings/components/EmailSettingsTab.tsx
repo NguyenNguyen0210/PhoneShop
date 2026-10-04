@@ -60,6 +60,12 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({ form }) => {
     try {
       const res = await settingsService.testEmail({
         toEmail: recipientEmail.trim(),
+        host: form.getFieldValue('EMAIL_HOST'),
+        port: form.getFieldValue('EMAIL_PORT'),
+        secure: form.getFieldValue('EMAIL_SECURE'),
+        user: form.getFieldValue('EMAIL_USER'),
+        pass: form.getFieldValue('EMAIL_PASS'),
+        from: form.getFieldValue('EMAIL_FROM'),
       });
       const msg = res.message || `Email kiểm tra đã được gửi thành công đến ${recipientEmail}`;
       setTestResult({ status: 'success', message: msg });

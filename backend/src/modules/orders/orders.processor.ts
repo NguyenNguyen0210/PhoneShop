@@ -1,7 +1,8 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { Logger, Optional } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../../infrastructure/email/email.service';
 import { OrderStatus, ImeiStatus, InstallmentStatus } from '@prisma/client';
 
 export interface ExpireOrderHoldJobData {
@@ -12,7 +13,10 @@ export interface ExpireOrderHoldJobData {
 export class OrdersProcessor extends WorkerHost {
   private readonly logger = new Logger(OrdersProcessor.name);
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly emailService?: EmailService,
+  ) {
     super();
   }
 
@@ -29,7 +33,10 @@ export class OrdersProcessor extends WorkerHost {
 
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
-      include: { items: true },
+      include: {
+        items: true,
+        user: { select: { email: true, firstName: true, lastName: true } },
+      },
     });
 
     if (!order) {
@@ -104,6 +111,23 @@ export class OrdersProcessor extends WorkerHost {
       this.logger.log(
         `Successfully cancelled order ${orderId} and released reserved stock/IMEIs.`,
       );
+      if (this.emailService && (order as any).user?.email) {
+        try {
+          const u = (order as any).user;
+          const recipientName =
+            [u.firstName, u.lastName].filter(Boolean).join(' ') || undefined;
+          await this.emailService.sendOrderCancelled(u.email, {
+            orderNumber: order.orderNumber,
+            recipientName,
+            cancelledReason: 'Quá thời hạn 15 phút giữ hàng chưa hoàn tất thanh toán',
+            voucherRestored: Boolean((order as any).voucherCode),
+          });
+        } catch (emailErr) {
+          this.logger.warn(
+            `Failed to send hold expired cancellation email in processor for order ${orderId}: ${(emailErr as Error).message}`,
+          );
+        }
+      }
     } else {
       this.logger.log(
         `Order ${orderId} was already updated before hold expiry. Skipping hold expiry.`,

@@ -51,6 +51,28 @@ export class TestEmailDto {
   @IsString()
   @IsOptional()
   toEmail?: string;
+
+  @IsString()
+  @IsOptional()
+  host?: string;
+
+  @IsOptional()
+  port?: number | string;
+
+  @IsOptional()
+  secure?: boolean | string;
+
+  @IsString()
+  @IsOptional()
+  user?: string;
+
+  @IsString()
+  @IsOptional()
+  pass?: string;
+
+  @IsString()
+  @IsOptional()
+  from?: string;
 }
 
 export class TestVietQrDto {

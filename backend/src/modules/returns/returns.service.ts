@@ -1,5 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  ConflictException,
+  Logger,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../../infrastructure/email/email.service';
 import { CreateReturnDto, AdminNoteDto, CreateRefundDto } from './dto/return.dto';
 import { ReturnStatus, RefundStatus, OrderStatus, ImeiStatus, StockMovementType, PaymentStatus } from '@prisma/client';
 import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
@@ -7,7 +16,12 @@ import { randomBytes } from 'crypto';
 
 @Injectable()
 export class ReturnsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(ReturnsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    @Optional() private readonly emailService?: EmailService,
+  ) {}
 
   private generateReturnNumber(): string {
     return `RET-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
@@ -273,7 +287,20 @@ export class ReturnsService {
 
     const res = await this.prisma.return.updateMany({ where: { id, status: oldStatus }, data });
     if (res.count === 0) throw guardError();
-    return this.prisma.return.findUnique({ where: { id } });
+    const updated = await this.prisma.return.findUnique({
+      where: { id },
+      include: { user: { select: { email: true } } },
+    });
+
+    if (newStatus === ReturnStatus.APPROVED && this.emailService && updated?.user?.email) {
+      try {
+        await this.emailService.sendReturnApproved(updated.user.email, updated.returnNumber);
+      } catch (e) {
+        this.logger.warn(`Failed to send return approved email: ${(e as Error).message}`);
+      }
+    }
+
+    return updated;
   }
 
   async cancelReturn(userId: string, id: string) {
