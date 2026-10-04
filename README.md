@@ -426,7 +426,7 @@ SUPABASE_STORAGE_BUCKET="phoneshop"
 VNPAY_TMN_CODE="SANDBOX1"
 VNPAY_HASH_SECRET="YOUR_VNPAY_HASH_SECRET"
 VNPAY_URL="https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
-VNPAY_RETURN_URL="http://localhost:5173/checkout/vnpay-return"
+VNPAY_RETURN_URL="https://phoneshop-blond.vercel.app/order/vnpay-return"
 
 # Cổng thanh toán VietQR (NAPAS 247 - Hoạt động ngay lập tức)
 VIETQR_BANK_ID="MB"
