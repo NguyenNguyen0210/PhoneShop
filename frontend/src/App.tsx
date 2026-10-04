@@ -1,11 +1,17 @@
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ConfigProvider } from 'antd';
+import { App as AntdApp, ConfigProvider, message } from 'antd';
 import viVN from 'antd/locale/vi_VN';
 import { AppRoutes } from './routes/AppRoutes';
 import { ScrollToTop } from './components/common/ScrollToTop';
 import './App.css';
+
+message.config({
+  top: 24,
+  duration: 3,
+  maxCount: 3,
+});
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,7 +38,9 @@ export const App: React.FC = () => {
       >
         <BrowserRouter>
           <ScrollToTop />
-          <AppRoutes />
+          <AntdApp>
+            <AppRoutes />
+          </AntdApp>
         </BrowserRouter>
       </ConfigProvider>
     </QueryClientProvider>

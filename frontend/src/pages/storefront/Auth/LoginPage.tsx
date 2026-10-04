@@ -3,7 +3,6 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Mail,
   Lock,
-  AlertCircle,
   Loader2,
   Eye,
   EyeOff,
@@ -14,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { authService } from '../../../services/authService';
+import { notifyError, notifySuccess, getErrorMessage } from '../../../utils/notify';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -26,14 +26,12 @@ export const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState('');
 
   // Forgot password modal state
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
-  const [forgotError, setForgotError] = useState<string | null>(null);
 
   // Check redirect location
   const fromState = (location.state as any)?.from;
@@ -66,16 +64,16 @@ export const LoginPage: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
 
     if (!email || !password) {
-      setError('Vui lòng nhập đầy đủ email và mật khẩu.');
+      notifyError('Vui lòng nhập đầy đủ email và mật khẩu.');
       return;
     }
 
     setLoading(true);
     try {
       const loggedUser = await login(email, password);
+      notifySuccess('Đăng nhập thành công. Chào mừng bạn trở lại!');
       const role = loggedUser?.role || (loggedUser as any)?.roles?.[0];
       const roles = Array.isArray((loggedUser as any)?.roles) ? (loggedUser as any).roles : [];
       if (role === 'STAFF' || roles.includes('STAFF')) {
@@ -91,7 +89,7 @@ export const LoginPage: React.FC = () => {
         navigate(from === '/login' ? '/' : from, { replace: true });
       }
     } catch (err: any) {
-      setError(err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      notifyError(err, 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
     } finally {
       setLoading(false);
     }
@@ -133,22 +131,16 @@ export const LoginPage: React.FC = () => {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotEmail.trim()) {
-      setForgotError('Vui lòng nhập địa chỉ email của bạn.');
+      notifyError('Vui lòng nhập địa chỉ email của bạn.');
       return;
     }
     setForgotLoading(true);
-    setForgotError(null);
     try {
       await authService.forgotPassword(forgotEmail.trim());
       setForgotSubmitted(true);
+      notifySuccess('Đã gửi email khôi phục. Vui lòng kiểm tra hộp thư của bạn.');
     } catch (err: any) {
-      const rawMsg = err.response?.data?.message || err.message;
-      setForgotError(
-        Array.isArray(rawMsg)
-          ? rawMsg.join(', ')
-          : rawMsg ||
-            'Không thể gửi email khôi phục. Vui lòng kiểm tra lại địa chỉ email hoặc thử lại sau.'
-      );
+      notifyError(getErrorMessage(err) || 'Không thể gửi email khôi phục. Vui lòng kiểm tra lại địa chỉ email hoặc thử lại sau.');
     } finally {
       setForgotLoading(false);
     }
@@ -226,14 +218,6 @@ export const LoginPage: React.FC = () => {
           </span>
         </div>
 
-        {/* Alert thông báo lỗi đăng nhập */}
-        {error && (
-          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2.5">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-            <span>{error}</span>
-          </div>
-        )}
-
         {/* Form đăng nhập */}
         <form onSubmit={handleLogin} noValidate className="space-y-4">
           {/* 1. Địa chỉ Email */}
@@ -302,7 +286,6 @@ export const LoginPage: React.FC = () => {
               onClick={() => {
                 setForgotEmail(email);
                 setForgotSubmitted(false);
-                setForgotError(null);
                 setShowForgotModal(true);
               }}
               className="font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
@@ -354,7 +337,6 @@ export const LoginPage: React.FC = () => {
               disabled={forgotLoading}
               onClick={() => {
                 setShowForgotModal(false);
-                setForgotError(null);
                 setForgotSubmitted(false);
               }}
               className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 disabled:opacity-50 p-1.5 rounded-full hover:bg-slate-100 transition cursor-pointer"
@@ -394,26 +376,6 @@ export const LoginPage: React.FC = () => {
                     Nhập địa chỉ email liên kết với tài khoản PhoneShop của bạn để nhận mã xác thực đặt lại mật khẩu.
                   </p>
                 </div>
-
-                {forgotError && (
-                  <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
-                    <div className="flex-1">
-                      <span className="font-medium leading-relaxed block">{forgotError}</span>
-                      {forgotError.includes('đăng ký') && (
-                        <div className="mt-2 pt-2 border-t border-rose-200/70">
-                          <Link
-                            to="/register"
-                            onClick={() => setShowForgotModal(false)}
-                            className="font-bold text-rose-800 hover:text-rose-900 hover:underline inline-flex items-center gap-1"
-                          >
-                            Tạo tài khoản mới ngay &rarr;
-                          </Link>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
