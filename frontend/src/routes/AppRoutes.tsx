@@ -29,6 +29,7 @@ import { AdminDashboard } from '../pages/Admin/Dashboard/AdminDashboard';
 import { AdminProductsPage } from '../pages/Admin/Products/AdminProductsPage';
 import { AdminCategoriesPage } from '../pages/Admin/Categories/AdminCategoriesPage';
 import { AdminBrandsPage } from '../pages/Admin/Brands/AdminBrandsPage';
+import { AdminSuppliersPage } from '../pages/Admin/Suppliers/AdminSuppliersPage';
 import { AdminInventoryPage } from '../pages/Admin/Inventory/AdminInventoryPage';
 import { AdminOrdersPage } from '../pages/Admin/Orders/AdminOrdersPage';
 import { AdminPaymentsPage } from '../pages/Admin/Payments/AdminPaymentsPage';
@@ -124,6 +125,7 @@ export const AppRoutes: React.FC = () => {
               </RoleGuard>
             }
           />
+          <Route path="/admin/suppliers" element={<AdminSuppliersPage />} />
           <Route path="/admin/inventory" element={<AdminInventoryPage />} />
           <Route path="/admin/imei" element={<Navigate to="/admin/inventory?tab=imei" replace />} />
           <Route path="/admin/orders" element={<AdminOrdersPage />} />

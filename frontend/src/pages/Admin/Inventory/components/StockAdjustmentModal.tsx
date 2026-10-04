@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Radio, InputNumber, Input, Alert, Space, Typography, Tag, message } from 'antd';
+import { Modal, Form, Radio, InputNumber, Input, Alert, Space, Typography, Tag, message, Select } from 'antd';
 import { PlusCircleOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { inventoryService } from '../../../../services/inventoryService';
-import type { InventoryRecord } from '../../../../types';
+import { supplierService } from '../../../../services/supplierService';
+import type { InventoryRecord, AdjustStockPayload } from '../../../../types';
+import type { Supplier } from '../../../../types/supplier';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -29,6 +31,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   const [mode, setMode] = useState<'ADD' | 'SUBTRACT'>('ADD');
   const [qty, setQty] = useState<number>(1);
   const [unitPrice, setUnitPrice] = useState<number>(0);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
   const watchedMode = Form.useWatch('mode', form);
   const watchedQty = Form.useWatch('quantity', form);
@@ -37,6 +40,19 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   const activeMode = watchedMode || mode;
   const activeQty = watchedQty !== undefined ? Number(watchedQty) : qty;
   const activeUnitPrice = watchedUnitPrice !== undefined ? Number(watchedUnitPrice) : unitPrice;
+
+  useEffect(() => {
+    if (open) {
+      supplierService
+        .getSuppliers(true)
+        .then((data) => {
+          setSuppliers(data || []);
+        })
+        .catch((err) => {
+          console.error('Failed to load suppliers:', err);
+        });
+    }
+  }, [open]);
 
   useEffect(() => {
     if (open && item) {
@@ -50,6 +66,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
         mode: 'ADD',
         quantity: 1,
         unitPrice: initialUnitPrice,
+        supplierId: undefined,
         note: '',
       });
     }
@@ -74,11 +91,28 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
         return;
       }
       setLoading(true);
-      await inventoryService.adjustStock(item.variantId, {
+
+      let note = values.note?.trim() || undefined;
+      let referenceType: string | undefined = undefined;
+      let referenceId: string | undefined = undefined;
+
+      if (values.supplierId) {
+        const foundSupplier = suppliers.find((s) => s.id === values.supplierId);
+        const supplierName = foundSupplier ? foundSupplier.name : values.supplierId;
+        note = note ? `[NCC: ${supplierName}] ${note}` : `[NCC: ${supplierName}]`;
+        referenceType = 'SUPPLIER';
+        referenceId = values.supplierId;
+      }
+
+      const payload: AdjustStockPayload = {
         quantity: values.mode === 'ADD' ? values.quantity : -values.quantity,
         unitPrice: values.unitPrice ? Number(values.unitPrice) : undefined,
-        note: values.note?.trim() || undefined,
-      });
+        note,
+        ...(referenceType && { referenceType }),
+        ...(referenceId && { referenceId }),
+      };
+
+      await inventoryService.adjustStock(item.variantId, payload);
       message.success('Điều chỉnh số lượng kho thành công!');
       onSuccess();
       onClose();
@@ -234,6 +268,21 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
             </Text>
           </div>
         </div>
+
+        {activeMode === 'ADD' && (
+          <Form.Item name="supplierId" label="Nhà cung cấp (Tùy chọn)">
+            <Select
+              showSearch
+              optionFilterProp="label"
+              allowClear
+              placeholder="Chọn nhà cung cấp nhập hàng"
+              options={suppliers.map((s) => ({
+                value: s.id,
+                label: s.name + (s.contactName ? ` (${s.contactName})` : ''),
+              }))}
+            />
+          </Form.Item>
+        )}
 
         <Form.Item name="note" label="Lý do / Ghi chú">
           <TextArea rows={3} placeholder="VD: Nhập lô hàng mới đợt 2, Kiểm kê kho bù trừ, Hàng lỗi xuất trả..." />

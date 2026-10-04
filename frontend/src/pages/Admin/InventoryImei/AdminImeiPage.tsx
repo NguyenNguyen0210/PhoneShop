@@ -25,7 +25,9 @@ import {
 } from '@ant-design/icons';
 import { imeiService } from '../../../services/imeiService';
 import { productService } from '../../../services/productService';
+import { supplierService } from '../../../services/supplierService';
 import type { ImeiDevice, ImeiStatus, Product } from '../../../types';
+import type { Supplier } from '../../../types/supplier';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -33,6 +35,7 @@ const { TextArea } = Input;
 export const AdminImeiPage: React.FC = () => {
   const [imeis, setImeis] = useState<ImeiDevice[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [variantId, setVariantId] = useState<string>('ALL');
@@ -56,12 +59,19 @@ export const AdminImeiPage: React.FC = () => {
     () =>
       products.flatMap((p) =>
         p.variants.map((v) => ({
+          value: v.id,
           variantId: v.id,
           label: `${p.name} - ${v.color} (${v.storage}) - SKU: ${v.sku}`,
         }))
       ),
     [products]
   );
+
+  useEffect(() => {
+    if (allVariants.length > 0 && !importForm.getFieldValue('variantId')) {
+      importForm.setFieldsValue({ variantId: allVariants[0].value });
+    }
+  }, [allVariants, importForm]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -102,6 +112,20 @@ export const AdminImeiPage: React.FC = () => {
       })
       .catch((err) => {
         console.error('Failed to load products for variants:', err);
+      });
+  }, []);
+
+  // Load active suppliers for batch import selector
+  useEffect(() => {
+    supplierService
+      .getSuppliers(true)
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setSuppliers(data);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load suppliers:', err);
       });
   }, []);
 
@@ -155,7 +179,18 @@ export const AdminImeiPage: React.FC = () => {
 
     try {
       await imeiService.importImeis(values.variantId, lines);
-      message.success(`Đã nhập thành công ${lines.length} thiết bị IMEI vào kho!`);
+      const supplier = values.supplierId
+        ? suppliers.find((s) => s.id === values.supplierId)
+        : null;
+      const supplierName = supplier ? supplier.name : values.supplierId;
+
+      if (supplierName) {
+        message.success(
+          `Đã nhập thành công ${lines.length} thiết bị IMEI từ NCC ${supplierName} vào kho!`
+        );
+      } else {
+        message.success(`Đã nhập thành công ${lines.length} thiết bị IMEI vào kho!`);
+      }
       setIsImportModalOpen(false);
       importForm.resetFields();
       setValidationReport(null);
@@ -446,7 +481,12 @@ export const AdminImeiPage: React.FC = () => {
             borderRadius: 8,
             boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
           }}
-          onClick={() => setIsImportModalOpen(true)}
+          onClick={() => {
+            setIsImportModalOpen(true);
+            if (allVariants.length > 0 && !importForm.getFieldValue('variantId')) {
+              importForm.setFieldsValue({ variantId: allVariants[0].value });
+            }
+          }}
         >
           Nhập lô IMEI
         </Button>
@@ -597,6 +637,22 @@ export const AdminImeiPage: React.FC = () => {
             rules={[{ required: true, message: 'Vui lòng chọn biến thể' }]}
           >
             <Select showSearch optionFilterProp="label" options={allVariants} />
+          </Form.Item>
+
+          <Form.Item
+            name="supplierId"
+            label="Nhà cung cấp nhập hàng (Tùy chọn)"
+          >
+            <Select
+              showSearch
+              optionFilterProp="label"
+              allowClear
+              placeholder="Chọn nhà cung cấp..."
+              options={suppliers.map((s) => ({
+                value: s.id,
+                label: s.name + (s.contactName ? ` (${s.contactName})` : ''),
+              }))}
+            />
           </Form.Item>
 
           <Form.Item
