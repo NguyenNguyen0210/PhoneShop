@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ShoppingCart, ChevronRight, ChevronLeft, Sparkles, ShieldCheck } from 'lucide-react';
 import type { Product } from '../../types';
 import { FALLBACK_PRODUCT_IMAGE } from '../../utils/imageFallback';
+import { getHeroCutoutImage } from '../../utils/heroCutouts';
 
 export interface HeroBannerShowcaseProps {
   products: Product[];
@@ -56,6 +57,17 @@ const getBrandTheme = (brandName?: string, productName?: string): BrandTheme => 
     };
   }
 
+  if (brand.includes('sony') || name.includes('xperia')) {
+    return {
+      bgGradient: 'from-slate-100/90 via-sky-50/20 to-white',
+      glowColor: 'bg-teal-500/25',
+      badgeStyle: 'bg-slate-100 text-slate-800 border-slate-200/80',
+      primaryBtn: 'bg-slate-900 hover:bg-black shadow-slate-900/25',
+      priceColor: 'text-slate-900',
+      accentText: 'text-slate-700',
+    };
+  }
+
   return {
     bgGradient: 'from-indigo-50/70 via-slate-50/30 to-white',
     glowColor: 'bg-indigo-500/25',
@@ -80,7 +92,8 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
       const price = primaryVariant?.price ?? 0;
       const comparePrice = primaryVariant?.compareAtPrice ?? price;
       const monthlyPay = `${new Intl.NumberFormat('vi-VN').format(Math.round(price / 12))}₫/tháng`;
-      const image = p.thumbnail ?? p.thumbnailUrl ?? FALLBACK_PRODUCT_IMAGE;
+      const cutoutImage = getHeroCutoutImage(p);
+      const fallbackImage = p.thumbnail ?? p.thumbnailUrl ?? FALLBACK_PRODUCT_IMAGE;
       const theme = getBrandTheme(p.brand?.name, p.name);
 
       const specs: any = p.specs || {};
@@ -128,7 +141,9 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
         price,
         comparePrice,
         monthlyPay,
-        image,
+        image: cutoutImage,
+        cutoutImage,
+        fallbackImage,
         theme,
         floatingBadges,
       };
@@ -272,25 +287,41 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
             </div>
           </div>
 
-          {/* Cột phải: Hình ảnh với Quầng sáng Ambient Glow & Floating Badges (5 Cols) */}
-          <div className="lg:col-span-5 relative flex items-center justify-center p-4">
-            {/* Ambient Glow */}
+          {/* Cột phải: Flagship Phone Showcase với Transparent Cutout & Multi-layered Grounded Lighting (5 Cols) */}
+          <div className="lg:col-span-5 relative flex items-center justify-center p-4 min-h-[320px] sm:min-h-[380px]">
+            {/* Primary Brand Ambient Glow (Radiates colored light around device silhouette) */}
             <div
               className={`absolute w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 rounded-full blur-3xl -z-10 pointer-events-none transition-all duration-700 ${theme.glowColor}`}
             />
 
-            <div className="relative group/device">
-              <Link to={`/products/${current.id}`} className="block">
+            <div className="relative group/device flex flex-col items-center justify-center">
+              <Link to={`/products/${current.id}`} className="block relative z-10 cursor-pointer">
                 <img
-                  src={current.image}
+                  src={current.cutoutImage}
                   alt={current.name}
-                  className="max-h-[300px] sm:max-h-[360px] w-auto object-contain filter drop-shadow-2xl group-hover/device:scale-105 transition-transform duration-500"
+                  onError={(e) => {
+                    if (e.currentTarget.src !== current.fallbackImage) {
+                      e.currentTarget.src = current.fallbackImage;
+                    }
+                  }}
+                  className="relative z-10 max-h-[300px] sm:max-h-[360px] w-auto object-contain filter drop-shadow-[0_16px_28px_rgba(0,0,0,0.16)] drop-shadow-[0_4px_10px_rgba(0,0,0,0.08)] group-hover/device:scale-105 group-hover/device:-translate-y-1.5 transition-all duration-500 select-none"
+                  loading="eager"
                 />
               </Link>
 
+              {/* Realistic Grounded Pedestal Shadows (Khử cảm giác lơ lửng, tạo độ sâu 3D chân thực) */}
+              <div
+                aria-hidden="true"
+                className="absolute -bottom-2 sm:-bottom-3 left-1/2 -translate-x-1/2 w-48 sm:w-56 h-4 sm:h-5 bg-slate-900/20 blur-md rounded-[100%] pointer-events-none transition-all duration-500 group-hover/device:w-52 group-hover/device:opacity-60"
+              />
+              <div
+                aria-hidden="true"
+                className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-28 sm:w-36 h-2 bg-slate-950/25 blur-xs rounded-full pointer-events-none transition-all duration-500 group-hover/device:opacity-40"
+              />
+
               {/* Floating Badge 1 (Top Right) */}
               {current.floatingBadges[0] && (
-                <div className="absolute -top-3 -right-4 sm:-right-6 bg-white/95 backdrop-blur-md border border-slate-100 shadow-xl rounded-2xl px-3 py-2 flex items-center gap-2.5 pointer-events-none">
+                <div className="absolute -top-3 -right-4 sm:-right-6 z-20 bg-white/95 backdrop-blur-md border border-slate-100/90 shadow-xl rounded-2xl px-3.5 py-2 flex items-center gap-2.5 pointer-events-none select-none transition-transform duration-500 group-hover/device:translate-x-1">
                   <span className="text-xl">{current.floatingBadges[0].icon}</span>
                   <div>
                     <div className="text-[10px] text-slate-500 font-medium leading-none">{current.floatingBadges[0].label}</div>
@@ -301,7 +332,7 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
 
               {/* Floating Badge 2 (Bottom Left) */}
               {current.floatingBadges[1] && (
-                <div className="absolute -bottom-3 -left-4 sm:-left-6 bg-white/95 backdrop-blur-md border border-slate-100 shadow-xl rounded-2xl px-3 py-2 flex items-center gap-2.5 pointer-events-none">
+                <div className="absolute -bottom-3 -left-4 sm:-left-6 z-20 bg-white/95 backdrop-blur-md border border-slate-100/90 shadow-xl rounded-2xl px-3.5 py-2 flex items-center gap-2.5 pointer-events-none select-none transition-transform duration-500 group-hover/device:-translate-x-1">
                   <span className="text-xl">{current.floatingBadges[1].icon}</span>
                   <div>
                     <div className="text-[10px] text-slate-500 font-medium leading-none">{current.floatingBadges[1].label}</div>

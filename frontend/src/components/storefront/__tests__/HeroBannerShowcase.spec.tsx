@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { HeroBannerShowcase } from '../HeroBannerShowcase';
+import { getHeroCutoutImage, TRANSPARENT_PHONE_CUTOUTS } from '../../../utils/heroCutouts';
 import type { Product } from '../../../types';
 
 const mockProducts: Product[] = [
@@ -234,5 +235,77 @@ describe('HeroBannerShowcase', () => {
     // Ambient glow should have blue theme class
     const glowDiv = container.querySelector('.bg-blue-500\\/30');
     expect(glowDiv).not.toBeNull();
+  });
+
+  it('correctly maps known flagship slugs to high-resolution transparent cutouts', () => {
+    const testCutoutProduct: Product = {
+      id: 'prod-honor-200',
+      name: 'HONOR 200 5G',
+      slug: 'honor-200-5g',
+      thumbnail: 'https://example.com/honor-200.jpg',
+      status: 'ACTIVE',
+      createdAt: '2026-01-01',
+      brandId: 'b1',
+      categoryId: 'cat-1',
+    };
+
+    expect(getHeroCutoutImage(testCutoutProduct)).toBe('/products/transparent/honor-200-5g.webp');
+    expect(TRANSPARENT_PHONE_CUTOUTS['honor-200-5g']).toBeDefined();
+  });
+
+  it('falls back to thumbnail when transparent cutout is unavailable', () => {
+    const fallbackProduct: Product = {
+      id: 'prod-custom',
+      name: 'Custom Unbranded Phone',
+      slug: 'custom-unbranded-phone',
+      thumbnail: 'https://example.com/custom.jpg',
+      status: 'ACTIVE',
+      createdAt: '2026-01-01',
+      brandId: 'b9',
+      categoryId: 'cat-1',
+    };
+
+    expect(getHeroCutoutImage(fallbackProduct)).toBe('https://example.com/custom.jpg');
+  });
+
+  it('renders Sony theme and transparent cutout for Sony Xperia devices', () => {
+    const sonyProduct: Product[] = [
+      {
+        id: 'prod-sony',
+        name: 'Sony Xperia 1 VI',
+        slug: 'sony-xperia-1-vi',
+        description: 'Chuyên gia điện ảnh và âm thanh đẳng cấp',
+        brand: { id: 'b-sony', name: 'Sony', slug: 'sony', isActive: true },
+        brandId: 'b-sony',
+        categoryId: 'cat-1',
+        thumbnail: 'https://example.com/sony.jpg',
+        variants: [
+          {
+            id: 'v-sony',
+            productId: 'prod-sony',
+            sku: 'XP-1',
+            color: 'Black',
+            price: 31990000,
+          },
+        ],
+        status: 'ACTIVE',
+        createdAt: '2026-01-01',
+      },
+    ];
+
+    const { container } = render(
+      <MemoryRouter>
+        <HeroBannerShowcase products={sonyProduct} loading={false} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Sony Xperia 1 VI')).toBeDefined();
+    // Ambient glow should have Sony teal theme class
+    const glowDiv = container.querySelector('.bg-teal-500\\/25');
+    expect(glowDiv).not.toBeNull();
+
+    // Check rendered image src matches transparent cutout
+    const img = screen.getByRole('img', { name: 'Sony Xperia 1 VI' }) as HTMLImageElement;
+    expect(img.src).toContain('/products/transparent/sony-xperia-1-vi.webp');
   });
 });
