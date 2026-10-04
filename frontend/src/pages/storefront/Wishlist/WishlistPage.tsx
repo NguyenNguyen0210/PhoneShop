@@ -160,7 +160,7 @@ export const WishlistPage: React.FC = () => {
 
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
-                to="/products"
+                to="/"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md shadow-blue-500/20 transition cursor-pointer"
               >
                 <span>Khám phá điện thoại ngay</span>

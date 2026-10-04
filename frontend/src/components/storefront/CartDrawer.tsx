@@ -64,7 +64,7 @@ export const CartDrawer: React.FC = () => {
                 <button
                   onClick={() => {
                     setDrawerOpen(false);
-                    navigate('/products');
+                    navigate('/');
                   }}
                   className="mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition"
                 >

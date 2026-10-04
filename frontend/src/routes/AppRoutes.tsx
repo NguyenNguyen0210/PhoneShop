@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 // Layouts
 import { StorefrontLayout } from '../layouts/StorefrontLayout';
@@ -7,7 +7,6 @@ import { AdminLayout } from '../layouts/AdminLayout';
 
 // Storefront Pages
 import { HomePage } from '../pages/storefront/Home/HomePage';
-import { ProductListingPage } from '../pages/storefront/Products/ProductListingPage';
 import { ProductDetailPage } from '../pages/storefront/ProductDetail/ProductDetailPage';
 import { CartPage } from '../pages/storefront/Cart/CartPage';
 import { CheckoutPage } from '../pages/storefront/Checkout/CheckoutPage';
@@ -50,13 +49,18 @@ import { ProtectedRoute } from './ProtectedRoute';
 import { RoleGuard } from './RoleGuard';
 import { ROLES } from '../types';
 
+export const ProductsRedirect: React.FC = () => {
+  const location = useLocation();
+  return <Navigate to={{ pathname: '/', search: location.search, hash: location.hash }} replace />;
+};
+
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Customer Storefront Routes */}
       <Route element={<StorefrontLayout />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/products" element={<ProductListingPage />} />
+        <Route path="/products" element={<ProductsRedirect />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route

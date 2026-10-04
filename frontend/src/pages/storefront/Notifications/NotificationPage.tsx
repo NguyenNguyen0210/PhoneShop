@@ -366,7 +366,7 @@ export const NotificationPage: React.FC = () => {
                   : 'Các cập nhật về đơn hàng, khuyến mại và bảo hành sẽ xuất hiện tại đây.'}
               </p>
               <Link
-                to="/products"
+                to="/"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all shadow-xs"
               >
                 <span>Tiếp tục mua hàng</span>
