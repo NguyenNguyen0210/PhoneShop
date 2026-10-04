@@ -32,6 +32,22 @@ export const userService = {
     return res.data?.data ?? res.data;
   },
 
+  getAllUsers: async (params?: UserFilterParams) => {
+    const res = await apiClient.get('/users', { params });
+    if (res.data?.data && typeof res.data.data === 'object' && 'total' in res.data.data) {
+      return res.data.data;
+    }
+    if (res.data && typeof res.data === 'object' && 'total' in res.data) {
+      return res.data;
+    }
+    return res.data?.data ?? res.data;
+  },
+
+  getCustomer360: async (id: string) => {
+    const res = await apiClient.get(`/users/${id}/customer-360`);
+    return res.data?.data ?? res.data;
+  },
+
   getUserById: async (id: string) => {
     const res = await apiClient.get(`/users/${id}`);
     return res.data?.data ?? res.data;

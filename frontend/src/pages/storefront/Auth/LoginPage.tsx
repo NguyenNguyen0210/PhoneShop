@@ -60,7 +60,9 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     try {
       const user = await login(email, password);
-      if (user.role === 'ADMIN' || user.role === 'STAFF' || user.role === 'MANAGER') {
+      if (user.role === 'STAFF') {
+        navigate('/staff');
+      } else if (user.role === 'ADMIN' || user.role === 'MANAGER') {
         navigate('/admin');
       } else {
         navigate(from === '/login' ? '/' : from);

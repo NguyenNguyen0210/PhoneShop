@@ -17,20 +17,20 @@ import { ProductStockLedgerDrawer } from './ProductStockLedgerDrawer';
 
 const { Text } = Typography;
 
-interface InventoryStockTabProps {
-  items: InventoryRecord[];
-  loading: boolean;
-  onRefresh: () => void;
-  filterLowStockOnly: boolean;
-  onToggleLowStockFilter: () => void;
+export interface InventoryStockTabProps {
+  items?: InventoryRecord[];
+  loading?: boolean;
+  onRefresh?: () => void;
+  filterLowStockOnly?: boolean;
+  onToggleLowStockFilter?: () => void;
 }
 
 export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
-  items,
-  loading,
-  onRefresh,
-  filterLowStockOnly,
-  onToggleLowStockFilter,
+  items = [],
+  loading = false,
+  onRefresh = () => {},
+  filterLowStockOnly = false,
+  onToggleLowStockFilter = () => {},
 }) => {
   const { user } = useAuthStore();
   const isManagerOrAdmin = user?.role === 'MANAGER' || user?.role === 'ADMIN';

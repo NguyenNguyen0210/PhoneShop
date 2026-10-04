@@ -45,6 +45,29 @@ describe('userService', () => {
     expect(res).toEqual(mockResponse.data);
   });
 
+  it('getAllUsers should call GET /users with params and return list', async () => {
+    const mockResponse = {
+      data: {
+        data: [{ id: 'user-2', email: 'customer@example.com' }],
+        total: 1,
+      },
+    };
+    (apiClient.get as any).mockResolvedValueOnce(mockResponse);
+
+    const res = await userService.getAllUsers({ role: 'USER' });
+    expect(apiClient.get).toHaveBeenCalledWith('/users', { params: { role: 'USER' } });
+    expect(res).toEqual(mockResponse.data);
+  });
+
+  it('getCustomer360 should call GET /users/:id/customer-360', async () => {
+    const mock360 = { customer: { id: 'cust-1' }, recentOrders: [] };
+    (apiClient.get as any).mockResolvedValueOnce({ data: mock360 });
+
+    const res = await userService.getCustomer360('cust-1');
+    expect(apiClient.get).toHaveBeenCalledWith('/users/cust-1/customer-360');
+    expect(res).toEqual(mock360);
+  });
+
   it('getUserById should call GET /users/:id and return user', async () => {
     const mockUser = {
       id: 'user-1',
