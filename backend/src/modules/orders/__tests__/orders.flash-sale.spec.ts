@@ -84,6 +84,7 @@ describe('OrdersService - Flash Sale Atomic Reservation', () => {
       },
       inventory: {
         update: mockFn(),
+        updateMany: mockFn().mockResolvedValue({ count: 1 }),
       },
       order: {
         create: mockFn().mockImplementation((args: any) => {
@@ -256,6 +257,7 @@ describe('OrdersService - Flash Sale Atomic Reservation', () => {
       },
       inventory: {
         update: mockFn(),
+        updateMany: mockFn().mockResolvedValue({ count: 1 }),
       },
       order: {
         create: mockFn().mockImplementation((args: any) => {

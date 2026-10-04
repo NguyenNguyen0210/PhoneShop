@@ -12,6 +12,7 @@ describe('OrdersService - Fulfillment Stock Movements & Ledger Sync', () => {
       inventory: {
         update: (jest.fn() as any).mockResolvedValue({ id: 'inv-1', quantity: 9, reservedQty: 0 }),
         findUnique: (jest.fn() as any).mockResolvedValue({ id: 'inv-1', quantity: 9, reservedQty: 0 }),
+        updateMany: (jest.fn() as any).mockResolvedValue({ count: 1 }),
       },
       stockMovement: {
         create: (jest.fn() as any).mockResolvedValue({ id: 'sm-1' }),
@@ -32,10 +33,14 @@ describe('OrdersService - Fulfillment Stock Movements & Ledger Sync', () => {
       warranty: {
         upsert: (jest.fn() as any).mockResolvedValue({}),
       },
+      shipping: {
+        upsert: (jest.fn() as any).mockResolvedValue({}),
+      },
       order: {
         update: (jest.fn() as any).mockImplementation((args: any) =>
           Promise.resolve({ id: 'ord-123', status: args.data.status }),
         ),
+        updateMany: (jest.fn() as any).mockResolvedValue({ count: 1 }),
       },
     };
 

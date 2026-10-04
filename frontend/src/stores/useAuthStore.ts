@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User, Role } from '../types';
 import { authService } from '../services/authService';
+import { useCartStore } from './useCartStore';
 
 interface AuthState {
   user: User | null;
@@ -76,6 +77,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.setItem('mobilecommerce_access_token', accessToken);
     localStorage.setItem('mobilecommerce_refresh_token', refreshToken);
     set({ user: normalized, accessToken, refreshToken, error: null });
+    // Synchronize local cart items with backend user cart
+    useCartStore.getState().syncWithBackend().catch(() => {});
   },
 
   login: async (email: string, password: string) => {

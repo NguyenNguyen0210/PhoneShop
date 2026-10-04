@@ -1,6 +1,8 @@
 import { apiClient } from './apiClient';
 import type { Order, PaymentMethod, InstallmentFormData, ShippingMethod } from '../types';
 import { toBackendPaymentMethod } from './paymentService';
+import { cartService } from './cartService';
+import { useCartStore } from '../stores/useCartStore';
 
 const VALID_PAYMENT_METHODS: Array<PaymentMethod | string> = [
   'COD',
@@ -62,6 +64,22 @@ export const orderService = {
     const backendPaymentMethod = payload.paymentMethod
       ? toBackendPaymentMethod(payload.paymentMethod)
       : undefined;
+
+    // Ensure cart items are synchronized with backend database cart
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('mobilecommerce_access_token')) {
+        const storeItems = useCartStore.getState().items;
+        const backendCart = await cartService.getCart();
+        const existingVariantIds = new Set((backendCart?.items || []).map((i: any) => i.variantId));
+        for (const item of storeItems) {
+          if (!existingVariantIds.has(item.variantId)) {
+            await cartService.addToCart(item.variantId, item.quantity).catch(() => {});
+          }
+        }
+      }
+    } catch {
+      // Continue to checkout if pre-sync throws
+    }
 
     const orderRes = await apiClient.post('/orders/checkout', {
       addressId,

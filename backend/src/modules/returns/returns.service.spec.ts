@@ -36,6 +36,8 @@ describe('ReturnsService - Fulfillment Stock Movements & Ledger Sync', () => {
       inventory: {
         update: (jest.fn() as any).mockResolvedValue({ id: 'inv-2', quantity: 6, availableQty: 6 }),
         findUnique: (jest.fn() as any).mockResolvedValue({ id: 'inv-2', quantity: 6, availableQty: 6 }),
+        upsert: (jest.fn() as any).mockResolvedValue({ id: 'inv-2', quantity: 6, availableQty: 6 }),
+        updateMany: (jest.fn() as any).mockResolvedValue({ count: 1 }),
       },
       stockMovement: {
         create: (jest.fn() as any).mockResolvedValue({ id: 'sm-ret-1' }),
@@ -44,6 +46,8 @@ describe('ReturnsService - Fulfillment Stock Movements & Ledger Sync', () => {
         update: (jest.fn() as any).mockImplementation((args: any) =>
           Promise.resolve({ id: 'ret-uuid-1', status: args.data.status }),
         ),
+        updateMany: (jest.fn() as any).mockResolvedValue({ count: 1 }),
+        findUnique: (jest.fn() as any).mockResolvedValue({ id: 'ret-uuid-1', status: ReturnStatus.COMPLETED }),
       },
     };
 
@@ -84,9 +88,10 @@ describe('ReturnsService - Fulfillment Stock Movements & Ledger Sync', () => {
     });
 
     // Verify physical stock increment
-    expect(mockTx.inventory.update).toHaveBeenCalledWith({
+    expect(mockTx.inventory.upsert).toHaveBeenCalledWith({
       where: { variantId: 'var-202' },
-      data: {
+      create: { variantId: 'var-202', quantity: 1, availableQty: 1, reservedQty: 0 },
+      update: {
         quantity: { increment: 1 },
         availableQty: { increment: 1 },
       },

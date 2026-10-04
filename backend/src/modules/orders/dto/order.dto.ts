@@ -17,10 +17,10 @@ export class CreateOrderDto {
   @IsUUID()
   addressId: string;
 
-  @ApiPropertyOptional({ type: [String], description: 'Selected CartItem IDs to checkout' })
+  @ApiPropertyOptional({ type: [String], description: 'Selected CartItem IDs or Variant IDs to checkout' })
   @IsOptional()
   @IsArray()
-  @IsUUID('all', { each: true })
+  @IsString({ each: true })
   selectedItemIds?: string[];
 
   @ApiPropertyOptional()

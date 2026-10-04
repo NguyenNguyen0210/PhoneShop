@@ -11,6 +11,7 @@ import { ProductDetailPage } from '../pages/storefront/ProductDetail/ProductDeta
 import { CartPage } from '../pages/storefront/Cart/CartPage';
 import { CheckoutPage } from '../pages/storefront/Checkout/CheckoutPage';
 import { OrderSuccessPage } from '../pages/storefront/OrderSuccess/OrderSuccessPage';
+import { VNPayReturnPage } from '../pages/storefront/OrderSuccess/VNPayReturnPage';
 import { OrderDetailPage } from '../pages/storefront/Orders/OrderDetailPage';
 import { WarrantyLookupPage } from '../pages/storefront/WarrantyLookup/WarrantyLookupPage';
 import { ProfilePage } from '../pages/storefront/Profile/ProfilePage';
@@ -72,6 +73,8 @@ export const AppRoutes: React.FC = () => {
           }
         />
         <Route path="/order-success/:id" element={<OrderSuccessPage />} />
+        <Route path="/order/vnpay-return" element={<VNPayReturnPage />} />
+        <Route path="/vnpay-return" element={<VNPayReturnPage />} />
         <Route path="/orders/:id" element={<OrderDetailPage />} />
         <Route path="/warranty-lookup" element={<WarrantyLookupPage />} />
         <Route

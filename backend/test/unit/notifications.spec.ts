@@ -40,6 +40,7 @@ describe('Notifications Module Unit Tests', () => {
         total: 1,
         page: 1,
         limit: 20,
+        totalPages: 1,
       });
     });
 

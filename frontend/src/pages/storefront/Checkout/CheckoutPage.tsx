@@ -251,7 +251,7 @@ export const CheckoutPage: React.FC = () => {
         paymentMethod,
         installmentData: paymentMethod === 'INSTALLMENT' ? installmentData : undefined,
         voucherCode: appliedVoucher?.code,
-        selectedItemIds: checkoutItems.map((i) => i.id),
+        selectedItemIds: checkoutItems.map((i) => i.variantId || i.id),
         shippingMethod,
         addressId: !useManualAddress && selectedAddress ? selectedAddress.id : undefined,
       });

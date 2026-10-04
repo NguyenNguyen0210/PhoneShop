@@ -66,6 +66,19 @@ export const paymentService = {
     return response.data?.data ?? response.data;
   },
 
+  async verifyVnpayReturn(params: Record<string, string>): Promise<{
+    success: boolean;
+    isValid: boolean;
+    orderNumber?: string;
+    amount?: number;
+    responseCode?: string;
+    transactionNo?: string;
+    message?: string;
+  }> {
+    const response = await apiClient.get('/payments/vnpay/return', { params });
+    return response.data?.data ?? response.data;
+  },
+
   // Admin methods
   async getAllPaymentsAdmin(): Promise<Payment[]> {
     const response = await apiClient.get('/payments');

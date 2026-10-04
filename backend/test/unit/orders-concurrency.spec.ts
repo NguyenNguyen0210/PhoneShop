@@ -517,7 +517,9 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
           updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
         },
         inventory: {
+          update: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
           updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
+          findUnique: jest.fn().mockReturnValue(Promise.resolve({ id: 'inv-1', quantity: 9, reservedQty: 0 })),
         },
         payment: {
           findMany: jest.fn().mockReturnValue(Promise.resolve([])),

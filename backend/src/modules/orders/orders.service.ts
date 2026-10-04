@@ -113,7 +113,12 @@ export class OrdersService {
     let itemsToCheckout = cart.items;
     if (dto.selectedItemIds && dto.selectedItemIds.length > 0) {
       const selectedSet = new Set(dto.selectedItemIds);
-      itemsToCheckout = cart.items.filter((item) => selectedSet.has(item.id));
+      itemsToCheckout = cart.items.filter(
+        (item) =>
+          selectedSet.has(item.id) ||
+          selectedSet.has(item.variantId) ||
+          Array.from(selectedSet).some((s) => typeof s === 'string' && s.includes(item.variantId)),
+      );
       if (itemsToCheckout.length === 0 || itemsToCheckout.length !== selectedSet.size) {
         throw new BadRequestException('None of the selected items were found in your cart');
       }

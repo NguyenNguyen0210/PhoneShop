@@ -32,6 +32,7 @@ interface CartState {
   selectedSubtotal: () => number;
   selectedTotalCount: () => number;
   isAllSelected: () => boolean;
+  syncWithBackend: () => Promise<void>;
 }
 
 export const useCartStore = create<CartState>()(
@@ -190,6 +191,34 @@ export const useCartStore = create<CartState>()(
       isAllSelected: () => {
         const { items, selectedItemIds } = get();
         return items.length > 0 && items.every((i) => selectedItemIds.includes(i.id));
+      },
+
+      syncWithBackend: async () => {
+        if (typeof localStorage === 'undefined' || !localStorage.getItem('mobilecommerce_access_token')) {
+          return;
+        }
+        try {
+          const localItems = get().items;
+          for (const item of localItems) {
+            await cartService.addToCart(item.variantId, item.quantity).catch(() => {});
+          }
+          const backendCart = await cartService.getCart();
+          if (backendCart && Array.isArray(backendCart.items) && backendCart.items.length > 0) {
+            const mappedItems: CartItem[] = backendCart.items.map((bItem: any) => ({
+              id: bItem.id,
+              variantId: bItem.variantId,
+              quantity: bItem.quantity,
+              unitPrice: Number(bItem.unitPrice || bItem.price || bItem.variant?.price || 0),
+              price: Number(bItem.unitPrice || bItem.price || bItem.variant?.price || 0),
+              product: bItem.variant?.product,
+              variant: bItem.variant,
+              originalPrice: Number(bItem.variant?.price || 0),
+            }));
+            set({ items: mappedItems });
+          }
+        } catch {
+          // Keep local state on network error
+        }
       },
     }),
     {

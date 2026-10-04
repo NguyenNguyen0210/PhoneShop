@@ -83,7 +83,10 @@ export class CartService {
   async updateItem(userId: string, itemId: string, dto: UpdateCartItemDto) {
     const cart = await this.getOrCreateCart(userId);
     const item = await this.prisma.cartItem.findFirst({
-      where: { id: itemId, cartId: cart.id },
+      where: {
+        cartId: cart.id,
+        OR: [{ id: itemId }, { variantId: itemId }],
+      },
     });
     if (!item) throw new NotFoundException('Cart item not found');
 
@@ -95,7 +98,7 @@ export class CartService {
     }
 
     return this.prisma.cartItem.update({
-      where: { id: itemId },
+      where: { id: item.id },
       data: { quantity: dto.quantity },
     });
   }
@@ -103,10 +106,13 @@ export class CartService {
   async removeItem(userId: string, itemId: string) {
     const cart = await this.getOrCreateCart(userId);
     const item = await this.prisma.cartItem.findFirst({
-      where: { id: itemId, cartId: cart.id },
+      where: {
+        cartId: cart.id,
+        OR: [{ id: itemId }, { variantId: itemId }],
+      },
     });
     if (!item) throw new NotFoundException('Cart item not found');
-    return this.prisma.cartItem.delete({ where: { id: itemId } });
+    return this.prisma.cartItem.delete({ where: { id: item.id } });
   }
 
   async removeItemsBulk(userId: string, itemIds: string[]) {

@@ -23,6 +23,12 @@ export const userService = {
 
   getUsers: async (params?: UserFilterParams) => {
     const res = await apiClient.get('/users', { params });
+    if (res.data?.data && typeof res.data.data === 'object' && 'total' in res.data.data) {
+      return res.data.data;
+    }
+    if (res.data && typeof res.data === 'object' && 'total' in res.data) {
+      return res.data;
+    }
     return res.data?.data ?? res.data;
   },
 
@@ -68,6 +74,12 @@ export const userService = {
 
   getUserAuditLogs: async (userId: string) => {
     const res = await apiClient.get('/audit-logs', { params: { userId, limit: 50 } });
+    if (res.data?.data && typeof res.data.data === 'object' && 'total' in res.data.data) {
+      return res.data.data;
+    }
+    if (res.data && typeof res.data === 'object' && 'total' in res.data) {
+      return res.data;
+    }
     return res.data?.data ?? res.data;
   },
 };

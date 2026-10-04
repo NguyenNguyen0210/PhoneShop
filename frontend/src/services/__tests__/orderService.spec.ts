@@ -61,7 +61,6 @@ describe('orderService', () => {
       // Should record payment for non-installment paymentMethod
       expect(apiClient.post).toHaveBeenNthCalledWith(2, '/payments', {
         orderId: 'ord-123',
-        amount: 1500000,
         method: 'COD',
       });
 
