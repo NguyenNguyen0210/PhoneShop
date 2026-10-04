@@ -1,11 +1,9 @@
 // @vitest-environment jsdom
-import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { HomePage } from '../HomePage';
 import { productService } from '../../../../services/productService';
-import { flashSaleService } from '../../../../services/flashSaleService';
 
 vi.mock('../../../../services/productService', () => ({
   productService: {
@@ -101,7 +99,7 @@ describe('HomePage URL Params & Auto-Scroll Synchronization', () => {
     vi.clearAllMocks();
 
     scrollIntoViewMock = vi.fn();
-    window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock as any;
 
     (productService.getProducts as any).mockResolvedValue({
       items: mockProducts,
