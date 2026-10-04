@@ -62,32 +62,32 @@ export const StorefrontServiceBar: React.FC<StorefrontServiceBarProps> = ({
       className={`w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${className}`.trim()}
       aria-label="Cam kết dịch vụ"
     >
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {GUARANTEES.map((item) => {
-          const Icon = item.icon;
-          return (
-            <div
-              key={item.id}
-              className={`group flex items-center gap-3 sm:gap-3.5 p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 ${
-                item.borderColor || ''
-              }`}
-            >
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-2 sm:p-2.5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 divide-slate-100 lg:divide-x">
+          {GUARANTEES.map((item) => {
+            const Icon = item.icon;
+            return (
               <div
-                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 ${item.iconBg} ${item.iconColor} transition-transform duration-200 group-hover:scale-105`}
+                key={item.id}
+                className="group flex items-center justify-center gap-3 sm:gap-3.5 p-3 sm:px-4 sm:py-2.5 rounded-xl hover:bg-slate-50/80 transition-all duration-200 cursor-default"
               >
-                <Icon className="w-5 h-5" aria-hidden="true" />
+                <div
+                  className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 ${item.iconBg} ${item.iconColor} transition-transform duration-200 group-hover:scale-105`}
+                >
+                  <Icon className="w-5 h-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-800 tracking-tight leading-snug group-hover:text-blue-600 transition-colors truncate">
+                    {item.title}
+                  </h4>
+                  <p className="text-[11px] sm:text-xs text-slate-500 font-medium truncate mt-0.5">
+                    {item.description}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <h4 className="text-xs sm:text-sm font-bold text-slate-800 tracking-tight leading-snug group-hover:text-blue-600 transition-colors truncate">
-                  {item.title}
-                </h4>
-                <p className="text-[11px] sm:text-xs text-slate-500 font-medium truncate mt-0.5">
-                  {item.description}
-                </p>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </section>
   );
