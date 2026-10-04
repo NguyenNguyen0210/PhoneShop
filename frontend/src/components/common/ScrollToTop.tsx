@@ -11,6 +11,8 @@ export const ScrollToTop: React.FC = () => {
   const location = useLocation();
   const navigationType = useNavigationType();
   const prevPathRef = useRef<string>(location.pathname + location.search);
+  const isRestoringRef = useRef<boolean>(false);
+  const restoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Disable automatic browser scroll restoration so our app takes control
@@ -28,6 +30,9 @@ export const ScrollToTop: React.FC = () => {
     const currentKey = `scroll_${location.pathname}${location.search}`;
 
     const handleScroll = () => {
+      // Do not record scroll events if we are currently in the middle of restoring scroll coordinates
+      if (isRestoringRef.current) return;
+
       const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
       try {
         sessionStorage.setItem(currentKey, String(scrollY));
@@ -38,7 +43,8 @@ export const ScrollToTop: React.FC = () => {
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
-      handleScroll(); // Save one last time on unmount or route change
+      // DO NOT call handleScroll here! Calling handleScroll on cleanup runs when the DOM has already collapsed/unmounted,
+      // which would clamp scrollY to a truncated page height (e.g. flash sale area) and poison the saved value.
       window.removeEventListener('scroll', handleScroll);
     };
   }, [location.pathname, location.search]);
@@ -72,23 +78,38 @@ export const ScrollToTop: React.FC = () => {
       if (savedYStr !== null) {
         const savedY = parseInt(savedYStr, 10);
         if (!isNaN(savedY)) {
-          window.scrollTo({ top: savedY, left: 0, behavior: 'instant' });
-          if (document.documentElement) {
-            document.documentElement.scrollTop = savedY;
-          }
-          if (document.body) {
-            document.body.scrollTop = savedY;
-          }
-          // Retry after layout render to handle dynamic content height
-          const rAF = requestAnimationFrame(() => {
+          isRestoringRef.current = true;
+          if (restoreTimerRef.current) clearTimeout(restoreTimerRef.current);
+
+          const applyScroll = () => {
             window.scrollTo({ top: savedY, left: 0, behavior: 'instant' });
-          });
-          const timer = setTimeout(() => {
-            window.scrollTo({ top: savedY, left: 0, behavior: 'instant' });
-          }, 80);
+            if (document.documentElement) {
+              document.documentElement.scrollTop = savedY;
+            }
+            if (document.body) {
+              document.body.scrollTop = savedY;
+            }
+          };
+
+          applyScroll();
+
+          // Multi-frame retries to account for async data hydration and layout settling
+          const rAF = requestAnimationFrame(applyScroll);
+          const t1 = setTimeout(applyScroll, 50);
+          const t2 = setTimeout(applyScroll, 150);
+          const t3 = setTimeout(applyScroll, 300);
+
+          restoreTimerRef.current = setTimeout(() => {
+            isRestoringRef.current = false;
+          }, 400);
+
           return () => {
             cancelAnimationFrame(rAF);
-            clearTimeout(timer);
+            clearTimeout(t1);
+            clearTimeout(t2);
+            clearTimeout(t3);
+            if (restoreTimerRef.current) clearTimeout(restoreTimerRef.current);
+            isRestoringRef.current = false;
           };
         }
       }

@@ -50,7 +50,6 @@ export const HomePage: React.FC = () => {
     minRating,
     searchKeyword,
     sortBy,
-    scrollPosition,
     setCatalogData,
     setSelectedBrand,
     setPriceRange,
@@ -68,14 +67,16 @@ export const HomePage: React.FC = () => {
     setSearchKeyword,
     setSortBy,
     resetFilters: resetStoreFilters,
-    setScrollPosition,
   } = useCatalogStore();
 
   const [loading, setLoading] = useState<boolean>(!hasLoaded);
   const [showMobileFilter, setShowMobileFilter] = useState<boolean>(false);
 
   const lastScrolledParamsRef = useRef<string | null>(
-    scrollPosition > 0 ? `${searchParams.get('search') ?? ''}__${searchParams.get('brand') ?? ''}` : null
+    (() => {
+      const saved = typeof window !== 'undefined' ? sessionStorage.getItem(`scroll_${window.location.pathname}${window.location.search}`) : null;
+      return saved && parseInt(saved, 10) > 0 ? `${searchParams.get('search') ?? ''}__${searchParams.get('brand') ?? ''}` : null;
+    })()
   );
 
   // Synchronize URL search params (?search=..., ?brand=...) and auto-scroll to products
@@ -140,31 +141,6 @@ export const HomePage: React.FC = () => {
         setLoading(false);
       });
   }, [hasLoaded, setCatalogData]);
-
-  // Continuously record scroll position on HomePage
-  useEffect(() => {
-    const handleScroll = () => {
-      const y = window.scrollY || document.documentElement.scrollTop || 0;
-      setScrollPosition(y);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      handleScroll();
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [setScrollPosition]);
-
-  // Restore scroll position when returning to HomePage
-  useEffect(() => {
-    if (hasLoaded && scrollPosition > 0) {
-      window.scrollTo({ top: scrollPosition, left: 0, behavior: 'instant' });
-      const timer = setTimeout(() => {
-        window.scrollTo({ top: scrollPosition, left: 0, behavior: 'instant' });
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [hasLoaded]);
 
   const handlePageChange = (newPage: number) => {
     setSearchParams((prev) => {

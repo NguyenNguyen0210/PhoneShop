@@ -15,6 +15,7 @@ import {
   PackageCheck,
   Award,
   Heart,
+  ArrowLeft,
 } from 'lucide-react';
 import { message } from 'antd';
 import { productService } from '../../../services/productService';
@@ -374,20 +375,47 @@ export const ProductDetailPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-        {/* Breadcrumb Navigation */}
-        <nav className="flex items-center gap-2 text-xs text-slate-500 font-mono">
-          <Link to="/" className="hover:text-blue-600 transition-colors">
-            Trang chủ
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          <Link to="/" className="hover:text-blue-600 transition-colors">
-            Điện thoại
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-slate-800 font-semibold truncate max-w-xs sm:max-w-md">
-            {product.name}
-          </span>
-        </nav>
+        {/* Breadcrumb Navigation & Back Action */}
+        <div className="flex items-center justify-between">
+          <nav className="flex items-center gap-2 text-xs text-slate-500 font-mono">
+            <Link to="/" className="hover:text-blue-600 transition-colors">
+              Trang chủ
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <button
+              type="button"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate('/');
+                }
+              }}
+              className="hover:text-blue-600 transition-colors cursor-pointer"
+            >
+              Điện thoại
+            </button>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-slate-800 font-semibold truncate max-w-xs sm:max-w-md">
+              {product.name}
+            </span>
+          </nav>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/');
+              }
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+            title="Quay lại danh sách sản phẩm"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Quay lại</span>
+          </button>
+        </div>
 
         {/* SECTION 1: HERO SECTION - GALLERY & COMMERCIAL PURCHASE AREA */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
