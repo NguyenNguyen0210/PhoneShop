@@ -48,6 +48,17 @@ export const returnService = {
     return Array.isArray(data) ? data : data?.items ?? [];
   },
 
+  async getAdminReturns(params?: {
+    status?: string;
+    limit?: number;
+    page?: number;
+    search?: string;
+  }): Promise<ReturnRequest[]> {
+    const response = await apiClient.get('/returns', { params });
+    const data = response.data?.data ?? response.data;
+    return Array.isArray(data) ? data : data?.items ?? [];
+  },
+
   async getReturnDetailAdmin(id: string): Promise<ReturnRequest> {
     const response = await apiClient.get(`/returns/${id}`);
     return response.data?.data ?? response.data;

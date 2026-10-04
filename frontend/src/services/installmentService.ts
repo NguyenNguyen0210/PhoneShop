@@ -35,6 +35,12 @@ export const installmentService = {
     return response.data?.data ?? response.data;
   },
 
+  async getInstallments(
+    params?: AdminInstallmentsQuery
+  ): Promise<AdminInstallmentsResponse> {
+    return this.getAdminInstallments(params);
+  },
+
   async getAdminInstallments(
     params?: AdminInstallmentsQuery
   ): Promise<AdminInstallmentsResponse> {
