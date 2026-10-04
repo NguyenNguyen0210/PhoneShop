@@ -122,11 +122,6 @@ export const AdminLayout: React.FC = () => {
 
   const userMenuItems: MenuProps['items'] = [
     {
-      key: 'staff-workspace',
-      icon: <DashboardOutlined />,
-      label: <Link to="/staff">Cổng Vận hành (Staff)</Link>,
-    },
-    {
       key: 'storefront',
       icon: <ShopOutlined />,
       label: <Link to="/">Về trang Storefront</Link>,

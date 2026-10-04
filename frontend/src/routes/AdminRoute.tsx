@@ -18,7 +18,8 @@ export const AdminRoute: React.FC = () => {
     roles.includes('ADMIN') ||
     roles.includes('MANAGER');
 
-  if (role === 'STAFF' && !isAdminOrManager) {
+  const isStaff = role === 'STAFF' || roles.includes('STAFF');
+  if (isStaff && !isAdminOrManager) {
     return <Navigate to="/staff" replace />;
   }
 

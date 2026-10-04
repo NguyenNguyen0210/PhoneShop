@@ -412,8 +412,8 @@ export const Navbar: React.FC = () => {
                         </Link>
                       </div>
 
-                      {/* 4. SHORTCUT DÀNH CHO ADMIN / STAFF (NẾU CÓ) */}
-                      {(user.role === 'ADMIN' || user.role === 'STAFF' || isStaffOrAdmin()) && (
+                      {/* 4. SHORTCUT DÀNH CHO ADMIN HOẶC STAFF */}
+                      {(user.role === 'ADMIN' || user.role === 'MANAGER' || (user as any).roles?.includes('ADMIN') || (user as any).roles?.includes('MANAGER')) && (
                         <div className="py-1.5">
                           <Link
                             to="/admin"
@@ -425,7 +425,24 @@ export const Navbar: React.FC = () => {
                               <span>Trang Quản Trị (Admin)</span>
                             </div>
                             <span className="text-[10px] uppercase font-bold tracking-wider bg-purple-200/80 text-purple-800 px-1.5 py-0.5 rounded">
-                              CMS
+                              ADMIN
+                            </span>
+                          </Link>
+                        </div>
+                      )}
+                      {(user.role === 'STAFF' || (user as any).roles?.includes('STAFF')) && (
+                        <div className="py-1.5">
+                          <Link
+                            to="/staff"
+                            onClick={() => setUserDropdownOpen(false)}
+                            className="group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 transition-colors"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <LayoutDashboard className="h-4 w-4 text-indigo-600" />
+                              <span>Cổng Vận Hành (Staff)</span>
+                            </div>
+                            <span className="text-[10px] uppercase font-bold tracking-wider bg-indigo-200/80 text-indigo-800 px-1.5 py-0.5 rounded">
+                              STAFF
                             </span>
                           </Link>
                         </div>
@@ -627,7 +644,7 @@ export const Navbar: React.FC = () => {
                   <Settings className="w-4 h-4 text-slate-500" />
                   <span>Cài đặt tài khoản</span>
                 </Link>
-                {(user.role === 'ADMIN' || user.role === 'STAFF' || isStaffOrAdmin()) && (
+                {(user.role === 'ADMIN' || user.role === 'MANAGER' || (user as any).roles?.includes('ADMIN') || (user as any).roles?.includes('MANAGER')) && (
                   <Link
                     to="/admin"
                     onClick={() => setMobileMenuOpen(false)}
@@ -638,7 +655,22 @@ export const Navbar: React.FC = () => {
                       <span>Trang Quản Trị (Admin)</span>
                     </span>
                     <span className="text-[10px] uppercase font-bold tracking-wider bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">
-                      CMS
+                      ADMIN
+                    </span>
+                  </Link>
+                )}
+                {(user.role === 'STAFF' || (user as any).roles?.includes('STAFF')) && (
+                  <Link
+                    to="/staff"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-3 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition flex items-center justify-between"
+                  >
+                    <span className="flex items-center gap-2">
+                      <LayoutDashboard className="w-4 h-4 text-indigo-600" />
+                      <span>Cổng Vận Hành (Staff)</span>
+                    </span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider bg-indigo-200 text-indigo-800 px-1.5 py-0.5 rounded">
+                      STAFF
                     </span>
                   </Link>
                 )}

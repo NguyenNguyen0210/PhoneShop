@@ -141,7 +141,7 @@ export const AppRoutes: React.FC = () => {
           <Route
             path="/admin/payments"
             element={
-              <RoleGuard allowedRoles={[ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN]}>
+              <RoleGuard allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
                 <AdminPaymentsPage />
               </RoleGuard>
             }
@@ -149,7 +149,7 @@ export const AppRoutes: React.FC = () => {
           <Route
             path="/admin/returns"
             element={
-              <RoleGuard allowedRoles={[ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN]}>
+              <RoleGuard allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
                 <AdminReturnsPage />
               </RoleGuard>
             }
@@ -157,7 +157,7 @@ export const AppRoutes: React.FC = () => {
           <Route
             path="/admin/installments"
             element={
-              <RoleGuard allowedRoles={[ROLES.STAFF, ROLES.ADMIN]}>
+              <RoleGuard allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
                 <AdminInstallmentsPage />
               </RoleGuard>
             }
@@ -165,7 +165,7 @@ export const AppRoutes: React.FC = () => {
           <Route
             path="/admin/reviews"
             element={
-              <RoleGuard allowedRoles={[ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN]}>
+              <RoleGuard allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
                 <AdminReviewsPage />
               </RoleGuard>
             }
