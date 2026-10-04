@@ -28,6 +28,35 @@ const formatVND = (val: number): string => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
 };
 
+const OTHER_COLOR = '#94a3b8';
+const TOP_N = 5;
+
+const colorFor = (index: number, isOther: boolean): string =>
+  isOther ? OTHER_COLOR : BRAND_PALETTE[index % BRAND_PALETTE.length];
+
+function groupTopBrands(
+  items: BrandSalesItem[],
+  totalAll: number
+): BrandSalesItem[] {
+  const sorted = [...items].sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+  const top = sorted.slice(0, TOP_N);
+  const rest = sorted.slice(TOP_N);
+  if (rest.length === 0) return top;
+  const restRevenue = rest.reduce((s, b) => s + (b.revenue || 0), 0);
+  const restQty = rest.reduce((s, b) => s + (b.quantitySold || 0), 0);
+  return [
+    ...top,
+    {
+      brandId: '__other__',
+      brandName: 'Khác',
+      logoUrl: null,
+      quantitySold: restQty,
+      revenue: restRevenue,
+      percentage: totalAll > 0 ? (restRevenue / totalAll) * 100 : 0,
+    },
+  ];
+}
+
 export const BrandSalesChartCard: React.FC<BrandSalesChartCardProps> = ({ data, loading }) => {
   const cardTitle = 'Doanh số theo Thương hiệu';
 
@@ -62,14 +91,16 @@ export const BrandSalesChartCard: React.FC<BrandSalesChartCardProps> = ({ data, 
 
   const brands = data?.brands || [];
   const totalRevenue = data?.totalRevenue ?? brands.reduce((s, b) => s + (b.revenue || 0), 0);
+  const totalAll = brands.reduce((s, b) => s + (b.revenue || 0), 0);
+  const displayBrands = groupTopBrands(brands, totalAll > 0 ? totalAll : totalRevenue);
 
   const columns: ColumnsType<BrandSalesItem> = [
     {
       title: 'Thương hiệu',
       dataIndex: 'brandName',
       key: 'brandName',
-      render: (name: string, _, index: number) => {
-        const color = BRAND_PALETTE[index % BRAND_PALETTE.length];
+      render: (name: string, record: BrandSalesItem, index: number) => {
+        const color = colorFor(index, record.brandId === '__other__');
         return (
           <Space orientation="horizontal" size={8}>
             <span
@@ -106,7 +137,7 @@ export const BrandSalesChartCard: React.FC<BrandSalesChartCardProps> = ({ data, 
       key: 'revenue',
       align: 'right',
       render: (rev: number) => (
-        <span style={{ fontWeight: 600, color: '#2563eb', fontFamily: 'monospace' }}>
+        <span style={{ fontWeight: 600, color: '#2563eb', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
           {formatVND(rev)}
         </span>
       ),
@@ -116,8 +147,8 @@ export const BrandSalesChartCard: React.FC<BrandSalesChartCardProps> = ({ data, 
       dataIndex: 'percentage',
       key: 'percentage',
       width: 140,
-      render: (pct: number, _, index: number) => {
-        const color = BRAND_PALETTE[index % BRAND_PALETTE.length];
+      render: (pct: number, record: BrandSalesItem, index: number) => {
+        const color = colorFor(index, record.brandId === '__other__');
         const val = Number(pct) || 0;
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -164,17 +195,17 @@ export const BrandSalesChartCard: React.FC<BrandSalesChartCardProps> = ({ data, 
                   ]}
                 />
                 <Pie
-                  data={brands}
+                  data={displayBrands}
                   dataKey="revenue"
                   nameKey="brandName"
                   innerRadius={55}
                   outerRadius={85}
                   paddingAngle={2}
                 >
-                  {brands.map((entry, index) => (
+                  {displayBrands.map((entry, index) => (
                     <Cell
                       key={`brand-cell-${entry.brandId || entry.brandName || index}`}
-                      fill={BRAND_PALETTE[index % BRAND_PALETTE.length]}
+                      fill={colorFor(index, entry.brandId === '__other__')}
                     />
                   ))}
                 </Pie>
@@ -185,7 +216,7 @@ export const BrandSalesChartCard: React.FC<BrandSalesChartCardProps> = ({ data, 
 
         <Col xs={24} lg={15}>
           <Table<BrandSalesItem>
-            dataSource={brands}
+            dataSource={displayBrands}
             columns={columns}
             rowKey={(r) => r.brandId || r.brandName}
             pagination={false}

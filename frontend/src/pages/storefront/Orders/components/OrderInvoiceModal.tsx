@@ -112,7 +112,7 @@ export const OrderInvoiceModal: React.FC<OrderInvoiceModalProps> = ({ order, isO
               HÓA ĐƠN BÁN LẺ KIÊM PHIẾU BẢO HÀNH THEO IMEI
             </h2>
             <p className="text-[11px] text-slate-500 italic mt-0.5">
-              (Hóa đơn điện tử có giá trị làm căn cứ đối soát bảo hành chính hãng)
+              (Hóa đơn có giá trị để bảo hành chính hãng)
             </p>
           </div>
 

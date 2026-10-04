@@ -41,6 +41,7 @@ import { ShippingModule } from './modules/shipping/shipping.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { TicketsModule } from './modules/tickets/tickets.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { ChatbotModule } from './modules/chatbot/chatbot.module';
 
 @Module({
   imports: [
@@ -90,6 +91,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     ReportsModule,
     TicketsModule,
     SettingsModule,
+    ChatbotModule,
   ],
 })
 export class AppModule {}

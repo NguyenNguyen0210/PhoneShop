@@ -13,7 +13,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 @ApiTags('Admin Tickets (Staff/Admin)')
 @Controller('admin/tickets')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.STAFF)
+@Roles(Role.ADMIN, Role.STAFF, Role.MANAGER)
 @ApiBearerAuth()
 export class AdminTicketsController {
   constructor(private readonly ticketsService: TicketsService) {}

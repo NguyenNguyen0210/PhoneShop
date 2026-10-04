@@ -475,7 +475,7 @@ export const ProfilePage: React.FC = () => {
                     <Headphones className="w-5 h-5 text-blue-600" />
                     <div>
                       <h2 className="text-lg sm:text-xl font-black text-slate-900">
-                        Trung tâm Hỗ trợ & Khiếu nại (CSKH)
+                        Trung tâm Hỗ trợ & Khiếu nại
                       </h2>
                       <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
                         Gửi yêu cầu hỗ trợ hoặc trao đổi trực tiếp với nhân viên chăm sóc khách hàng

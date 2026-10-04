@@ -1,16 +1,10 @@
 import { useState, useMemo } from 'react';
 import type React from 'react';
-import { Card, Skeleton, Empty, Radio } from 'antd';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import { Card, Skeleton, Empty, Radio, Table, Avatar, Typography } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import type { TopProductItem } from '../../../../types/report';
+
+const { Text } = Typography;
 
 interface TopProductsChartCardProps {
   data: TopProductItem[];
@@ -19,83 +13,89 @@ interface TopProductsChartCardProps {
 
 type MetricType = 'quantity' | 'revenue';
 
-const formatCompactVND = (val: number): string => {
-  if (Math.abs(val) >= 1_000_000_000) {
-    const formatted = (val / 1_000_000_000).toFixed(val % 1_000_000_000 === 0 ? 0 : 1);
-    return `${formatted} tỷ`;
-  }
-  if (Math.abs(val) >= 1_000_000) {
-    const formatted = (val / 1_000_000).toFixed(val % 1_000_000 === 0 ? 0 : 1);
-    return `${formatted} tr`;
-  }
-  if (Math.abs(val) >= 1_000) {
-    const formatted = (val / 1_000).toFixed(val % 1_000 === 0 ? 0 : 1);
-    return `${formatted} k`;
-  }
-  return String(val);
-};
-
 const formatVND = (val: number): string => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
 };
 
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const item: TopProductItem = payload[0].payload;
-    return (
-      <div
-        style={{
-          background: '#ffffff',
-          padding: '10px 14px',
-          borderRadius: 8,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05)',
-          maxWidth: 320,
-        }}
-      >
-        <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13, marginBottom: 2 }}>
-          {item.productName}
-        </div>
-        {item.variantName && (
-          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>
-            Phiên bản: {item.variantName}
-          </div>
-        )}
-        <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8, fontFamily: 'monospace' }}>
-          SKU: {item.sku}
-        </div>
-        <div
+const RANK_STYLE = [
+  { bg: '#fef3c7', color: '#b45309', border: '#fde68a' },
+  { bg: '#f1f5f9', color: '#475569', border: '#e2e8f0' },
+  { bg: '#fdf2f8', color: '#be185d', border: '#fbcfe8' },
+];
+
+const rankColumns: ColumnsType<TopProductItem> = [
+  {
+    title: '#',
+    key: 'rank',
+    width: 56,
+    align: 'center',
+    render: (_: unknown, __: TopProductItem, index: number) => {
+      const style = RANK_STYLE[index] || { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0' };
+      return (
+        <span
           style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 16,
-            fontSize: 12,
-            marginBottom: 4,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            background: style.bg,
+            color: style.color,
+            border: `1px solid ${style.border}`,
+            fontWeight: 800,
+            fontSize: 13,
           }}
         >
-          <span style={{ color: '#64748b' }}>Số lượng đã bán:</span>
-          <span style={{ fontWeight: 700, color: '#0f172a' }}>
-            {item.totalQuantitySold?.toLocaleString('vi-VN') || 0}
-          </span>
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 16,
-            fontSize: 12,
-          }}
+          {index + 1}
+        </span>
+      );
+    },
+  },
+  {
+    title: 'Sản phẩm',
+    key: 'product',
+    render: (_: unknown, item: TopProductItem) => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Avatar
+          style={{ backgroundColor: '#eff6ff', color: '#2563eb', fontWeight: 700, flexShrink: 0 }}
         >
-          <span style={{ color: '#64748b' }}>Doanh thu:</span>
-          <span style={{ fontWeight: 700, color: '#2563eb' }}>
-            {formatVND(item.totalRevenue || 0)}
-          </span>
+          {(item.productName || '?').charAt(0)}
+        </Avatar>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>{item.productName}</div>
+          <Text type="secondary" style={{ fontSize: 11 }}>
+            {[item.variantName, item.sku].filter(Boolean).join(' • ')}
+          </Text>
         </div>
       </div>
-    );
-  }
-  return null;
-};
+    ),
+  },
+  {
+    title: 'Đã bán',
+    dataIndex: 'totalQuantitySold',
+    key: 'totalQuantitySold',
+    align: 'right',
+    width: 110,
+    render: (qty: number) => (
+      <span style={{ fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
+        {(qty || 0).toLocaleString('vi-VN')}
+      </span>
+    ),
+  },
+  {
+    title: 'Doanh thu',
+    dataIndex: 'totalRevenue',
+    key: 'totalRevenue',
+    align: 'right',
+    width: 180,
+    render: (rev: number) => (
+      <span style={{ fontWeight: 700, color: '#2563eb', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+        {formatVND(rev || 0)}
+      </span>
+    ),
+  },
+];
 
 export const TopProductsChartCard: React.FC<TopProductsChartCardProps> = ({ data, loading }) => {
   const [metric, setMetric] = useState<MetricType>('quantity');
@@ -162,48 +162,13 @@ export const TopProductsChartCard: React.FC<TopProductsChartCardProps> = ({ data
       }}
       data-testid="top-products-card"
     >
-      <div style={{ width: '100%', height: 320 }}>
-        <ResponsiveContainer width="100%" height={320}>
-          <BarChart
-            layout="vertical"
-            data={chartData}
-            margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-            <XAxis
-              type="number"
-              tickFormatter={
-                metric === 'revenue'
-                  ? formatCompactVND
-                  : (val) => Number(val).toLocaleString('vi-VN')
-              }
-              stroke="#94a3b8"
-              fontSize={12}
-              tickLine={false}
-              axisLine={{ stroke: '#e2e8f0' }}
-            />
-            <YAxis
-              dataKey="productName"
-              type="category"
-              width={130}
-              tickFormatter={(name: string) =>
-                name && name.length > 16 ? `${name.slice(0, 16)}...` : name
-              }
-              stroke="#64748b"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar
-              dataKey={metric === 'revenue' ? 'totalRevenue' : 'totalQuantitySold'}
-              fill={metric === 'revenue' ? '#10b981' : '#3b82f6'}
-              radius={[0, 6, 6, 0]}
-              barSize={20}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      <Table<TopProductItem>
+        dataSource={chartData}
+        columns={rankColumns}
+        rowKey={(r) => r.variantId || r.sku}
+        pagination={false}
+        size="small"
+      />
     </Card>
   );
 };

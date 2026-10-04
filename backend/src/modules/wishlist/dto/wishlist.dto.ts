@@ -1,4 +1,4 @@
-import { IsUUID } from 'class-validator';
+import { IsOptional, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class AddToWishlistDto {
@@ -11,4 +11,9 @@ export class MoveToCartDto {
   @ApiProperty()
   @IsUUID()
   productId: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsUUID()
+  variantId?: string;
 }

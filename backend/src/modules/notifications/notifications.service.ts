@@ -8,8 +8,22 @@ import { getPagination, buildPaginatedResponse } from '../../common/utils/pagina
 export class NotificationsService {
   constructor(private prisma: PrismaService) {}
 
+  // AUDIT: strip <script> payloads — notification bodies are rendered in
+  // webviews/clients that may interpret HTML, so stored XSS via a crafted
+  // title/message must not survive persistence.
+  private sanitize(text: string | undefined): string | undefined {
+    if (typeof text !== 'string') return text;
+    return text.replace(/<script.*?>.*?<\/script>/gi, '');
+  }
+
   async create(dto: CreateNotificationDto) {
-    return this.prisma.notification.create({ data: dto });
+    // AUDIT: fail loudly on unknown recipients instead of writing orphan
+    // rows (userId has no FK constraint at the DB layer).
+    const target = await this.prisma.user.findUnique({ where: { id: dto.userId }, select: { id: true } });
+    if (!target) throw new NotFoundException(`User ${dto.userId} not found`);
+    return this.prisma.notification.create({
+      data: { ...dto, title: this.sanitize(dto.title) ?? dto.title, message: this.sanitize(dto.message) ?? dto.message },
+    });
   }
 
   // Utility method called by other services (e.g., OrdersService, PaymentsService)
@@ -22,7 +36,7 @@ export class NotificationsService {
     channel: NotificationChannel = NotificationChannel.IN_APP,
   ) {
     return this.prisma.notification.create({
-      data: { userId, type, title, message, data, channel },
+      data: { userId, type, title: this.sanitize(title) ?? title, message: this.sanitize(message) ?? message, data, channel },
     });
   }
 
@@ -102,14 +116,16 @@ export class NotificationsService {
 
     const CHUNK_SIZE = 1000;
     let inserted = 0;
+    const safeTitle = this.sanitize(dto.title) ?? dto.title;
+    const safeMessage = this.sanitize(dto.message) ?? dto.message;
     for (let i = 0; i < users.length; i += CHUNK_SIZE) {
       const chunk = users.slice(i, i + CHUNK_SIZE);
       const res = await this.prisma.notification.createMany({
         data: chunk.map((user) => ({
           userId: user.id,
           type: dto.type,
-          title: dto.title,
-          message: dto.message,
+          title: safeTitle,
+          message: safeMessage,
           channel: NotificationChannel.IN_APP,
         })),
       });

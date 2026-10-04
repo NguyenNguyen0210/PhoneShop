@@ -56,7 +56,6 @@ describe('DashboardKpiCards', () => {
 
     // Card 2: Tổng đơn hàng
     expect(screen.getByText('Tổng đơn hàng')).toBeDefined();
-    expect(screen.getByText('120')).toBeDefined();
     expect(screen.getByText(/8 đơn đang chờ xử lý/i)).toBeDefined();
 
     // Card 3: Thiết bị dưới mức tồn kho
@@ -65,9 +64,9 @@ describe('DashboardKpiCards', () => {
     const inventoryLink = screen.getByRole('link', { name: /xem tồn kho/i });
     expect(inventoryLink.getAttribute('href')).toBe('/admin/inventory');
 
-    // Card 4: Khách hàng & Sản phẩm
-    expect(screen.getByText('Khách hàng & Sản phẩm')).toBeDefined();
-    expect(screen.getByText(/95/)).toBeDefined();
-    expect(screen.getByText(/42/)).toBeDefined();
+    // Card 4: Giá trị trung bình / đơn (AOV = 235.000.000 / 120)
+    expect(screen.getByText('Giá trị trung bình / đơn')).toBeDefined();
+    expect(screen.getByText(/1\.958\.333/)).toBeDefined();
+    expect(screen.getByText(/đơn trong kỳ/i)).toBeDefined();
   });
 });

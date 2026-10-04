@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateImeiDto, UpdateImeiStatusDto, ImportImeiDto } from './dto/imei.dto';
-import { ImeiStatus, Prisma } from '@prisma/client';
+import { ImeiStatus, Prisma, StockMovementType } from '@prisma/client';
 import { PaginationQueryDto, PaginatedResponse } from '../../common/dto/pagination.dto';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -46,67 +46,196 @@ export class ImeiService {
     return imei;
   }
 
+  private async assertOptionalImei(raw?: string): Promise<string | undefined> {
+    if (raw === undefined || raw === null) return undefined;
+    const trimmed = raw.trim();
+    if (!trimmed) return undefined;
+    return this.assertValidImei(trimmed);
+  }
+
   async add(dto: CreateImeiDto) {
     const imei = await this.assertValidImei(dto.imei);
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: dto.variantId },
+      select: { id: true },
+    });
+    if (!variant) throw new NotFoundException('Product variant not found');
     const existing = await this.prisma.imeiDevice.findUnique({ where: { imei } });
     if (existing) throw new ConflictException('IMEI already registered');
-    return this.prisma.imeiDevice.create({ data: { ...dto, imei } });
+    const imei2 = await this.assertOptionalImei(dto.imei2);
+    const serialNumber = dto.serialNumber?.trim() || undefined;
+    if (imei2) {
+      const dup2 = await this.prisma.imeiDevice.findUnique({ where: { imei2 } });
+      if (dup2) throw new ConflictException('IMEI2 already registered');
+    }
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const device = await tx.imeiDevice.create({
+          data: { ...dto, imei, imei2, serialNumber },
+        });
+        const inv = await tx.inventory.upsert({
+          where: { variantId: dto.variantId },
+          create: {
+            variantId: dto.variantId,
+            quantity: 1,
+            availableQty: 1,
+            reservedQty: 0,
+          },
+          update: {
+            quantity: { increment: 1 },
+            availableQty: { increment: 1 },
+          },
+        });
+        const balanceAfter = inv.quantity;
+        await tx.stockMovement.create({
+          data: {
+            variantId: dto.variantId,
+            type: StockMovementType.IMPORT_MANUAL,
+            quantity: 1,
+            balanceBefore: balanceAfter - 1,
+            balanceAfter,
+            referenceType: 'IMEI_IMPORT',
+            referenceId: device.id,
+            note: `Manual IMEI add ${imei}`,
+          },
+        });
+        return device;
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002')
+        throw new ConflictException('IMEI already exists (concurrent import)');
+      throw e;
+    }
   }
 
   async import(dto: ImportImeiDto) {
     // Validate the whole batch BEFORE touching the DB so a single bad code
-    // rejects the import instead of half-importing stock.
+    // rejects the import instead of half-importing stock. Keys are normalized
+    // IMEIs so " 3589… " and "3589…" collide instead of double-importing.
+    const seen = new Set<string>(); // normalized IMEIs in this batch
+    const seen2 = new Set<string>(); // normalized IMEI2 in this batch
     const normalized = new Map<string, string>(); // original -> normalized
+    const skippedDuplicates: string[] = [];
     const invalid: string[] = [];
     for (const item of dto.items) {
       const imei = this.normalizeImei(item.imei);
       if (!(await this.validate(imei))) {
         if (invalid.length < 10) invalid.push(item.imei);
-      } else {
-        normalized.set(item.imei, imei);
+        continue;
       }
+      if (seen.has(imei)) {
+        skippedDuplicates.push(item.imei);
+        continue;
+      }
+      if (item.imei2?.trim()) {
+        const imei2n = this.normalizeImei(item.imei2);
+        if (!(await this.validate(imei2n))) {
+          if (invalid.length < 10) invalid.push(item.imei2);
+          continue;
+        }
+        if (seen2.has(imei2n)) {
+          skippedDuplicates.push(item.imei2);
+          continue;
+        }
+        const dup2Db = await this.prisma.imeiDevice.findUnique({
+          where: { imei2: imei2n },
+        });
+        if (dup2Db) {
+          skippedDuplicates.push(item.imei2);
+          continue;
+        }
+        seen2.add(imei2n);
+      }
+      seen.add(imei);
+      normalized.set(item.imei, imei);
     }
     if (invalid.length > 0) {
       throw new BadRequestException(
-        `Import rejected: ${dto.items.length - normalized.size} IMEI(s) failed Luhn/format check (e.g. ${invalid.join(', ')}). No devices were imported.`,
+        `Import rejected: ${invalid.length} IMEI(s) failed Luhn/format check (e.g. ${invalid.join(', ')}). No devices were imported.`,
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const created: any[] = [];
-      const variantCountMap = new Map<string, number>();
+    // Pre-check that every referenced variant exists before opening a txn.
+    const variantIds = [
+      ...new Set(
+        dto.items.filter((i) => normalized.has(i.imei)).map((i) => i.variantId),
+      ),
+    ];
+    if (variantIds.length > 0) {
+      const found = await this.prisma.productVariant.findMany({
+        where: { id: { in: variantIds } },
+        select: { id: true },
+      });
+      if (found.length !== variantIds.length) {
+        throw new NotFoundException('One or more product variants not found');
+      }
+    }
 
-      for (const item of dto.items) {
-        const imei = normalized.get(item.imei) as string;
-        const existing = await tx.imeiDevice.findUnique({ where: { imei } });
-        if (!existing) {
-          const device = await tx.imeiDevice.create({ data: { ...item, imei } });
-          created.push(device);
-          variantCountMap.set(
-            item.variantId,
-            (variantCountMap.get(item.variantId) || 0) + 1,
-          );
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const created: any[] = [];
+        const variantCountMap = new Map<string, number>();
+
+        for (const item of dto.items) {
+          const imei = normalized.get(item.imei);
+          if (!imei) continue; // intra-batch duplicate
+          const existing = await tx.imeiDevice.findUnique({ where: { imei } });
+          if (!existing) {
+            const imei2 = item.imei2?.trim()
+              ? this.normalizeImei(item.imei2)
+              : undefined;
+            const serialNumber = item.serialNumber?.trim() || undefined;
+            const device = await tx.imeiDevice.create({
+              data: { ...item, imei, imei2, serialNumber },
+            });
+            created.push(device);
+            variantCountMap.set(
+              item.variantId,
+              (variantCountMap.get(item.variantId) || 0) + 1,
+            );
+          }
         }
-      }
 
-      for (const [variantId, count] of variantCountMap.entries()) {
-        await tx.inventory.upsert({
-          where: { variantId },
-          create: {
-            variantId,
-            quantity: count,
-            availableQty: count,
-            reservedQty: 0,
-          },
-          update: {
-            quantity: { increment: count },
-            availableQty: { increment: count },
-          },
-        });
-      }
+        for (const [variantId, count] of variantCountMap.entries()) {
+          await tx.inventory.upsert({
+            where: { variantId },
+            create: {
+              variantId,
+              quantity: count,
+              availableQty: count,
+              reservedQty: 0,
+            },
+            update: {
+              quantity: { increment: count },
+              availableQty: { increment: count },
+            },
+          });
+          const inv = await tx.inventory.findUnique({ where: { variantId } });
+          const balanceAfter = inv ? inv.quantity : count;
+          await tx.stockMovement.create({
+            data: {
+              variantId,
+              type: StockMovementType.IMPORT_MANUAL,
+              quantity: count,
+              balanceBefore: balanceAfter - count,
+              balanceAfter,
+              referenceType: 'IMEI_IMPORT',
+              note: `Bulk IMEI import (${count} devices)`,
+            },
+          });
+        }
 
-      return { imported: created.length, total: dto.items.length };
-    });
+        return {
+          imported: created.length,
+          total: dto.items.length,
+          skippedDuplicates,
+        };
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002')
+        throw new ConflictException('IMEI already exists (concurrent import)');
+      throw e;
+    }
   }
 
   async findAll(query: QueryImeiDto = {}): Promise<PaginatedResponse<any>> {
@@ -193,12 +322,12 @@ export class ImeiService {
   // mutation below goes through transitionTo(): allowed-map check +
   // conditional updateMany (count===0 ⇒ lost a race or illegal jump).
   private static readonly ALLOWED_IMEI_TRANSITIONS: Record<ImeiStatus, ImeiStatus[]> = {
-    [ImeiStatus.AVAILABLE]: [ImeiStatus.RESERVED, ImeiStatus.SOLD, ImeiStatus.BLOCKED],
+    [ImeiStatus.AVAILABLE]: [ImeiStatus.RESERVED, ImeiStatus.BLOCKED],
     [ImeiStatus.RESERVED]: [ImeiStatus.AVAILABLE, ImeiStatus.SOLD, ImeiStatus.BLOCKED],
     [ImeiStatus.SOLD]: [ImeiStatus.WARRANTY, ImeiStatus.RETURNED],
     [ImeiStatus.RETURNED]: [ImeiStatus.AVAILABLE, ImeiStatus.BLOCKED],
     [ImeiStatus.BLOCKED]: [ImeiStatus.AVAILABLE],
-    [ImeiStatus.WARRANTY]: [ImeiStatus.AVAILABLE, ImeiStatus.SOLD],
+    [ImeiStatus.WARRANTY]: [ImeiStatus.AVAILABLE],
   };
 
   private async transitionTo(id: string, to: ImeiStatus, extraData: Record<string, any> = {}) {

@@ -27,6 +27,7 @@ export interface ProductEditModalProps {
   productId: string | null;
   onClose: () => void;
   onSuccess: () => void;
+  initialTab?: string;
 }
 
 export const ProductEditModal: React.FC<ProductEditModalProps> = ({
@@ -34,12 +35,13 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
   productId,
   onClose,
   onSuccess,
+  initialTab = 'general',
 }) => {
   const [product, setProduct] = useState<Product | null>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState(initialTab || 'general');
 
   const loadData = useCallback(async () => {
     if (!productId) return;
@@ -64,12 +66,12 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
 
   useEffect(() => {
     if (open && productId) {
-      setActiveTab('general');
+      setActiveTab(initialTab || 'general');
       void loadData();
     } else {
       setProduct(null);
     }
-  }, [open, productId, loadData]);
+  }, [open, productId, initialTab, loadData]);
 
   const handleReload = async () => {
     await loadData();

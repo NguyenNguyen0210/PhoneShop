@@ -12,6 +12,12 @@ export class VouchersService {
   async create(dto: CreateVoucherDto) {
     const existing = await this.prisma.voucher.findUnique({ where: { code: dto.code } });
     if (existing) throw new ConflictException('Voucher code already exists');
+    if (dto.type === VoucherType.PERCENTAGE && Number(dto.value) > 100) {
+      throw new BadRequestException('Percentage voucher value cannot exceed 100');
+    }
+    if (new Date(dto.startAt) >= new Date(dto.endAt)) {
+      throw new BadRequestException('startAt must be before endAt');
+    }
     return this.prisma.voucher.create({ data: { ...dto, startAt: new Date(dto.startAt), endAt: new Date(dto.endAt) } });
   }
 
@@ -46,8 +52,30 @@ export class VouchersService {
 
     // Once the voucher has been used, its economics are locked — changing
     // type/value would retroactively alter already-issued discounts.
-    if (existing.usageCount > 0 && (dto.type !== undefined || dto.value !== undefined)) {
+    if (
+      existing.usageCount > 0 &&
+      (dto.type !== undefined ||
+        dto.value !== undefined ||
+        dto.maxDiscountAmount !== undefined ||
+        dto.minOrderValue !== undefined ||
+        dto.usageLimit !== undefined ||
+        dto.perUserLimit !== undefined ||
+        dto.startAt !== undefined ||
+        dto.endAt !== undefined)
+    ) {
       throw new BadRequestException('Cannot change voucher type/value after it has been used');
+    }
+
+    const effType = dto.type ?? existing.type;
+    const effVal = dto.value ?? existing.value;
+    if (effType === VoucherType.PERCENTAGE && Number(effVal) > 100) {
+      throw new BadRequestException('Percentage voucher value cannot exceed 100');
+    }
+
+    const effStart = dto.startAt ? new Date(dto.startAt) : existing.startAt;
+    const effEnd = dto.endAt ? new Date(dto.endAt) : existing.endAt;
+    if (effStart >= effEnd) {
+      throw new BadRequestException('startAt must be before endAt');
     }
 
     const data: any = { ...dto };
@@ -57,7 +85,10 @@ export class VouchersService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
+    if (existing.usageCount > 0) {
+      throw new BadRequestException('Cannot delete voucher after use, deactivate instead');
+    }
     return this.prisma.voucher.delete({ where: { id } });
   }
 
@@ -117,6 +148,7 @@ export class VouchersService {
       if (voucher.maxDiscountAmount) {
         discount = Math.min(discount, Number(voucher.maxDiscountAmount));
       }
+      discount = Math.min(discount, orderTotal);
     } else if (voucher.type === VoucherType.FIXED_AMOUNT) {
       discount = Math.min(Number(voucher.value), orderTotal);
     } else if (voucher.type === VoucherType.FREE_SHIPPING) {
@@ -155,22 +187,20 @@ export class VouchersService {
 
   async getSummaryAnalytics() {
     const now = new Date();
-    const [totalVouchers, activeVouchers, expiredOrExhausted, totalUsages, discountSum] = await Promise.all([
+    // Prisma cannot compare two columns (usageCount vs usageLimit) in `where`,
+    // so fetch window-active candidates and filter exhaustion in JS.
+    const [totalVouchers, candidates, allForExhausted, totalUsages, discountSum] = await Promise.all([
       this.prisma.voucher.count(),
-      this.prisma.voucher.count({
+      this.prisma.voucher.findMany({
         where: {
           isActive: true,
           startAt: { lte: now },
           endAt: { gte: now },
         },
+        select: { id: true, usageCount: true, usageLimit: true },
       }),
-      this.prisma.voucher.count({
-        where: {
-          OR: [
-            { isActive: false },
-            { endAt: { lt: now } },
-          ],
-        },
+      this.prisma.voucher.findMany({
+        select: { id: true, isActive: true, endAt: true, usageCount: true, usageLimit: true },
       }),
       this.prisma.voucherUsage.count(),
       this.prisma.voucherUsage.aggregate({
@@ -179,6 +209,16 @@ export class VouchersService {
         },
       }),
     ]);
+
+    const activeVouchers = candidates.filter(
+      (v) => v.usageLimit == null || v.usageCount < v.usageLimit,
+    ).length;
+    const expiredOrExhausted = allForExhausted.filter(
+      (v) =>
+        !v.isActive ||
+        v.endAt < now ||
+        (v.usageLimit != null && v.usageCount >= v.usageLimit),
+    ).length;
 
     return {
       totalVouchers,

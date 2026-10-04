@@ -593,7 +593,7 @@ export const OrderDetailPage: React.FC = () => {
                   {order.paymentMethod === 'INSTALLMENT'
                     ? 'Trả góp 0% qua công ty tài chính'
                     : order.paymentMethod === 'VIETQR'
-                    ? 'Chuyển khoản VietQR (Napas 247)'
+                    ? 'Chuyển khoản VietQR'
                     : order.paymentMethod === 'VNPAY'
                     ? 'Cổng trực tuyến VNPAY'
                     : 'Thanh toán khi nhận hàng (COD)'}

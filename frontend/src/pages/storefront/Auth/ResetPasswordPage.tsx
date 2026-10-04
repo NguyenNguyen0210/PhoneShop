@@ -153,10 +153,10 @@ export const ResetPasswordPage: React.FC = () => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">
-                Đang xác thực liên kết bảo mật...
+                Đang kiểm tra liên kết...
               </h2>
               <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                Hệ thống đang kiểm tra mã xác thực đặt lại mật khẩu. Vui lòng chờ trong giây lát.
+              Đang kiểm tra liên kết của bạn, chờ một chút nhé...
               </p>
             </div>
           </div>
@@ -175,7 +175,7 @@ export const ResetPasswordPage: React.FC = () => {
                 Liên kết không hợp lệ hoặc đã hết hạn
               </h2>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                Liên kết đặt lại mật khẩu chỉ có hiệu lực trong vòng <strong>15 phút</strong> và mỗi liên kết chỉ được sử dụng một lần vì lý do an toàn.
+                Vì an toàn, liên kết này hết hạn sau <strong>15 phút</strong> và chỉ dùng được một lần.
               </p>
             </div>
 
@@ -358,7 +358,7 @@ export const ResetPasswordPage: React.FC = () => {
       {/* Cam kết bảo mật chuẩn mã hóa */}
       <div className="pt-6 text-center text-xs text-slate-400 flex items-center justify-center gap-1.5 z-10">
         <ShieldCheck className="w-4 h-4 text-slate-400" />
-        <span>Hệ thống bảo mật chuẩn mã hóa SSL/TLS 256-bit.</span>
+        <span>Thông tin của bạn luôn được bảo mật.</span>
       </div>
     </div>
   );

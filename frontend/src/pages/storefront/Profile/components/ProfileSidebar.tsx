@@ -93,7 +93,7 @@ export const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
         },
         {
           key: 'tickets',
-          label: 'Khiếu nại (CSKH)',
+          label: 'Hỗ trợ & Khiếu nại',
           icon: Headphones,
         },
         {

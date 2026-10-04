@@ -25,6 +25,8 @@ export class SuppliersController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Get all suppliers' })
   @ApiQuery({ name: 'activeOnly', required: false, type: Boolean })
   findAll(@Query('activeOnly') activeOnly?: string) {
@@ -32,6 +34,8 @@ export class SuppliersController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Get supplier by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.suppliersService.findOne(id);

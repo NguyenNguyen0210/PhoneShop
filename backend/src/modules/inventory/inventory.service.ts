@@ -123,8 +123,11 @@ export class InventoryService {
 
       const newQty = inv.quantity + dto.quantity;
       if (newQty < 0) throw new BadRequestException('Insufficient stock');
+      if (newQty < inv.reservedQty) {
+        throw new BadRequestException('New quantity cannot be less than reserved quantity');
+      }
 
-      const newAvailable = Math.min(Math.max(0, inv.availableQty + dto.quantity), newQty);
+      const newAvailable = Math.max(0, newQty - inv.reservedQty);
 
       const type =
         dto.quantity >= 0 ? StockMovementType.IMPORT_MANUAL : StockMovementType.EXPORT_MANUAL;
@@ -374,30 +377,34 @@ export class InventoryService {
   }
 
   async reserveStock(variantId: string, dto: ReserveStockDto) {
-    const inv = await this.getInventory(variantId);
-    if (inv.availableQty < dto.quantity) {
-      throw new BadRequestException('Not enough available stock to reserve');
-    }
-    return this.prisma.inventory.update({
-      where: { variantId },
-      data: {
-        reservedQty: { increment: dto.quantity },
-        availableQty: { decrement: dto.quantity },
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const res = await tx.inventory.updateMany({
+        where: { variantId, availableQty: { gte: dto.quantity } },
+        data: {
+          reservedQty: { increment: dto.quantity },
+          availableQty: { decrement: dto.quantity },
+        },
+      });
+      if (res.count === 0) {
+        throw new BadRequestException('Not enough available stock to reserve');
+      }
+      return tx.inventory.findUnique({ where: { variantId } });
     });
   }
 
   async releaseStock(variantId: string, dto: ReserveStockDto) {
-    const inv = await this.getInventory(variantId);
-    if (inv.reservedQty < dto.quantity) {
-      throw new BadRequestException('Cannot release more than reserved quantity');
-    }
-    return this.prisma.inventory.update({
-      where: { variantId },
-      data: {
-        reservedQty: { decrement: dto.quantity },
-        availableQty: { increment: dto.quantity },
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const res = await tx.inventory.updateMany({
+        where: { variantId, reservedQty: { gte: dto.quantity } },
+        data: {
+          reservedQty: { decrement: dto.quantity },
+          availableQty: { increment: dto.quantity },
+        },
+      });
+      if (res.count === 0) {
+        throw new BadRequestException('Cannot release more than reserved quantity');
+      }
+      return tx.inventory.findUnique({ where: { variantId } });
     });
   }
 

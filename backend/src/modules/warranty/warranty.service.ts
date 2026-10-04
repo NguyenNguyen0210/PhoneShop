@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateWarrantyDto, ClaimWarrantyDto } from './dto/warranty.dto';
 import { WarrantyStatus } from '@prisma/client';
@@ -12,16 +12,60 @@ export class WarrantyService {
     return `WRT-${Date.now()}-${randomBytes(4).toString('hex').toUpperCase()}`;
   }
 
+  private addWarrantyMonths(date: Date, months: number): Date {
+    const d = new Date(date);
+    const day = d.getDate();
+    d.setMonth(d.getMonth() + months);
+    if (d.getDate() < day) d.setDate(0);
+    return d;
+  }
+
   async create(dto: CreateWarrantyDto) {
-    return this.prisma.warranty.create({
-      data: {
-        ...dto,
-        warrantyCode: this.generateWarrantyCode(),
-        startDate: new Date(dto.startDate),
-        endDate: new Date(dto.endDate),
+    if (!dto.orderItemId) throw new BadRequestException('orderItemId is required');
+    const orderItem = await this.prisma.orderItem.findUnique({
+      where: { id: dto.orderItemId },
+      include: {
+        order: { select: { userId: true } },
+        variant: { include: { product: { select: { warrantyMonths: true } } } },
       },
-      include: { productVariant: { include: { product: true } }, orderItem: true },
     });
+    if (!orderItem) throw new NotFoundException('Order item not found');
+    if (orderItem.order.userId !== dto.userId) {
+      throw new BadRequestException('Order item does not belong to this user');
+    }
+    if (orderItem.variantId !== dto.productVariantId) {
+      throw new BadRequestException('Order item does not match this product variant');
+    }
+    const months = orderItem.variant?.product?.warrantyMonths ?? 12;
+    const startDate = new Date();
+    const endDate = this.addWarrantyMonths(startDate, months);
+    try {
+      return await this.prisma.warranty.upsert({
+        where: { orderItemId: dto.orderItemId },
+        update: {
+          status: WarrantyStatus.ACTIVE,
+          startDate,
+          endDate,
+          imeiDeviceId: dto.imeiDeviceId ?? orderItem.imeiDeviceId ?? undefined,
+          notes: dto.notes,
+        },
+        create: {
+          userId: dto.userId,
+          productVariantId: dto.productVariantId,
+          orderItemId: dto.orderItemId,
+          imeiDeviceId: dto.imeiDeviceId ?? orderItem.imeiDeviceId ?? undefined,
+          warrantyCode: this.generateWarrantyCode(),
+          startDate,
+          endDate,
+          status: WarrantyStatus.ACTIVE,
+          notes: dto.notes,
+        },
+        include: { productVariant: { include: { product: true } }, orderItem: true },
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002') throw new ConflictException('Warranty already exists');
+      throw e;
+    }
   }
 
   async findAll(userId?: string) {
@@ -69,8 +113,23 @@ export class WarrantyService {
       take: 10,
     });
     if (candidates.length === 0) throw new NotFoundException('Warranty not found');
-    const active = candidates.find((w) => w.status === WarrantyStatus.ACTIVE);
-    return active ?? candidates[0];
+    const now = new Date();
+    const live = candidates.filter(
+      (w) => w.status === WarrantyStatus.ACTIVE && new Date(w.endDate) >= now,
+    );
+    const picked = live[0] ?? candidates.find((w) => w.status === WarrantyStatus.ACTIVE) ?? candidates[0];
+    // Public lookup: strip sensitive handset identifiers. Staff detail
+    // paths (findOne/findAll) still return the full imeiDevice.
+    return {
+      ...picked,
+      imeiDevice: picked.imeiDevice
+        ? {
+            id: picked.imeiDevice.id,
+            status: picked.imeiDevice.status,
+            variantId: picked.imeiDevice.variantId,
+          }
+        : null,
+    };
   }
 
   async checkStatus(warrantyCode: string) {
@@ -79,7 +138,7 @@ export class WarrantyService {
     const isExpired = warranty.endDate < now;
     return {
       warrantyCode,
-      status: warranty.status,
+      status: isExpired && warranty.status === WarrantyStatus.ACTIVE ? 'EXPIRED' : warranty.status,
       startDate: warranty.startDate,
       endDate: warranty.endDate,
       isExpired,

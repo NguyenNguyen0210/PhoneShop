@@ -221,7 +221,7 @@ export const CartPage: React.FC = () => {
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-sm rounded-xl border border-slate-200 transition cursor-pointer"
               >
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Tra cứu bảo hành IMEI</span>
+                <span>Tra cứu bảo hành</span>
               </Link>
             </div>
           </div>
@@ -235,7 +235,7 @@ export const CartPage: React.FC = () => {
                     Gợi ý điện thoại nổi bật cho bạn
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Hàng chính hãng phân phối nguyên seal, bảo hành điện tử 12-24 tháng
+                    Hàng chính hãng nguyên seal, bảo hành 12-24 tháng
                   </p>
                 </div>
                 <Link
@@ -642,7 +642,7 @@ export const CartPage: React.FC = () => {
 
                 <div className="flex items-center gap-2 text-slate-500 font-medium">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Bảo hành điện tử chính hãng 12 - 24 tháng toàn quốc</span>
+                  <span>Bảo hành chính hãng 12 - 24 tháng toàn quốc</span>
                 </div>
               </div>
             </div>
@@ -852,7 +852,7 @@ export const CartPage: React.FC = () => {
                         Tổng thanh toán:
                       </span>
                       <span className="text-[10px] text-slate-400">
-                        (Đã bao gồm thuế GTGT VAT 8%)
+                        (Đã gồm thuế VAT)
                       </span>
                     </div>
                     <span className="text-2xl sm:text-3xl font-black text-blue-600 font-mono tracking-tight tabular-nums">
@@ -886,17 +886,17 @@ export const CartPage: React.FC = () => {
               <div className="pt-3 border-t border-slate-100 space-y-2 text-center">
                 <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500">
                   <Lock className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Mã hóa SSL 256-bit • Cổng Napas 24/7 & VNPay</span>
+                  <span>Thanh toán an toàn qua VietQR, VNPay hoặc tiền mặt</span>
                 </div>
                 <div className="flex items-center justify-center gap-2 opacity-70">
                   <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-slate-100 rounded text-slate-600">
-                    VietQR Napas
+                    VietQR
                   </span>
                   <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-slate-100 rounded text-slate-600">
                     VNPay
                   </span>
                   <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-slate-100 rounded text-slate-600">
-                    COD
+                    Tiền mặt
                   </span>
                 </div>
               </div>

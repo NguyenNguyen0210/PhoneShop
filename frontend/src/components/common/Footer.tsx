@@ -35,7 +35,7 @@ export const Footer: React.FC = () => {
               </div>
               <div>
                 <h4 className="text-sm font-bold text-slate-900">100% Nguyên seal chính hãng</h4>
-                <p className="text-xs text-slate-500 mt-0.5">Đầy đủ hóa đơn VAT & kiểm định IMEI</p>
+                <p className="text-xs text-slate-500 mt-0.5">Đầy đủ hóa đơn VAT & máy nguyên seal</p>
               </div>
             </div>
 
@@ -54,7 +54,7 @@ export const Footer: React.FC = () => {
                 <Headphones className="w-6 h-6 stroke-[1.75]" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-900">Hỗ trợ kỹ thuật 24/7</h4>
+                <h4 className="text-sm font-bold text-slate-900">Tư vấn miễn phí, tận tâm</h4>
                 <p className="text-xs text-slate-500 mt-0.5">Hotline 1900 6868 miễn cước gọi</p>
               </div>
             </div>
@@ -115,7 +115,7 @@ export const Footer: React.FC = () => {
             />
           </div>
           <p className="text-slate-600 leading-relaxed mb-4 text-xs">
-            Hệ thống bán lẻ thiết bị di động thông minh hàng đầu Việt Nam. Cam kết 100% sản phẩm chính hãng với kiểm định số IMEI chuẩn hóa & bảo hành điện tử tiện lợi.
+            Hệ thống bán lẻ thiết bị di động thông minh hàng đầu Việt Nam. Cam kết 100% sản phẩm chính hãng, máy nguyên seal và bảo hành đầy đủ.
           </p>
           <p className="text-slate-500 text-[11px] font-mono">
             © 2026 Phone Shop. All rights reserved.
@@ -130,7 +130,7 @@ export const Footer: React.FC = () => {
             <li>
               <Link to="/warranty-lookup" className="hover:text-blue-600 transition flex items-center gap-1.5 text-slate-600">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Tra cứu bảo hành điện tử (IMEI)</span>
+                <span>Tra cứu bảo hành</span>
               </Link>
             </li>
             <li>
@@ -187,7 +187,7 @@ export const Footer: React.FC = () => {
           <div className="grid grid-cols-2 gap-2 mb-4">
             <div className="px-2.5 py-2 bg-white border border-slate-200/90 rounded-xl text-slate-800 text-[11px] font-medium flex items-center gap-2 shadow-2xs hover:border-slate-300 transition">
               <QrCode className="w-4 h-4 text-blue-600 shrink-0" />
-              <span>VietQR 24/7</span>
+              <span>VietQR</span>
             </div>
             <div className="px-2.5 py-2 bg-white border border-slate-200/90 rounded-xl text-slate-800 text-[11px] font-medium flex items-center gap-2 shadow-2xs hover:border-slate-300 transition">
               <CreditCard className="w-4 h-4 text-sky-600 shrink-0" />
@@ -205,7 +205,7 @@ export const Footer: React.FC = () => {
           
           <div className="flex items-start gap-2 pt-3 border-t border-slate-200/80 text-slate-500 text-[11px] leading-relaxed">
             <Lock className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-            <span>Giao dịch được bảo vệ bằng mã hóa SSL 256-bit theo tiêu chuẩn bảo mật thanh toán quốc tế PCI-DSS.</span>
+            <span>Thanh toán an toàn và được bảo mật.</span>
           </div>
         </div>
       </div>

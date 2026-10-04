@@ -18,6 +18,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   DELIVERED: { label: 'Đã giao hàng', color: '#10b981' },
   COMPLETED: { label: 'Hoàn tất', color: '#10b981' },
   CANCELLED: { label: 'Đã hủy', color: '#ef4444' },
+  RETURNED: { label: 'Đã đổi trả', color: '#64748b' },
 };
 
 export const OrderStatusChartCard: React.FC<OrderStatusChartCardProps> = ({ data, loading }) => {

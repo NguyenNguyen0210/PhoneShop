@@ -16,11 +16,11 @@ import {
   CommentOutlined,
   CustomerServiceOutlined,
   SearchOutlined,
-  ThunderboltOutlined,
   DollarOutlined,
   MessageOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
+import './StaffLayout.css';
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -130,16 +130,16 @@ export const StaffLayout: React.FC = () => {
 
   // Dynamic breadcrumb label based on path
   const getBreadcrumbTitle = () => {
-    if (location.pathname.startsWith('/staff/chat')) return 'Live Chat Trực Tuyến Với Khách Hàng';
-    if (location.pathname.startsWith('/staff/orders')) return 'Quản lý Đơn hàng & Giao vận';
-    if (location.pathname.startsWith('/staff/inventory')) return 'Quản lý Kho & Thiết bị IMEI';
-    if (location.pathname.startsWith('/staff/tickets')) return 'Hệ thống Vé hỗ trợ CSKH';
-    if (location.pathname.startsWith('/staff/returns')) return 'Xử lý Yêu cầu Đổi trả';
-    if (location.pathname.startsWith('/staff/installments')) return 'Thẩm định Hồ sơ Trả góp';
-    if (location.pathname.startsWith('/staff/reviews')) return 'Quản lý Đánh giá & Phản hồi';
-    if (location.pathname.startsWith('/staff/payments')) return 'Tra cứu Giao dịch & Thanh toán';
-    if (location.pathname.startsWith('/staff/customers')) return 'Tra cứu Thông tin Khách hàng';
-    return 'Bàn làm việc Tổng quan';
+    if (location.pathname.startsWith('/staff/chat')) return 'Live chat trực tuyến với khách hàng';
+    if (location.pathname.startsWith('/staff/orders')) return 'Quản lý đơn hàng & giao vận';
+    if (location.pathname.startsWith('/staff/inventory')) return 'Quản lý kho & thiết bị IMEI';
+    if (location.pathname.startsWith('/staff/tickets')) return 'Hệ thống vé hỗ trợ CSKH';
+    if (location.pathname.startsWith('/staff/returns')) return 'Xử lý yêu cầu đổi trả';
+    if (location.pathname.startsWith('/staff/installments')) return 'Thẩm định hồ sơ trả góp';
+    if (location.pathname.startsWith('/staff/reviews')) return 'Quản lý đánh giá & phản hồi';
+    if (location.pathname.startsWith('/staff/payments')) return 'Tra cứu giao dịch & thanh toán';
+    if (location.pathname.startsWith('/staff/customers')) return 'Tra cứu thông tin khách hàng';
+    return 'Bàn làm việc tổng quan';
   };
 
   const getSelectedKey = () => {
@@ -236,20 +236,31 @@ export const StaffLayout: React.FC = () => {
                 src="/logo-icon.png"
                 alt="PhoneShop"
                 style={{
-                  width: 32,
-                  height: 32,
+                  width: 30,
+                  height: 30,
                   objectFit: 'contain',
                   flexShrink: 0,
                 }}
               />
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  justifyContent: 'center',
+                  gap: 3,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                }}
+              >
                 <img
                   src="/logo-horizontal.png"
                   alt="PhoneShop"
                   style={{
-                    height: 30,
+                    height: 24,
                     width: 'auto',
+                    maxWidth: 150,
                     objectFit: 'contain',
                     flexShrink: 0,
                   }}
@@ -257,15 +268,16 @@ export const StaffLayout: React.FC = () => {
                 <span
                   style={{
                     color: '#4338ca',
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: 1,
+                    fontSize: 8,
+                    fontWeight: 800,
+                    letterSpacing: 1.2,
                     textTransform: 'uppercase',
                     background: '#eef2ff',
                     padding: '2px 6px',
-                    borderRadius: 4,
+                    borderRadius: 6,
                     border: '1px solid #c7d2fe',
                     whiteSpace: 'nowrap',
+                    lineHeight: 1.5,
                   }}
                 >
                   STAFF WORKSPACE
@@ -342,9 +354,10 @@ export const StaffLayout: React.FC = () => {
             </div>
 
             {/* Center/Right Header: Quick Search, Online Pill, Storefront, Role Tag, Profile */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
               {/* Quick Search Input */}
               <Input
+                className="staff-header-search"
                 placeholder="Tìm nhanh Mã đơn, IMEI, SĐT khách..."
                 prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
                 value={searchValue}
@@ -355,35 +368,48 @@ export const StaffLayout: React.FC = () => {
                   }
                 }}
                 onPressEnter={handleQuickSearch}
-                style={{ width: 280, borderRadius: 8 }}
+                style={{ width: 240, height: 32, borderRadius: 8 }}
                 allowClear
               />
+
+              <span style={{ width: 1, height: 20, background: '#e2e8f0', flexShrink: 0 }} />
 
               {/* Online status pill */}
               <div
                 style={{
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
-                  padding: '4px 10px',
-                  borderRadius: 20,
+                  height: 28,
+                  padding: '0 10px',
+                  borderRadius: 8,
                   background: '#ecfdf5',
                   border: '1px solid #a7f3d0',
                   fontSize: 11,
                   color: '#059669',
                   fontWeight: 600,
+                  whiteSpace: 'nowrap',
                 }}
               >
-                <ThunderboltOutlined style={{ fontSize: 12, color: '#059669' }} />
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: '#10b981',
+                    boxShadow: '0 0 6px rgba(16, 185, 129, 0.5)',
+                    flexShrink: 0,
+                  }}
+                />
                 <span>Trực tuyến</span>
               </div>
 
               {/* Storefront button */}
-              <Link to="/">
+              <Link to="/" className="staff-header-storefront">
                 <Button
                   icon={<ShopOutlined />}
-                  size="small"
                   style={{
+                    height: 32,
                     background: '#f8fafc',
                     borderColor: '#e2e8f0',
                     color: '#475569',
@@ -397,16 +423,20 @@ export const StaffLayout: React.FC = () => {
 
               {/* Role Tag */}
               <Tag
+                className="staff-header-role-tag"
                 style={{
                   margin: 0,
+                  height: 28,
+                  lineHeight: '26px',
                   fontWeight: 700,
                   fontSize: 10,
                   letterSpacing: 0.5,
                   background: '#eef2ff',
                   borderColor: '#c7d2fe',
                   color: '#4338ca',
-                  padding: '2px 8px',
-                  borderRadius: 6,
+                  padding: '0 8px',
+                  borderRadius: 8,
+                  whiteSpace: 'nowrap',
                 }}
               >
                 NHÂN VIÊN VẬN HÀNH

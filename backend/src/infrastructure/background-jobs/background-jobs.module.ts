@@ -25,12 +25,21 @@ const isRedisEnabled = process.env.REDIS_ENABLED === 'true';
         BullModule.forRootAsync({
           imports: [ConfigModule],
           inject: [ConfigService],
-          useFactory: (config: ConfigService) => ({
-            connection: {
-              host: config.get<string>('REDIS_HOST', 'localhost'),
-              port: config.get<number>('REDIS_PORT', 6379),
-            },
-          }),
+          useFactory: (config: ConfigService) => {
+            const username = config.get<string>('REDIS_USERNAME', '');
+            const password = config.get<string>('REDIS_PASSWORD', '');
+            const tlsEnabled =
+              config.get<string>('REDIS_TLS', '').toLowerCase() === 'true';
+            return {
+              connection: {
+                host: config.get<string>('REDIS_HOST', 'localhost'),
+                port: config.get<number>('REDIS_PORT', 6379),
+                ...(username ? { username } : {}),
+                ...(password ? { password } : {}),
+                ...(tlsEnabled ? { tls: {} } : {}),
+              },
+            };
+          },
         }),
         BullModule.registerQueue(
           { name: 'email-queue' },

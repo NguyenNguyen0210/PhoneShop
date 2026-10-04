@@ -765,7 +765,7 @@ export const Navbar: React.FC = () => {
               {vouchersLoading ? (
                 <div className="py-8 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
                   <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                  <span>Đang tải ưu đãi từ hệ thống...</span>
+                  <span>Đang tải ưu đãi...</span>
                 </div>
               ) : availableVouchers.length === 0 ? (
                 <div className="py-8 text-center space-y-2">

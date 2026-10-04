@@ -58,10 +58,10 @@ export class CreateRefundDto {
   @IsUUID()
   returnId: string;
 
-  @ApiProperty({ type: Number })
+  @ApiProperty({ type: Number, minimum: 1 })
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(1)
   amount: number;
 
   @ApiPropertyOptional()

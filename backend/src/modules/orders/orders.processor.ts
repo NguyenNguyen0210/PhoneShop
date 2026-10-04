@@ -45,6 +45,13 @@ export class OrdersProcessor extends WorkerHost {
       return;
     }
 
+    if (order.holdExpiresAt && order.holdExpiresAt.getTime() > Date.now()) {
+      this.logger.log(
+        `Order ${orderId} hold has not expired yet (expires at ${order.holdExpiresAt.toISOString()}). Skipping hold expiry.`,
+      );
+      return;
+    }
+
     if (order.status !== OrderStatus.PENDING) {
       this.logger.log(
         `Order ${orderId} has status ${order.status} (not PENDING). No hold expiry needed.`,
@@ -60,7 +67,9 @@ export class OrdersProcessor extends WorkerHost {
         data: {
           status: OrderStatus.CANCELLED,
           cancelledAt: new Date(),
-          cancelledReason: 'Hold expired (15 minutes)',
+          cancelledReason: (order as any).installmentApplication
+            ? 'Hold expired (24 hours)'
+            : 'Hold expired (15 minutes)',
         },
       });
       if (affected.count === 0) return; // Order was already confirmed, paid, or cancelled
@@ -83,8 +92,8 @@ export class OrdersProcessor extends WorkerHost {
           select: { id: true },
         });
         if (voucher) {
-          await tx.voucher.update({
-            where: { id: voucher.id },
+          await tx.voucher.updateMany({
+            where: { id: voucher.id, usageCount: { gt: 0 } },
             data: { usageCount: { decrement: 1 } },
           });
         }
@@ -98,8 +107,8 @@ export class OrdersProcessor extends WorkerHost {
             data: { status: ImeiStatus.AVAILABLE },
           });
         }
-        await tx.inventory.update({
-          where: { variantId: item.variantId },
+        await tx.inventory.updateMany({
+          where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
           data: {
             reservedQty: { decrement: item.quantity },
             availableQty: { increment: item.quantity },

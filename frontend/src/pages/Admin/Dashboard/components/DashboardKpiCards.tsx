@@ -4,7 +4,7 @@ import {
   DollarOutlined,
   ShoppingOutlined,
   AlertOutlined,
-  TeamOutlined,
+  RiseOutlined,
   ArrowRightOutlined,
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
@@ -41,8 +41,7 @@ export const DashboardKpiCards: React.FC<DashboardKpiCardsProps> = ({ summary, l
   const totalOrders = summary?.totalOrders ?? 0;
   const pendingOrders = summary?.pendingOrders ?? 0;
   const totalLowStock = summary?.totalLowStock ?? 0;
-  const totalUsers = summary?.totalUsers ?? 0;
-  const totalProducts = summary?.totalProducts ?? 0;
+  const averageOrderValue = totalOrders > 0 ? netRevenue / totalOrders : 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -111,22 +110,22 @@ export const DashboardKpiCards: React.FC<DashboardKpiCardsProps> = ({ summary, l
         </div>
       </div>
 
-      {/* Card 4: Khách hàng & Sản phẩm */}
+      {/* Card 4: Giá trị trung bình đơn (AOV) */}
       <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Khách hàng & Sản phẩm
+            Giá trị trung bình / đơn
           </span>
           <div className="w-9 h-9 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 text-lg">
-            <TeamOutlined />
+            <RiseOutlined />
           </div>
         </div>
         <div>
-          <div className="text-2xl font-bold font-mono tracking-tight text-slate-900 mb-1">
-            {totalUsers.toLocaleString('vi-VN')} <span className="text-sm font-normal text-slate-500">người dùng</span>
+          <div className="text-2xl font-bold font-mono tracking-tight text-slate-900 mb-1 whitespace-nowrap">
+            {formatPrice(averageOrderValue)}
           </div>
           <div className="text-xs text-slate-500">
-            <span className="font-semibold text-slate-700">{totalProducts.toLocaleString('vi-VN')}</span> sản phẩm đang kinh doanh
+            trên <span className="font-semibold text-slate-700">{totalOrders.toLocaleString('vi-VN')}</span> đơn trong kỳ
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Inject, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -136,7 +136,27 @@ export class SystemSettingsService {
   }
 
   async updateBatch(items: SettingItemDto[], adminUserId?: string): Promise<void> {
+    // AUDIT: strict key whitelist — arbitrary keys would let a caller plant
+    // unvalidated config (or collide with future env-backed keys). Only
+    // known keys plus the CUSTOM_ escape hatch are accepted.
+    const unknownKeys = items
+      .map((i) => i.key)
+      .filter((k) => !(k in DEFAULT_DEFINITIONS) && !k.startsWith('CUSTOM_'));
+    if (unknownKeys.length > 0) {
+      throw new BadRequestException(
+        `Unknown setting key(s): ${unknownKeys.join(', ')}. Valid keys: ${Object.keys(DEFAULT_DEFINITIONS).join(', ')} (or CUSTOM_-prefixed keys)`,
+      );
+    }
+
     const changedKeys: string[] = [];
+    const diff: Record<string, { oldValue: string | null; newValue: string }> = {};
+
+    // AUDIT: snapshot pre-update values so the audit row carries an old/new
+    // diff instead of just the list of touched keys.
+    const existing = await this.prisma.systemSetting.findMany({
+      where: { key: { in: items.map((i) => i.key) } },
+    });
+    const oldByKey = new Map(existing.map((r) => [r.key, r.value]));
 
     for (const item of items) {
       const def = DEFAULT_DEFINITIONS[item.key];
@@ -170,6 +190,13 @@ export class SystemSettingsService {
         await this.cache.del(`settings:key:${item.key}`);
       } catch (e) {}
 
+      // AUDIT: never persist plaintext secrets into the audit trail — a
+      // redacted marker preserves the fact of change without widening
+      // credential exposure to every audit-log reader.
+      const oldVal = oldByKey.get(item.key) ?? null;
+      diff[item.key] = isSecret
+        ? { oldValue: oldVal ? '[REDACTED]' : null, newValue: '[REDACTED]' }
+        : { oldValue: oldVal, newValue: item.value };
       changedKeys.push(item.key);
     }
 
@@ -181,7 +208,7 @@ export class SystemSettingsService {
             action: 'UPDATE',
             entity: 'SystemSetting',
             entityId: 'BATCH_UPDATE',
-            newData: { updatedKeys: changedKeys },
+            newData: { updatedKeys: changedKeys, diff },
           },
         });
       } catch (e) {

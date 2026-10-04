@@ -26,6 +26,7 @@ import {
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
+import './AdminLayout.css';
 
 const { Header, Sider, Content } = Layout;
 
@@ -40,91 +41,121 @@ export const AdminLayout: React.FC = () => {
     navigate('/login');
   };
 
-  const menuItems = [
+  const menuItems: MenuProps['items'] = [
     {
-      key: '/admin',
-      icon: <DashboardOutlined style={{ fontSize: 16 }} />,
-      label: 'Tổng quan (Dashboard)',
+      type: 'group',
+      label: 'Tổng quan',
+      children: [
+        {
+          key: '/admin',
+          icon: <DashboardOutlined style={{ fontSize: 16 }} />,
+          label: 'Tổng quan (Dashboard)',
+        },
+      ],
     },
     {
-      key: '/admin/products',
-      icon: <ShoppingOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Sản phẩm',
+      type: 'group',
+      label: 'Bán hàng & Đơn hàng',
+      children: [
+        {
+          key: '/admin/orders',
+          icon: <OrderedListOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Đơn hàng',
+        },
+        {
+          key: '/admin/returns',
+          icon: <UndoOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Đổi trả',
+        },
+        {
+          key: '/admin/installments',
+          icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
+          label: 'Hồ sơ trả góp',
+        },
+      ],
     },
     {
-      key: '/admin/categories',
-      icon: <FolderOpenOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Danh mục',
+      type: 'group',
+      label: 'Kho vận & Sản phẩm',
+      children: [
+        {
+          key: '/admin/products',
+          icon: <ShoppingOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Sản phẩm',
+        },
+        {
+          key: '/admin/categories',
+          icon: <FolderOpenOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Danh mục',
+        },
+        {
+          key: '/admin/brands',
+          icon: <TagsOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Thương hiệu',
+        },
+        {
+          key: '/admin/inventory',
+          icon: <BarcodeOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Kho & IMEI',
+        },
+        {
+          key: '/admin/suppliers',
+          icon: <ShopOutlined style={{ fontSize: 16 }} />,
+          label: 'Nhà cung cấp',
+        },
+      ],
     },
     {
-      key: '/admin/brands',
-      icon: <TagsOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Thương hiệu',
+      type: 'group',
+      label: 'Marketing & CSKH',
+      children: [
+        {
+          key: '/admin/promotions',
+          icon: <TagOutlined style={{ fontSize: 16 }} />,
+          label: 'Khuyến mãi & Flash Sale',
+        },
+        {
+          key: '/admin/payments',
+          icon: <DollarOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Thanh toán',
+        },
+        {
+          key: '/admin/customers',
+          icon: <UserOutlined style={{ fontSize: 16 }} />,
+          label: 'Khách hàng (360°)',
+        },
+        {
+          key: '/admin/tickets',
+          icon: <CustomerServiceOutlined style={{ fontSize: 16 }} />,
+          label: 'Hỗ trợ khách hàng',
+        },
+        {
+          key: '/admin/reviews',
+          icon: <CommentOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Đánh giá',
+        },
+      ],
     },
     {
-      key: '/admin/suppliers',
-      icon: <ShopOutlined style={{ fontSize: 16 }} />,
-      label: 'Nhà cung cấp',
-    },
-    {
-      key: '/admin/imei',
-      icon: <BarcodeOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Kho & IMEI',
-    },
-    {
-      key: '/admin/orders',
-      icon: <OrderedListOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Đơn hàng',
-    },
-    {
-      key: '/admin/promotions',
-      icon: <TagOutlined style={{ fontSize: 16 }} />,
-      label: 'Khuyến mãi & Flash Sale',
-    },
-    {
-      key: '/admin/payments',
-      icon: <DollarOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Thanh toán',
-    },
-    {
-      key: '/admin/returns',
-      icon: <UndoOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Đổi trả',
-    },
-    {
-      key: '/admin/customers',
-      icon: <UserOutlined style={{ fontSize: 16 }} />,
-      label: 'Khách hàng (360°)',
-    },
-    {
-      key: '/admin/tickets',
-      icon: <CustomerServiceOutlined style={{ fontSize: 16 }} />,
-      label: 'Hỗ trợ khách hàng',
-    },
-    {
-      key: '/admin/reviews',
-      icon: <CommentOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Đánh giá',
-    },
-    {
-      key: '/admin/installments',
-      icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
-      label: 'Hồ sơ trả góp',
-    },
-    {
-      key: '/admin/users',
-      icon: <TeamOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Người dùng',
-    },
-    {
-      key: '/admin/audit-logs',
-      icon: <SafetyCertificateOutlined style={{ fontSize: 16 }} />,
-      label: 'Nhật ký kiểm toán',
-    },
-    {
-      key: '/admin/settings',
-      icon: <SettingOutlined style={{ fontSize: 16 }} />,
-      label: 'Cấu hình Hệ thống',
+      type: 'group',
+      label: 'Hệ thống',
+      children: [
+        {
+          key: '/admin/users',
+          icon: <TeamOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Người dùng',
+        },
+        {
+          key: '/admin/audit-logs',
+          icon: <SafetyCertificateOutlined style={{ fontSize: 16 }} />,
+          label: 'Nhật ký kiểm toán',
+        },
+        {
+          key: '/admin/settings',
+          icon: <SettingOutlined style={{ fontSize: 16 }} />,
+          label: 'Cấu hình Hệ thống',
+        },
+      ],
     },
   ];
 
@@ -169,6 +200,30 @@ export const AdminLayout: React.FC = () => {
     if (location.pathname === '/admin/reviews') return 'Quản lý Đánh giá & Phản hồi';
     if (location.pathname === '/admin/settings') return 'Cấu hình & Tham số Hệ thống';
     return 'Tổng quan hệ thống (Dashboard)';
+  };
+
+  // Map any nested admin path to its top-level menu key
+  // (detail pages /admin/orders/:id etc. keep the parent highlighted,
+  // and the legacy /admin/imei URL maps to the inventory entry).
+  const getSelectedKey = () => {
+    const path = location.pathname;
+    if (path.startsWith('/admin/inventory') || path.startsWith('/admin/imei')) return '/admin/inventory';
+    if (path.startsWith('/admin/orders')) return '/admin/orders';
+    if (path.startsWith('/admin/customers')) return '/admin/customers';
+    if (path.startsWith('/admin/tickets')) return '/admin/tickets';
+    if (path.startsWith('/admin/promotions')) return '/admin/promotions';
+    if (path.startsWith('/admin/products')) return '/admin/products';
+    if (path.startsWith('/admin/categories')) return '/admin/categories';
+    if (path.startsWith('/admin/brands')) return '/admin/brands';
+    if (path.startsWith('/admin/suppliers')) return '/admin/suppliers';
+    if (path.startsWith('/admin/payments')) return '/admin/payments';
+    if (path.startsWith('/admin/returns')) return '/admin/returns';
+    if (path.startsWith('/admin/installments')) return '/admin/installments';
+    if (path.startsWith('/admin/reviews')) return '/admin/reviews';
+    if (path.startsWith('/admin/users')) return '/admin/users';
+    if (path.startsWith('/admin/audit-logs')) return '/admin/audit-logs';
+    if (path.startsWith('/admin/settings')) return '/admin/settings';
+    return '/admin';
   };
 
   return (
@@ -224,8 +279,8 @@ export const AdminLayout: React.FC = () => {
           collapsible
           collapsed={collapsed}
           width={250}
+          className="admin-sider"
           style={{
-            overflow: 'auto',
             height: '100vh',
             position: 'sticky',
             top: 0,
@@ -233,12 +288,16 @@ export const AdminLayout: React.FC = () => {
             zIndex: 100,
             background: '#ffffff',
             borderRight: '1px solid #e2e8f0',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
           }}
         >
           {/* Logo & Brand Header */}
           <div
             style={{
               height: 64,
+              flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
               padding: '0 20px',
@@ -289,10 +348,18 @@ export const AdminLayout: React.FC = () => {
           </div>
 
           {/* Navigation Menu */}
-          <div style={{ padding: '12px 0' }}>
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              padding: '12px 0',
+            }}
+          >
             <Menu
               mode="inline"
-              selectedKeys={[location.pathname]}
+              selectedKeys={[getSelectedKey()]}
               items={menuItems}
               onClick={handleMenuClick}
               style={{
@@ -306,10 +373,8 @@ export const AdminLayout: React.FC = () => {
           {!collapsed && (
             <div
               style={{
-                position: 'absolute',
-                bottom: 16,
-                left: 12,
-                right: 12,
+                flexShrink: 0,
+                margin: 12,
                 padding: '12px 14px',
                 borderRadius: 10,
                 background: '#f8fafc',

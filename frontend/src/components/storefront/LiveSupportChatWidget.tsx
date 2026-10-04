@@ -127,9 +127,8 @@ export const LiveSupportChatWidget: React.FC = () => {
         title: '[Live Chat] Hỗ trợ khách hàng',
         category: selectedCategory,
         message: trimmedMessage,
-        description: trimmedMessage,
       };
-      const created = await ticketService.createTicket(payload as any);
+      const created = await ticketService.createTicket(payload);
       const ticketId = created?.id;
       if (ticketId) {
         const detail = await ticketService.getTicketDetail(ticketId);
@@ -138,9 +137,13 @@ export const LiveSupportChatWidget: React.FC = () => {
         setActiveTicket(created);
       }
       setInitialMessage('');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create ticket:', err);
-      setError('Không thể tạo yêu cầu hỗ trợ. Vui lòng thử lại.');
+      const apiMessage = err?.response?.data?.message;
+      const displayMsg = Array.isArray(apiMessage)
+        ? apiMessage.join(', ')
+        : apiMessage || 'Không thể tạo yêu cầu hỗ trợ. Vui lòng thử lại.';
+      setError(displayMsg);
     } finally {
       setIsStarting(false);
     }
@@ -160,8 +163,12 @@ export const LiveSupportChatWidget: React.FC = () => {
       if (detail) {
         setActiveTicket(detail);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to reply ticket:', err);
+      try {
+        const detail = await ticketService.getTicketDetail(activeTicket.id);
+        if (detail) setActiveTicket(detail);
+      } catch (_) {}
     } finally {
       setIsSending(false);
     }
@@ -216,7 +223,7 @@ export const LiveSupportChatWidget: React.FC = () => {
                 <h3 className="text-sm font-semibold leading-tight">Hỗ trợ khách hàng PhoneShop</h3>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[11px] text-blue-100 font-medium">Trực tuyến</span>
+                  <span className="text-[11px] text-blue-100 font-medium">Đang online • trả lời trong vài phút</span>
                 </div>
               </div>
             </div>
@@ -273,24 +280,36 @@ export const LiveSupportChatWidget: React.FC = () => {
               /* Error State */
               <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                 <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
-                <p className="text-sm text-slate-600 mb-4">{error}</p>
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="px-4 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100"
-                >
-                  Đóng
-                </button>
+                <p className="text-sm text-slate-600 mb-4 max-w-[280px]">{error}</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setError(null)}
+                    className="px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                  >
+                    Thử lại
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setIsOpen(false);
+                    }}
+                    className="px-4 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
+                  >
+                    Đóng
+                  </button>
+                </div>
               </div>
             ) : !activeTicket ? (
               /* Starter Form */
               <div className="flex-1 p-5 flex flex-col justify-center overflow-y-auto">
                 <div className="mb-4 text-center">
                   <h4 className="text-sm font-semibold text-slate-800">
-                    Bắt đầu yêu cầu tư vấn
+                    Bạn cần giúp gì?
                   </h4>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Chọn chủ đề và gửi tin nhắn để được hỗ trợ nhanh nhất
+                    Chọn chủ đề và nhắn cho shop, nhân viên sẽ trả lời bạn sớm nhất
                   </p>
                 </div>
 
@@ -393,7 +412,7 @@ export const LiveSupportChatWidget: React.FC = () => {
                                 {staffName}
                               </span>
                               <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold uppercase tracking-wider">
-                                CSKH
+                                Hỗ trợ
                               </span>
                             </div>
                           )}
@@ -424,37 +443,50 @@ export const LiveSupportChatWidget: React.FC = () => {
                 </div>
 
                 {/* Reply Input Footer */}
-                <form
-                  onSubmit={handleSendReply}
-                  className="p-3 border-t border-slate-200 bg-white flex items-end gap-2 shrink-0"
-                >
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendReply(e);
-                      }
-                    }}
-                    placeholder="Nhập tin nhắn..."
-                    rows={1}
-                    className="flex-1 max-h-24 min-h-[38px] resize-none border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-800"
-                    disabled={isSending}
-                  />
-                  <button
-                    type="submit"
-                    disabled={!replyText.trim() || isSending}
-                    aria-label="Gửi tin nhắn"
-                    className="h-[38px] w-[38px] flex items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0 shadow-sm"
+                {activeTicket.status === 'CLOSED' ? (
+                  <div className="p-3 border-t border-slate-200 bg-slate-50 text-center shrink-0">
+                    <p className="text-xs text-slate-500 mb-2">Cuộc trò chuyện này đã kết thúc.</p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTicket(null)}
+                      className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200"
+                    >
+                      Bắt đầu cuộc trò chuyện mới
+                    </button>
+                  </div>
+                ) : (
+                  <form
+                    onSubmit={handleSendReply}
+                    className="p-3 border-t border-slate-200 bg-white flex items-end gap-2 shrink-0"
                   >
-                    {isSending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4" />
-                    )}
-                  </button>
-                </form>
+                    <textarea
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendReply(e);
+                        }
+                      }}
+                      placeholder="Nhập tin nhắn..."
+                      rows={1}
+                      className="flex-1 max-h-24 min-h-[38px] resize-none border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-800"
+                      disabled={isSending}
+                    />
+                    <button
+                      type="submit"
+                      disabled={!replyText.trim() || isSending}
+                      aria-label="Gửi tin nhắn"
+                      className="h-[38px] w-[38px] flex items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0 shadow-sm"
+                    >
+                      {isSending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                    </button>
+                  </form>
+                )}
               </div>
             )}
           </div>

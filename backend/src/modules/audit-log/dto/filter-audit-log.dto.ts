@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, IsNumber, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, IsNumber, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { AuditAction } from '@prisma/client';
 import { Type } from 'class-transformer';
@@ -26,12 +26,12 @@ export class FilterAuditLogDto {
 
   @ApiPropertyOptional({ description: 'Start date in ISO format' })
   @IsOptional()
-  @IsString()
+  @IsDateString()
   startDate?: string;
 
   @ApiPropertyOptional({ description: 'End date in ISO format' })
   @IsOptional()
-  @IsString()
+  @IsDateString()
   endDate?: string;
 
   @ApiPropertyOptional({ description: 'Fuzzy search keyword' })

@@ -27,6 +27,11 @@ export class CreateTicketDto {
   @IsNotEmpty()
   message: string;
 
+  @ApiPropertyOptional({ description: 'Optional description (alias for initial message)' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
   @ApiPropertyOptional({ type: [String], description: 'Cloudflare R2 attachment URLs' })
   @IsOptional()
   @IsArray()

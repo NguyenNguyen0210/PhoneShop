@@ -4,6 +4,7 @@ import { Navbar } from '../components/common/Navbar';
 import { Footer } from '../components/common/Footer';
 import { CartDrawer } from '../components/storefront/CartDrawer';
 import { LiveSupportChatWidget } from '../components/storefront/LiveSupportChatWidget';
+import { AiChatWidget } from '../components/storefront/AiChatWidget';
 import { useAuthStore } from '../stores/useAuthStore';
 
 export const StorefrontLayout: React.FC = () => {
@@ -23,7 +24,8 @@ export const StorefrontLayout: React.FC = () => {
       {/* Slide-over Cart Drawer (Customer only) */}
       {!hideCustomerWidgets && <CartDrawer />}
 
-      {/* Live Support Chat Widget (Customer only) */}
+      {/* AI Chat Widget (Gemini, above live chat) + Live Support Chat Widget (Customer only) */}
+      {!hideCustomerWidgets && <AiChatWidget />}
       {!hideCustomerWidgets && <LiveSupportChatWidget />}
 
       {/* Clean Light Architecture Footer */}

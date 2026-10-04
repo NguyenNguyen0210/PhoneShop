@@ -79,8 +79,8 @@ export class NotificationsController {
   }
 
   @Post('broadcast')
-  @Roles(Role.MANAGER, Role.ADMIN)
-  @ApiOperation({ summary: 'Broadcast system notification to all active users (MANAGER/ADMIN)' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Broadcast system notification to all active users (ADMIN)' })
   broadcast(@Body() dto: BroadcastNotificationDto) {
     return this.notificationsService.sendSystemNotification(dto);
   }

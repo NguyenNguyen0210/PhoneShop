@@ -90,6 +90,13 @@ export class CartService {
     });
     if (!item) throw new NotFoundException('Cart item not found');
 
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: item.variantId },
+    });
+    if (!variant || !variant.isActive) {
+      throw new NotFoundException('Product variant not found or inactive');
+    }
+
     const inventory = await this.prisma.inventory.findUnique({
       where: { variantId: item.variantId },
     });
@@ -99,7 +106,7 @@ export class CartService {
 
     return this.prisma.cartItem.update({
       where: { id: item.id },
-      data: { quantity: dto.quantity },
+      data: { quantity: dto.quantity, unitPrice: variant.price },
     });
   }
 

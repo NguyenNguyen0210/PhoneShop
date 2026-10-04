@@ -20,8 +20,10 @@ function isStaffOrAdminUser(user: any): boolean {
   return (
     user?.roles?.includes(Role.ADMIN) ||
     user?.roles?.includes(Role.STAFF) ||
+    user?.roles?.includes(Role.MANAGER) ||
     user?.role === Role.ADMIN ||
-    user?.role === Role.STAFF
+    user?.role === Role.STAFF ||
+    user?.role === Role.MANAGER
   );
 }
 
@@ -51,21 +53,21 @@ export class InstallmentsController {
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.MANAGER)
   @ApiOperation({ summary: 'Get all installment applications (Staff/Admin)' })
   findAll(@Query() query: QueryInstallmentDto) {
     return this.installmentsService.findAll(query);
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.MANAGER)
   @ApiOperation({ summary: 'Get installment application detail by ID (Staff/Admin)' })
   findById(@Param('id') id: string) {
     return this.installmentsService.findById(id);
   }
 
   @Patch(':id/review')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.MANAGER)
   @ApiOperation({ summary: 'Review installment application (Approve / Reject) (Staff/Admin)' })
   review(
     @Param('id') id: string,
@@ -84,21 +86,21 @@ export class AdminInstallmentsController {
   constructor(private readonly installmentsService: InstallmentsService) {}
 
   @Get()
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.MANAGER)
   @ApiOperation({ summary: 'Get all installment applications with pagination and filters' })
   findAll(@Query() query: QueryInstallmentDto) {
     return this.installmentsService.findAll(query);
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.MANAGER)
   @ApiOperation({ summary: 'Get installment application by ID with full details' })
   findById(@Param('id') id: string) {
     return this.installmentsService.findById(id);
   }
 
   @Patch(':id/review')
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.MANAGER)
   @ApiOperation({ summary: 'Approve or Reject installment application' })
   review(
     @Param('id') id: string,

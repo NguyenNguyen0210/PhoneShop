@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Put, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { WishlistService } from './wishlist.service';
-import { AddToWishlistDto } from './dto/wishlist.dto';
+import { AddToWishlistDto, MoveToCartDto } from './dto/wishlist.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -48,7 +48,12 @@ export class WishlistController {
 
   @Post('items/:productId/move-to-cart')
   @ApiOperation({ summary: 'Move product from wishlist to cart' })
-  moveToCart(@CurrentUser() user: any, @Param('productId') productId: string) {
-    return this.wishlistService.moveToCart(user.id, productId);
+  moveToCart(
+    @CurrentUser() user: any,
+    @Param('productId') productId: string,
+    @Query('variantId') variantId?: string,
+    @Body() dto?: MoveToCartDto,
+  ) {
+    return this.wishlistService.moveToCart(user.id, productId, dto?.variantId ?? variantId);
   }
 }
