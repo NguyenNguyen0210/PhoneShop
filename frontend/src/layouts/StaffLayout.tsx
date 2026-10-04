@@ -96,7 +96,7 @@ export const StaffLayout: React.FC = () => {
     // Phone number (0xxxxxxxxx or +84xxxxxxxxx) -> Customer lookup
     // Otherwise -> Orders lookup
     if (/^\d{15}$/.test(query)) {
-      navigate(`/staff/inventory?search=${encodeURIComponent(query)}`);
+      navigate(`/staff/inventory?tab=imei&search=${encodeURIComponent(query)}`);
     } else if (/^(0|\+84)\d{9,10}$/.test(query)) {
       navigate(`/staff/customers?search=${encodeURIComponent(query)}`);
     } else {

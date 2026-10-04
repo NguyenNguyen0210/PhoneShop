@@ -154,9 +154,13 @@ export const StaffCustomer360Page: React.FC = () => {
                       dataIndex: 'orderNumber',
                       key: 'orderNumber',
                       render: (val: string, r: any) => (
-                        <Text strong style={{ color: '#1890ff' }}>
+                        <Button
+                          type="link"
+                          style={{ padding: 0, fontWeight: 600 }}
+                          onClick={() => navigate(`/staff/orders?id=${r.id}`)}
+                        >
                           {val || r.code || (r.id ? r.id.slice(0, 8) : '—')}
-                        </Text>
+                        </Button>
                       ),
                     },
                     {
@@ -276,9 +280,13 @@ export const StaffCustomer360Page: React.FC = () => {
                       dataIndex: 'code',
                       key: 'code',
                       render: (v: string, r: any) => (
-                        <Text strong style={{ color: '#1890ff' }}>
+                        <Button
+                          type="link"
+                          style={{ padding: 0, fontWeight: 600 }}
+                          onClick={() => navigate(`/staff/tickets/${r.id}`)}
+                        >
                           {v || (r.id ? r.id.slice(0, 8) : '—')}
-                        </Text>
+                        </Button>
                       ),
                     },
                     {

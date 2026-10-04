@@ -16,7 +16,15 @@ export const StaffInventoryPage: React.FC = () => {
 
   const [items, setItems] = useState<InventoryRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [filterLowStockOnly, setFilterLowStockOnly] = useState<boolean>(false);
+  const [filterLowStockOnly, setFilterLowStockOnly] = useState<boolean>(
+    searchParams.get('lowStock') === 'true'
+  );
+
+  useEffect(() => {
+    if (searchParams.get('lowStock') === 'true') {
+      setFilterLowStockOnly(true);
+    }
+  }, [searchParams]);
 
   const fetchInventory = useCallback(async () => {
     setLoading(true);

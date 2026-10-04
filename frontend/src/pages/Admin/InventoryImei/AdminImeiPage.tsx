@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Table,
   Button,
@@ -33,13 +34,24 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 export const AdminImeiPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
+
   const [imeis, setImeis] = useState<ImeiDevice[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [variantId, setVariantId] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>(urlSearch);
+
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q !== null && q !== searchQuery) {
+      setSearchQuery(q);
+      setPage(1);
+    }
+  }, [searchParams]);
 
   // Server-side pagination state
   const [page, setPage] = useState<number>(1);

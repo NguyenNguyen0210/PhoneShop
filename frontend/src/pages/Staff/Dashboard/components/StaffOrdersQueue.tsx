@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Table, Tag, Button, Space, Typography, message } from 'antd';
+import { Card, Table, Tag, Button, Space, Typography, message, Modal, Descriptions, Divider } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   CheckCircleOutlined,
@@ -7,8 +7,9 @@ import {
   EyeOutlined,
   ArrowRightOutlined,
   SyncOutlined,
+  CarOutlined,
 } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { Order, OrderStatus } from '../../../../types';
 import { orderService } from '../../../../services/orderService';
 
@@ -57,7 +58,10 @@ export const StaffOrdersQueue: React.FC<StaffOrdersQueueProps> = ({
   onConfirm,
   onPack,
 }) => {
+  const navigate = useNavigate();
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleConfirm = async (orderId: string) => {
     setActionLoadingId(orderId);
@@ -178,18 +182,20 @@ export const StaffOrdersQueue: React.FC<StaffOrdersQueueProps> = ({
               </Button>
             )}
 
-            <Link to={`/staff/orders?id=${record.id}`}>
-              <Button
-                size="small"
-                icon={<EyeOutlined />}
-                data-testid={`detail-btn-${record.id}`}
-                style={{
-                  borderRadius: 6,
-                }}
-              >
-                Chi tiết
-              </Button>
-            </Link>
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              data-testid={`detail-btn-${record.id}`}
+              style={{
+                borderRadius: 6,
+              }}
+              onClick={() => {
+                setViewingOrder(record);
+                setIsModalOpen(true);
+              }}
+            >
+              Chi tiết
+            </Button>
           </Space>
         );
       },
@@ -197,47 +203,218 @@ export const StaffOrdersQueue: React.FC<StaffOrdersQueueProps> = ({
   ];
 
   return (
-    <Card
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <SyncOutlined style={{ color: '#2563eb' }} />
-          <span>Hàng đợi Đơn hàng Cần xử lý</span>
-        </div>
-      }
-      extra={
-        <Link
-          to="/staff/orders"
-          data-testid="link-all-orders"
-          style={{
-            fontSize: 13,
-            color: '#2563eb',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          Xem tất cả <ArrowRightOutlined style={{ fontSize: 11 }} />
-        </Link>
-      }
-      style={{
-        borderRadius: 12,
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
-      }}
-      styles={{ body: { padding: 0 } }}
-    >
-      <Table<Order>
-        rowKey={(record) => record.id || record.orderNumber}
-        columns={columns}
-        dataSource={orders}
-        loading={loading}
-        pagination={{
-          pageSize: 6,
-          size: 'small',
-          showSizeChanger: false,
-          style: { padding: '0 16px 12px' },
+    <>
+      <Card
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <SyncOutlined style={{ color: '#2563eb' }} />
+            <span>Hàng đợi Đơn hàng Cần xử lý</span>
+          </div>
+        }
+        extra={
+          <Link
+            to="/staff/orders"
+            data-testid="link-all-orders"
+            style={{
+              fontSize: 13,
+              color: '#2563eb',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            Xem tất cả <ArrowRightOutlined style={{ fontSize: 11 }} />
+          </Link>
+        }
+        style={{
+          borderRadius: 12,
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
         }}
-        locale={{ emptyText: 'Không có đơn hàng nào cần xử lý' }}
-      />
-    </Card>
+        styles={{ body: { padding: 0 } }}
+      >
+        <Table<Order>
+          rowKey={(record) => record.id || record.orderNumber}
+          columns={columns}
+          dataSource={orders}
+          loading={loading}
+          pagination={{
+            pageSize: 6,
+            size: 'small',
+            showSizeChanger: false,
+            style: { padding: '0 16px 12px' },
+          }}
+          locale={{ emptyText: 'Không có đơn hàng nào cần xử lý' }}
+        />
+      </Card>
+
+      {/* Modal: Xem chi tiết đơn hàng trực tiếp trên dashboard */}
+      <Modal
+        title={`Chi tiết đơn hàng: ${viewingOrder?.orderNumber || ''}`}
+        open={isModalOpen}
+        onCancel={() => {
+          setIsModalOpen(false);
+          setViewingOrder(null);
+        }}
+        footer={[
+          viewingOrder?.status === 'PENDING' && (
+            <Button
+              key="confirm"
+              type="primary"
+              style={{ backgroundColor: '#f59e0b', borderColor: '#f59e0b' }}
+              loading={actionLoadingId === viewingOrder.id}
+              onClick={async () => {
+                await handleConfirm(viewingOrder.id);
+                setViewingOrder((prev) => (prev ? { ...prev, status: 'CONFIRMED' } : null));
+              }}
+            >
+              Xác nhận đơn
+            </Button>
+          ),
+          viewingOrder?.status === 'CONFIRMED' && (
+            <Button
+              key="pack"
+              type="primary"
+              style={{ backgroundColor: '#3b82f6', borderColor: '#3b82f6' }}
+              loading={actionLoadingId === viewingOrder.id}
+              onClick={async () => {
+                await handlePack(viewingOrder.id);
+                setViewingOrder((prev) => (prev ? { ...prev, status: 'PACKED' } : null));
+              }}
+            >
+              Đóng gói đơn
+            </Button>
+          ),
+          <Button
+            key="manage"
+            icon={<ArrowRightOutlined />}
+            onClick={() => {
+              if (viewingOrder) {
+                navigate(`/staff/orders?id=${viewingOrder.id}`);
+              }
+            }}
+          >
+            Mở trang Quản lý đơn hàng
+          </Button>,
+          <Button
+            key="close"
+            onClick={() => {
+              setIsModalOpen(false);
+              setViewingOrder(null);
+            }}
+          >
+            Đóng
+          </Button>,
+        ].filter(Boolean)}
+        width={720}
+      >
+        {viewingOrder && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <Descriptions bordered size="small" column={{ xs: 1, sm: 2 }}>
+              <Descriptions.Item label="Khách hàng">
+                <Text strong>{viewingOrder.customerName || 'Khách vãng lai'}</Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Số điện thoại">
+                {viewingOrder.shippingPhone || 'Chưa cập nhật'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Địa chỉ giao hàng" span={2}>
+                {viewingOrder.shippingAddress || 'Chưa cập nhật'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Phương thức thanh toán">
+                <Tag color="geekblue">{viewingOrder.paymentMethod || 'COD'}</Tag>
+                {viewingOrder.paymentStatus && (
+                  <Tag color={viewingOrder.paymentStatus === 'PAID' ? 'green' : 'orange'}>
+                    {viewingOrder.paymentStatus}
+                  </Tag>
+                )}
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái">
+                {renderStatusTag(viewingOrder.status)}
+              </Descriptions.Item>
+              {viewingOrder.notes && (
+                <Descriptions.Item label="Ghi chú" span={2}>
+                  {viewingOrder.notes}
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+
+            {/* Danh sách mặt hàng */}
+            {viewingOrder.items && viewingOrder.items.length > 0 && (
+              <div>
+                <Divider titlePlacement="start" plain style={{ margin: '8px 0 12px' }}>
+                  Danh sách sản phẩm ({viewingOrder.items.length})
+                </Divider>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {viewingOrder.items.map((it: any, idx: number) => {
+                    const prodName = it.productName || it.variant?.product?.name || 'Sản phẩm';
+                    const variantText = [it.variant?.color, it.variant?.storage].filter(Boolean).join(' - ');
+                    const price = it.price || it.unitPrice || 0;
+                    return (
+                      <div
+                        key={it.id || idx}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '8px 12px',
+                          background: '#f8fafc',
+                          borderRadius: 8,
+                          border: '1px solid #e2e8f0',
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>
+                            {prodName}
+                          </div>
+                          {variantText && (
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                              Phân loại: {variantText}
+                            </Text>
+                          )}
+                          {it.imei && (
+                            <div style={{ fontSize: 11, color: '#2563eb', fontFamily: 'monospace' }}>
+                              IMEI: {it.imei}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <Text style={{ fontSize: 12, color: '#64748b' }}>
+                            x{it.quantity || 1}
+                          </Text>
+                          <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                            {formatVND(price * (it.quantity || 1))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                gap: 8,
+                padding: '12px 16px',
+                background: '#eff6ff',
+                borderRadius: 8,
+              }}
+            >
+              <Text strong style={{ fontSize: 14 }}>
+                Tổng thanh toán:
+              </Text>
+              <Text
+                strong
+                style={{ fontSize: 18, color: '#2563eb', fontFamily: 'monospace' }}
+              >
+                {formatVND(Number(viewingOrder.totalAmount) || 0)}
+              </Text>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 };

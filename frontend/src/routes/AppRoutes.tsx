@@ -137,6 +137,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/admin/inventory" element={<AdminInventoryPage />} />
           <Route path="/admin/imei" element={<Navigate to="/admin/inventory?tab=imei" replace />} />
           <Route path="/admin/orders" element={<AdminOrdersPage />} />
+          <Route path="/admin/orders/:id" element={<AdminOrdersPage />} />
           <Route path="/admin/promotions" element={<AdminPromotionsPage />} />
           <Route
             path="/admin/payments"
@@ -206,6 +207,7 @@ export const AppRoutes: React.FC = () => {
         <Route element={<StaffLayout />}>
           <Route path="/staff" element={<StaffDashboardPage />} />
           <Route path="/staff/orders" element={<AdminOrdersPage />} />
+          <Route path="/staff/orders/:id" element={<AdminOrdersPage />} />
           <Route path="/staff/inventory" element={<StaffInventoryPage />} />
           <Route path="/staff/imei" element={<Navigate to="/staff/inventory?tab=imei" replace />} />
           <Route path="/staff/tickets" element={<AdminTicketsPage />} />

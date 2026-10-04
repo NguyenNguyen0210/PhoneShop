@@ -57,7 +57,7 @@ export const StaffAlertsSidebar: React.FC<StaffAlertsSidebarProps> = ({
         }
         extra={
           <Link
-            to="/staff/inventory"
+            to="/staff/inventory?lowStock=true"
             style={{
               fontSize: 12,
               color: '#ef4444',

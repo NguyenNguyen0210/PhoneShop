@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Table,
   Button,
@@ -32,6 +33,15 @@ import { ShippingDispatchModal } from './components/ShippingDispatchModal';
 const { Title, Text } = Typography;
 
 export const AdminOrdersPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const params = useParams<{ id?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const urlStatus = searchParams.get('status') || 'ALL';
+  const urlSearch = searchParams.get('search') || '';
+  const targetOrderId = params.id || searchParams.get('id') || searchParams.get('orderId');
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -43,8 +53,71 @@ export const AdminOrdersPage: React.FC = () => {
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(10);
   const [total, setTotal] = useState<number>(0);
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>(urlStatus);
+  const [searchKeyword, setSearchKeyword] = useState<string>(urlSearch);
+
+  // Sync filter states if URL params change
+  useEffect(() => {
+    const nextStatus = searchParams.get('status') || 'ALL';
+    if (nextStatus !== statusFilter) {
+      setStatusFilter(nextStatus);
+      setPage(1);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const nextSearch = searchParams.get('search') || '';
+    if (nextSearch !== searchKeyword) {
+      setSearchKeyword(nextSearch);
+      setPage(1);
+    }
+  }, [searchParams]);
+
+  // Handle direct open of order detail when ?id=... or route /orders/:id is visited
+  useEffect(() => {
+    if (!targetOrderId) return;
+    let isMounted = true;
+
+    // Check if target order is already in the list
+    const foundInList = orders.find((o) => o.id === targetOrderId || o.orderNumber === targetOrderId);
+    if (foundInList) {
+      setSelectedOrder(foundInList);
+      setIsDetailModalOpen(true);
+    }
+
+    const fetchDetail = async () => {
+      try {
+        const fullOrder = await orderService.getOrderById(targetOrderId);
+        if (isMounted && fullOrder) {
+          setSelectedOrder(fullOrder);
+          setIsDetailModalOpen(true);
+        }
+      } catch (err) {
+        console.error('Không tìm thấy chi tiết đơn hàng:', err);
+      }
+    };
+
+    void fetchDetail();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [targetOrderId, orders]);
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedOrder(null);
+    if (searchParams.has('id') || searchParams.has('orderId')) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('id');
+      nextParams.delete('orderId');
+      setSearchParams(nextParams, { replace: true });
+    }
+    if (params.id) {
+      const basePath = location.pathname.startsWith('/staff') ? '/staff/orders' : '/admin/orders';
+      navigate(basePath, { replace: true });
+    }
+  };
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -354,7 +427,7 @@ export const AdminOrdersPage: React.FC = () => {
       <Modal
         title={`Chi tiết đơn hàng: ${selectedOrder?.orderNumber || ''}`}
         open={isDetailModalOpen}
-        onCancel={() => setIsDetailModalOpen(false)}
+        onCancel={handleCloseDetailModal}
         footer={[
           <Button
             key="dispatch"
@@ -368,7 +441,7 @@ export const AdminOrdersPage: React.FC = () => {
           >
             Vận chuyển
           </Button>,
-          <Button key="close" onClick={() => setIsDetailModalOpen(false)}>
+          <Button key="close" onClick={handleCloseDetailModal}>
             Đóng
           </Button>,
         ]}
@@ -391,7 +464,24 @@ export const AdminOrdersPage: React.FC = () => {
                 {getPaymentStatusTag(selectedOrder.paymentStatus)}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái đơn hàng">
-                {getStatusTag(selectedOrder.status)}
+                <Space>
+                  {getStatusTag(selectedOrder.status)}
+                  <Select
+                    size="small"
+                    value={selectedOrder.status}
+                    style={{ minWidth: 150 }}
+                    onChange={(newVal) => handleUpdateStatus(selectedOrder.id, newVal, selectedOrder)}
+                    options={[
+                      { value: 'PENDING', label: 'Chờ xử lý' },
+                      { value: 'CONFIRMED', label: 'Đã xác nhận' },
+                      { value: 'PROCESSING', label: 'Đang chuẩn bị' },
+                      { value: 'PACKED', label: 'Đã đóng gói' },
+                      { value: 'SHIPPING', label: 'Đang giao' },
+                      { value: 'DELIVERED', label: 'Đã giao' },
+                      { value: 'CANCELLED', label: 'Hủy đơn' },
+                    ]}
+                  />
+                </Space>
               </Descriptions.Item>
               {selectedOrder.notes && (
                 <Descriptions.Item label="Ghi chú khách hàng" span={2}>

@@ -27,7 +27,7 @@ import {
   EyeOutlined,
   FileImageOutlined,
 } from '@ant-design/icons';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ticketService } from '../../../services/ticketService';
 import type { Ticket, TicketStatus } from '../../../types/ticket';
 
@@ -37,6 +37,9 @@ const { TextArea } = Input;
 export const AdminTicketDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isStaff = location.pathname.startsWith('/staff');
+  const ticketsListUrl = isStaff ? '/staff/tickets' : '/admin/tickets';
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
@@ -176,7 +179,7 @@ export const AdminTicketDetailPage: React.FC = () => {
             if (window.history.length > 1) {
               navigate(-1);
             } else {
-              navigate('/admin/tickets');
+              navigate(ticketsListUrl);
             }
           }}
           style={{ marginBottom: 16 }}
@@ -199,7 +202,7 @@ export const AdminTicketDetailPage: React.FC = () => {
           if (window.history.length > 1) {
             navigate(-1);
           } else {
-            navigate('/admin/tickets');
+            navigate(ticketsListUrl);
           }
         }}
         style={{ marginBottom: 16 }}
@@ -438,7 +441,13 @@ export const AdminTicketDetailPage: React.FC = () => {
             <Button
               type="default"
               icon={<EyeOutlined />}
-              onClick={() => navigate(`/admin/customers/${ticket.userId}`)}
+              onClick={() =>
+                navigate(
+                  isStaff
+                    ? `/staff/customers/${ticket.userId}`
+                    : `/admin/customers/${ticket.userId}`
+                )
+              }
               style={{ width: '100%', marginTop: 8 }}
             >
               Xem Hồ sơ Customer 360°
@@ -472,7 +481,13 @@ export const AdminTicketDetailPage: React.FC = () => {
               <Button
                 type="link"
                 style={{ padding: 0, marginTop: 8 }}
-                onClick={() => navigate('/admin/orders')}
+                onClick={() =>
+                  navigate(
+                    isStaff
+                      ? `/staff/orders?id=${ticket.order?.id}`
+                      : `/admin/orders?id=${ticket.order?.id}`
+                  )
+                }
               >
                 Mở Quản lý Đơn hàng →
               </Button>

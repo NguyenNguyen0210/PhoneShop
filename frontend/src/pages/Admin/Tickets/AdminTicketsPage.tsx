@@ -22,7 +22,7 @@ import {
   ExclamationCircleOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ticketService } from '../../../services/ticketService';
 import type { Ticket, TicketCategory, TicketPriority, TicketStatus } from '../../../types/ticket';
 
@@ -30,6 +30,13 @@ const { Title, Text } = Typography;
 
 export const AdminTicketsPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  const isStaff = location.pathname.startsWith('/staff');
+  const urlStatus = (searchParams.get('status') as TicketStatus | 'ALL') || 'ALL';
+  const urlCategory = (searchParams.get('category') as TicketCategory | 'ALL') || 'ALL';
+  const urlSearch = searchParams.get('search') || '';
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,10 +44,27 @@ export const AdminTicketsPage: React.FC = () => {
   const [limit, setLimit] = useState<number>(10);
   const [total, setTotal] = useState<number>(0);
 
-  const [statusFilter, setStatusFilter] = useState<TicketStatus | 'ALL'>('ALL');
-  const [categoryFilter, setCategoryFilter] = useState<TicketCategory | 'ALL'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<TicketStatus | 'ALL'>(urlStatus);
+  const [categoryFilter, setCategoryFilter] = useState<TicketCategory | 'ALL'>(urlCategory);
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority | 'ALL'>('ALL');
-  const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [searchKeyword, setSearchKeyword] = useState<string>(urlSearch);
+
+  // Sync if URL search params change
+  useEffect(() => {
+    const s = (searchParams.get('status') as TicketStatus | 'ALL') || 'ALL';
+    if (s !== statusFilter) {
+      setStatusFilter(s);
+      setPage(1);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const q = searchParams.get('search') || '';
+    if (q !== searchKeyword) {
+      setSearchKeyword(q);
+      setPage(1);
+    }
+  }, [searchParams]);
 
   const loadTickets = useCallback(async () => {
     try {
@@ -179,7 +203,7 @@ export const AdminTicketsPage: React.FC = () => {
           type="primary"
           size="small"
           icon={<EyeOutlined />}
-          onClick={() => navigate(`/admin/tickets/${record.id}`)}
+          onClick={() => navigate(isStaff ? `/staff/tickets/${record.id}` : `/admin/tickets/${record.id}`)}
         >
           Xử lý vé
         </Button>

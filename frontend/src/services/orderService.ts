@@ -3,6 +3,7 @@ import type { Order, PaymentMethod, InstallmentFormData, ShippingMethod } from '
 import { toBackendPaymentMethod } from './paymentService';
 import { cartService } from './cartService';
 import { useCartStore } from '../stores/useCartStore';
+import { useAuthStore } from '../stores/useAuthStore';
 
 const VALID_PAYMENT_METHODS: Array<PaymentMethod | string> = [
   'COD',
@@ -115,11 +116,17 @@ export const orderService = {
   },
 
   async getOrderById(id: string): Promise<Order> {
+    const isStaffOrAdmin = useAuthStore.getState().isStaffOrAdmin?.() || false;
+    if (isStaffOrAdmin) {
+      const response = await apiClient.get(`/orders/${id}`);
+      return response.data?.data ?? response.data;
+    }
+
     try {
       const response = await apiClient.get(`/orders/my/${id}`);
       return response.data?.data ?? response.data;
     } catch {
-      // Fallback to admin/staff findOne if customer lookup fails or for staff
+      // Fallback to admin/staff findOne if customer lookup fails or token allows
       const response = await apiClient.get(`/orders/${id}`);
       return response.data?.data ?? response.data;
     }
