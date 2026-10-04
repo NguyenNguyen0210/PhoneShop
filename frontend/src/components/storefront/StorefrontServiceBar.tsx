@@ -58,7 +58,10 @@ export const StorefrontServiceBar: React.FC<StorefrontServiceBarProps> = ({
   className = '',
 }) => {
   return (
-    <section className={`w-full ${className}`.trim()} aria-label="Cam kết dịch vụ">
+    <section
+      className={`w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${className}`.trim()}
+      aria-label="Cam kết dịch vụ"
+    >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {GUARANTEES.map((item) => {
           const Icon = item.icon;
