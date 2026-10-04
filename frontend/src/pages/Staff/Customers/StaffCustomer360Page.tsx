@@ -319,6 +319,19 @@ export const StaffCustomer360Page: React.FC = () => {
                       render: (v: string) =>
                         v ? new Date(v).toLocaleDateString('vi-VN') : '—',
                     },
+                    {
+                      title: 'Thao tác',
+                      key: 'action',
+                      render: (_: any, r: any) => (
+                        <Button
+                          type="link"
+                          size="small"
+                          onClick={() => navigate(`/staff/tickets/${r.id}`)}
+                        >
+                          Xem vé & Chat
+                        </Button>
+                      ),
+                    },
                   ]}
                 />
               ),

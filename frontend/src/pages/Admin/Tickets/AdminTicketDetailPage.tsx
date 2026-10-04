@@ -26,6 +26,7 @@ import {
   ShoppingOutlined,
   EyeOutlined,
   FileImageOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ticketService } from '../../../services/ticketService';
@@ -38,8 +39,11 @@ export const AdminTicketDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  // Role-aware route detection
   const isStaff = location.pathname.startsWith('/staff');
-  const ticketsListUrl = isStaff ? '/staff/tickets' : '/admin/tickets';
+  const ticketBasePath = isStaff ? '/staff/tickets' : '/admin/tickets';
+  const customerBasePath = isStaff ? '/staff/customers' : '/admin/customers';
+  const orderBasePath = isStaff ? '/staff/orders' : '/admin/orders';
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
@@ -179,7 +183,7 @@ export const AdminTicketDetailPage: React.FC = () => {
             if (window.history.length > 1) {
               navigate(-1);
             } else {
-              navigate(ticketsListUrl);
+              navigate(ticketBasePath);
             }
           }}
           style={{ marginBottom: 16 }}
@@ -194,6 +198,10 @@ export const AdminTicketDetailPage: React.FC = () => {
   const customerName =
     [ticket.user?.lastName, ticket.user?.firstName].filter(Boolean).join(' ') || ticket.user?.email || 'Khách';
 
+  const isLiveChat =
+    ticket.title.toLowerCase().includes('[live chat]') ||
+    ticket.title.toLowerCase().includes('live chat');
+
   return (
     <div style={{ padding: 24 }}>
       <Button
@@ -202,12 +210,12 @@ export const AdminTicketDetailPage: React.FC = () => {
           if (window.history.length > 1) {
             navigate(-1);
           } else {
-            navigate(ticketsListUrl);
+            navigate(ticketBasePath);
           }
         }}
         style={{ marginBottom: 16 }}
       >
-        Danh sách vé hỗ trợ
+        Danh sách vé & Live Chat
       </Button>
 
       <Row gutter={[24, 24]}>
@@ -216,10 +224,19 @@ export const AdminTicketDetailPage: React.FC = () => {
           <Card bordered={false} style={{ marginBottom: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
               <div>
-                <Space size="middle" style={{ marginBottom: 8 }}>
+                <Space size="middle" style={{ marginBottom: 8, flexWrap: 'wrap' }}>
                   <Text strong style={{ fontSize: 18, color: '#1890ff' }}>
                     {ticket.code}
                   </Text>
+                  {isLiveChat && (
+                    <Tag
+                      color="#10b981"
+                      icon={<MessageOutlined />}
+                      style={{ fontWeight: 600, borderRadius: 12, padding: '0 8px' }}
+                    >
+                      Phiên Live Support Chat
+                    </Tag>
+                  )}
                   <Tag color="blue">{ticket.category}</Tag>
                   <Tag color={ticket.priority === 'URGENT' ? 'red' : 'orange'}>{ticket.priority}</Tag>
                 </Space>
@@ -241,10 +258,10 @@ export const AdminTicketDetailPage: React.FC = () => {
             {ticket.messages && ticket.messages.length > 0 ? (
               ticket.messages.map((msg) => {
                 const isInternal = msg.isInternalNote;
-                const isStaff = msg.senderId !== ticket.userId;
+                const isStaffSender = msg.senderId !== ticket.userId;
                 const senderName =
                   [msg.sender?.lastName, msg.sender?.firstName].filter(Boolean).join(' ') ||
-                  (isStaff ? 'Nhân viên CSKH' : customerName);
+                  (isStaffSender ? 'Nhân viên CSKH' : customerName);
 
                 return (
                   <Card
@@ -252,8 +269,8 @@ export const AdminTicketDetailPage: React.FC = () => {
                     bordered={false}
                     style={{
                       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                      backgroundColor: isInternal ? '#fffbe6' : isStaff ? '#f6ffed' : '#ffffff',
-                      borderLeft: isInternal ? '4px solid #faad14' : isStaff ? '4px solid #52c41a' : '4px solid #1890ff',
+                      backgroundColor: isInternal ? '#fffbe6' : isStaffSender ? '#f6ffed' : '#ffffff',
+                      borderLeft: isInternal ? '4px solid #faad14' : isStaffSender ? '4px solid #52c41a' : '4px solid #1890ff',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -262,11 +279,11 @@ export const AdminTicketDetailPage: React.FC = () => {
                           src={msg.sender?.avatarUrl}
                           icon={<UserOutlined />}
                           style={{
-                            backgroundColor: isInternal ? '#faad14' : isStaff ? '#52c41a' : '#1890ff',
+                            backgroundColor: isInternal ? '#faad14' : isStaffSender ? '#52c41a' : '#1890ff',
                           }}
                         />
                         <Text strong>{senderName}</Text>
-                        {isStaff && <Tag color="green">CSKH</Tag>}
+                        {isStaffSender && <Tag color="green">CSKH</Tag>}
                         {isInternal && (
                           <Tag color="warning" icon={<LockOutlined />}>
                             Ghi chú nội bộ
@@ -287,7 +304,7 @@ export const AdminTicketDetailPage: React.FC = () => {
                         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                           Hình ảnh đính kèm:
                         </Text>
-                        <Space wrap orientation="horizontal">
+                        <Space wrap>
                           {msg.attachments.map((url, idx) => (
                             <Image
                               key={idx}
@@ -333,20 +350,66 @@ export const AdminTicketDetailPage: React.FC = () => {
               backgroundColor: isInternalNote ? '#fffbe6' : '#ffffff',
             }}
           >
-            {isInternalNote && (
+            {isInternalNote ? (
               <Alert
                 message="Chế độ Ghi chú nội bộ: Tin nhắn này chỉ hiển thị cho nhân viên CSKH & Quản trị viên, khách hàng hoàn toàn không nhìn thấy."
                 type="warning"
                 showIcon
                 style={{ marginBottom: 12 }}
               />
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
+                  backgroundColor: isLiveChat ? '#ecfdf5' : '#eff6ff',
+                  borderRadius: 6,
+                  marginBottom: 12,
+                  border: isLiveChat ? '1px solid #a7f3d0' : '1px solid #bfdbfe',
+                  fontSize: 13,
+                  color: isLiveChat ? '#065f46' : '#1e40af',
+                }}
+              >
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: isLiveChat ? '#10b981' : '#3b82f6',
+                    display: 'inline-block',
+                    flexShrink: 0,
+                  }}
+                />
+                <span>
+                  {isLiveChat
+                    ? 'Khách hàng đang kết nối Live Chat. Tin nhắn bạn gửi sẽ hiển thị ngay tức thì trong bong bóng chat của khách.'
+                    : 'Tin nhắn gửi đến khách hàng sẽ được cập nhật vào cuộc trao đổi và gửi thông báo cho khách.'}{' '}
+                  <i>(Phím tắt: nhấn <b>Ctrl + Enter</b> để gửi nhanh)</i>
+                </span>
+              </div>
             )}
 
             <TextArea
               rows={4}
-              placeholder={isInternalNote ? 'Nhập ghi chú kỹ thuật hoặc bàn giao ca...' : 'Nhập nội dung phản hồi gửi tới khách hàng...'}
+              placeholder={
+                isInternalNote
+                  ? 'Nhập ghi chú kỹ thuật hoặc trao đổi nội bộ CSKH (Khách không nhìn thấy)... [Ctrl + Enter để gửi]'
+                  : isLiveChat
+                  ? 'Nhập tin nhắn phản hồi trực tiếp cho khách hàng (Khách sẽ thấy ngay trên ô chat)... [Ctrl + Enter để gửi]'
+                  : 'Nhập nội dung phản hồi gửi tới khách hàng... [Ctrl + Enter để gửi]'
+              }
               value={replyMessage}
               onChange={(e) => setReplyMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  if (replyMessage.trim() && !sending) {
+                    handleSendMessage();
+                  }
+                }
+              }}
               style={{ marginBottom: 12 }}
             />
 
@@ -368,12 +431,13 @@ export const AdminTicketDetailPage: React.FC = () => {
                   disabled={!replyMessage.trim()}
                   onClick={handleSendMessage}
                   style={{
-                    backgroundColor: isInternalNote ? '#faad14' : undefined,
-                    borderColor: isInternalNote ? '#faad14' : undefined,
+                    backgroundColor: isInternalNote ? '#faad14' : isLiveChat ? '#10b981' : undefined,
+                    borderColor: isInternalNote ? '#faad14' : isLiveChat ? '#10b981' : undefined,
                     width: '100%',
+                    fontWeight: 500,
                   }}
                 >
-                  {isInternalNote ? 'Lưu ghi chú' : 'Gửi phản hồi'}
+                  {isInternalNote ? 'Lưu ghi chú nội bộ' : isLiveChat ? 'Gửi tin nhắn Live Chat' : 'Gửi phản hồi'}
                 </Button>
               </Col>
             </Row>
@@ -441,13 +505,7 @@ export const AdminTicketDetailPage: React.FC = () => {
             <Button
               type="default"
               icon={<EyeOutlined />}
-              onClick={() =>
-                navigate(
-                  isStaff
-                    ? `/staff/customers/${ticket.userId}`
-                    : `/admin/customers/${ticket.userId}`
-                )
-              }
+              onClick={() => navigate(`${customerBasePath}/${ticket.userId}`)}
               style={{ width: '100%', marginTop: 8 }}
             >
               Xem Hồ sơ Customer 360°

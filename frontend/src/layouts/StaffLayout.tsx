@@ -54,7 +54,7 @@ export const StaffLayout: React.FC = () => {
     {
       key: '/staff/tickets',
       icon: <CustomerServiceOutlined style={{ fontSize: 16 }} />,
-      label: 'Vé hỗ trợ CSKH',
+      label: 'Hỗ trợ & Chat CSKH',
     },
     {
       key: '/staff/returns',
