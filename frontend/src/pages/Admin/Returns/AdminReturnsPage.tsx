@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation, Link } from 'react-router-dom';
 import {
   Card,
   Table,
@@ -26,6 +26,7 @@ const { Title, Text } = Typography;
 
 export const AdminReturnsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const initialStatus = searchParams.get('status') || 'ALL';
   const [returns, setReturns] = useState<ReturnRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,15 +125,30 @@ export const AdminReturnsPage: React.FC = () => {
     {
       title: 'Đơn hàng & Khách hàng',
       key: 'orderAndCustomer',
-      render: (_: any, record: ReturnRequest) => (
-        <div>
-          <Text strong>#{record.order?.orderNumber || record.orderId.slice(0, 8)}</Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {record.user?.email || 'Khách vãng lai'}
-          </Text>
-        </div>
-      ),
+      render: (_: any, record: ReturnRequest) => {
+        const isStaffPath = location.pathname.startsWith('/staff');
+        const orderId = record.orderId || record.order?.id;
+        const orderUrl = orderId
+          ? isStaffPath
+            ? `/staff/orders?id=${orderId}`
+            : `/admin/orders?id=${orderId}`
+          : null;
+        return (
+          <div>
+            {orderUrl ? (
+              <Link to={orderUrl} style={{ fontWeight: 600, color: '#2563eb' }}>
+                #{record.order?.orderNumber || record.orderId.slice(0, 8)}
+              </Link>
+            ) : (
+              <Text strong>#{record.order?.orderNumber || record.orderId.slice(0, 8)}</Text>
+            )}
+            <br />
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {record.user?.email || 'Khách vãng lai'}
+            </Text>
+          </div>
+        );
+      },
     },
     {
       title: 'Lý do đổi trả',

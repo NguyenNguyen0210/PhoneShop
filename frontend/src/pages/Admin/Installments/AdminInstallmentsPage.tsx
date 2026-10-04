@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation, Link } from 'react-router-dom';
 import {
   Card,
   Table,
@@ -33,6 +33,7 @@ const { Title, Text } = Typography;
 
 export const AdminInstallmentsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const initialStatus = searchParams.get('status') || 'ALL';
   const [applications, setApplications] = useState<InstallmentApplication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,16 +165,34 @@ export const AdminInstallmentsPage: React.FC = () => {
     {
       title: 'Mã đơn / Hồ sơ',
       key: 'code',
-      render: (_, record) => (
-        <Space direction="vertical" size={2}>
-          <Text strong style={{ fontFamily: 'monospace', color: '#1e40af' }}>
-            #{record.order?.orderNumber || record.orderId?.slice(0, 8) || record.id.slice(0, 8)}
-          </Text>
-          <Text type="secondary" style={{ fontSize: 11 }}>
-            ID: {record.id.slice(0, 8)}
-          </Text>
-        </Space>
-      ),
+      render: (_, record) => {
+        const isStaffPath = location.pathname.startsWith('/staff');
+        const orderId = record.orderId || record.order?.id;
+        const orderUrl = orderId
+          ? isStaffPath
+            ? `/staff/orders?id=${orderId}`
+            : `/admin/orders?id=${orderId}`
+          : null;
+        return (
+          <Space direction="vertical" size={2}>
+            {orderUrl ? (
+              <Link
+                to={orderUrl}
+                style={{ fontFamily: 'monospace', fontWeight: 600, color: '#1e40af' }}
+              >
+                #{record.order?.orderNumber || record.orderId?.slice(0, 8) || record.id.slice(0, 8)}
+              </Link>
+            ) : (
+              <Text strong style={{ fontFamily: 'monospace', color: '#1e40af' }}>
+                #{record.order?.orderNumber || record.orderId?.slice(0, 8) || record.id.slice(0, 8)}
+              </Text>
+            )}
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              ID: {record.id.slice(0, 8)}
+            </Text>
+          </Space>
+        );
+      },
     },
     {
       title: 'Khách hàng',

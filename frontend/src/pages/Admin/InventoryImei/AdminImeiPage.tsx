@@ -214,13 +214,15 @@ export const AdminImeiPage: React.FC = () => {
 
   const handleStatusChange = async (
     record: ImeiDevice,
-    action: 'reserve' | 'sell' | 'return' | 'warranty'
+    action: 'reserve' | 'sell' | 'return' | 'warranty' | 'release' | 'block'
   ) => {
     let nextStatus: ImeiStatus = 'AVAILABLE';
     if (action === 'reserve') nextStatus = 'RESERVED';
     if (action === 'sell') nextStatus = 'SOLD';
     if (action === 'warranty') nextStatus = 'WARRANTY';
-    if (action === 'return') nextStatus = 'AVAILABLE';
+    if (action === 'release') nextStatus = 'AVAILABLE';
+    if (action === 'return') nextStatus = 'RETURNED';
+    if (action === 'block') nextStatus = 'BLOCKED';
 
     try {
       await imeiService.updateImeiStatus(record.id, action);
@@ -412,7 +414,7 @@ export const AdminImeiPage: React.FC = () => {
               <Button
                 size="small"
                 danger
-                onClick={() => handleStatusChange(record, 'return')}
+                onClick={() => handleStatusChange(record, 'release')}
                 style={{
                   background: '#fff1f2',
                   borderColor: '#fecdd3',
@@ -439,6 +441,38 @@ export const AdminImeiPage: React.FC = () => {
               }}
             >
               Chuyển Bảo hành
+            </Button>
+          )}
+          {record.status === 'RETURNED' && (
+            <Button
+              size="small"
+              onClick={() => handleStatusChange(record, 'release')}
+              style={{
+                background: '#ecfdf5',
+                borderColor: '#a7f3d0',
+                color: '#059669',
+                fontSize: 12,
+                borderRadius: 6,
+                fontWeight: 600,
+              }}
+            >
+              Tái nhập kho
+            </Button>
+          )}
+          {record.status === 'WARRANTY' && (
+            <Button
+              size="small"
+              onClick={() => handleStatusChange(record, 'release')}
+              style={{
+                background: '#ecfdf5',
+                borderColor: '#a7f3d0',
+                color: '#059669',
+                fontSize: 12,
+                borderRadius: 6,
+                fontWeight: 600,
+              }}
+            >
+              Hoàn tất BH (Về kho)
             </Button>
           )}
         </Space>

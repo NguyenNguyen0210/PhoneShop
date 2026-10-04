@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import {
   Modal,
   Button,
@@ -43,6 +44,7 @@ export const InstallmentReviewModal: React.FC<InstallmentReviewModalProps> = ({
   const [actionType, setActionType] = useState<'APPROVE' | 'REJECT' | null>(null);
   const [staffNotes, setStaffNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  const location = useLocation();
 
   if (!application) return null;
 
@@ -272,9 +274,24 @@ export const InstallmentReviewModal: React.FC<InstallmentReviewModalProps> = ({
             title={
               <Space>
                 <ShoppingOutlined style={{ color: '#2563eb' }} />
-                <span style={{ fontWeight: 600 }}>
-                  Đơn hàng liên kết #{application.order.orderNumber || application.orderId.slice(0, 8)}
-                </span>
+                {(() => {
+                  const isStaffPath = location.pathname.startsWith('/staff');
+                  const orderId = application.orderId || application.order?.id;
+                  const orderUrl = orderId
+                    ? isStaffPath
+                      ? `/staff/orders?id=${orderId}`
+                      : `/admin/orders?id=${orderId}`
+                    : null;
+                  return orderUrl ? (
+                    <Link to={orderUrl} style={{ fontWeight: 600, color: '#2563eb' }}>
+                      Đơn hàng liên kết #{application.order.orderNumber || application.orderId.slice(0, 8)} ↗
+                    </Link>
+                  ) : (
+                    <span style={{ fontWeight: 600 }}>
+                      Đơn hàng liên kết #{application.order.orderNumber || application.orderId.slice(0, 8)}
+                    </span>
+                  );
+                })()}
               </Space>
             }
             style={{ marginBottom: 16 }}

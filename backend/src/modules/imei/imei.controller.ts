@@ -75,10 +75,17 @@ export class ImeiController {
   }
 
   @Put(':id/sell')
-  @Roles(Role.MANAGER, Role.ADMIN)
-  @ApiOperation({ summary: 'Mark IMEI as sold (MANAGER/ADMIN)' })
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Mark IMEI as sold (STAFF/MANAGER/ADMIN)' })
   markSold(@Param('id') id: string) {
     return this.imeiService.markSold(id);
+  }
+
+  @Put(':id/release')
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Release reserved or returned IMEI device back to available (STAFF/MANAGER/ADMIN)' })
+  release(@Param('id') id: string) {
+    return this.imeiService.release(id);
   }
 
   @Put(':id/return')

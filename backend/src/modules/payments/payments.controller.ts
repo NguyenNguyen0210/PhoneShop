@@ -125,9 +125,9 @@ export class PaymentsController {
 
   @Get('transactions')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.MANAGER, Role.ADMIN)
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all transaction history (MANAGER/ADMIN)' })
+  @ApiOperation({ summary: 'Get all transaction history (STAFF/MANAGER/ADMIN)' })
   getTransactionHistory(@Query('page') page?: string, @Query('limit') limit?: string) {
     return this.paymentsService.getTransactionHistory(page, limit);
   }

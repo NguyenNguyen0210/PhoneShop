@@ -246,4 +246,8 @@ export class ImeiService {
   async warranty(id: string) {
     return this.transitionTo(id, ImeiStatus.WARRANTY);
   }
+
+  async release(id: string) {
+    return this.transitionTo(id, ImeiStatus.AVAILABLE);
+  }
 }

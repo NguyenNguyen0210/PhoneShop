@@ -926,7 +926,7 @@ export class OrdersService {
 
     const allowedTransitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
       [OrderStatus.PENDING]:    [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
-      [OrderStatus.CONFIRMED]:  [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+      [OrderStatus.CONFIRMED]:  [OrderStatus.PROCESSING, OrderStatus.PACKED, OrderStatus.CANCELLED],
       [OrderStatus.PROCESSING]: [OrderStatus.PACKED, OrderStatus.CANCELLED],
       [OrderStatus.PACKED]:     [OrderStatus.SHIPPING, OrderStatus.CANCELLED],
       [OrderStatus.SHIPPING]:   [OrderStatus.DELIVERED, OrderStatus.RETURNED],

@@ -32,6 +32,45 @@ import { ShippingDispatchModal } from './components/ShippingDispatchModal';
 
 const { Title, Text } = Typography;
 
+const ALLOWED_ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  PENDING: ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['PROCESSING', 'PACKED', 'CANCELLED'],
+  PROCESSING: ['PACKED', 'CANCELLED'],
+  PACKED: ['SHIPPING', 'CANCELLED'],
+  SHIPPING: ['DELIVERED'],
+  DELIVERED: ['COMPLETED'],
+  COMPLETED: [],
+  CANCELLED: [],
+  RETURNED: [],
+};
+
+const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  PENDING: 'Chờ xử lý',
+  CONFIRMED: 'Đã xác nhận',
+  PROCESSING: 'Đang chuẩn bị',
+  PACKED: 'Đã đóng gói',
+  SHIPPING: 'Đang giao hàng',
+  DELIVERED: 'Đã giao hàng',
+  COMPLETED: 'Hoàn tất',
+  CANCELLED: 'Hủy đơn',
+  RETURNED: 'Đổi trả',
+};
+
+const getTransitionOptions = (currentStatus: OrderStatus) => {
+  const allowed = ALLOWED_ORDER_TRANSITIONS[currentStatus] || [];
+  return [
+    {
+      value: currentStatus,
+      label: `Hiện tại: ${ORDER_STATUS_LABELS[currentStatus] || currentStatus}`,
+      disabled: true,
+    },
+    ...allowed.map((st) => ({
+      value: st,
+      label: `➡️ Chuyển sang: ${ORDER_STATUS_LABELS[st] || st}`,
+    })),
+  ];
+};
+
 export const AdminOrdersPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams<{ id?: string }>();
@@ -158,13 +197,56 @@ export const AdminOrdersPage: React.FC = () => {
       return;
     }
 
+    if (nextStatus === 'CANCELLED') {
+      let cancelReason = 'Hủy bởi nhân viên vận hành';
+      Modal.confirm({
+        title: 'Xác nhận hủy đơn hàng?',
+        content: (
+          <div style={{ marginTop: 8 }}>
+            <p style={{ color: '#ef4444', marginBottom: 8 }}>
+              Hủy đơn sẽ hoàn trả số lượng tồn kho khả dụng và giải phóng mã IMEI đã khóa.
+            </p>
+            <Input.TextArea
+              placeholder="Nhập lý do hủy đơn hàng (bắt buộc)..."
+              rows={3}
+              defaultValue="Hủy bởi nhân viên vận hành"
+              onChange={(e) => {
+                cancelReason = e.target.value;
+              }}
+            />
+          </div>
+        ),
+        okText: 'Xác nhận hủy đơn',
+        okType: 'danger',
+        cancelText: 'Quay lại',
+        onOk: async () => {
+          try {
+            const updated = await orderService.updateOrderStatus(orderId, 'cancel', {
+              reason: cancelReason.trim() || 'Hủy bởi nhân viên vận hành',
+            });
+            const resultingStatus = updated?.status || 'CANCELLED';
+            setOrders((prev) =>
+              prev.map((o) => (o.id === orderId ? { ...o, status: resultingStatus } : o))
+            );
+            if (selectedOrder && selectedOrder.id === orderId) {
+              setSelectedOrder((prev) => (prev ? { ...prev, status: resultingStatus } : null));
+            }
+            message.success('Đã hủy đơn hàng thành công và giải phóng IMEI');
+            void loadOrders();
+          } catch (err: any) {
+            message.error(err.response?.data?.message || err.message || 'Hủy đơn thất bại');
+          }
+        },
+      });
+      return;
+    }
+
     let action: 'confirm' | 'process' | 'pack' | 'ship' | 'deliver' | 'complete' | 'cancel' = 'confirm';
     if (nextStatus === 'CONFIRMED') action = 'confirm';
     if (nextStatus === 'PROCESSING') action = 'process';
     if (nextStatus === 'PACKED') action = 'pack';
     if (nextStatus === 'DELIVERED') action = 'deliver';
     if (nextStatus === 'COMPLETED') action = 'complete';
-    if (nextStatus === 'CANCELLED') action = 'cancel';
 
     try {
       const updated = await orderService.updateOrderStatus(orderId, action);
@@ -264,23 +346,20 @@ export const AdminOrdersPage: React.FC = () => {
     {
       title: 'Chuyển trạng thái',
       key: 'changeStatus',
-      render: (_, record) => (
-        <Select
-          value={record.status}
-          size="small"
-          style={{ width: 140 }}
-          onChange={(val) => handleUpdateStatus(record.id, val as OrderStatus, record)}
-          options={[
-            { value: 'PENDING', label: 'Chờ xử lý' },
-            { value: 'CONFIRMED', label: 'Đã xác nhận' },
-            { value: 'PROCESSING', label: 'Đang chuẩn bị hàng' },
-            { value: 'PACKED', label: 'Đã đóng gói' },
-            { value: 'SHIPPING', label: 'Đang giao hàng' },
-            { value: 'DELIVERED', label: 'Đã giao (Hoàn tất)' },
-            { value: 'CANCELLED', label: 'Hủy đơn (Nhả IMEI)' },
-          ]}
-        />
-      ),
+      render: (_, record) => {
+        const options = getTransitionOptions(record.status);
+        const hasTransitions = options.length > 1;
+        return (
+          <Select
+            value={record.status}
+            size="small"
+            style={{ width: 170 }}
+            disabled={!hasTransitions}
+            onChange={(val) => handleUpdateStatus(record.id, val as OrderStatus, record)}
+            options={options}
+          />
+        );
+      },
     },
     {
       title: 'Vận chuyển',
@@ -469,17 +548,10 @@ export const AdminOrdersPage: React.FC = () => {
                   <Select
                     size="small"
                     value={selectedOrder.status}
-                    style={{ minWidth: 150 }}
+                    style={{ minWidth: 170 }}
+                    disabled={getTransitionOptions(selectedOrder.status).length <= 1}
                     onChange={(newVal) => handleUpdateStatus(selectedOrder.id, newVal, selectedOrder)}
-                    options={[
-                      { value: 'PENDING', label: 'Chờ xử lý' },
-                      { value: 'CONFIRMED', label: 'Đã xác nhận' },
-                      { value: 'PROCESSING', label: 'Đang chuẩn bị' },
-                      { value: 'PACKED', label: 'Đã đóng gói' },
-                      { value: 'SHIPPING', label: 'Đang giao' },
-                      { value: 'DELIVERED', label: 'Đã giao' },
-                      { value: 'CANCELLED', label: 'Hủy đơn' },
-                    ]}
+                    options={getTransitionOptions(selectedOrder.status)}
                   />
                 </Space>
               </Descriptions.Item>

@@ -137,8 +137,8 @@ export class ReturnsController {
   }
 
   @Get('refunds/history')
-  @Roles(Role.MANAGER, Role.ADMIN)
-  @ApiOperation({ summary: 'Get refund history (MANAGER/ADMIN)' })
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Get refund history (STAFF/MANAGER/ADMIN)' })
   getRefundHistory() {
     return this.returnsService.getRefundHistory();
   }

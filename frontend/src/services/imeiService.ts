@@ -106,7 +106,7 @@ export const imeiService = {
 
   async updateImeiStatus(
     id: string,
-    action: 'reserve' | 'sell' | 'return' | 'warranty' | 'block'
+    action: 'reserve' | 'sell' | 'return' | 'warranty' | 'block' | 'release'
   ): Promise<ImeiDevice> {
     const response = await apiClient.put(`/imei/${id}/${action}`);
     return response.data?.data ?? response.data;

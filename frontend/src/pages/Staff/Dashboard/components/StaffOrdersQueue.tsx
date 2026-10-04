@@ -163,7 +163,7 @@ export const StaffOrdersQueue: React.FC<StaffOrdersQueueProps> = ({
               </Button>
             )}
 
-            {record.status === 'CONFIRMED' && (
+            {(record.status === 'CONFIRMED' || record.status === 'PROCESSING') && (
               <Button
                 type="primary"
                 size="small"

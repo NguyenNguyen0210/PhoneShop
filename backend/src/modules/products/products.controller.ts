@@ -41,9 +41,9 @@ export class ProductsController {
 
   @Get('admin/all')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.MANAGER, Role.ADMIN)
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all products including drafts (MANAGER/ADMIN)' })
+  @ApiOperation({ summary: 'Get all products including drafts (STAFF/MANAGER/ADMIN)' })
   findAllAdmin(@Query() filter: FilterProductDto) {
     return this.productsService.findAll(filter, false);
   }
