@@ -72,7 +72,17 @@ export const AdminCustomer360Page: React.FC = () => {
   if (error || !data) {
     return (
       <div style={{ padding: 24 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/customers')} style={{ marginBottom: 16 }}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate('/admin/customers');
+            }
+          }}
+          style={{ marginBottom: 16 }}
+        >
           Quay lại danh sách
         </Button>
         <Alert type="error" message="Lỗi" description={error || 'Không tìm thấy dữ liệu'} showIcon />
@@ -277,7 +287,13 @@ export const AdminCustomer360Page: React.FC = () => {
     <div style={{ padding: 24 }}>
       <Button
         icon={<ArrowLeftOutlined />}
-        onClick={() => navigate('/admin/customers')}
+        onClick={() => {
+          if (window.history.length > 1) {
+            navigate(-1);
+          } else {
+            navigate('/admin/customers');
+          }
+        }}
         style={{ marginBottom: 16 }}
       >
         Danh sách khách hàng

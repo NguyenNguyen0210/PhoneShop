@@ -317,6 +317,12 @@ export const CheckoutPage: React.FC = () => {
           </div>
           <Link
             to="/cart"
+            onClick={(e) => {
+              if (window.history.length > 1) {
+                e.preventDefault();
+                navigate(-1);
+              }
+            }}
             className="text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 transition"
           >
             <ChevronLeft className="w-3.5 h-3.5" />

@@ -170,7 +170,17 @@ export const AdminTicketDetailPage: React.FC = () => {
   if (error || !ticket) {
     return (
       <div style={{ padding: 24 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/tickets')} style={{ marginBottom: 16 }}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate('/admin/tickets');
+            }
+          }}
+          style={{ marginBottom: 16 }}
+        >
           Quay lại danh sách
         </Button>
         <Alert type="error" message="Lỗi" description={error || 'Không tìm thấy vé'} showIcon />
@@ -185,7 +195,13 @@ export const AdminTicketDetailPage: React.FC = () => {
     <div style={{ padding: 24 }}>
       <Button
         icon={<ArrowLeftOutlined />}
-        onClick={() => navigate('/admin/tickets')}
+        onClick={() => {
+          if (window.history.length > 1) {
+            navigate(-1);
+          } else {
+            navigate('/admin/tickets');
+          }
+        }}
         style={{ marginBottom: 16 }}
       >
         Danh sách vé hỗ trợ

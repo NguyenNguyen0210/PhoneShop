@@ -177,6 +177,12 @@ export const OrderDetailPage: React.FC = () => {
         <p className="text-xs text-slate-500 max-w-md mx-auto">{error || 'Đơn hàng không tồn tại hoặc đã bị xóa.'}</p>
         <Link
           to="/profile#orders"
+          onClick={(e) => {
+            if (window.history.length > 1) {
+              e.preventDefault();
+              navigate(-1);
+            }
+          }}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -209,6 +215,12 @@ export const OrderDetailPage: React.FC = () => {
           <div className="space-y-1">
             <Link
               to="/profile#orders"
+              onClick={(e) => {
+                if (window.history.length > 1) {
+                  e.preventDefault();
+                  navigate(-1);
+                }
+              }}
               className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 mb-1.5 transition"
             >
               <ChevronLeft className="w-3.5 h-3.5" />

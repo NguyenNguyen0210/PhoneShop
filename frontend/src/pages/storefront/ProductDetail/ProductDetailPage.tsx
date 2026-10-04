@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams, useNavigationType, Link } from 'react-router-dom';
 import {
   Star,
   ShieldCheck,
@@ -40,6 +40,7 @@ export const ProductDetailPage: React.FC = () => {
   const queryVariantId = searchParams.get('variantId') || searchParams.get('variant');
   const navigate = useNavigate();
   const location = useLocation();
+  const navigationType = useNavigationType();
   const { addItem } = useCartStore();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -165,23 +166,23 @@ export const ProductDetailPage: React.FC = () => {
     }
   }, [activeFlashSale, product, queryVariantId]);
 
-  // Ensure scroll is at the top when entering product details or changing product id
+  // Ensure scroll is at the top when entering product details or changing product id (PUSH only)
   useEffect(() => {
-    if (!location.hash) {
+    if (navigationType !== 'POP' && !location.hash) {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
       if (document.documentElement) document.documentElement.scrollTop = 0;
       if (document.body) document.body.scrollTop = 0;
     }
-  }, [id, location.hash]);
+  }, [id, location.hash, navigationType]);
 
-  // Re-verify scroll is at the top once product details finish loading and replace skeleton/spinner
+  // Re-verify scroll is at the top once product details finish loading and replace skeleton/spinner (PUSH only)
   useEffect(() => {
-    if (product && !location.hash) {
+    if (navigationType !== 'POP' && product && !location.hash) {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
       if (document.documentElement) document.documentElement.scrollTop = 0;
       if (document.body) document.body.scrollTop = 0;
     }
-  }, [product, location.hash]);
+  }, [product, location.hash, navigationType]);
 
   // Handle scroll for sticky purchase bar
   useEffect(() => {

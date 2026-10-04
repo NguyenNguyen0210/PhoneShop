@@ -51,7 +51,13 @@ export const StaffCustomer360Page: React.FC = () => {
       <Card style={{ borderRadius: 10 }}>
         <Button
           icon={<ArrowLeftOutlined />}
-          onClick={() => navigate('/staff/customers')}
+          onClick={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate('/staff/customers');
+            }
+          }}
           style={{ marginBottom: 16 }}
         >
           Quay lại danh sách
@@ -83,7 +89,13 @@ export const StaffCustomer360Page: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Button
         icon={<ArrowLeftOutlined />}
-        onClick={() => navigate('/staff/customers')}
+        onClick={() => {
+          if (window.history.length > 1) {
+            navigate(-1);
+          } else {
+            navigate('/staff/customers');
+          }
+        }}
         style={{ width: 'fit-content' }}
       >
         Quay lại Danh sách

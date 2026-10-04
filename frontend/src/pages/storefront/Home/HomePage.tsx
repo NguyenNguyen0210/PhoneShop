@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigationType } from 'react-router-dom';
 import {
   RotateCcw,
   LayoutGrid,
@@ -24,6 +24,7 @@ import { useCatalogStore } from '../../../stores/useCatalogStore';
 
 export const HomePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigationType = useNavigationType();
   const pageParam = parseInt(searchParams.get('page') || '1', 10);
   const currentPage = isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
   const PAGE_SIZE = 12;
@@ -97,14 +98,14 @@ export const HomePage: React.FC = () => {
       setSelectedBrand(matchedBrand ? matchedBrand.name : brandParam);
     }
 
-    if (searchParam || brandParam) {
+    if (navigationType !== 'POP' && (searchParam || brandParam)) {
       const currentParamKey = `${searchParam ?? ''}__${brandParam ?? ''}`;
       if (lastScrolledParamsRef.current !== currentParamKey) {
         lastScrolledParamsRef.current = currentParamKey;
         productGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
-  }, [searchParams, brands]);
+  }, [searchParams, brands, navigationType]);
 
   // Lock body scroll when mobile filter drawer is open
   useEffect(() => {

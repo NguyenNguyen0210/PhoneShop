@@ -2,17 +2,19 @@ import React, { useEffect, useRef } from 'react';
 import { useLocation, useNavigationType } from 'react-router-dom';
 
 /**
- * ScrollToTop component
- * - On forward navigation (PUSH / REPLACE): resets scroll position to the top of the viewport (or scrolls to target element if hash exists).
- * - On backward navigation (POP / return): restores the previous scroll position so users stay at the same scroll position in lists.
- * - Saves scroll coordinates per route in sessionStorage.
+ * Universal Scroll Restoration Component
+ * - Forwards (PUSH / REPLACE): Resets window and container scroll to (0, 0) (or scrolls to target element if hash exists).
+ * - Backwards (POP / return): Accurately restores scroll position across ALL screens (Storefront, Admin, Staff).
+ * - Handles asynchronous data hydration and dynamic content rendering via ResizeObserver and multi-frame retry.
+ * - Protects against scroll state poisoning from route transition clamping.
+ * - Supports both Window scrolling (Storefront, Admin) and Layout.Content container scrolling (Admin, Staff).
  */
 export const ScrollToTop: React.FC = () => {
   const location = useLocation();
   const navigationType = useNavigationType();
   const prevPathRef = useRef<string>(location.pathname + location.search);
   const isRestoringRef = useRef<boolean>(false);
-  const restoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopRestoringRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     // Disable automatic browser scroll restoration so our app takes control
@@ -25,35 +27,198 @@ export const ScrollToTop: React.FC = () => {
     }
   }, []);
 
+  // Helper to get any inner scrolling container (e.g. Ant Design Layout.Content in Admin/Staff)
+  const getInnerScrollContainer = (): HTMLElement | null => {
+    if (typeof document === 'undefined') return null;
+    return (
+      document.querySelector<HTMLElement>('.ant-layout-content') ||
+      document.querySelector<HTMLElement>('[data-scroll-container="true"]') ||
+      null
+    );
+  };
+
   // Continuously record scroll position for current route
   useEffect(() => {
-    const currentKey = `scroll_${location.pathname}${location.search}`;
+    const windowKey = `scroll_${location.pathname}${location.search}`;
+    const containerKey = `container_scroll_${location.pathname}${location.search}`;
 
-    const handleScroll = () => {
-      // Do not record scroll events if we are currently in the middle of restoring scroll coordinates
+    const handleWindowScroll = () => {
       if (isRestoringRef.current) return;
-
       const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
       try {
-        sessionStorage.setItem(currentKey, String(scrollY));
+        sessionStorage.setItem(windowKey, String(scrollY));
       } catch {
-        // Ignore storage quota errors
+        // Ignore storage errors
       }
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    const handleContainerScroll = (e: Event) => {
+      if (isRestoringRef.current) return;
+      const target = e.target as HTMLElement;
+      if (target && typeof target.scrollTop === 'number') {
+        try {
+          sessionStorage.setItem(containerKey, String(target.scrollTop));
+        } catch {
+          // Ignore storage errors
+        }
+      }
+    };
+
+    const handlePageHide = () => {
+      if (!isRestoringRef.current) {
+        const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+        try {
+          sessionStorage.setItem(windowKey, String(scrollY));
+        } catch {
+          // Ignore storage errors
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleWindowScroll, { passive: true });
+    window.addEventListener('pagehide', handlePageHide);
+
+    // Also watch for inner layout container scroll (Admin & Staff)
+    const container = getInnerScrollContainer();
+    if (container) {
+      container.addEventListener('scroll', handleContainerScroll, { passive: true });
+    }
+
     return () => {
-      // DO NOT call handleScroll here! Calling handleScroll on cleanup runs when the DOM has already collapsed/unmounted,
-      // which would clamp scrollY to a truncated page height (e.g. flash sale area) and poison the saved value.
-      window.removeEventListener('scroll', handleScroll);
+      // DO NOT call handleScroll on cleanup to avoid recording clamped heights during unmount!
+      window.removeEventListener('scroll', handleWindowScroll);
+      window.removeEventListener('pagehide', handlePageHide);
+      if (container) {
+        container.removeEventListener('scroll', handleContainerScroll);
+      }
     };
   }, [location.pathname, location.search]);
 
+  // Handle route changes: scroll to top on PUSH, or restore previous coordinates on POP
   useEffect(() => {
     const currentPath = location.pathname + location.search;
     const isNewRoute = prevPathRef.current !== currentPath;
     prevPathRef.current = currentPath;
 
+    // Clean up any pending restoration observer from previous transition
+    if (stopRestoringRef.current) {
+      stopRestoringRef.current();
+      stopRestoringRef.current = null;
+    }
+
+    // 1. On POP navigation (user clicks Return / browser Back / Forward):
+    if (navigationType === 'POP' && isNewRoute) {
+      const windowKey = `scroll_${location.pathname}${location.search}`;
+      const containerKey = `container_scroll_${location.pathname}${location.search}`;
+      const savedWindowYStr = sessionStorage.getItem(windowKey);
+      const savedContainerYStr = sessionStorage.getItem(containerKey);
+
+      const targetWindowY = savedWindowYStr !== null ? parseInt(savedWindowYStr, 10) : null;
+      const targetContainerY = savedContainerYStr !== null ? parseInt(savedContainerYStr, 10) : null;
+
+      const hasValidWindowY = targetWindowY !== null && !isNaN(targetWindowY);
+      const hasValidContainerY = targetContainerY !== null && !isNaN(targetContainerY);
+
+      if (hasValidWindowY || hasValidContainerY) {
+        isRestoringRef.current = true;
+
+        const applyAllScroll = () => {
+          if (hasValidWindowY) {
+            window.scrollTo({ top: targetWindowY, left: 0, behavior: 'instant' });
+            if (document.documentElement) document.documentElement.scrollTop = targetWindowY;
+            if (document.body) document.body.scrollTop = targetWindowY;
+          }
+          if (hasValidContainerY) {
+            const container = getInnerScrollContainer();
+            if (container) {
+              container.scrollTop = targetContainerY;
+            }
+          }
+        };
+
+        // Instant execution
+        applyAllScroll();
+
+        // Active observation: Watch for DOM resize (e.g. async items loading from database API)
+        let isDone = false;
+        let observer: ResizeObserver | null = null;
+
+        const checkCompletion = () => {
+          if (isDone) return;
+          applyAllScroll();
+
+          const atWindowBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 16);
+          const windowSatisfied = !hasValidWindowY || Math.abs(window.scrollY - targetWindowY) <= 8 || (atWindowBottom && window.scrollY > 0);
+
+          const container = getInnerScrollContainer();
+          const atContainerBottom = container ? (container.clientHeight + container.scrollTop >= container.scrollHeight - 16) : false;
+          const containerSatisfied = !hasValidContainerY || !container || Math.abs(container.scrollTop - targetContainerY) <= 8 || (atContainerBottom && container.scrollTop > 0);
+
+          if (windowSatisfied && containerSatisfied) {
+            // Target coordinates reached successfully
+            cleanup();
+          }
+        };
+
+        const cleanup = () => {
+          isDone = true;
+          isRestoringRef.current = false;
+          if (observer) {
+            observer.disconnect();
+            observer = null;
+          }
+          window.removeEventListener('wheel', handleUserIntent);
+          window.removeEventListener('touchmove', handleUserIntent);
+          window.removeEventListener('keydown', handleUserIntent);
+          clearTimeout(safetyTimer);
+          clearTimeout(t1);
+          clearTimeout(t2);
+          clearTimeout(t3);
+        };
+
+        // If user manually touches screen, wheels, or presses a key, cancel restoration so we never fight user intent
+        const handleUserIntent = () => {
+          cleanup();
+        };
+
+        window.addEventListener('wheel', handleUserIntent, { passive: true });
+        window.addEventListener('touchmove', handleUserIntent, { passive: true });
+        window.addEventListener('keydown', handleUserIntent, { passive: true });
+
+        // ResizeObserver re-applies coordinates whenever content expands
+        if (typeof ResizeObserver !== 'undefined' && document.documentElement) {
+          observer = new ResizeObserver(() => {
+            checkCompletion();
+          });
+          observer.observe(document.documentElement);
+          const container = getInnerScrollContainer();
+          if (container) {
+            observer.observe(container);
+          }
+        }
+
+        // Stepped frame retries for instant rendering
+        const rAF = requestAnimationFrame(checkCompletion);
+        const t1 = setTimeout(checkCompletion, 50);
+        const t2 = setTimeout(checkCompletion, 150);
+        const t3 = setTimeout(checkCompletion, 300);
+
+        // Safety timeout to release lock after 3.5s
+        const safetyTimer = setTimeout(() => {
+          cleanup();
+        }, 3500);
+
+        stopRestoringRef.current = cleanup;
+
+        return () => {
+          cancelAnimationFrame(rAF);
+          cleanup();
+        };
+      }
+      return;
+    }
+
+    // 2. Hash navigation takes precedence on forward/new navigation
     if (location.hash) {
       const targetId = location.hash.replace('#', '');
       const element = document.getElementById(targetId);
@@ -70,59 +235,13 @@ export const ScrollToTop: React.FC = () => {
       return () => clearTimeout(timer);
     }
 
-    // On POP navigation (user clicks return / browser Back / Forward):
-    // Restore previous scroll position if available instead of forcing to top
-    if (navigationType === 'POP' && isNewRoute) {
-      const currentKey = `scroll_${location.pathname}${location.search}`;
-      const savedYStr = sessionStorage.getItem(currentKey);
-      if (savedYStr !== null) {
-        const savedY = parseInt(savedYStr, 10);
-        if (!isNaN(savedY)) {
-          isRestoringRef.current = true;
-          if (restoreTimerRef.current) clearTimeout(restoreTimerRef.current);
-
-          const applyScroll = () => {
-            window.scrollTo({ top: savedY, left: 0, behavior: 'instant' });
-            if (document.documentElement) {
-              document.documentElement.scrollTop = savedY;
-            }
-            if (document.body) {
-              document.body.scrollTop = savedY;
-            }
-          };
-
-          applyScroll();
-
-          // Multi-frame retries to account for async data hydration and layout settling
-          const rAF = requestAnimationFrame(applyScroll);
-          const t1 = setTimeout(applyScroll, 50);
-          const t2 = setTimeout(applyScroll, 150);
-          const t3 = setTimeout(applyScroll, 300);
-
-          restoreTimerRef.current = setTimeout(() => {
-            isRestoringRef.current = false;
-          }, 400);
-
-          return () => {
-            cancelAnimationFrame(rAF);
-            clearTimeout(t1);
-            clearTimeout(t2);
-            clearTimeout(t3);
-            if (restoreTimerRef.current) clearTimeout(restoreTimerRef.current);
-            isRestoringRef.current = false;
-          };
-        }
-      }
-      return;
-    }
-
-    // On PUSH / REPLACE (user clicks link to a new page) or initial mount:
+    // 3. On PUSH / REPLACE (user clicks link to a new page) or initial mount:
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    if (document.documentElement) {
-      document.documentElement.scrollTop = 0;
-    }
-    if (document.body) {
-      document.body.scrollTop = 0;
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+    const container = getInnerScrollContainer();
+    if (container) {
+      container.scrollTop = 0;
     }
   }, [location.pathname, location.search, location.hash, navigationType]);
 
