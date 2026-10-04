@@ -11,7 +11,7 @@ vi.mock('../../../services/chatbotService', () => ({
     ask: vi.fn(),
     getSuggestions: vi.fn(),
   },
-  getFlashSaleInfo: (p: any) => ({
+  getFlashSaleInfo: (_p?: any) => ({
     isFlashSale: true,
     flashPrice: 27271000,
     originalPrice: 30990000,
