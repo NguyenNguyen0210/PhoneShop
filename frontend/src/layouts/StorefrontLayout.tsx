@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { Navbar } from '../components/common/Navbar';
 import { Footer } from '../components/common/Footer';
 import { CartDrawer } from '../components/storefront/CartDrawer';
+import { LiveSupportChatWidget } from '../components/storefront/LiveSupportChatWidget';
 
 export const StorefrontLayout: React.FC = () => {
   return (
@@ -17,6 +18,9 @@ export const StorefrontLayout: React.FC = () => {
 
       {/* Slide-over Cart Drawer */}
       <CartDrawer />
+
+      {/* Live Support Chat Widget */}
+      <LiveSupportChatWidget />
 
       {/* Clean Light Architecture Footer */}
       <Footer />
