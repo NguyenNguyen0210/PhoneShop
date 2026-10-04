@@ -209,11 +209,11 @@ export const VNPayReturnPage: React.FC = () => {
             ) : (
               <>
                 <Link
-                  to="/cart"
+                  to="/profile?tab=orders"
                   className="flex-1 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  <span>Quay lại giỏ hàng thanh toán lại</span>
+                  <span>Xem đơn hàng & thanh toán lại</span>
                 </Link>
                 <Link
                   to="/"

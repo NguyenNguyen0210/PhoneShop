@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Clock,
@@ -73,6 +73,11 @@ export const CheckoutPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Guard: sau khi đặt hàng thành công, removeSelectedItems() làm
+  // checkoutItems rỗng — effect bên dưới sẽ bắn navigate('/cart') và đè lên
+  // navigate('/order-success/:id'). Ref này chặn redirect đó.
+  const orderPlacedRef = useRef(false);
+
   // Voucher State
   const [appliedVoucher, setAppliedVoucher] = useState<any>(() => {
     try {
@@ -146,6 +151,7 @@ export const CheckoutPage: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
+    if (orderPlacedRef.current) return;
     if (checkoutItems.length === 0) {
       navigate('/cart');
       return;
@@ -283,7 +289,9 @@ export const CheckoutPage: React.FC = () => {
         })
       );
 
-      // Clear ONLY selected items from cart
+      // Clear ONLY selected items from cart.
+      // Đặt flag TRƯỚC khi xóa để guard effect không bắn về /cart.
+      orderPlacedRef.current = true;
       removeSelectedItems();
       sessionStorage.removeItem('phoneshop_voucher');
 
