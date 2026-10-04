@@ -23,6 +23,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { CARRIER_PRESETS, shippingService } from '../../../../services/shippingService';
+import { orderService } from '../../../../services/orderService';
 import type { Order, ShippingStatus } from '../../../../types';
 
 const { Text } = Typography;
@@ -32,6 +33,7 @@ export interface ShippingDispatchModalProps {
   order: Order | null;
   onClose: () => void;
   onSuccess: () => void;
+  isShippingTransition?: boolean;
 }
 
 interface ShippingFormValues {
@@ -128,13 +130,15 @@ const ShippingDispatchModalContent: React.FC<{
   order: Order;
   onClose: () => void;
   onSuccess: () => void;
-}> = ({ open, order, onClose, onSuccess }) => {
+  isShippingTransition?: boolean;
+}> = ({ open, order, onClose, onSuccess, isShippingTransition = false }) => {
   const [form] = Form.useForm<ShippingFormValues>();
   const [saving, setSaving] = useState(false);
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [syncingDelivered, setSyncingDelivered] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<string>(
-    () => order.shipping?.providerName || '',
-  );
+
+  const selectedProvider = Form.useWatch('providerName', form) || '';
 
   useEffect(() => {
     if (open && order) {
@@ -156,22 +160,24 @@ const ShippingDispatchModalContent: React.FC<{
     : [];
 
   const handleCarrierChipClick = (carrierName: string) => {
-    setSelectedProvider(carrierName);
     form.setFieldsValue({ providerName: carrierName });
   };
 
-  const handleSave = async () => {
-    try {
-      const values = await form.validateFields();
-      setSaving(true);
+  const getPayload = async () => {
+    const values = await form.validateFields();
+    return {
+      providerName: values.providerName.trim(),
+      trackingNumber: values.trackingNumber ? values.trackingNumber.trim() : undefined,
+      estimatedDeliveryDate: values.estimatedDeliveryDate
+        ? values.estimatedDeliveryDate.toISOString()
+        : undefined,
+    };
+  };
 
-      const payload = {
-        providerName: values.providerName.trim(),
-        trackingNumber: values.trackingNumber ? values.trackingNumber.trim() : undefined,
-        estimatedDeliveryDate: values.estimatedDeliveryDate
-          ? values.estimatedDeliveryDate.toISOString()
-          : undefined,
-      };
+  const handleSaveOnly = async () => {
+    try {
+      const payload = await getPayload();
+      setSaving(true);
 
       if (order.shipping?.id) {
         await shippingService.updateShipping(order.shipping.id, payload);
@@ -195,6 +201,37 @@ const ShippingDispatchModalContent: React.FC<{
     }
   };
 
+  const handleShipOrder = async () => {
+    try {
+      const payload = await getPayload();
+      setShippingLoading(true);
+
+      await orderService.updateOrderStatus(order.id, 'ship', payload);
+      message.success('Đã xuất kho & chuyển đơn hàng sang trạng thái Đang giao hàng (SHIPPING)');
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      if (err?.errorFields) return;
+      message.error(err.response?.data?.message || err.message || 'Chuyển sang giao hàng thất bại');
+    } finally {
+      setShippingLoading(false);
+    }
+  };
+
+  const handleSyncDelivered = async () => {
+    try {
+      setSyncingDelivered(true);
+      await orderService.updateOrderStatus(order.id, 'deliver');
+      message.success('Đã đồng bộ đơn hàng sang trạng thái Đã giao hàng (DELIVERED)');
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || err.message || 'Đồng bộ thất bại');
+    } finally {
+      setSyncingDelivered(false);
+    }
+  };
+
   const handleTransitionClick = async (targetStatus: ShippingStatus) => {
     if (!order.shipping?.id) {
       message.warning('Vui lòng lưu thông tin vận chuyển trước khi chuyển trạng thái');
@@ -215,6 +252,9 @@ const ShippingDispatchModalContent: React.FC<{
     }
   };
 
+  const isBusy = saving || shippingLoading || syncingDelivered || !!updatingStatus;
+  const canShipDirectly = order.status === 'PACKED' || isShippingTransition;
+
   return (
     <Modal
       title={
@@ -226,20 +266,47 @@ const ShippingDispatchModalContent: React.FC<{
       open={open}
       onCancel={onClose}
       width={720}
-      footer={[
-        <Button key="cancel" onClick={onClose} disabled={saving || !!updatingStatus}>
-          Đóng
-        </Button>,
-        <Button
-          key="save"
-          type="primary"
-          onClick={handleSave}
-          loading={saving}
-          disabled={!!updatingStatus}
-        >
-          {order.shipping?.id ? 'Lưu thông tin vận chuyển' : 'Khởi tạo & Bàn giao'}
-        </Button>,
-      ]}
+      footer={
+        canShipDirectly
+          ? [
+              <Button key="cancel" onClick={onClose} disabled={isBusy}>
+                Đóng
+              </Button>,
+              <Button
+                key="saveOnly"
+                onClick={handleSaveOnly}
+                loading={saving}
+                disabled={isBusy}
+              >
+                Lưu thông tin vận đơn
+              </Button>,
+              <Button
+                key="shipAction"
+                type="primary"
+                icon={<CarOutlined />}
+                onClick={handleShipOrder}
+                loading={shippingLoading}
+                disabled={isBusy}
+                style={{ backgroundColor: '#2563eb' }}
+              >
+                Bắt đầu giao hàng (SHIPPING)
+              </Button>,
+            ]
+          : [
+              <Button key="cancel" onClick={onClose} disabled={isBusy}>
+                Đóng
+              </Button>,
+              <Button
+                key="save"
+                type="primary"
+                onClick={handleSaveOnly}
+                loading={saving}
+                disabled={isBusy}
+              >
+                {order.shipping?.id ? 'Lưu thông tin vận chuyển' : 'Khởi tạo & Bàn giao'}
+              </Button>,
+            ]
+      }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Order Summary Header */}
@@ -306,8 +373,7 @@ const ShippingDispatchModalContent: React.FC<{
           >
             <Input
               placeholder="VD: Giao Hàng Nhanh (GHN) hoặc nhập đối tác khác"
-              value={selectedProvider}
-              onChange={(e) => setSelectedProvider(e.target.value)}
+              allowClear
             />
           </Form.Item>
 
@@ -355,7 +421,7 @@ const ShippingDispatchModalContent: React.FC<{
                         : { borderColor: '#2563eb', color: '#2563eb' }
                   }
                   loading={updatingStatus === action.target}
-                  disabled={saving || (!!updatingStatus && updatingStatus !== action.target)}
+                  disabled={isBusy}
                   onClick={() => handleTransitionClick(action.target)}
                 >
                   {action.label}
@@ -374,14 +440,48 @@ const ShippingDispatchModalContent: React.FC<{
               borderRadius: 8,
             }}
           >
-            <Text
+            <div
               style={{
-                color: currentShippingStatus === 'DELIVERED' ? '#166534' : '#6b21a8',
-                fontWeight: 600,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 12,
               }}
             >
-              Bưu kiện đã ở trạng thái kết thúc ({currentShippingStatus}). Không thể chuyển tiếp thêm.
-            </Text>
+              <div>
+                <Text
+                  style={{
+                    color: currentShippingStatus === 'DELIVERED' ? '#166534' : '#6b21a8',
+                    fontWeight: 600,
+                    display: 'block',
+                  }}
+                >
+                  Bưu kiện đã ở trạng thái kết thúc ({currentShippingStatus}). Không thể chuyển tiếp thêm bưu kiện.
+                </Text>
+                {currentShippingStatus === 'DELIVERED' &&
+                  order.status !== 'DELIVERED' &&
+                  order.status !== 'COMPLETED' && (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      ⚠️ Đơn hàng ({order.status}) chưa hoàn tất đồng bộ sang Đã giao hàng. Bấm nút để gỡ kẹt ngay.
+                    </Text>
+                  )}
+              </div>
+
+              {currentShippingStatus === 'DELIVERED' &&
+                order.status !== 'DELIVERED' &&
+                order.status !== 'COMPLETED' && (
+                  <Button
+                    type="primary"
+                    style={{ backgroundColor: '#16a34a', borderColor: '#16a34a' }}
+                    icon={<CheckCircleOutlined />}
+                    loading={syncingDelivered}
+                    onClick={handleSyncDelivered}
+                  >
+                    Đồng bộ đơn hàng (DELIVERED)
+                  </Button>
+                )}
+            </div>
           </Card>
         )}
       </div>
@@ -393,7 +493,7 @@ export const ShippingDispatchModal: React.FC<ShippingDispatchModalProps> = (prop
   if (!props.order) return null;
   return (
     <ShippingDispatchModalContent
-      key={`${props.order.id}-${props.order.shipping?.id || 'new'}-${props.order.shipping?.status || 'none'}`}
+      key={`${props.order.id}-${props.order.shipping?.id || 'new'}-${props.order.shipping?.status || 'none'}-${props.isShippingTransition ? 'ship-action' : 'edit'}`}
       {...props}
       order={props.order}
     />

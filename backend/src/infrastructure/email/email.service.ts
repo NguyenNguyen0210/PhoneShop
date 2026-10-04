@@ -146,6 +146,10 @@ export class EmailService implements OnModuleInit {
         port: cfg.port,
         secure: cfg.secure,
         auth: { user: cfg.user, pass: cfg.pass },
+        // Fail fast instead of hanging register/forgot-password for 30s+ on bad network.
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
       });
       this.currentConfigKey = configKey;
       this.logger.log(

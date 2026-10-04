@@ -1012,7 +1012,7 @@ export class OrdersService {
       [OrderStatus.PENDING]:    [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
       [OrderStatus.CONFIRMED]:  [OrderStatus.PROCESSING, OrderStatus.PACKED, OrderStatus.CANCELLED],
       [OrderStatus.PROCESSING]: [OrderStatus.PACKED, OrderStatus.CANCELLED],
-      [OrderStatus.PACKED]:     [OrderStatus.SHIPPING, OrderStatus.CANCELLED],
+      [OrderStatus.PACKED]:     [OrderStatus.SHIPPING, OrderStatus.DELIVERED, OrderStatus.CANCELLED],
       [OrderStatus.SHIPPING]:   [OrderStatus.DELIVERED, OrderStatus.RETURNED],
       [OrderStatus.DELIVERED]:  [OrderStatus.COMPLETED, OrderStatus.RETURNED],
     };

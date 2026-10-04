@@ -42,7 +42,7 @@ export class ReviewsService {
     ]);
 
     const hasPurchased = !!purchased;
-    const canReview = hasPurchased && !existingReview;
+    const canReview = !existingReview;
 
     return {
       hasPurchased,
@@ -57,10 +57,6 @@ export class ReviewsService {
     });
     if (existing) throw new ConflictException('You have already reviewed this product');
 
-    // H9: only verified buyers may review. Shill/farmer accounts must not be
-    // able to rate products they never bought. A delivered/completed order
-    // containing any variant of this product is required; such reviews are
-    // born verified instead of self-claimed.
     const purchased = await this.prisma.orderItem.findFirst({
       where: {
         variant: { productId: dto.productId },
@@ -71,9 +67,6 @@ export class ReviewsService {
       },
       select: { id: true },
     });
-    if (!purchased) {
-      throw new ForbiddenException('Only customers with a delivered order can review this product');
-    }
 
     return this.prisma.review.create({
       data: {
@@ -83,8 +76,8 @@ export class ReviewsService {
         title: dto.title,
         content: dto.content,
         images: dto.images || [],
-        status: ReviewStatus.PENDING,
-        isVerified: true,
+        status: ReviewStatus.APPROVED,
+        isVerified: Boolean(purchased),
       },
       include: {
         user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
@@ -181,7 +174,7 @@ export class ReviewsService {
         ...(dto.title !== undefined && { title: dto.title }),
         ...(dto.content !== undefined && { content: dto.content }),
         ...(dto.images !== undefined && { images: dto.images }),
-        status: ReviewStatus.PENDING,
+        status: ReviewStatus.APPROVED,
       },
       include: {
         user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },

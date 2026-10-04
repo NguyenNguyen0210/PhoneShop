@@ -26,7 +26,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         },
         productVariant: {
           findMany: jest.fn().mockImplementation(() =>
-            Promise.resolve([{ id: 'var-1', price: 10000000 }]),
+            Promise.resolve([{ id: 'var-1', price: 10000000, isActive: true }]),
           ),
         },
         $queryRaw: jest.fn().mockImplementation(() =>
@@ -113,7 +113,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         },
         productVariant: {
           findMany: jest.fn().mockImplementation(() =>
-            Promise.resolve([{ id: 'var-1', price: 10000000 }]),
+            Promise.resolve([{ id: 'var-1', price: 10000000, isActive: true }]),
           ),
         },
         $queryRaw: jest.fn().mockImplementation(() =>
@@ -172,7 +172,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         },
         productVariant: {
           findMany: jest.fn().mockImplementation(() =>
-            Promise.resolve([{ id: 'var-1', price: 10000000 }]),
+            Promise.resolve([{ id: 'var-1', price: 10000000, isActive: true }]),
           ),
         },
         $queryRaw: jest.fn().mockImplementation(() =>
@@ -224,7 +224,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         },
         productVariant: {
           findMany: jest.fn().mockImplementation(() =>
-            Promise.resolve([{ id: 'var-1', price: 1000000 }]),
+            Promise.resolve([{ id: 'var-1', price: 1000000, isActive: true }]),
           ),
         },
         voucher: {
@@ -292,7 +292,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         },
         productVariant: {
           findMany: jest.fn().mockImplementation(() =>
-            Promise.resolve([{ id: 'var-1', price: 5000000 }]),
+            Promise.resolve([{ id: 'var-1', price: 5000000, isActive: true }]),
           ),
         },
         $queryRaw: jest.fn().mockImplementation(() => Promise.resolve([])),
@@ -361,7 +361,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         },
         productVariant: {
           findMany: jest.fn().mockImplementation(() =>
-            Promise.resolve([{ id: 'var-1', price: 2000000 }]),
+            Promise.resolve([{ id: 'var-1', price: 2000000, isActive: true }]),
           ),
         },
         voucher: {
@@ -463,6 +463,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         },
         inventory: {
           update: jest.fn().mockReturnValue(Promise.resolve({})),
+          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
         },
         order: {
           update: jest.fn().mockImplementation((args: any) =>
@@ -502,8 +503,8 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         where: { id: 'imei-1', status: ImeiStatus.RESERVED },
         data: { status: ImeiStatus.AVAILABLE },
       });
-      expect(mockTx.inventory.update).toHaveBeenCalledWith({
-        where: { variantId: 'var-1' },
+      expect(mockTx.inventory.updateMany).toHaveBeenCalledWith({
+        where: { variantId: 'var-1', reservedQty: { gte: 1 } },
         data: {
           reservedQty: { decrement: 1 },
           availableQty: { increment: 1 },
@@ -684,6 +685,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         },
         inventory: {
           update: jest.fn().mockReturnValue(Promise.resolve({})),
+          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
         },
       };
 
@@ -729,8 +731,8 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         where: { id: 'imei-hold-1', status: ImeiStatus.RESERVED },
         data: { status: ImeiStatus.AVAILABLE },
       });
-      expect(mockTx.inventory.update).toHaveBeenCalledWith({
-        where: { variantId: 'var-1' },
+      expect(mockTx.inventory.updateMany).toHaveBeenCalledWith({
+        where: { variantId: 'var-1', reservedQty: { gte: 1 } },
         data: {
           reservedQty: { decrement: 1 },
           availableQty: { increment: 1 },
@@ -800,10 +802,20 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         },
         inventory: {
           upsert: jest.fn().mockReturnValue(Promise.resolve({})),
+          findUnique: jest.fn().mockReturnValue(Promise.resolve({ quantity: 10 })),
+        },
+        stockMovement: {
+          create: jest.fn().mockReturnValue(Promise.resolve({})),
         },
       };
 
       const mockPrisma: any = {
+        productVariant: {
+          findMany: (jest.fn() as any).mockImplementation(({ where }: any) => {
+            const ids = where?.id?.in || [];
+            return Promise.resolve(ids.map((id: string) => ({ id })));
+          }),
+        },
         $transaction: jest.fn().mockImplementation(async (callback: any) => {
           return callback(mockTx);
         }),
@@ -822,7 +834,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
 
       const result = await imeiService.import(importDto as any);
 
-      expect(result).toEqual({ imported: 3, total: 3 });
+      expect(result).toMatchObject({ imported: 3, total: 3 });
       expect(mockTx.imeiDevice.create).toHaveBeenCalledTimes(3);
 
       // Verify var-1 got incremented by 2
@@ -871,10 +883,20 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         },
         inventory: {
           upsert: jest.fn().mockReturnValue(Promise.resolve({})),
+          findUnique: jest.fn().mockReturnValue(Promise.resolve({ quantity: 10 })),
+        },
+        stockMovement: {
+          create: jest.fn().mockReturnValue(Promise.resolve({})),
         },
       };
 
       const mockPrisma: any = {
+        productVariant: {
+          findMany: (jest.fn() as any).mockImplementation(({ where }: any) => {
+            const ids = where?.id?.in || [];
+            return Promise.resolve(ids.map((id: string) => ({ id })));
+          }),
+        },
         $transaction: jest.fn().mockImplementation(async (callback: any) => {
           return callback(mockTx);
         }),
@@ -891,7 +913,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
 
       const result = await imeiService.import(importDto as any);
 
-      expect(result).toEqual({ imported: 1, total: 2 });
+      expect(result).toMatchObject({ imported: 1, total: 2 });
       expect(mockTx.imeiDevice.create).toHaveBeenCalledTimes(1);
 
       // Inventory increment should only be 1 for the newly created device

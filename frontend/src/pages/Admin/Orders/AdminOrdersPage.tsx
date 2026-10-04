@@ -36,7 +36,7 @@ const ALLOWED_ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ['CONFIRMED', 'CANCELLED'],
   CONFIRMED: ['PROCESSING', 'PACKED', 'CANCELLED'],
   PROCESSING: ['PACKED', 'CANCELLED'],
-  PACKED: ['SHIPPING', 'CANCELLED'],
+  PACKED: ['SHIPPING', 'DELIVERED', 'CANCELLED'],
   SHIPPING: ['DELIVERED'],
   DELIVERED: ['COMPLETED'],
   COMPLETED: [],
@@ -87,6 +87,7 @@ export const AdminOrdersPage: React.FC = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [shippingModalOrder, setShippingModalOrder] = useState<Order | null>(null);
   const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
+  const [isShippingTransition, setIsShippingTransition] = useState(false);
 
   // Server-side pagination & filter states
   const [page, setPage] = useState<number>(1);
@@ -193,6 +194,7 @@ export const AdminOrdersPage: React.FC = () => {
     if (nextStatus === 'SHIPPING') {
       const targetOrder = record || orders.find((o) => o.id === orderId) || selectedOrder;
       setShippingModalOrder(targetOrder || null);
+      setIsShippingTransition(true);
       setIsShippingModalOpen(true);
       return;
     }
@@ -377,6 +379,16 @@ export const AdminOrdersPage: React.FC = () => {
             </Space>
           );
         }
+        if (record.shipping?.providerName) {
+          return (
+            <Space direction="vertical" size={2}>
+              <Text strong style={{ fontSize: 12 }}>
+                {record.shipping.providerName}
+              </Text>
+              <Tag color="orange" style={{ fontSize: 10 }}>Chưa có mã vận đơn</Tag>
+            </Space>
+          );
+        }
         return <Tag color="default">Chưa gán</Tag>;
       },
     },
@@ -400,6 +412,7 @@ export const AdminOrdersPage: React.FC = () => {
             icon={<CarOutlined />}
             onClick={() => {
               setShippingModalOrder(record);
+              setIsShippingTransition(false);
               setIsShippingModalOpen(true);
             }}
           >
@@ -514,6 +527,7 @@ export const AdminOrdersPage: React.FC = () => {
             onClick={() => {
               if (selectedOrder) {
                 setShippingModalOrder(selectedOrder);
+                setIsShippingTransition(false);
                 setIsShippingModalOpen(true);
               }
             }}
@@ -697,6 +711,7 @@ export const AdminOrdersPage: React.FC = () => {
                   icon={<CarOutlined />}
                   onClick={() => {
                     setShippingModalOrder(selectedOrder);
+                    setIsShippingTransition(false);
                     setIsShippingModalOpen(true);
                   }}
                 >
@@ -787,14 +802,17 @@ export const AdminOrdersPage: React.FC = () => {
       <ShippingDispatchModal
         open={isShippingModalOpen}
         order={shippingModalOrder}
+        isShippingTransition={isShippingTransition}
         onClose={() => {
           setIsShippingModalOpen(false);
           setShippingModalOrder(null);
+          setIsShippingTransition(false);
         }}
         onSuccess={async () => {
           setIsShippingModalOpen(false);
           const currentOrderId = shippingModalOrder?.id;
           setShippingModalOrder(null);
+          setIsShippingTransition(false);
           await loadOrders();
           if (selectedOrder && currentOrderId === selectedOrder.id) {
             try {

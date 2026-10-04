@@ -225,13 +225,13 @@ export class ShippingService {
           where: { id: shipping.orderId },
           include: { user: { select: { email: true } } },
         });
-        if (order && (order.status === OrderStatus.CONFIRMED || order.status === OrderStatus.PROCESSING)) {
-          if (order.status === OrderStatus.CONFIRMED) {
+        if (order && (order.status === OrderStatus.CONFIRMED || order.status === OrderStatus.PROCESSING || order.status === OrderStatus.PACKED)) {
+          if (order.status === OrderStatus.CONFIRMED || order.status === OrderStatus.PROCESSING) {
             try {
-              await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.PROCESSING);
+              await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.PACKED);
             } catch (err) {
               this.logger.warn(
-                `Auto-sync order ${shipping.orderId} CONFIRMED->PROCESSING deferred (shipping ${id} is ${dto.status}): ${(err as Error).message}`,
+                `Auto-sync order ${shipping.orderId} to PACKED deferred (shipping ${id} is ${dto.status}): ${(err as Error).message}`,
               );
             }
           }
@@ -265,7 +265,7 @@ export class ShippingService {
     } else if (dto.status === ShippingStatus.DELIVERED) {
       try {
         const order = await this.prisma.order.findUnique({ where: { id: shipping.orderId } });
-        if (order && order.status === OrderStatus.SHIPPING) {
+        if (order && (order.status === OrderStatus.SHIPPING || order.status === OrderStatus.PACKED)) {
           await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.DELIVERED);
         }
       } catch (err) {

@@ -11,8 +11,10 @@ describe('ShippingService', () => {
 
   beforeEach(() => {
     mockPrisma = {
+      $transaction: jest.fn(async (cb: any) => (typeof cb === 'function' ? cb(mockPrisma) : cb)),
       order: {
         findUnique: jest.fn(),
+        update: jest.fn(),
       },
       shipping: {
         findUnique: jest.fn(),

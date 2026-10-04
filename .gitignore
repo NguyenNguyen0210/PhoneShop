@@ -53,6 +53,8 @@ worktrees/
 worktrees
 
 # OS & IDE
+.vercel
+**/.vercel
 .DS_Store
 Thumbs.db
 .vscode/

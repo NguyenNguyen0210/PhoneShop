@@ -25,12 +25,12 @@ describe('ReviewsService', () => {
   });
 
   describe('getMyReviewStatus', () => {
-    it('should return canReview: false if user has not purchased product', async () => {
+    it('should return canReview: true if user has not reviewed product yet', async () => {
       (prisma.orderItem.findFirst as any).mockResolvedValue(null);
       (prisma.review.findUnique as any).mockResolvedValue(null);
 
       const result = await service.getMyReviewStatus('user-1', 'prod-1');
-      expect(result.canReview).toBe(false);
+      expect(result.canReview).toBe(true);
       expect(result.hasPurchased).toBe(false);
       expect(result.myReview).toBeNull();
     });
@@ -79,7 +79,7 @@ describe('ReviewsService', () => {
         title: 'Excellent',
         content: 'Great product!',
         images: ['https://example.com/img1.webp'],
-        status: ReviewStatus.PENDING,
+        status: ReviewStatus.APPROVED,
         isVerified: true,
       });
       expect(prisma.review.create).toHaveBeenCalledWith(
@@ -91,18 +91,19 @@ describe('ReviewsService', () => {
       );
     });
 
-    it('should throw ForbiddenException if user has not purchased product', async () => {
+    it('should create review with isVerified: false if not purchased', async () => {
       (prisma.review.findUnique as any).mockResolvedValue(null);
       (prisma.orderItem.findFirst as any).mockResolvedValue(null);
+      (prisma.review.create as any).mockImplementation((args: any) => Promise.resolve({ id: 'rev-2', ...args.data }));
 
-      await expect(
-        service.create('user-1', { productId: 'prod-1', rating: 5 }),
-      ).rejects.toThrow(ForbiddenException);
+      const result = await service.create('user-1', { productId: 'prod-1', rating: 4 });
+      expect(result.isVerified).toBe(false);
+      expect(result.status).toBe(ReviewStatus.APPROVED);
     });
   });
 
   describe('update', () => {
-    it('should update review with images and set status to PENDING', async () => {
+    it('should update review with images and set status to APPROVED', async () => {
       (prisma.review.findUnique as any).mockResolvedValue({ id: 'rev-1', userId: 'user-1' });
       (prisma.review.update as any).mockImplementation((args: any) => Promise.resolve({ id: 'rev-1', ...args.data }));
 
@@ -117,7 +118,7 @@ describe('ReviewsService', () => {
           data: expect.objectContaining({
             rating: 4,
             images: ['https://example.com/img2.webp'],
-            status: ReviewStatus.PENDING,
+            status: ReviewStatus.APPROVED,
           }),
         }),
       );

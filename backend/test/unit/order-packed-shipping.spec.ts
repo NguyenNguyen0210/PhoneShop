@@ -43,6 +43,7 @@ describe('OrdersService - PACKED and SHIPPING transitions', () => {
       },
       inventory: {
         update: jest.fn(),
+        updateMany: (jest.fn() as any).mockResolvedValue({ count: 1 }),
       },
       installmentApplication: {
         updateMany: jest.fn(),
@@ -101,9 +102,9 @@ describe('OrdersService - PACKED and SHIPPING transitions', () => {
     );
   });
 
-  it('should reject invalid transition from CONFIRMED directly to PACKED', async () => {
+  it('should reject invalid transition from CONFIRMED directly to SHIPPING', async () => {
     (prisma.order.findUnique as any).mockResolvedValue({ ...mockOrder, status: OrderStatus.CONFIRMED });
-    await expect(service.transitionStatus('order-123', OrderStatus.PACKED)).rejects.toThrow(BadRequestException);
+    await expect(service.transitionStatus('order-123', OrderStatus.SHIPPING)).rejects.toThrow(BadRequestException);
   });
 
   it('should allow cancellation from PACKED status and release reserved inventory/IMEIs', async () => {
@@ -117,7 +118,7 @@ describe('OrdersService - PACKED and SHIPPING transitions', () => {
     (prisma.order.findUnique as any).mockResolvedValue(packedOrderWithItems);
     (prisma.order.update as any).mockResolvedValue({ ...packedOrderWithItems, status: OrderStatus.CANCELLED });
     (prisma.imeiDevice.updateMany as any).mockResolvedValue({ count: 1 });
-    (prisma.inventory.update as any).mockResolvedValue({});
+    (prisma.inventory.updateMany as any).mockResolvedValue({ count: 1 });
 
     const result = await service.transitionStatus('order-123', OrderStatus.CANCELLED, undefined, 'Customer requested cancel');
     expect(result.status).toBe(OrderStatus.CANCELLED);
@@ -125,8 +126,8 @@ describe('OrdersService - PACKED and SHIPPING transitions', () => {
       where: { id: 'imei-1', status: ImeiStatus.RESERVED },
       data: { status: ImeiStatus.AVAILABLE },
     });
-    expect(prisma.inventory.update).toHaveBeenCalledWith({
-      where: { variantId: 'var-1' },
+    expect(prisma.inventory.updateMany).toHaveBeenCalledWith({
+      where: { variantId: 'var-1', reservedQty: { gte: 1 } },
       data: {
         reservedQty: { decrement: 1 },
         availableQty: { increment: 1 },

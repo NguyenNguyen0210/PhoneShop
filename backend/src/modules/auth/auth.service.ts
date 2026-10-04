@@ -75,6 +75,9 @@ export class AuthService {
       },
     });
 
+    // Tạm thời tắt gửi email chào mừng khi đăng ký tài khoản (tránh lỗi/treo do SMTP trên cloud)
+    // Sẽ bật lại khi hoàn tất tích hợp Brevo HTTP API
+    /*
     try {
       await this.emailService.sendWelcomeEmail(
         user.email,
@@ -85,6 +88,7 @@ export class AuthService {
         `Failed to send welcome email to ${user.email}: ${(emailErr as Error).message}`,
       );
     }
+    */
 
     return this.generateTokens(user);
   }

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vite
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { ShippingDispatchModal } from '../components/ShippingDispatchModal';
 import { shippingService } from '../../../../services/shippingService';
+import { orderService } from '../../../../services/orderService';
 import type { Order } from '../../../../types';
 
 // Mock window.matchMedia for Ant Design in jsdom
@@ -21,6 +22,12 @@ beforeAll(() => {
     })),
   });
 });
+
+vi.mock('../../../../services/orderService', () => ({
+  orderService: {
+    updateOrderStatus: vi.fn(),
+  },
+}));
 
 vi.mock('../../../../services/shippingService', () => ({
   CARRIER_PRESETS: [
@@ -305,6 +312,88 @@ describe('ShippingDispatchModal', () => {
     fireEvent.change(carrierInput, { target: { value: 'AhaMove Siêu Tốc' } });
 
     expect(screen.getByDisplayValue('AhaMove Siêu Tốc')).toBeDefined();
+  });
+
+  it('calls orderService.updateOrderStatus with ship action when starting delivery for PACKED order', async () => {
+    const handleSuccess = vi.fn();
+    const handleClose = vi.fn();
+    const packedOrder: Order = {
+      ...mockOrder,
+      status: 'PACKED',
+    };
+
+    vi.mocked(orderService.updateOrderStatus).mockResolvedValue({
+      ...packedOrder,
+      status: 'SHIPPING',
+    });
+
+    render(
+      <ShippingDispatchModal
+        open={true}
+        order={packedOrder}
+        onClose={handleClose}
+        onSuccess={handleSuccess}
+      />,
+    );
+
+    const shipBtn = screen.getByRole('button', { name: /Bắt đầu giao hàng \(SHIPPING\)/i });
+    expect(shipBtn).toBeDefined();
+
+    fireEvent.click(shipBtn);
+
+    await waitFor(() => {
+      expect(orderService.updateOrderStatus).toHaveBeenCalledWith(
+        'ord-123',
+        'ship',
+        expect.objectContaining({
+          providerName: 'Giao Hàng Nhanh (GHN)',
+          trackingNumber: 'GHN88291039VN',
+        }),
+      );
+      expect(handleSuccess).toHaveBeenCalled();
+      expect(handleClose).toHaveBeenCalled();
+    });
+  });
+
+  it('renders unstick button and syncs order to DELIVERED when shipping is DELIVERED but order is PACKED', async () => {
+    const handleSuccess = vi.fn();
+    const handleClose = vi.fn();
+    const stuckOrder: Order = {
+      ...mockOrder,
+      status: 'PACKED',
+      shipping: {
+        ...mockOrder.shipping!,
+        status: 'DELIVERED',
+      },
+    };
+
+    vi.mocked(orderService.updateOrderStatus).mockResolvedValue({
+      ...stuckOrder,
+      status: 'DELIVERED',
+    });
+
+    render(
+      <ShippingDispatchModal
+        open={true}
+        order={stuckOrder}
+        onClose={handleClose}
+        onSuccess={handleSuccess}
+      />,
+    );
+
+    const unstickBtn = screen.getByRole('button', { name: /Đồng bộ đơn hàng \(DELIVERED\)/i });
+    expect(unstickBtn).toBeDefined();
+
+    fireEvent.click(unstickBtn);
+
+    await waitFor(() => {
+      expect(orderService.updateOrderStatus).toHaveBeenCalledWith(
+        'ord-123',
+        'deliver',
+      );
+      expect(handleSuccess).toHaveBeenCalled();
+      expect(handleClose).toHaveBeenCalled();
+    });
   });
 
   it('returns null if order is null', () => {
