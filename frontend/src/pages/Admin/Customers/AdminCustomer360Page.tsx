@@ -12,9 +12,9 @@ import {
   Button,
   Descriptions,
   Spin,
-  Alert,
   Empty,
   Badge,
+  message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -41,17 +41,15 @@ export const AdminCustomer360Page: React.FC = () => {
 
   const [data, setData] = useState<Customer360Data | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const loadCustomer360 = useCallback(async () => {
     if (!id) return;
     try {
       setLoading(true);
-      setError(null);
       const res = await customerService.getCustomer360(id);
       setData(res);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Không thể tải hồ sơ khách hàng 360°');
+      message.error(err.response?.data?.message || 'Không thể tải hồ sơ khách hàng 360°');
     } finally {
       setLoading(false);
     }
@@ -69,7 +67,7 @@ export const AdminCustomer360Page: React.FC = () => {
     );
   }
 
-  if (error || !data) {
+  if (!data) {
     return (
       <div style={{ padding: 24 }}>
         <Button
@@ -85,7 +83,11 @@ export const AdminCustomer360Page: React.FC = () => {
         >
           Quay lại danh sách
         </Button>
-        <Alert type="error" message="Lỗi" description={error || 'Không tìm thấy dữ liệu'} showIcon />
+        <Empty description="Không tìm thấy dữ liệu khách hàng">
+          <Button type="primary" onClick={loadCustomer360}>
+            Thử lại
+          </Button>
+        </Empty>
       </div>
     );
   }

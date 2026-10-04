@@ -3,6 +3,7 @@ import { X, Loader2, Sparkles } from 'lucide-react';
 import { StarRatingInput } from './StarRatingInput';
 import { ReviewImageUploader } from './ReviewImageUploader';
 import { reviewService } from '../../../services/reviewService';
+import { notifyError } from '../../../utils/notify';
 import type { Review } from '../../../types';
 
 export interface ReviewModalProps {
@@ -29,7 +30,6 @@ const ReviewModalContent: React.FC<Omit<ReviewModalProps, 'isOpen'>> = ({
   const [content, setContent] = useState(initialData?.content || '');
   const [images, setImages] = useState<string[]>(initialData?.images || []);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Lock body scroll and handle Escape key
   useEffect(() => {
@@ -52,12 +52,11 @@ const ReviewModalContent: React.FC<Omit<ReviewModalProps, 'isOpen'>> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rating < 1 || rating > 5) {
-      setError('Vui lòng chọn số sao đánh giá (1 đến 5 sao).');
+      notifyError('Vui lòng chọn số sao đánh giá (1 đến 5 sao).');
       return;
     }
 
     setLoading(true);
-    setError(null);
 
     try {
       if (isEditing && initialData?.id) {
@@ -79,11 +78,7 @@ const ReviewModalContent: React.FC<Omit<ReviewModalProps, 'isOpen'>> = ({
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } } };
-      setError(
-        errorObj.response?.data?.message ||
-          'Có lỗi xảy ra khi lưu đánh giá. Vui lòng thử lại sau.',
-      );
+      notifyError(err, 'Có lỗi xảy ra khi lưu đánh giá. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
@@ -195,12 +190,6 @@ const ReviewModalContent: React.FC<Omit<ReviewModalProps, 'isOpen'>> = ({
               maxImages={5}
             />
           </div>
-
-          {error && (
-            <div className="p-3 bg-red-50 text-red-700 rounded-xl text-xs font-medium border border-red-100">
-              {error}
-            </div>
-          )}
 
           {/* Footer buttons */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">

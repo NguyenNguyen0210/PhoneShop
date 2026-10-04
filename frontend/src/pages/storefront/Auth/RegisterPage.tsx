@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Phone, AlertCircle, Loader2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, User, Phone, Loader2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { authService } from '../../../services/authService';
+import { notifyError, notifySuccess } from '../../../utils/notify';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -17,24 +18,22 @@ export const RegisterPage: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
 
     if (!fullName || !email || !password) {
-      setError('Vui lòng điền đầy đủ các thông tin bắt buộc.');
+      notifyError('Vui lòng điền đầy đủ các thông tin bắt buộc.');
       return;
     }
 
     if (password.length < 6) {
-      setError('Mật khẩu phải có ít nhất 6 ký tự.');
+      notifyError('Mật khẩu phải có ít nhất 6 ký tự.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp.');
+      notifyError('Mật khẩu xác nhận không khớp.');
       return;
     }
 
@@ -46,9 +45,10 @@ export const RegisterPage: React.FC = () => {
         password,
         phone: phone || undefined,
       });
+      notifySuccess('Đăng ký thành công. Chào mừng bạn đến với PhoneShop!');
       navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Đăng ký không thành công.');
+      notifyError(err, 'Đăng ký không thành công.');
     } finally {
       setLoading(false);
     }
@@ -127,14 +127,6 @@ export const RegisterPage: React.FC = () => {
             WELCOME50
           </div>
         </div>
-
-        {/* Alert banner thông báo lỗi */}
-        {error && (
-          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2.5">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-            <span>{error}</span>
-          </div>
-        )}
 
         {/* 1-Click Social Sign Up (Google) */}
         <button

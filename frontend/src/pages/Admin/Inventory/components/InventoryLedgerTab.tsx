@@ -13,7 +13,6 @@ import {
   Select,
   DatePicker,
   Empty,
-  Alert,
   Tooltip,
   message,
 } from 'antd';
@@ -61,7 +60,6 @@ export const InventoryLedgerTab: React.FC = () => {
   const [summary, setSummary] = useState<StockLedgerSummary | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [exporting, setExporting] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Pagination
   const [page, setPage] = useState<number>(1);
@@ -83,7 +81,6 @@ export const InventoryLedgerTab: React.FC = () => {
       currentSearch: string = search
     ) => {
       setLoading(true);
-      setError(null);
       try {
         const res = await inventoryService.getLedger({
           page: currentPage,
@@ -101,7 +98,6 @@ export const InventoryLedgerTab: React.FC = () => {
           err?.response?.data?.message ||
           err?.message ||
           'Không thể tải dữ liệu sổ kho từ máy chủ';
-        setError(msg);
         message.error(msg);
       } finally {
         setLoading(false);
@@ -462,23 +458,6 @@ export const InventoryLedgerTab: React.FC = () => {
           </Card>
         </Col>
       </Row>
-
-      {/* Error Alert with Retry button */}
-      {error && (
-        <Alert
-          type="error"
-          showIcon
-          title="Lỗi tải dữ liệu sổ kho"
-          description={error}
-          action={
-            <Button size="small" danger onClick={handleRefresh}>
-              Thử lại
-            </Button>
-          }
-          style={{ marginBottom: 16 }}
-          closable
-        />
-      )}
 
       {/* Filter Toolbar */}
       <div

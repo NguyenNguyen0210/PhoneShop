@@ -14,6 +14,7 @@ import {
   Divider,
   Spin,
   Alert,
+  Empty,
   message,
   Image,
 } from 'antd';
@@ -47,7 +48,6 @@ export const AdminTicketDetailPage: React.FC = () => {
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Composer state
   const [replyMessage, setReplyMessage] = useState('');
@@ -78,7 +78,6 @@ export const AdminTicketDetailPage: React.FC = () => {
     try {
       if (!silent) {
         setLoading(true);
-        setError(null);
       }
       const res = await ticketService.getAdminTicketDetail(id);
 
@@ -100,7 +99,7 @@ export const AdminTicketDetailPage: React.FC = () => {
       }
     } catch (err: any) {
       if (!silent) {
-        setError(err.response?.data?.message || 'Không thể tải chi tiết vé');
+        message.error(err.response?.data?.message || 'Không thể tải chi tiết vé');
       }
     } finally {
       if (!silent) {
@@ -174,7 +173,7 @@ export const AdminTicketDetailPage: React.FC = () => {
     );
   }
 
-  if (error || !ticket) {
+  if (!ticket) {
     return (
       <div style={{ padding: 24 }}>
         <Button
@@ -190,7 +189,11 @@ export const AdminTicketDetailPage: React.FC = () => {
         >
           Quay lại danh sách
         </Button>
-        <Alert type="error" message="Lỗi" description={error || 'Không tìm thấy vé'} showIcon />
+        <Empty description="Không tìm thấy vé hỗ trợ">
+          <Button type="primary" onClick={() => loadTicket()}>
+            Thử lại
+          </Button>
+        </Empty>
       </div>
     );
   }

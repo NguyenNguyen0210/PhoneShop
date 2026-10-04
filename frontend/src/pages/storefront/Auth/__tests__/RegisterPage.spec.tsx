@@ -26,6 +26,14 @@ vi.mock('../../../../services/authService', () => ({
   },
 }));
 
+vi.mock('../../../../utils/notify', () => ({
+  notifyError: vi.fn(),
+  notifySuccess: vi.fn(),
+  getErrorMessage: (err: unknown) => (err as any)?.message || 'Đã xảy ra lỗi. Vui lòng thử lại.',
+}));
+
+import { notifyError } from '../../../../utils/notify';
+
 describe('RegisterPage (Centered Card Layout)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -71,7 +79,7 @@ describe('RegisterPage (Centered Card Layout)', () => {
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/Vui lòng điền đầy đủ các thông tin bắt buộc/i)).toBeDefined();
+      expect(notifyError).toHaveBeenCalledWith('Vui lòng điền đầy đủ các thông tin bắt buộc.');
     });
     expect(mockRegister).not.toHaveBeenCalled();
   });
@@ -91,7 +99,7 @@ describe('RegisterPage (Centered Card Layout)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Đăng ký tài khoản/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Mật khẩu phải có ít nhất 6 ký tự/i)).toBeDefined();
+      expect(notifyError).toHaveBeenCalledWith('Mật khẩu phải có ít nhất 6 ký tự.');
     });
     expect(mockRegister).not.toHaveBeenCalled();
   });
@@ -111,7 +119,7 @@ describe('RegisterPage (Centered Card Layout)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Đăng ký tài khoản/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Mật khẩu xác nhận không khớp/i)).toBeDefined();
+      expect(notifyError).toHaveBeenCalledWith('Mật khẩu xác nhận không khớp.');
     });
     expect(mockRegister).not.toHaveBeenCalled();
   });

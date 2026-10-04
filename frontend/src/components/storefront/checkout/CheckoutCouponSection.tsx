@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Sparkles, Check, X, Loader2, ChevronRight, AlertCircle } from 'lucide-react';
+import { Tag, Sparkles, Check, X, Loader2, ChevronRight } from 'lucide-react';
 import { voucherService, type VoucherInfo } from '../../../services/voucherService';
+import { notifyError } from '../../../utils/notify';
 
 export interface CheckoutCouponSectionProps {
   subtotal: number;
@@ -17,11 +18,9 @@ export const CheckoutCouponSection: React.FC<CheckoutCouponSectionProps> = ({
 }) => {
   const [inputCode, setInputCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [availableVouchers, setAvailableVouchers] = useState<VoucherInfo[]>([]);
   const [loadingVouchers, setLoadingVouchers] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
@@ -67,12 +66,11 @@ export const CheckoutCouponSection: React.FC<CheckoutCouponSectionProps> = ({
   const handleApplyCode = async (codeToApply?: string) => {
     const code = (codeToApply ?? inputCode).trim().toUpperCase();
     if (!code) {
-      setError('Vui lòng nhập mã ưu đãi.');
+      notifyError('Vui lòng nhập mã ưu đãi.');
       return;
     }
 
     setLoading(true);
-    setError('');
     try {
       const res = await voucherService.validateVoucher(code, subtotal);
       if (res && res.valid && res.voucher) {
@@ -80,14 +78,10 @@ export const CheckoutCouponSection: React.FC<CheckoutCouponSectionProps> = ({
         setInputCode('');
         setIsModalOpen(false);
       } else {
-        setError('Mã ưu đãi không hợp lệ.');
+        notifyError('Mã ưu đãi không hợp lệ.');
       }
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Mã ưu đãi không hợp lệ hoặc đã hết hạn sử dụng.';
-      setError(msg);
+      notifyError(err, 'Mã ưu đãi không hợp lệ hoặc đã hết hạn sử dụng.');
     } finally {
       setLoading(false);
     }
@@ -95,10 +89,8 @@ export const CheckoutCouponSection: React.FC<CheckoutCouponSectionProps> = ({
 
   const openVoucherModal = () => {
     setIsModalOpen(true);
-    setError('');
     if (availableVouchers.length === 0) {
       setLoadingVouchers(true);
-      setFetchError(null);
       voucherService
         .getActiveVouchers()
         .then((list) => {
@@ -106,7 +98,7 @@ export const CheckoutCouponSection: React.FC<CheckoutCouponSectionProps> = ({
         })
         .catch((err) => {
           console.error('Failed to load active vouchers:', err);
-          setFetchError('Không thể tải danh sách ưu đãi lúc này.');
+          notifyError('Không thể tải danh sách ưu đãi lúc này.');
         })
         .finally(() => {
           setLoadingVouchers(false);
@@ -195,7 +187,6 @@ export const CheckoutCouponSection: React.FC<CheckoutCouponSectionProps> = ({
             value={inputCode}
             onChange={(e) => {
               setInputCode(e.target.value.toUpperCase());
-              if (error) setError('');
             }}
             placeholder="Nhập mã ưu đãi..."
             className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-xl text-xs uppercase font-mono font-bold text-slate-900 placeholder-slate-400 focus:outline-hidden transition"
@@ -215,22 +206,6 @@ export const CheckoutCouponSection: React.FC<CheckoutCouponSectionProps> = ({
             )}
           </button>
         </form>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-xs text-rose-700">
-          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
-          <span className="flex-1">{error}</span>
-          <button
-            type="button"
-            onClick={() => setError('')}
-            className="text-rose-400 hover:text-rose-600 transition cursor-pointer"
-            aria-label="Đóng thông báo lỗi"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
       )}
 
       {/* Active Vouchers Modal */}
@@ -285,7 +260,6 @@ export const CheckoutCouponSection: React.FC<CheckoutCouponSectionProps> = ({
                   value={inputCode}
                   onChange={(e) => {
                     setInputCode(e.target.value.toUpperCase());
-                    if (error) setError('');
                   }}
                   placeholder="Nhập mã ưu đãi khác..."
                   className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-xl text-xs uppercase font-mono font-bold text-slate-900 placeholder-slate-400 focus:outline-hidden transition"
@@ -307,24 +281,12 @@ export const CheckoutCouponSection: React.FC<CheckoutCouponSectionProps> = ({
               </form>
             </div>
 
-            {/* Modal Error */}
-            {error && (
-              <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-xs text-rose-700 shrink-0">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
-                <span className="flex-1">{error}</span>
-              </div>
-            )}
-
             {/* Modal Body / Active Vouchers List */}
             <div className="flex-1 overflow-y-auto pr-1 space-y-3 min-h-[160px]">
               {loadingVouchers ? (
                 <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-2">
                   <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                   <span className="text-xs">Đang tải danh sách ưu đãi...</span>
-                </div>
-              ) : fetchError ? (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-800 text-center">
-                  {fetchError}
                 </div>
               ) : availableVouchers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-2">

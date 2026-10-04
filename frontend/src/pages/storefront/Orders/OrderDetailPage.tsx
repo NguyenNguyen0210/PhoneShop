@@ -30,6 +30,7 @@ import { reviewService } from '../../../services/reviewService';
 import { ReviewModal } from '../../../components/storefront/reviews';
 import type { Order, InstallmentApplication, InstallmentStatus, Review } from '../../../types';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
+import { notifyError } from '../../../utils/notify';
 import { OrderTrackingTimeline } from './components/OrderTrackingTimeline';
 import { OrderInvoiceModal } from './components/OrderInvoiceModal';
 import { OrderCancelModal } from './components/OrderCancelModal';
@@ -42,7 +43,6 @@ export const OrderDetailPage: React.FC = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [installment, setInstallment] = useState<InstallmentApplication | null>(null);
   const [loading, setLoading] = useState(() => Boolean(id));
-  const [error, setError] = useState<string | null>(null);
 
   // Modals & Action States
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -108,7 +108,7 @@ export const OrderDetailPage: React.FC = () => {
       })
       .catch((err) => {
         if (isMounted) {
-          setError(err.response?.data?.message || 'Không thể tìm thấy thông tin đơn hàng.');
+          notifyError(err, 'Không thể tìm thấy thông tin đơn hàng.');
         }
       })
       .finally(() => {
@@ -169,12 +169,12 @@ export const OrderDetailPage: React.FC = () => {
     );
   }
 
-  if (error || !order) {
+  if (!order) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center space-y-4">
         <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
         <h2 className="text-xl font-bold text-slate-900">Không tìm thấy đơn hàng</h2>
-        <p className="text-xs text-slate-500 max-w-md mx-auto">{error || 'Đơn hàng không tồn tại hoặc đã bị xóa.'}</p>
+        <p className="text-xs text-slate-500 max-w-md mx-auto">Đơn hàng không tồn tại hoặc đã bị xóa.</p>
         <Link
           to="/profile#orders"
           onClick={(e) => {
@@ -386,8 +386,8 @@ export const OrderDetailPage: React.FC = () => {
 
             {/* Rejection notice if rejected */}
             {instApp?.status === 'REJECTED' && instApp?.rejectionReason && (
-              <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 space-y-1">
-                <span className="font-bold text-sm block text-rose-900">Lý do từ chối hồ sơ:</span>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-700 space-y-1">
+                <span className="font-bold text-sm block text-slate-900">Lý do từ chối hồ sơ:</span>
                 <p>{instApp.rejectionReason}</p>
               </div>
             )}

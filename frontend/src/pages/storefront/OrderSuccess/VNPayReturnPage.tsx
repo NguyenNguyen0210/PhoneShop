@@ -12,6 +12,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { paymentService } from '../../../services/paymentService';
+import { notifyError } from '../../../utils/notify';
 
 interface VNPayVerificationResult {
   success: boolean;
@@ -82,6 +83,15 @@ export const VNPayReturnPage: React.FC = () => {
       });
   }, [searchParams]);
 
+  // Báo lỗi bằng toast một lần khi xác định giao dịch thất bại (giữ text slate trong UI)
+  useEffect(() => {
+    if (loading || !result) return;
+    const failed = !(result.success || result.responseCode === '00');
+    if (!failed) return;
+    const code = result.responseCode || searchParams.get('vnp_ResponseCode') || '99';
+    notifyError(VNPAY_ERROR_CODES[code] || result.message || 'Giao dịch không thể hoàn tất hoặc người dùng đã hủy thanh toán.');
+  }, [loading, result]);
+
   const formatPrice = (val?: number) => {
     if (!val) return '0 ₫';
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
@@ -142,7 +152,7 @@ export const VNPayReturnPage: React.FC = () => {
                 <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                   Thanh toán không thành công
                 </h1>
-                <p className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3 mt-2">
+                <p className="text-sm text-slate-600 mt-2">
                   {errorMessage}
                 </p>
               </div>
