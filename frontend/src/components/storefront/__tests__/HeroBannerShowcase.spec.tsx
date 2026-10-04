@@ -238,7 +238,7 @@ describe('HeroBannerShowcase', () => {
   });
 
   it('correctly maps known flagship slugs to high-resolution transparent cutouts', () => {
-    const testCutoutProduct: Product = {
+    const testCutoutProduct = {
       id: 'prod-honor-200',
       name: 'HONOR 200 5G',
       slug: 'honor-200-5g',
@@ -247,14 +247,16 @@ describe('HeroBannerShowcase', () => {
       createdAt: '2026-01-01',
       brandId: 'b1',
       categoryId: 'cat-1',
-    };
+      description: 'Honor phone',
+      variants: [],
+    } as unknown as Product;
 
     expect(getHeroCutoutImage(testCutoutProduct)).toBe('/products/transparent/honor-200-5g.webp');
     expect(TRANSPARENT_PHONE_CUTOUTS['honor-200-5g']).toBeDefined();
   });
 
   it('falls back to thumbnail when transparent cutout is unavailable', () => {
-    const fallbackProduct: Product = {
+    const fallbackProduct = {
       id: 'prod-custom',
       name: 'Custom Unbranded Phone',
       slug: 'custom-unbranded-phone',
@@ -263,7 +265,9 @@ describe('HeroBannerShowcase', () => {
       createdAt: '2026-01-01',
       brandId: 'b9',
       categoryId: 'cat-1',
-    };
+      description: 'Custom phone',
+      variants: [],
+    } as unknown as Product;
 
     expect(getHeroCutoutImage(fallbackProduct)).toBe('https://example.com/custom.jpg');
   });
@@ -285,6 +289,7 @@ describe('HeroBannerShowcase', () => {
             productId: 'prod-sony',
             sku: 'XP-1',
             color: 'Black',
+            storage: '256GB',
             price: 31990000,
           },
         ],
