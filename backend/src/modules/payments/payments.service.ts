@@ -325,15 +325,18 @@ export class PaymentsService {
           'VNPAY_URL',
           'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
         );
+    // Prod fix: returnUrl mặc định theo FRONTEND_URL để VNPay redirect về
+    // đúng domain vercel thay vì localhost. DB settings (nếu đã set đúng)
+    // vẫn thắng vì get() ưu tiên DB row trước.
+    const frontendBase = (
+      this.configService.get<string>('FRONTEND_URL', '') || ''
+    ).replace(/\/$/, '');
+    const fallbackReturnUrl = frontendBase
+      ? `${frontendBase}/order/vnpay-return`
+      : 'http://localhost:5173/order/vnpay-return';
     const returnUrl = this.settingsService
-      ? await this.settingsService.get(
-          'VNPAY_RETURN_URL',
-          'http://localhost:5173/order/vnpay-return',
-        )
-      : this.configService.get<string>(
-          'VNPAY_RETURN_URL',
-          'http://localhost:5173/order/vnpay-return',
-        );
+      ? await this.settingsService.get('VNPAY_RETURN_URL', fallbackReturnUrl)
+      : this.configService.get<string>('VNPAY_RETURN_URL', fallbackReturnUrl);
 
     const now = new Date();
     const createDate =
