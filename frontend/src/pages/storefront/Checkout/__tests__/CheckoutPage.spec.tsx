@@ -59,7 +59,6 @@ describe('CheckoutPage Integration', () => {
           id: 'cart-item-1',
           variantId: 'v-1',
           quantity: 1,
-          unitPrice: 28000000,
           price: 28000000,
           unitPrice: 28000000,
           product: { id: 'p-1', name: 'iPhone 15 Pro Max', thumbnail: '' } as any,
