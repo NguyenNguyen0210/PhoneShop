@@ -18,6 +18,7 @@ import {
   SearchOutlined,
   ThunderboltOutlined,
   DollarOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
 
@@ -40,6 +41,11 @@ export const StaffLayout: React.FC = () => {
       key: '/staff',
       icon: <DashboardOutlined style={{ fontSize: 16 }} />,
       label: 'Bàn làm việc (Dashboard)',
+    },
+    {
+      key: '/staff/chat',
+      icon: <MessageOutlined style={{ fontSize: 16 }} />,
+      label: 'Live Chat Khách hàng',
     },
     {
       key: '/staff/orders',
@@ -124,6 +130,7 @@ export const StaffLayout: React.FC = () => {
 
   // Dynamic breadcrumb label based on path
   const getBreadcrumbTitle = () => {
+    if (location.pathname.startsWith('/staff/chat')) return 'Live Chat Trực Tuyến Với Khách Hàng';
     if (location.pathname.startsWith('/staff/orders')) return 'Quản lý Đơn hàng & Giao vận';
     if (location.pathname.startsWith('/staff/inventory')) return 'Quản lý Kho & Thiết bị IMEI';
     if (location.pathname.startsWith('/staff/tickets')) return 'Hệ thống Vé hỗ trợ CSKH';
@@ -137,6 +144,7 @@ export const StaffLayout: React.FC = () => {
 
   const getSelectedKey = () => {
     const path = location.pathname;
+    if (path.startsWith('/staff/chat')) return '/staff/chat';
     if (path.startsWith('/staff/orders')) return '/staff/orders';
     if (path.startsWith('/staff/inventory')) return '/staff/inventory';
     if (path.startsWith('/staff/tickets')) return '/staff/tickets';

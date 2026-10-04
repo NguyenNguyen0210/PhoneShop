@@ -51,6 +51,7 @@ import { StaffDashboardPage } from '../pages/Staff/Dashboard/StaffDashboardPage'
 import { StaffCustomersPage } from '../pages/Staff/Customers/StaffCustomersPage';
 import { StaffCustomer360Page } from '../pages/Staff/Customers/StaffCustomer360Page';
 import { StaffInventoryPage } from '../pages/Staff/Inventory/StaffInventoryPage';
+import { StaffLiveChatPage } from '../pages/Staff/Chat/StaffLiveChatPage';
 
 // Route Guards
 import { AdminRoute } from './AdminRoute';
@@ -206,6 +207,7 @@ export const AppRoutes: React.FC = () => {
       <Route element={<StaffRoute />}>
         <Route element={<StaffLayout />}>
           <Route path="/staff" element={<StaffDashboardPage />} />
+          <Route path="/staff/chat" element={<StaffLiveChatPage />} />
           <Route path="/staff/orders" element={<AdminOrdersPage />} />
           <Route path="/staff/orders/:id" element={<AdminOrdersPage />} />
           <Route path="/staff/inventory" element={<StaffInventoryPage />} />

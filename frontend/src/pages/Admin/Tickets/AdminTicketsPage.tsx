@@ -205,7 +205,7 @@ export const AdminTicketsPage: React.FC = () => {
                   color: isLiveChat ? '#059669' : '#1f2937',
                   cursor: 'pointer',
                 }}
-                onClick={() => navigate(`${ticketBasePath}/${record.id}`)}
+                onClick={() => navigate(isLiveChat && isStaff ? `/staff/chat?id=${record.id}` : `${ticketBasePath}/${record.id}`)}
               >
                 {record.title}
               </span>
@@ -309,10 +309,10 @@ export const AdminTicketsPage: React.FC = () => {
             }
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`${ticketBasePath}/${record.id}`);
+              navigate(isLiveChat && isStaff ? `/staff/chat?id=${record.id}` : `${ticketBasePath}/${record.id}`);
             }}
           >
-            {isLiveChat ? 'Trả lời chat' : 'Xử lý vé'}
+            {isLiveChat ? 'Mở phòng chat' : 'Xử lý vé'}
           </Button>
         );
       },
@@ -333,6 +333,16 @@ export const AdminTicketsPage: React.FC = () => {
           </Text>
         </div>
         <Space>
+          {isStaff && (
+            <Button
+              type="primary"
+              icon={<MessageOutlined />}
+              onClick={() => navigate('/staff/chat')}
+              style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
+            >
+              Mở Không gian Live Chat
+            </Button>
+          )}
           <Button icon={<ReloadOutlined />} onClick={() => loadTickets(false)} loading={loading}>
             Làm mới
           </Button>
@@ -488,15 +498,20 @@ export const AdminTicketsPage: React.FC = () => {
           columns={columns}
           dataSource={tickets}
           loading={loading}
-          onRow={(record) => ({
-            onClick: (e) => {
-              const target = e.target as HTMLElement;
-              if (!target.closest('button') && !target.closest('a') && !target.closest('.ant-select')) {
-                navigate(`${ticketBasePath}/${record.id}`);
-              }
-            },
-            style: { cursor: 'pointer' },
-          })}
+          onRow={(record) => {
+            const isLiveChat =
+              record.title.toLowerCase().includes('[live chat]') ||
+              record.title.toLowerCase().includes('live chat');
+            return {
+              onClick: (e) => {
+                const target = e.target as HTMLElement;
+                if (!target.closest('button') && !target.closest('a') && !target.closest('.ant-select')) {
+                  navigate(isLiveChat && isStaff ? `/staff/chat?id=${record.id}` : `${ticketBasePath}/${record.id}`);
+                }
+              },
+              style: { cursor: 'pointer' },
+            };
+          }}
           pagination={{
             current: page,
             pageSize: limit,
