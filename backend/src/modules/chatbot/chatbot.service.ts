@@ -297,7 +297,7 @@ export class ChatbotService {
     personal: { orders: any[] } | null,
   ): Promise<string> {
     const apiKey = this.config.get<string>('GEMINI_API_KEY') || process.env.GEMINI_API_KEY || '';
-    const model = this.config.get<string>('GEMINI_MODEL') || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+    const model = this.config.get<string>('GEMINI_MODEL') || process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
     const prompt = this.buildPrompt(message, history, faqs, products, personal);
 
     const controller = new AbortController();
