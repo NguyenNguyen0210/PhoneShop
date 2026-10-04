@@ -316,7 +316,7 @@ export const ProductDetailPage: React.FC = () => {
   };
 
   const handleToggleWishlist = async () => {
-    const token = localStorage.getItem('mobilecommerce_access_token');
+    const token = localStorage.getItem('phoneshop_access_token');
     if (!token) {
       message.warning('Vui lòng đăng nhập để lưu sản phẩm yêu thích!');
       navigate('/login', { state: { from: location } });

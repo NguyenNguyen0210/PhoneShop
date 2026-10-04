@@ -4,7 +4,7 @@
 // Creates realistic Vietnamese customer reviews (APPROVED + verified so they
 // show on the storefront immediately) plus shop/customer replies underneath.
 //
-// Run:  npx tsx prisma/seed_reviews.ts   (from MobileCommerce/backend)
+// Run:  npx tsx prisma/seed_reviews.ts   (from PhoneShop/backend)
 //
 // - Uses REAL users/products already in the database (creates a few extra
 //   Vietnamese customer accounts only if fewer than 5 USER accounts exist).

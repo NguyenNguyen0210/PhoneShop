@@ -68,7 +68,8 @@ export const orderService = {
 
     // Ensure cart items are synchronized with backend database cart
     try {
-      if (typeof localStorage !== 'undefined' && localStorage.getItem('mobilecommerce_access_token')) {
+      const token = localStorage.getItem('phoneshop_access_token');
+      if (typeof localStorage !== 'undefined' && token) {
         const storeItems = useCartStore.getState().items;
         const backendCart = await cartService.getCart();
         const existingVariantIds = new Set((backendCart?.items || []).map((i: any) => i.variantId));

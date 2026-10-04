@@ -31,8 +31,8 @@ async function bootstrap() {
     'http://localhost:5173',
     'http://localhost:3000',
     process.env.FRONTEND_URL || '',
-    /^https:\/\/mobilecommerce(-[a-z0-9-]+)?\.vercel\.app$/,
-    /^https:\/\/mobilecommerce(-[a-z0-9-]+)?\.pages\.dev$/,
+    /^https:\/\/phoneshop(-[a-z0-9-]+)?\.vercel\.app$/,
+    /^https:\/\/phoneshop(-[a-z0-9-]+)?\.pages\.dev$/,
   ].filter(Boolean);
 
   app.enableCors({
@@ -104,9 +104,9 @@ async function bootstrap() {
   // ============================================================
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('MobileCommerce API')
+    .setTitle('Phone Shop API')
     .setDescription(
-      'Backend API for MobileCommerce - Mobile Phone E-Commerce System',
+      'Backend API for Phone Shop - Mobile Phone E-Commerce System',
     )
     .setVersion('1.0')
     .addBearerAuth(
@@ -135,7 +135,7 @@ async function bootstrap() {
   await app.listen(port);
 
   console.log(
-    `🚀 MobileCommerce API running on http://localhost:${port}/api`,
+    `🚀 Phone Shop API running on http://localhost:${port}/api`,
   );
 
   console.log(

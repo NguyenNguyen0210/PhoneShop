@@ -38,9 +38,9 @@ export const authService = {
     } catch {
       // Ignore network errors on logout
     } finally {
-      localStorage.removeItem('mobilecommerce_access_token');
-      localStorage.removeItem('mobilecommerce_refresh_token');
-      localStorage.removeItem('mobilecommerce_user');
+      localStorage.removeItem('phoneshop_access_token');
+      localStorage.removeItem('phoneshop_refresh_token');
+      localStorage.removeItem('phoneshop_user');
     }
   },
 

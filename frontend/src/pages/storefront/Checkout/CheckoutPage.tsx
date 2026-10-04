@@ -76,7 +76,7 @@ export const CheckoutPage: React.FC = () => {
   // Voucher State
   const [appliedVoucher, setAppliedVoucher] = useState<any>(() => {
     try {
-      const raw = sessionStorage.getItem('mobilecommerce_voucher');
+      const raw = sessionStorage.getItem('phoneshop_voucher');
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       return parsed.voucher || parsed;
@@ -86,7 +86,7 @@ export const CheckoutPage: React.FC = () => {
   });
   const [discountAmount, setDiscountAmount] = useState<number>(() => {
     try {
-      const raw = sessionStorage.getItem('mobilecommerce_voucher');
+      const raw = sessionStorage.getItem('phoneshop_voucher');
       if (!raw) return 0;
       const parsed = JSON.parse(raw);
       return parsed.discount || 0;
@@ -285,7 +285,7 @@ export const CheckoutPage: React.FC = () => {
 
       // Clear ONLY selected items from cart
       removeSelectedItems();
-      sessionStorage.removeItem('mobilecommerce_voucher');
+      sessionStorage.removeItem('phoneshop_voucher');
 
       navigate(`/order-success/${orderId}`);
     } catch (err: any) {
@@ -309,7 +309,7 @@ export const CheckoutPage: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 mb-1">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>MobileCommerce • Thanh toán bảo mật</span>
+              <span>Phone Shop • Thanh toán bảo mật</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
               Xác nhận Đơn hàng & Thanh toán
@@ -883,14 +883,14 @@ export const CheckoutPage: React.FC = () => {
                     setAppliedVoucher(v);
                     setDiscountAmount(disc);
                     sessionStorage.setItem(
-                      'mobilecommerce_voucher',
+                      'phoneshop_voucher',
                       JSON.stringify({ code: v.code, discount: disc, voucher: v })
                     );
                   }}
                   onRemoveVoucher={() => {
                     setAppliedVoucher(null);
                     setDiscountAmount(0);
-                    sessionStorage.removeItem('mobilecommerce_voucher');
+                    sessionStorage.removeItem('phoneshop_voucher');
                   }}
                 />
               </div>

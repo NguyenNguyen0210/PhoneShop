@@ -52,7 +52,7 @@ async function main() {
 
   for (const [slug, url] of Object.entries(BRAND_SVGS)) {
     try {
-      const res = await fetch(url, { headers: { 'User-Agent': 'MobileCommerce/1.0' } });
+      const res = await fetch(url, { headers: { 'User-Agent': 'PhoneShop/1.0' } });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }

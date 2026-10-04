@@ -24,9 +24,9 @@ describe('Payments Unit Tests', () => {
       expect(res.orderNumber).toBe('ORD-123456');
       expect(res.bankId).toBe('970422');
       expect(res.accountNo).toBe('0987654321');
-      expect(res.accountName).toBe('CONG TY MOBILECOMMERCE');
+      expect(res.accountName).toBe('CONG TY PHONE SHOP');
       expect(res.qrUrl).toBe(
-        'https://img.vietqr.io/image/970422-0987654321-compact2.png?amount=29990000&addInfo=ORD-123456&accountName=CONG%20TY%20MOBILECOMMERCE',
+        'https://img.vietqr.io/image/970422-0987654321-compact2.png?amount=29990000&addInfo=ORD-123456&accountName=CONG%20TY%20PHONE%20SHOP',
       );
     });
 

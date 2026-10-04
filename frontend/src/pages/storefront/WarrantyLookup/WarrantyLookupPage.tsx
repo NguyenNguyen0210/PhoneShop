@@ -282,7 +282,7 @@ export const WarrantyLookupPage: React.FC = () => {
               <div className="text-xs text-slate-600 leading-relaxed border-t border-slate-200 pt-4 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-slate-900 font-bold">
                   <Award className="w-4 h-4 text-blue-600" />
-                  <span>Quyền lợi bảo hành chuẩn MobileCommerce:</span>
+                  <span>Quyền lợi bảo hành chuẩn Phone Shop:</span>
                 </div>
                 <p>• 1 đổi 1 trong 30 ngày đầu tiên nếu máy phát sinh lỗi từ nhà sản xuất.</p>
                 <p>• Bảo hành thay thế linh kiện chính hãng 100% không thu phụ phí.</p>
@@ -318,7 +318,7 @@ export const WarrantyLookupPage: React.FC = () => {
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
               <span className="font-bold text-slate-900 block">Cách 3: Xem trên vỏ hộp</span>
               <p className="text-slate-500">
-                Kiểm tra tem mã vạch ở mặt sau của hộp đựng điện thoại hoặc tem niêm phong IMEI của MobileCommerce.
+                Kiểm tra tem mã vạch ở mặt sau của hộp đựng điện thoại hoặc tem niêm phong IMEI của Phone Shop.
               </p>
             </div>
           </div>

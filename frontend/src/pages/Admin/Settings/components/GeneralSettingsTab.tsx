@@ -85,7 +85,7 @@ export const GeneralSettingsTab: React.FC<GeneralSettingsTabProps> = ({ form }) 
               name="STORE_NAME"
             >
               <Input
-                placeholder="Ví dụ: MobileCommerce Store"
+                placeholder="Ví dụ: Phone Shop"
                 style={{ borderRadius: 8 }}
                 prefix={<ShopOutlined style={{ color: '#94a3b8' }} />}
               />
@@ -125,7 +125,7 @@ export const GeneralSettingsTab: React.FC<GeneralSettingsTabProps> = ({ form }) 
               name="STORE_EMAIL"
             >
               <Input
-                placeholder="Ví dụ: support@mobilecommerce.vn"
+                placeholder="Ví dụ: support@phoneshop.vn"
                 style={{ borderRadius: 8 }}
                 prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
               />

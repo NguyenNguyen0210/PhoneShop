@@ -3,6 +3,10 @@ import { persist } from 'zustand/middleware';
 import type { CartItem, Product, ProductVariant } from '../types';
 import { cartService } from '../services/cartService';
 
+const hasAccessToken = () =>
+  typeof localStorage !== 'undefined' &&
+  Boolean(localStorage.getItem('phoneshop_access_token'));
+
 interface CartState {
   items: CartItem[];
   selectedItemIds: string[];
@@ -85,7 +89,7 @@ export const useCartStore = create<CartState>()(
         set({ items: newItems, isDrawerOpen: true });
 
         // Optionally sync with backend if token exists
-        if (typeof localStorage !== 'undefined' && localStorage.getItem('mobilecommerce_access_token')) {
+        if (hasAccessToken()) {
           cartService.addToCart(variant.id, quantity).catch(() => {});
         }
       },
@@ -97,7 +101,7 @@ export const useCartStore = create<CartState>()(
           selectedItemIds: state.selectedItemIds.filter((id) => id !== itemId),
         }));
 
-        if (itemToRemove && typeof localStorage !== 'undefined' && localStorage.getItem('mobilecommerce_access_token')) {
+        if (itemToRemove && hasAccessToken()) {
           cartService.removeFromCart(itemToRemove.variantId).catch(() => {});
         }
       },
@@ -115,14 +119,14 @@ export const useCartStore = create<CartState>()(
         }));
 
         const item = get().items.find((i) => i.id === itemId);
-        if (item && typeof localStorage !== 'undefined' && localStorage.getItem('mobilecommerce_access_token')) {
+        if (item && hasAccessToken()) {
           cartService.updateCartItem(item.variantId, quantity).catch(() => {});
         }
       },
 
       clearCart: () => {
         set({ items: [], selectedItemIds: [] });
-        if (typeof localStorage !== 'undefined' && localStorage.getItem('mobilecommerce_access_token')) {
+        if (hasAccessToken()) {
           cartService.clearCart().catch(() => {});
         }
       },
@@ -168,7 +172,7 @@ export const useCartStore = create<CartState>()(
         const remainingItems = get().items.filter((i) => !selected.includes(i.id));
         set({ items: remainingItems, selectedItemIds: [] });
 
-        if (typeof localStorage !== 'undefined' && localStorage.getItem('mobilecommerce_access_token')) {
+        if (hasAccessToken()) {
           cartService.removeBulk(selected).catch(() => {});
         }
       },
@@ -194,7 +198,7 @@ export const useCartStore = create<CartState>()(
       },
 
       syncWithBackend: async () => {
-        if (typeof localStorage === 'undefined' || !localStorage.getItem('mobilecommerce_access_token')) {
+        if (!hasAccessToken()) {
           return;
         }
         try {
@@ -222,7 +226,7 @@ export const useCartStore = create<CartState>()(
       },
     }),
     {
-      name: 'mobilecommerce_cart_storage',
+      name: 'phoneshop_cart_storage',
       partialize: (state) => ({ items: state.items }),
     }
   )

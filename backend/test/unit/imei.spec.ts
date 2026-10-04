@@ -45,7 +45,7 @@ describe('IMEI Concurrency & Luhn Validation Unit Tests', () => {
   });
 
   describe('IMEI State Transition Rules', () => {
-    // Valid state transitions in MobileCommerce lifecycle:
+    // Valid state transitions in Phone Shop lifecycle:
     // AVAILABLE -> RESERVED (when order placed / 15m hold starts)
     // RESERVED -> AVAILABLE (when hold expires or order cancelled)
     // RESERVED -> SOLD (when payment succeeds)

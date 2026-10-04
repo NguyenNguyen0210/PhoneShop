@@ -10,7 +10,9 @@ async function main() {
   try {
     const customers = await prisma.user.findMany({
       where: {
-        email: { notIn: ['admin@mobilecommerce.vn', 'staff@mobilecommerce.vn'] },
+        email: {
+          notIn: ['admin@phoneshop.vn', 'staff@phoneshop.vn'],
+        },
       },
       include: {
         orders: {

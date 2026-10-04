@@ -308,7 +308,7 @@ export const PaymentSettingsTab: React.FC<PaymentSettingsTabProps> = ({ form }) 
               name="VIETQR_ACCOUNT_NAME"
             >
               <Input
-                placeholder="Ví dụ: CONG TY TNHH MOBILECOMMERCE"
+                placeholder="Ví dụ: CONG TY TNHH PHONE SHOP"
                 style={{ borderRadius: 8, textTransform: 'uppercase' }}
               />
             </Form.Item>

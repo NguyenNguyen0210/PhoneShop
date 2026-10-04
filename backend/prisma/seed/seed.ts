@@ -127,7 +127,7 @@ async function findOrCreateUser(data: UserSeed) {
 // ============================================================
 
 async function main() {
-  console.log("🌱 Starting full MobileCommerce seed...\n");
+  console.log("🌱 Starting full Phone Shop seed...\n");
 
   // ============================================================
   // 1. ROLES
@@ -198,7 +198,7 @@ async function main() {
   );
 
   const admin = await findOrCreateUser({
-    email: "admin@mobilecommerce.local",
+    email: "admin@phoneshop.local",
     passwordHash: adminPasswordHash,
     firstName: "System",
     lastName: "Administrator",
@@ -209,7 +209,7 @@ async function main() {
   });
 
   const staff = await findOrCreateUser({
-    email: "staff@mobilecommerce.local",
+    email: "staff@phoneshop.local",
     passwordHash: staffPasswordHash,
     firstName: "Store",
     lastName: "Staff",
@@ -220,7 +220,7 @@ async function main() {
   });
 
   const manager = await findOrCreateUser({
-    email: "manager@mobilecommerce.local",
+    email: "manager@phoneshop.local",
     passwordHash: managerPasswordHash,
     firstName: "Store",
     lastName: "Manager",
@@ -231,7 +231,7 @@ async function main() {
   });
 
   const customer = await findOrCreateUser({
-    email: "customer@mobilecommerce.local",
+    email: "customer@phoneshop.local",
     passwordHash: customerPasswordHash,
     firstName: "Nguyen",
     lastName: "Customer",
@@ -1306,7 +1306,7 @@ async function main() {
         newData: {
           source: "prisma-seed",
           description:
-            "Initial MobileCommerce seed",
+            "Initial Phone Shop seed",
         },
         ipAddress: "127.0.0.1",
         userAgent: "Prisma Seed",
@@ -1389,16 +1389,16 @@ async function main() {
   console.log("\n🔐 LOGIN ACCOUNTS");
   console.log("--------------------------------------------");
   console.log(
-    "ADMIN   : admin@mobilecommerce.local / Admin@123456",
+    "ADMIN   : admin@phoneshop.local / Admin@123456",
   );
   console.log(
-    "MANAGER : manager@mobilecommerce.local / Manager@123456",
+    "MANAGER : manager@phoneshop.local / Manager@123456",
   );
   console.log(
-    "STAFF   : staff@mobilecommerce.local / Staff@123456",
+    "STAFF   : staff@phoneshop.local / Staff@123456",
   );
   console.log(
-    "USER    : customer@mobilecommerce.local / User@123456",
+    "USER    : customer@phoneshop.local / User@123456",
   );
   console.log("--------------------------------------------");
 

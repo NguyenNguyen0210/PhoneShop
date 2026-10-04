@@ -106,7 +106,7 @@ export class EmailService implements OnModuleInit {
     const secure = rawSecure === 'true' || port === 465;
     const from =
       this.clean(dbFrom || this.config.get<string>('EMAIL_FROM')) ||
-      'MobileCommerce <no-reply@mobilecommerce.vn>';
+      'Phone Shop <no-reply@phoneshop.vn>';
 
     return { host, user, pass, port, secure, from };
   }

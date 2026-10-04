@@ -133,7 +133,7 @@ export const StorageSettingsTab: React.FC<StorageSettingsTabProps> = ({ form }) 
               }
               name="CLOUDFLARE_R2_BUCKET"
             >
-              <Input placeholder="Ví dụ: mobilecommerce-assets" style={{ borderRadius: 8 }} />
+              <Input placeholder="Ví dụ: phoneshop-assets" style={{ borderRadius: 8 }} />
             </Form.Item>
           </Col>
 
@@ -186,7 +186,7 @@ export const StorageSettingsTab: React.FC<StorageSettingsTabProps> = ({ form }) 
               name="CLOUDFLARE_R2_PUBLIC_URL"
             >
               <Input
-                placeholder="https://pub-xxxxxx.r2.dev hoặc https://media.mobilecommerce.vn"
+                placeholder="https://pub-xxxxxx.r2.dev hoặc https://media.phoneshop.vn"
                 style={{ borderRadius: 8 }}
               />
             </Form.Item>

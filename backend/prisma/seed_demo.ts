@@ -1,7 +1,7 @@
 // =============================================================================
 // DEMO COMMERCE SEED — full lifecycle data of a real phone store (idempotent)
 // =============================================================================
-// Run: npx tsx prisma/seed_demo.ts   (from MobileCommerce/backend)
+// Run: npx tsx prisma/seed_demo.ts   (from PhoneShop/backend)
 //
 // Stages coherent, cross-linked demo data tagged customerNote='[DEMO]':
 // orders in (almost) every status, payments incl. FAILED, warranties incl.
@@ -65,7 +65,7 @@ async function main() {
   console.log('🚀 Seeding demo commerce data...');
 
   const CUST = await userIdByEmail('customer@gmail.com');
-  const STAFF = await userIdByEmail('staff@mobilecommerce.vn');
+  const STAFF = await userIdByEmail('staff@phoneshop.vn');
 
   // ---- 0. Addresses for customer (home + office) ----
   const custAddrs = await prisma.address.findMany({ where: { userId: CUST } });

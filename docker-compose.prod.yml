@@ -7,7 +7,7 @@ services:
   # ==========================================
   redis:
     image: redis:7-alpine
-    container_name: mobile_commerce_redis_prod
+    container_name: phoneshop_redis_prod
     command: redis-server --appendonly yes
     restart: always
     volumes:
@@ -27,7 +27,7 @@ services:
     build:
       context: .
       dockerfile: infrastructure/docker/backend.Dockerfile
-    container_name: mobile_commerce_backend_prod
+    container_name: phoneshop_backend_prod
     restart: always
     ports:
       - "3000:3000"

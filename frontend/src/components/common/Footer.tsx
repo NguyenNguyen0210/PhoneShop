@@ -118,7 +118,7 @@ export const Footer: React.FC = () => {
             Hệ thống bán lẻ thiết bị di động thông minh hàng đầu Việt Nam. Cam kết 100% sản phẩm chính hãng với kiểm định số IMEI chuẩn hóa & bảo hành điện tử tiện lợi.
           </p>
           <p className="text-slate-500 text-[11px] font-mono">
-            © 2026 PhoneShop by MobileCommerce Corp. All rights reserved.
+            © 2026 Phone Shop. All rights reserved.
           </p>
         </div>
 

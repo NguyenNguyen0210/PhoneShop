@@ -1,4 +1,4 @@
-# 📱 PhoneShop (MobileCommerce)
+# 📱 Phone Shop
 
 > **Hệ thống Thương Mại Điện Tử Chuyên Biệt Thiết Bị Di Động & Phụ Kiện Cao Cấp**  
 > Xây dựng theo kiến trúc **Modular Monolith & Clean Architecture**, tích hợp kiểm soát giao dịch nguyên tử, cơ chế chống Race Condition cho vòng đời IMEI, hàng đợi xử lý nền **Redis BullMQ**, lưu trữ đám mây **Supabase Cloud (PostgreSQL + S3 Storage)** và giao diện **Clean Light Mode (Apple Pavilion & Swiss Minimalist)**.
@@ -35,7 +35,7 @@
 
 ## 1. Giới Thiệu Tổng Quan
 
-**PhoneShop (MobileCommerce)** là giải pháp thương mại điện tử chuyên nghiệp cho ngành bán lẻ thiết bị di động thông minh. Dự án giải quyết các bài toán kỹ thuật đặc thù và phức tạp nhất của ngành bán lẻ điện thoại:
+**Phone Shop** là giải pháp thương mại điện tử chuyên nghiệp cho ngành bán lẻ thiết bị di động thông minh. Dự án giải quyết các bài toán kỹ thuật đặc thù và phức tạp nhất của ngành bán lẻ điện thoại:
 1. **Mỗi thiết bị là một thực thể duy nhất**: Điện thoại không thể quản lý chỉ bằng số lượng tồn kho thuần túy (`quantity`), mà được quản lý định danh qua mã **Serial/IMEI** theo chuẩn thuật toán Luhn.
 2. **Hiện tượng Race Condition trong Flash Sale**: Ngăn chặn 2 khách hàng đồng thời thanh toán và sở hữu cùng một máy/IMEI khi mở bán sản phẩm hot.
 3. **Giữ hàng nguyên tử (Atomic Hold) có thời hạn**: Giữ máy cho khách hàng trong 15 phút để hoàn tất thủ tục thanh toán trực tuyến; tự động giải phóng tồn kho ngay lập tức nếu khách hàng bỏ đơn mà không làm nghẽn kho.
@@ -98,7 +98,7 @@ Giao diện Storefront và Admin Portal được định hình theo phong cách 
 * **Quản lý danh mục & Sản phẩm**:
   * Thêm/Sửa/Xóa sản phẩm, thương hiệu, danh mục.
   * Cấu hình biến thể đa cấp (RAM, ROM, Màu sắc, SKU, Giá bán, Giá khuyến mãi).
-  * Upload ảnh sản phẩm đơn và thư viện ảnh (Gallery) bằng kéo thả `ImageUploadDragger`: Tự động nén sang WebP qua Sharp trước khi lưu lên Supabase Storage bucket `mobile-commerce`.
+  * Upload ảnh sản phẩm đơn và thư viện ảnh (Gallery) bằng kéo thả `ImageUploadDragger`: Tự động nén sang WebP qua Sharp trước khi lưu lên Supabase Storage bucket `phoneshop`.
 * **Quản lý kho Serial/IMEI chuyên sâu**:
   * Nhập kho danh sách IMEI theo từng biến thể sản phẩm.
   * Tự động kiểm tra tính hợp lệ của IMEI theo thuật toán Luhn.
@@ -154,7 +154,7 @@ Hệ thống được thiết kế theo mô hình **Modular Monolith & Clean Arc
                        ▼
      ┌───────────────────────────────────┐
      │      SUPABASE CLOUD STORAGE       │
-     │  - Bucket: mobile-commerce        │
+     │  - Bucket: phoneshop        │
      │  - WebP Optimized Product Images  │
      │  - Avatars & Inspection Proofs    │
      └───────────────────────────────────┘
@@ -243,7 +243,7 @@ Khi Quản trị viên tải ảnh sản phẩm hoặc người dùng cập nh�
    * Giữ nguyên tỷ lệ hoặc crop thông minh.
    * Tự động nén và chuyển đổi (convert) toàn bộ sang chuẩn **WebP** với chất lượng tối ưu (`quality: 80-85%`).
    * Giảm đến 70-80% dung lượng file mà mắt thường không phân biệt được chất lượng suy giảm.
-3. Upload buffer ảnh WebP lên **Supabase Storage** (Bucket `mobile-commerce`).
+3. Upload buffer ảnh WebP lên **Supabase Storage** (Bucket `phoneshop`).
 4. Lưu URL công khai (Public URL) vào cơ sở dữ liệu để phân phối nhanh qua CDN.
 
 ---
@@ -279,7 +279,7 @@ Khi Quản trị viên tải ảnh sản phẩm hoặc người dùng cập nh�
 ## 6. Cấu Trúc Thư Mục Dự Án
 
 ```text
-MobileCommerce/
+PhoneShop/
 ├── docker-compose.yml              # Cấu hình Docker cho Redis 7 và Backend container
 ├── .gitignore                      # Quy chuẩn loại trừ artifacts, secrets, docs, test scripts
 ├── .env.example                    # Template biến môi trường công khai
@@ -383,7 +383,7 @@ MobileCommerce/
    * Vào mục **Project Settings -> Database** để lấy chuỗi kết nối `DATABASE_URL` (dạng `postgresql://postgres.[ref]:[password]@...:5432/postgres?sslmode=require`).
 2. **Tạo Storage Bucket**:
    * Vào mục **Storage** trên Dashboard Supabase -> Nhấn **New Bucket**.
-   * Đặt tên Bucket: **`mobile-commerce`**.
+   * Đặt tên Bucket: **`phoneshop`**.
    * Bật tùy chọn **Public Bucket** (để ảnh sản phẩm và avatar có thể truy cập công khai qua CDN).
    * Lấy `SUPABASE_URL` và `SUPABASE_SERVICE_ROLE_KEY` tại mục **Project Settings -> API**.
 
@@ -393,8 +393,8 @@ MobileCommerce/
 
 Tạo file cấu hình môi trường cho Backend và Frontend dựa trên file mẫu:
 
-#### 1. Cấu hình Backend (`MobileCommerce/backend/.env`):
-Tạo file `MobileCommerce/backend/.env` với nội dung tương ứng:
+#### 1. Cấu hình Backend (`PhoneShop/backend/.env`):
+Tạo file `PhoneShop/backend/.env` với nội dung tương ứng:
 ```env
 # Server
 PORT=3000
@@ -417,10 +417,10 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=""
 
-# Supabase Cloud Storage (Bucket: mobile-commerce)
+# Supabase Cloud Storage (Bucket: phoneshop)
 SUPABASE_URL="https://[YOUR-PROJECT-REF].supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
-SUPABASE_STORAGE_BUCKET="mobile-commerce"
+SUPABASE_STORAGE_BUCKET="phoneshop"
 
 # Cổng thanh toán VNPay Sandbox (Tùy chọn - COD & VietQR hoạt động độc lập không cần key này)
 VNPAY_TMN_CODE="SANDBOX1"
@@ -434,8 +434,8 @@ VIETQR_ACCOUNT_NO="09012345678"
 VIETQR_ACCOUNT_NAME="CONG TY PHONESHOP"
 ```
 
-#### 2. Cấu hình Frontend (`MobileCommerce/frontend/.env`):
-Tạo file `MobileCommerce/frontend/.env`:
+#### 2. Cấu hình Frontend (`PhoneShop/frontend/.env`):
+Tạo file `PhoneShop/frontend/.env`:
 ```env
 VITE_API_BASE_URL="http://localhost:3000/api"
 VITE_APP_NAME="PhoneShop"
@@ -448,12 +448,12 @@ VITE_APP_NAME="PhoneShop"
 Hệ thống sử dụng Redis 7 cho hàng đợi xử lý nền **BullMQ**.
 * Trong môi trường phát triển cục bộ (Local Development), mô hình chuẩn khuyến nghị là **chạy Redis qua Docker và chạy Node.js trên máy host** để tận dụng tối đa tốc độ biên dịch và Hot Reload:
 ```bash
-# Đứng tại thư mục MobileCommerce/
+# Đứng tại thư mục PhoneShop/
 docker compose up -d redis
 ```
 Kiểm tra trạng thái container Redis:
 ```bash
-docker ps --filter "name=mobile_commerce_redis"
+docker ps --filter "name=phoneshop_redis"
 # Container hiển thị trạng thái "Up ... (healthy)" trên port 6379 là thành công
 ```
 *(Lưu ý: File `docker-compose.yml` cũng cung cấp sẵn service `backend` đóng gói toàn diện bằng container nếu bạn muốn chạy trọn bộ bằng Docker trong môi trường staging/production).*
@@ -512,11 +512,11 @@ Dữ liệu seed chính (`prisma/seed.ts`, password chung `Password@123`) cung c
 
 | Vai trò (Role) | Email đăng nhập | Mật khẩu mặc định | Quyền hạn truy cập |
 | :--- | :--- | :--- | :--- |
-| **Quản trị viên (ADMIN)** | `admin@mobilecommerce.vn` | `Password@123` | Toàn quyền truy cập Storefront và Admin Portal (`/admin/*`) |
-| **Nhân viên (STAFF)** | `staff@mobilecommerce.vn` | `Password@123` | Quản lý kho IMEI, cập nhật đơn hàng, phản hồi đánh giá |
+| **Quản trị viên (ADMIN)** | `admin@phoneshop.vn` | `Password@123` | Toàn quyền truy cập Storefront và Admin Portal (`/admin/*`) |
+| **Nhân viên (STAFF)** | `staff@phoneshop.vn` | `Password@123` | Quản lý kho IMEI, cập nhật đơn hàng, phản hồi đánh giá |
 | **Khách hàng (CUSTOMER)** | `an.nguyen92@gmail.com` (và 39 customers khác trong `prisma/seed_modules/customers.ts`) | `Password@123` | Mua hàng, thanh toán, theo dõi đơn, gửi đánh giá, đổi avatar |
 
-> Legacy `prisma/seed/seed.ts` (không dùng bởi `prisma db seed`) dùng accounts `*@mobilecommerce.local` / `Admin@123456|Staff@123456|User@123456` — chỉ để tham khảo.
+> Legacy `prisma/seed/seed.ts` (không dùng bởi `prisma db seed`) dùng accounts `*@phoneshop.local` / `Admin@123456|Staff@123456|User@123456` — chỉ để tham khảo.
 
 ---
 

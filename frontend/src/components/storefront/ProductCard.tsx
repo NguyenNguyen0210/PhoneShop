@@ -75,7 +75,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const handleToggleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const token = localStorage.getItem('mobilecommerce_access_token');
+    const token = localStorage.getItem('phoneshop_access_token');
     if (!token) {
       message.warning('Vui lòng đăng nhập để lưu sản phẩm yêu thích!');
       navigate('/login', { state: { from: location } });

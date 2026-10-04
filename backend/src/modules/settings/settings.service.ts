@@ -22,7 +22,7 @@ export const DEFAULT_DEFINITIONS: Record<
   PAYMENT_VIETQR_ENABLED: { group: 'payment', isSecret: false, defaultVal: 'true' },
   VIETQR_BANK_ID: { group: 'payment', isSecret: false, defaultVal: '970422' },
   VIETQR_ACCOUNT_NO: { group: 'payment', isSecret: false, defaultVal: '0987654321' },
-  VIETQR_ACCOUNT_NAME: { group: 'payment', isSecret: false, defaultVal: 'CONG TY MOBILECOMMERCE' },
+  VIETQR_ACCOUNT_NAME: { group: 'payment', isSecret: false, defaultVal: 'CONG TY PHONE SHOP' },
   VIETQR_TEMPLATE: { group: 'payment', isSecret: false, defaultVal: 'compact2' },
 
   CLOUDFLARE_R2_ACCOUNT_ID: { group: 'storage', isSecret: false },
@@ -36,11 +36,11 @@ export const DEFAULT_DEFINITIONS: Record<
   EMAIL_SECURE: { group: 'email', isSecret: false, defaultVal: 'false' },
   EMAIL_USER: { group: 'email', isSecret: false },
   EMAIL_PASS: { group: 'email', isSecret: true },
-  EMAIL_FROM: { group: 'email', isSecret: false, defaultVal: 'MobileCommerce <no-reply@mobilecommerce.vn>' },
+  EMAIL_FROM: { group: 'email', isSecret: false, defaultVal: 'Phone Shop <no-reply@phoneshop.vn>' },
 
-  STORE_NAME: { group: 'general', isSecret: false, defaultVal: 'MobileCommerce Store' },
+  STORE_NAME: { group: 'general', isSecret: false, defaultVal: 'Phone Shop' },
   STORE_HOTLINE: { group: 'general', isSecret: false, defaultVal: '1900 6868' },
-  STORE_EMAIL: { group: 'general', isSecret: false, defaultVal: 'support@mobilecommerce.vn' },
+  STORE_EMAIL: { group: 'general', isSecret: false, defaultVal: 'support@phoneshop.vn' },
   STORE_ADDRESS: { group: 'general', isSecret: false, defaultVal: 'Hồ Chí Minh, Việt Nam' },
   MAINTENANCE_MODE: { group: 'general', isSecret: false, defaultVal: 'false' },
 };
@@ -125,9 +125,9 @@ export class SystemSettingsService {
 
   async getPublicSettings(): Promise<Record<string, string>> {
     return {
-      STORE_NAME: await this.get('STORE_NAME', 'MobileCommerce Store'),
+      STORE_NAME: await this.get('STORE_NAME', 'Phone Shop'),
       STORE_HOTLINE: await this.get('STORE_HOTLINE', '1900 6868'),
-      STORE_EMAIL: await this.get('STORE_EMAIL', 'support@mobilecommerce.vn'),
+      STORE_EMAIL: await this.get('STORE_EMAIL', 'support@phoneshop.vn'),
       STORE_ADDRESS: await this.get('STORE_ADDRESS', 'Hồ Chí Minh, Việt Nam'),
       MAINTENANCE_MODE: await this.get('MAINTENANCE_MODE', 'false'),
       PAYMENT_VNPAY_ENABLED: await this.get('PAYMENT_VNPAY_ENABLED', 'true'),
@@ -193,7 +193,7 @@ export class SystemSettingsService {
   async testVietQr(dto: TestVietQrDto): Promise<{ success: boolean; qrUrl: string }> {
     const bankId = dto.bankId || (await this.get('VIETQR_BANK_ID', '970422'));
     const accountNo = dto.accountNo || (await this.get('VIETQR_ACCOUNT_NO', '0987654321'));
-    const accountName = dto.accountName || (await this.get('VIETQR_ACCOUNT_NAME', 'CONG TY MOBILECOMMERCE'));
+    const accountName = dto.accountName || (await this.get('VIETQR_ACCOUNT_NAME', 'CONG TY PHONE SHOP'));
     const template = await this.get('VIETQR_TEMPLATE', 'compact2');
 
     const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-${template}.png?amount=10000&addInfo=TEST%20VIETQR&accountName=${encodeURIComponent(accountName)}`;
@@ -231,12 +231,12 @@ export class SystemSettingsService {
     const secure = rawSecure === 'true' || port === 465;
     const rawUser = dto.user || (await this.get('EMAIL_USER'));
     const passCandidate = dto.pass && dto.pass !== MASKED_SECRET ? dto.pass : await this.get('EMAIL_PASS');
-    const rawFrom = dto.from || (await this.get('EMAIL_FROM', 'MobileCommerce <no-reply@mobilecommerce.vn>'));
+    const rawFrom = dto.from || (await this.get('EMAIL_FROM', 'Phone Shop <no-reply@phoneshop.vn>'));
 
     const host = rawHost?.replace(/^["']|["']$/g, '').trim();
     const user = rawUser?.replace(/^["']|["']$/g, '').trim();
     const pass = passCandidate?.replace(/^["']|["']$/g, '').trim();
-    const from = rawFrom?.replace(/^["']|["']$/g, '').trim() || 'MobileCommerce <no-reply@mobilecommerce.vn>';
+    const from = rawFrom?.replace(/^["']|["']$/g, '').trim() || 'Phone Shop <no-reply@phoneshop.vn>';
 
     const targetEmail = dto.toEmail || adminEmail || user;
     if (!targetEmail) {

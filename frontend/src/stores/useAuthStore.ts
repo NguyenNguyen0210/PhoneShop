@@ -57,7 +57,7 @@ const normalizeUser = (u: any): User | null => {
 
 const getStoredUser = (): User | null => {
   try {
-    const raw = localStorage.getItem('mobilecommerce_user');
+    const raw = localStorage.getItem('phoneshop_user');
     return raw ? normalizeUser(JSON.parse(raw)) : null;
   } catch {
     return null;
@@ -66,16 +66,16 @@ const getStoredUser = (): User | null => {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: getStoredUser(),
-  accessToken: localStorage.getItem('mobilecommerce_access_token'),
-  refreshToken: localStorage.getItem('mobilecommerce_refresh_token'),
+  accessToken: localStorage.getItem('phoneshop_access_token'),
+  refreshToken: localStorage.getItem('phoneshop_refresh_token'),
   isLoading: false,
   error: null,
 
   setAuth: (user: User, accessToken: string, refreshToken: string) => {
     const normalized = normalizeUser(user) || user;
-    localStorage.setItem('mobilecommerce_user', JSON.stringify(normalized));
-    localStorage.setItem('mobilecommerce_access_token', accessToken);
-    localStorage.setItem('mobilecommerce_refresh_token', refreshToken);
+    localStorage.setItem('phoneshop_user', JSON.stringify(normalized));
+    localStorage.setItem('phoneshop_access_token', accessToken);
+    localStorage.setItem('phoneshop_refresh_token', refreshToken);
     set({ user: normalized, accessToken, refreshToken, error: null });
     // Synchronize local cart items with backend user cart
     useCartStore.getState().syncWithBackend().catch(() => {});
@@ -151,7 +151,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!current) return;
     const updated = normalizeUser({ ...current, ...partial });
     if (updated) {
-      localStorage.setItem('mobilecommerce_user', JSON.stringify(updated));
+      localStorage.setItem('phoneshop_user', JSON.stringify(updated));
       set({ user: updated });
     }
   },
@@ -162,9 +162,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       // Ignored
     } finally {
-      localStorage.removeItem('mobilecommerce_user');
-      localStorage.removeItem('mobilecommerce_access_token');
-      localStorage.removeItem('mobilecommerce_refresh_token');
+      localStorage.removeItem('phoneshop_user');
+      localStorage.removeItem('phoneshop_access_token');
+      localStorage.removeItem('phoneshop_refresh_token');
       set({ user: null, accessToken: null, refreshToken: null });
     }
   },
@@ -174,7 +174,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const profile = await authService.getProfile();
       const normalizedUser = normalizeUser(profile);
       if (normalizedUser) {
-        localStorage.setItem('mobilecommerce_user', JSON.stringify(normalizedUser));
+        localStorage.setItem('phoneshop_user', JSON.stringify(normalizedUser));
         set({ user: normalizedUser });
       }
     } catch {

@@ -30,7 +30,7 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
   },
 
   fetchWishlist: async () => {
-    const token = localStorage.getItem('mobilecommerce_access_token');
+    const token = localStorage.getItem('phoneshop_access_token');
     if (!token) {
       set({ items: [], itemIds: [] });
       return;
@@ -54,7 +54,7 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
   },
 
   toggleWishlist: async (product: Product) => {
-    const token = localStorage.getItem('mobilecommerce_access_token');
+    const token = localStorage.getItem('phoneshop_access_token');
     if (!token) return false;
 
     const { itemIds, items } = get();

@@ -101,12 +101,12 @@ export const CartPage: React.FC = () => {
       });
 
     // 3. Restore any previously applied voucher from session
-    const stored = sessionStorage.getItem('mobilecommerce_voucher');
+    const stored = sessionStorage.getItem('phoneshop_voucher');
     if (stored) {
       try {
         setAppliedVoucher(JSON.parse(stored));
       } catch {
-        sessionStorage.removeItem('mobilecommerce_voucher');
+        sessionStorage.removeItem('phoneshop_voucher');
       }
     }
   }, []);
@@ -153,7 +153,7 @@ export const CartPage: React.FC = () => {
         };
         setAppliedVoucher(voucherData);
         setVoucherCode(res.voucher.code);
-        sessionStorage.setItem('mobilecommerce_voucher', JSON.stringify(voucherData));
+        sessionStorage.setItem('phoneshop_voucher', JSON.stringify(voucherData));
       }
     } catch (err: any) {
       const msg =
@@ -170,13 +170,13 @@ export const CartPage: React.FC = () => {
     setAppliedVoucher(null);
     setVoucherCode('');
     setVoucherError('');
-    sessionStorage.removeItem('mobilecommerce_voucher');
+    sessionStorage.removeItem('phoneshop_voucher');
   };
 
   const handleProceedCheckout = () => {
     if (selectedCount === 0) return;
     if (appliedVoucher) {
-      sessionStorage.setItem('mobilecommerce_voucher', JSON.stringify(appliedVoucher));
+      sessionStorage.setItem('phoneshop_voucher', JSON.stringify(appliedVoucher));
     }
     navigate('/checkout');
   };

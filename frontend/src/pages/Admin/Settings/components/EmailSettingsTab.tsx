@@ -186,7 +186,7 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({ form }) => {
               }
               name="EMAIL_USER"
             >
-              <Input placeholder="Ví dụ: no-reply@mobilecommerce.vn" style={{ borderRadius: 8 }} />
+              <Input placeholder="Ví dụ: no-reply@phoneshop.vn" style={{ borderRadius: 8 }} />
             </Form.Item>
           </Col>
 
@@ -223,7 +223,7 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({ form }) => {
               name="EMAIL_FROM"
             >
               <Input
-                placeholder='Ví dụ: MobileCommerce Store <no-reply@mobilecommerce.vn>'
+                placeholder='Ví dụ: Phone Shop <no-reply@phoneshop.vn>'
                 style={{ borderRadius: 8 }}
               />
             </Form.Item>

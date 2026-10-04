@@ -113,12 +113,12 @@ export const OrderSuccessPage: React.FC = () => {
             Đặt hàng thành công
           </span>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 tracking-tight">
-            Cảm ơn bạn đã tin chọn MobileCommerce!
+            Cảm ơn bạn đã tin chọn Phone Shop!
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-lg mx-auto">
             Đơn hàng{' '}
             <strong className="text-slate-900 font-mono">{orderNum}</strong>{' '}
-            của bạn đã được tiếp nhận thành công. PhoneShop sẽ liên hệ sớm nhất để xác nhận và giao hàng.
+            của bạn đã được tiếp nhận thành công. Phone Shop sẽ liên hệ sớm nhất để xác nhận và giao hàng.
           </p>
         </div>
 
@@ -214,7 +214,7 @@ export const OrderSuccessPage: React.FC = () => {
                     Tên chủ tài khoản
                   </span>
                   <span className="font-bold text-slate-900">
-                    {vietQrData?.accountName || 'CONG TY MOBILECOMMERCE'}
+                    {vietQrData?.accountName || 'CONG TY PHONE SHOP'}
                   </span>
                 </div>
               </div>
@@ -313,7 +313,7 @@ export const OrderSuccessPage: React.FC = () => {
           <div className="text-xs text-slate-600 space-y-1">
             <h3 className="text-sm font-bold text-slate-900">Thanh toán khi nhận hàng (COD)</h3>
             <p>
-              Nhân viên chăm sóc khách hàng của MobileCommerce sẽ gọi điện xác nhận đơn hàng trong vòng
+              Nhân viên chăm sóc khách hàng của Phone Shop sẽ gọi điện xác nhận đơn hàng trong vòng
               15 phút.
             </p>
             <p>

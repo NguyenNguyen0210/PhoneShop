@@ -31,7 +31,7 @@ export class VietqrService {
     );
     this.defaultAccountName = this.configService.get<string>(
       'VIETQR_ACCOUNT_NAME',
-      'CONG TY MOBILECOMMERCE',
+      'CONG TY PHONE SHOP',
     );
   }
 

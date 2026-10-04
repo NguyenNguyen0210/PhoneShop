@@ -126,7 +126,7 @@ export const VNPayReturnPage: React.FC = () => {
                   Giao dịch VNPay hoàn tất!
                 </h1>
                 <p className="text-sm text-slate-600 max-w-md mx-auto">
-                  Cảm ơn bạn đã lựa chọn mua sắm tại MobileCommerce. Đơn hàng của bạn đã được xác nhận thanh toán tự động.
+                  Cảm ơn bạn đã lựa chọn mua sắm tại Phone Shop. Đơn hàng của bạn đã được xác nhận thanh toán tự động.
                 </p>
               </div>
             </>

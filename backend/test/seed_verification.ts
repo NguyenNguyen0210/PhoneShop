@@ -58,18 +58,22 @@ async function verifySeed() {
   if (voucherCount < 5) throw new Error(`Voucher count too low: ${voucherCount} < 5`);
 
   // Password verification: Check Admin, Staff, and seeded Customer passwords
-  const adminUser = await prisma.user.findUnique({ where: { email: 'admin@mobilecommerce.vn' } });
+  const adminUser = await prisma.user.findUnique({ where: { email: 'admin@phoneshop.vn' } });
   if (!adminUser || !(await bcrypt.compare('Password@123', adminUser.passwordHash))) {
     throw new Error('Admin password verification failed (expected Password@123)');
   }
 
-  const staffUser = await prisma.user.findUnique({ where: { email: 'staff@mobilecommerce.vn' } });
+  const staffUser = await prisma.user.findUnique({ where: { email: 'staff@phoneshop.vn' } });
   if (!staffUser || !(await bcrypt.compare('Password@123', staffUser.passwordHash))) {
     throw new Error('Staff password verification failed (expected Password@123)');
   }
 
   const customerUser = await prisma.user.findFirst({
-    where: { email: { notIn: ['admin@mobilecommerce.vn', 'staff@mobilecommerce.vn'] } },
+    where: {
+      email: {
+        notIn: ['admin@phoneshop.vn', 'staff@phoneshop.vn'],
+      },
+    },
   });
   if (!customerUser) {
     throw new Error('No customer user found (email not in admin or staff)');

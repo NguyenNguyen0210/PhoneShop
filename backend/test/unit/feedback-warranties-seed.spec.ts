@@ -404,7 +404,7 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
     expect(createdReviewReplies).toHaveLength(60);
     for (const reply of createdReviewReplies) {
       expect(reply.userId).toBe(staffUserId);
-      expect(reply.content).toMatch(/MobileCommerce|hỗ trợ kỹ thuật|Dạ cảm ơn/);
+      expect(reply.content).toMatch(/Phone Shop|hỗ trợ kỹ thuật|Dạ cảm ơn/);
     }
   });
 

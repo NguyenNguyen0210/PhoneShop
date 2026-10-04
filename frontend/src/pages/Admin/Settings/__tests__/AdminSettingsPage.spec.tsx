@@ -41,7 +41,7 @@ vi.mock('../../../../stores/useAuthStore', () => ({
     const state = {
       user: {
         id: 'admin-id-1',
-        email: 'admin@mobilecommerce.vn',
+        email: 'admin@phoneshop.vn',
         role: 'ADMIN',
         fullName: 'Admin User',
       },
@@ -60,28 +60,28 @@ const mockGroupedSettings = {
     PAYMENT_VIETQR_ENABLED: 'true',
     VIETQR_BANK_ID: '970422',
     VIETQR_ACCOUNT_NO: '0987654321',
-    VIETQR_ACCOUNT_NAME: 'CONG TY MOBILECOMMERCE',
+    VIETQR_ACCOUNT_NAME: 'CONG TY PHONE SHOP',
     VIETQR_TEMPLATE: 'compact',
   },
   storage: {
     CLOUDFLARE_R2_ACCOUNT_ID: 'r2-acc-123',
-    CLOUDFLARE_R2_BUCKET: 'mobilecommerce-media',
+    CLOUDFLARE_R2_BUCKET: 'phoneshop-media',
     CLOUDFLARE_R2_ACCESS_KEY_ID: 'acc-key-id',
     CLOUDFLARE_R2_SECRET_ACCESS_KEY: '••••••••••••',
-    CLOUDFLARE_R2_PUBLIC_URL: 'https://media.mobilecommerce.vn',
+    CLOUDFLARE_R2_PUBLIC_URL: 'https://media.phoneshop.vn',
   },
   email: {
     EMAIL_HOST: 'smtp.gmail.com',
     EMAIL_PORT: '587',
     EMAIL_SECURE: 'false',
-    EMAIL_USER: 'support@mobilecommerce.vn',
+    EMAIL_USER: 'support@phoneshop.vn',
     EMAIL_PASS: '••••••••••••',
-    EMAIL_FROM: 'MobileCommerce <no-reply@mobilecommerce.vn>',
+    EMAIL_FROM: 'Phone Shop <no-reply@phoneshop.vn>',
   },
   general: {
-    STORE_NAME: 'MobileCommerce Store',
+    STORE_NAME: 'Phone Shop',
     STORE_HOTLINE: '1900 6868',
-    STORE_EMAIL: 'support@mobilecommerce.vn',
+    STORE_EMAIL: 'support@phoneshop.vn',
     STORE_ADDRESS: 'Hồ Chí Minh, Việt Nam',
     MAINTENANCE_MODE: 'false',
   },
@@ -177,7 +177,7 @@ describe('AdminSettingsPage', () => {
         expect.objectContaining({
           bankId: '970422',
           accountNo: '0987654321',
-          accountName: 'CONG TY MOBILECOMMERCE',
+          accountName: 'CONG TY PHONE SHOP',
         })
       );
       expect(screen.getByText('Kiểm tra Mã VietQR Thử nghiệm')).toBeDefined();
@@ -187,7 +187,7 @@ describe('AdminSettingsPage', () => {
   it('switches to Storage tab and calls testStorage when clicking button', async () => {
     vi.mocked(settingsService.testStorage).mockResolvedValue({
       success: true,
-      message: 'Kết nối thành công tới bucket: mobilecommerce-media',
+      message: 'Kết nối thành công tới bucket: phoneshop-media',
     });
 
     render(<AdminSettingsPage />);
@@ -210,7 +210,7 @@ describe('AdminSettingsPage', () => {
       expect(settingsService.testStorage).toHaveBeenCalledWith(
         expect.objectContaining({
           accountId: 'r2-acc-123',
-          bucket: 'mobilecommerce-media',
+          bucket: 'phoneshop-media',
         })
       );
     });

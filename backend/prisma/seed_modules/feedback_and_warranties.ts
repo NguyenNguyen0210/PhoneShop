@@ -211,9 +211,9 @@ const ONE_STAR_REVIEWS: ReviewContentItem[] = [
 ];
 
 const STAFF_REPLIES: string[] = [
-  'Dạ MobileCommerce chân thành cảm ơn quý khách đã tin tưởng và ủng hộ cửa hàng. Chúc quý khách có trải nghiệm tuyệt vời với thiết bị mới!',
+  'Dạ Phone Shop chân thành cảm ơn quý khách đã tin tưởng và ủng hộ cửa hàng. Chúc quý khách có trải nghiệm tuyệt vời với thiết bị mới!',
   'Dạ cảm ơn phản hồi của quý khách! Cửa hàng luôn sẵn sàng hỗ trợ kỹ thuật qua hotline 1800 6868.',
-  'Dạ MobileCommerce ghi nhận góp ý của quý khách về trải nghiệm dịch vụ và sẽ nỗ lực nâng cao chất lượng phục vụ hơn nữa ạ. Cảm ơn quý khách!',
+  'Dạ Phone Shop ghi nhận góp ý của quý khách về trải nghiệm dịch vụ và sẽ nỗ lực nâng cao chất lượng phục vụ hơn nữa ạ. Cảm ơn quý khách!',
 ];
 
 export async function seedFeedbackAndAftersales(
@@ -228,7 +228,7 @@ export async function seedFeedbackAndAftersales(
   let effectiveStaffId = staffUserId;
   if (!effectiveStaffId) {
     const staffUser = await prisma.user.findFirst({
-      where: { email: 'staff@mobilecommerce.vn' },
+      where: { email: 'staff@phoneshop.vn' },
       select: { id: true },
     });
     if (staffUser) {
@@ -241,7 +241,9 @@ export async function seedFeedbackAndAftersales(
   if (!customerList || customerList.length === 0) {
     const dbCustomers = await prisma.user.findMany({
       where: {
-        email: { notIn: ['admin@mobilecommerce.vn', 'staff@mobilecommerce.vn'] },
+        email: {
+          notIn: ['admin@phoneshop.vn', 'staff@phoneshop.vn'],
+        },
       },
       select: {
         id: true,

@@ -26,10 +26,22 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+const getStoredAccessToken = () =>
+  localStorage.getItem('phoneshop_access_token');
+
+const getStoredRefreshToken = () =>
+  localStorage.getItem('phoneshop_refresh_token');
+
+const clearStoredAuth = () => {
+  localStorage.removeItem('phoneshop_access_token');
+  localStorage.removeItem('phoneshop_refresh_token');
+  localStorage.removeItem('phoneshop_user');
+};
+
 // Request interceptor
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('mobilecommerce_access_token');
+    const token = getStoredAccessToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -62,10 +74,9 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const refreshToken = localStorage.getItem('mobilecommerce_refresh_token');
+    const refreshToken = getStoredRefreshToken();
     if (!refreshToken) {
-      localStorage.removeItem('mobilecommerce_access_token');
-      localStorage.removeItem('mobilecommerce_user');
+      clearStoredAuth();
       return Promise.reject(error);
     }
 
@@ -108,8 +119,8 @@ apiClient.interceptors.response.use(
         throw new Error('No access token returned from refresh');
       }
 
-      localStorage.setItem('mobilecommerce_access_token', newAccessToken);
-      localStorage.setItem('mobilecommerce_refresh_token', newRefreshToken);
+      localStorage.setItem('phoneshop_access_token', newAccessToken);
+      localStorage.setItem('phoneshop_refresh_token', newRefreshToken);
 
       if (originalRequest.headers) {
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
@@ -119,9 +130,7 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);
-      localStorage.removeItem('mobilecommerce_access_token');
-      localStorage.removeItem('mobilecommerce_refresh_token');
-      localStorage.removeItem('mobilecommerce_user');
+      clearStoredAuth();
       window.dispatchEvent(new Event('auth:logout'));
       return Promise.reject(refreshError);
     } finally {

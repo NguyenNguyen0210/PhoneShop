@@ -29,7 +29,7 @@ jobs:
           context: .
           file: ./infrastructure/docker/backend.Dockerfile
           push: false
-          tags: mobilecommerce-backend:latest
+          tags: phoneshop-backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -70,4 +70,4 @@ jobs:
           echo "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" "cd /app/mobilecommerce && git pull origin main && docker compose -f docker-compose.prod.yml up -d --build"
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" "cd /app/phoneshop && git pull origin main && docker compose -f docker-compose.prod.yml up -d --build"

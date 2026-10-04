@@ -63,7 +63,7 @@ async function cleanTransactionsAndCustomers() {
   await prisma.refreshToken.deleteMany({});
 
   // Retain core system accounts (admin & staff)
-  const coreEmails = ['admin@mobilecommerce.vn', 'staff@mobilecommerce.vn'];
+  const coreEmails = ['admin@phoneshop.vn', 'staff@phoneshop.vn'];
   const nonCoreUsers = await prisma.user.findMany({
     where: { email: { notIn: coreEmails } },
     select: { id: true },
@@ -86,7 +86,7 @@ async function cleanTransactionsAndCustomers() {
 // MAIN SEED SCRIPT
 // ============================================================
 async function main() {
-  console.log('🚀 Starting Realistic MobileCommerce E-Commerce Seed Pipeline...\n');
+  console.log('🚀 Starting Realistic Phone Shop E-Commerce Seed Pipeline...\n');
 
   // Pre-calculate common password hash for high speed
   const COMMON_PASSWORD_HASH = await bcrypt.hash('Password@123', 10);
@@ -113,65 +113,48 @@ async function main() {
   }
 
   // Core admin & staff accounts
-  const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@mobilecommerce.vn' },
-    update: {
-      passwordHash: COMMON_PASSWORD_HASH,
-      firstName: 'Admin',
-      lastName: 'System',
-      phone: '0901000001',
-      status: UserStatus.ACTIVE,
-      emailVerified: true,
-      phoneVerified: true,
-    },
-    create: {
-      email: 'admin@mobilecommerce.vn',
-      passwordHash: COMMON_PASSWORD_HASH,
-      firstName: 'Admin',
-      lastName: 'System',
-      phone: '0901000001',
-      status: UserStatus.ACTIVE,
-      emailVerified: true,
-      phoneVerified: true,
-    },
-  });
+  const coreAccountsToSeed = [
+    { email: 'admin@phoneshop.vn', role: 'ADMIN', firstName: 'Admin', lastName: 'System', phone: '0901000001' },
+    { email: 'staff@phoneshop.vn', role: 'STAFF', firstName: 'Staff', lastName: 'Support', phone: '0901000002' },
+  ];
 
-  await prisma.userRole.upsert({
-    where: { userId_roleId: { userId: adminUser.id, roleId: roleMap['ADMIN'] } },
-    update: {},
-    create: { userId: adminUser.id, roleId: roleMap['ADMIN'] },
-  });
+  let primaryStaffId = '';
+  for (const acc of coreAccountsToSeed) {
+    const user = await prisma.user.upsert({
+      where: { email: acc.email },
+      update: {
+        passwordHash: COMMON_PASSWORD_HASH,
+        firstName: acc.firstName,
+        lastName: acc.lastName,
+        phone: acc.phone,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        phoneVerified: true,
+      },
+      create: {
+        email: acc.email,
+        passwordHash: COMMON_PASSWORD_HASH,
+        firstName: acc.firstName,
+        lastName: acc.lastName,
+        phone: acc.phone,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        phoneVerified: true,
+      },
+    });
 
-  const staffUser = await prisma.user.upsert({
-    where: { email: 'staff@mobilecommerce.vn' },
-    update: {
-      passwordHash: COMMON_PASSWORD_HASH,
-      firstName: 'Staff',
-      lastName: 'Support',
-      phone: '0901000002',
-      status: UserStatus.ACTIVE,
-      emailVerified: true,
-      phoneVerified: true,
-    },
-    create: {
-      email: 'staff@mobilecommerce.vn',
-      passwordHash: COMMON_PASSWORD_HASH,
-      firstName: 'Staff',
-      lastName: 'Support',
-      phone: '0901000002',
-      status: UserStatus.ACTIVE,
-      emailVerified: true,
-      phoneVerified: true,
-    },
-  });
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: user.id, roleId: roleMap[acc.role] } },
+      update: {},
+      create: { userId: user.id, roleId: roleMap[acc.role] },
+    });
 
-  await prisma.userRole.upsert({
-    where: { userId_roleId: { userId: staffUser.id, roleId: roleMap['STAFF'] } },
-    update: {},
-    create: { userId: staffUser.id, roleId: roleMap['STAFF'] },
-  });
+    if (acc.email === 'staff@phoneshop.vn') {
+      primaryStaffId = user.id;
+    }
+  }
 
-  console.log('  ✔ Admin (admin@mobilecommerce.vn) & Staff (staff@mobilecommerce.vn) ready.');
+  console.log('  ✔ Admin (admin@phoneshop.vn) & Staff (staff@phoneshop.vn) ready.');
 
   // 3. SEED 40 VIETNAMESE CUSTOMERS & MULTI-PROVINCE ADDRESSES
   console.log('\n👥 [3/7] Seeding 40 Vietnamese Customers & Addresses...');
@@ -222,14 +205,14 @@ async function main() {
   const orderResult = await seedOrdersAndInstallments(
     prisma,
     customers,
-    staffUser.id,
+    primaryStaffId,
     createImeiForVariant
   );
   console.log(`  ✔ Seeded 200 orders (${orderResult.deliveredItems.length} delivered items with real IMEIs).`);
 
   // 6. SEED FEEDBACK, WARRANTIES, RETURNS, VOUCHERS, CARTS & WISHLISTS
   console.log('\n⭐ [6/7] Seeding Reviews, Staff Replies, Warranties, Returns, Carts & Wishlists...');
-  await seedFeedbackAndAftersales(prisma, customers, orderResult, staffUser.id);
+  await seedFeedbackAndAftersales(prisma, customers, orderResult, primaryStaffId);
   console.log('  ✔ Seeded warranties, reviews, staff replies, vouchers, returns, carts and wishlists.');
 
   // 7. WAREHOUSE STOCK & AVAILABLE IMEIS
