@@ -3,7 +3,6 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
-  NotFoundException,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -287,9 +286,10 @@ export class AuthService {
       throw new BadRequestException('Tài khoản Google không có thông tin email khả dụng');
     }
 
-    // P7: only link verified Google emails. (Google verifies at account
-    // creation, so this is defense-in-depth — one line, zero UX cost.)
-    if (googleUser.email_verified === false) {
+    // P7: only link verified Google emails. Fail closed — any value other
+    // than an explicit `true` (false, undefined, missing field) is rejected,
+    // so a provider response that omits the claim cannot slip through.
+    if (googleUser.email_verified !== true) {
       throw new BadRequestException('Email Google chưa được xác thực — vui lòng xác thực email rồi thử lại');
     }
 
@@ -411,6 +411,13 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
+    // AUDIT: uniform response — never reveal whether an email exists or is
+    // locked. All branches return the identical payload (no 404/400 oracle).
+    const genericResponse = {
+      success: true,
+      message:
+        'Nếu địa chỉ email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi đến hộp thư của bạn.',
+    };
     const normalizedEmail = dto.email.toLowerCase().trim();
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -420,15 +427,14 @@ export class AuthService {
       this.logger.warn(
         `Password reset requested for non-existent email: "${normalizedEmail}".`,
       );
-      throw new NotFoundException(
-        'Địa chỉ email này chưa được đăng ký trong hệ thống. Vui lòng kiểm tra lại hoặc tạo tài khoản mới.',
-      );
+      return genericResponse;
     }
 
     if (user.status !== 'ACTIVE') {
-      throw new BadRequestException(
-        'Tài khoản của bạn hiện đang bị tạm khóa hoặc chưa được kích hoạt. Vui lòng liên hệ bộ phận hỗ trợ.',
+      this.logger.warn(
+        `Password reset requested for inactive account: "${normalizedEmail}".`,
       );
+      return genericResponse;
     }
 
     // Invalidate existing unused tokens for this user
@@ -459,11 +465,7 @@ export class AuthService {
 
     await this.emailService.sendPasswordResetEmail(user.email, resetLink, recipientName);
 
-    return {
-      success: true,
-      message:
-        'Nếu địa chỉ email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi đến hộp thư của bạn.',
-    };
+    return genericResponse;
   }
 
   async verifyResetToken(token: string) {

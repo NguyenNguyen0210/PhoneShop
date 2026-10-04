@@ -56,7 +56,9 @@ export class ReviewsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get review detail (Public)' })
   findOne(@Param('id') id: string) {
-    return this.reviewsService.findOne(id);
+    // AUDIT: public path — only APPROVED reviews are visible; anything else
+    // 404s like a missing review.
+    return this.reviewsService.findOne(id, true);
   }
 
   // ── USER ──────────────────────────────────────────────
@@ -85,7 +87,9 @@ export class ReviewsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete own review (USER)' })
   remove(@CurrentUser() user: any, @Param('id') id: string) {
-    const isAdmin = user.roles.includes(Role.ADMIN);
+    const roles: string[] = user?.roles ?? [];
+    const isAdmin =
+      user?.role === Role.ADMIN || roles.includes(Role.ADMIN);
     return this.reviewsService.remove(user.id, id, isAdmin);
   }
 
@@ -114,8 +118,8 @@ export class ReviewsController {
   @Roles(Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify review as confirmed purchaser (MANAGER/ADMIN)' })
-  verify(@Param('id') id: string) {
-    return this.reviewsService.verify(id);
+  verify(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.reviewsService.verify(id, user?.id);
   }
 
   // ── M14: REPLIES ──────────────────────────────────────────

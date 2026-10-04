@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FilterAuditLogDto } from './dto/filter-audit-log.dto';
 import { AuditAction } from '@prisma/client';
@@ -67,17 +67,20 @@ export class AuditLogService {
   }
 
   async findOne(id: string) {
-    return this.prisma.auditLog.findUnique({
+    const log = await this.prisma.auditLog.findUnique({
       where: { id },
       include: { user: { select: { id: true, email: true, firstName: true, lastName: true } } },
     });
+    if (!log) throw new NotFoundException(`Audit log ${id} not found`);
+    return log;
   }
 
   async getStats() {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
+    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const [totalLogs, todayLogs, sensitiveOperations] = await Promise.all([
+    const [totalLogs, todayLogs, sensitiveOperations, activeOperatorsRows] = await Promise.all([
       this.prisma.auditLog.count(),
       this.prisma.auditLog.count({
         where: {
@@ -91,12 +94,19 @@ export class AuditLogService {
           },
         },
       }),
+      // AUDIT: distinct operators active in the last 24h (null userId =
+      // system actions — excluded so the count reflects human operators).
+      this.prisma.auditLog.groupBy({
+        by: ['userId'],
+        where: { createdAt: { gte: last24h }, NOT: { userId: null } },
+      }),
     ]);
 
     return {
       totalLogs,
       todayLogs,
       sensitiveOperations,
+      activeOperators: activeOperatorsRows.length,
     };
   }
 }

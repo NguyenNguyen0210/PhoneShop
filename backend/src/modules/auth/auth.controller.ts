@@ -82,6 +82,7 @@ export class AuthController {
     return this.authService.forgotPassword(dto);
   }
 
+  @Throttle(CREDENTIAL_THROTTLE)
   @Get('verify-reset-token')
   @ApiOperation({ summary: 'Verify password reset token validity' })
   @ApiResponse({ status: 200, description: 'Token is valid' })

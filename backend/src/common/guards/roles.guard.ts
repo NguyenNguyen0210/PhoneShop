@@ -14,6 +14,10 @@ export class RolesGuard implements CanActivate {
     ]);
     
     if (!requiredRoles) {
+      // AUDIT: explicit allowlist default-allow. Routes WITHOUT @Roles() are
+      // intentionally public (login, register, product listing, public
+      // reviews...). Do NOT flip to `false` — that would lock out every
+      // public route. Protected routes must declare @Roles(...) explicitly.
       return true; // No roles required, allow access
     }
     

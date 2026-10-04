@@ -117,13 +117,17 @@ export class OrdersService {
     if (dto.selectedItemIds && dto.selectedItemIds.length > 0) {
       const selectedSet = new Set(dto.selectedItemIds);
       itemsToCheckout = cart.items.filter(
-        (item) =>
-          selectedSet.has(item.id) ||
-          selectedSet.has(item.variantId) ||
-          Array.from(selectedSet).some((s) => typeof s === 'string' && s.includes(item.variantId)),
+        (item) => selectedSet.has(item.id) || selectedSet.has(item.variantId),
       );
       if (itemsToCheckout.length === 0 || itemsToCheckout.length !== selectedSet.size) {
-        throw new BadRequestException('None of the selected items were found in your cart');
+        const foundIds = new Set([
+          ...itemsToCheckout.map((i) => i.id),
+          ...itemsToCheckout.map((i) => i.variantId),
+        ]);
+        const invalidIds = [...selectedSet].filter((s) => !foundIds.has(s));
+        throw new BadRequestException(
+          `Some selected items were not found in your cart: ${invalidIds.join(', ')}`,
+        );
       }
     }
 
@@ -187,19 +191,19 @@ export class OrdersService {
       const variantIds = [...new Set(itemsToCheckout.map((i) => i.variantId))];
       const freshVariants = await tx.productVariant.findMany({
         where: { id: { in: variantIds } },
-        select: { id: true, price: true },
+        select: { id: true, price: true, isActive: true },
       });
-      const priceByVariant = new Map(freshVariants.map((v) => [v.id, Number(v.price)]));
+      const freshByVariant = new Map(freshVariants.map((v) => [v.id, v]));
       const now = new Date();
       for (const item of itemsToCheckout) {
-        const fresh = priceByVariant.get(item.variantId);
-        if (fresh === undefined || !item.variant.isActive) {
+        const fresh = freshByVariant.get(item.variantId);
+        if (!fresh || !fresh.isActive) {
           throw new BadRequestException(
             `Variant ${item.variant?.name || item.variantId} is no longer available`,
           );
         }
 
-        let effectiveUnitPrice = fresh;
+        let effectiveUnitPrice = Number(fresh.price);
 
         // Dynamic Price Engine: Check if variant is in an active flash sale campaign
         const activeFlashItem = tx.flashSaleItem?.findFirst
@@ -212,10 +216,30 @@ export class OrdersService {
                   endAt: { gte: now },
                 },
               },
+              orderBy: { id: 'asc' },
             })
           : null;
 
         if (activeFlashItem && tx.flashSaleItem?.updateMany) {
+          // Re-check the campaign window right before claiming: updateMany
+          // cannot filter on relations, so a campaign that ended between the
+          // read above and this write must be rejected explicitly.
+          const flashCampaign = (tx as any).flashSaleCampaign?.findUnique
+            ? await (tx as any).flashSaleCampaign.findUnique({
+                where: { id: (activeFlashItem as any).campaignId },
+              })
+            : null;
+          if (
+            !flashCampaign ||
+            !flashCampaign.isActive ||
+            flashCampaign.startAt > now ||
+            flashCampaign.endAt < now
+          ) {
+            const variantName = (item.variant as any).product?.name || item.variant?.name || item.variantId;
+            throw new BadRequestException(
+              `Sản phẩm ${variantName} đã kết thúc Flash Sale. Vui lòng cập nhật lại giỏ hàng.`,
+            );
+          }
           // Atomically increment soldCount if within stockLimit
           const reserved = await tx.flashSaleItem.updateMany({
             where: {
@@ -315,6 +339,7 @@ export class OrdersService {
               Number(voucher.maxDiscountAmount),
             );
           }
+          discountAmount = Math.min(discountAmount, subtotal);
         } else if (voucher.type === VoucherType.FIXED_AMOUNT) {
           discountAmount = Math.min(Number(voucher.value), subtotal);
         } else if (voucher.type === VoucherType.FREE_SHIPPING) {
@@ -498,6 +523,19 @@ export class OrdersService {
         }
       }
 
+      // COD orders need a PENDING payment row at checkout so the delivery
+      // auto-PAID step (transitionStatus → DELIVERED) finds something to flip.
+      if (dto.paymentMethod === PaymentMethod.COD && tx.payment?.create) {
+        await tx.payment.create({
+          data: {
+            orderId: newOrder.id,
+            method: PaymentMethod.COD,
+            status: PaymentStatus.PENDING,
+            amount: totalAmount,
+          },
+        });
+      }
+
       // Record voucher usage
       if (voucherUsageData) {
         await tx.voucherUsage.create({
@@ -670,7 +708,9 @@ export class OrdersService {
         data: {
           status: OrderStatus.CANCELLED,
           cancelledAt: new Date(),
-          cancelledReason: 'Hold expired (15 minutes)',
+          cancelledReason: (order as any).installmentApplication
+            ? 'Hold expired (24 hours)'
+            : 'Hold expired (15 minutes)',
         },
       });
       if (affected.count === 0) return;
@@ -695,8 +735,8 @@ export class OrdersService {
             data: { status: ImeiStatus.AVAILABLE },
           });
         }
-        await tx.inventory.update({
-          where: { variantId: item.variantId },
+        await tx.inventory.updateMany({
+          where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
           data: {
             reservedQty: { decrement: item.quantity },
             availableQty: { increment: item.quantity },
@@ -883,8 +923,8 @@ export class OrdersService {
       select: { id: true },
     });
     if (voucher) {
-      await tx.voucher.update({
-        where: { id: voucher.id },
+      await tx.voucher.updateMany({
+        where: { id: voucher.id, usageCount: { gt: 0 } },
         data: { usageCount: { decrement: 1 } },
       });
     }
@@ -1000,8 +1040,8 @@ export class OrdersService {
               data: { status: ImeiStatus.AVAILABLE },
             });
           }
-          await tx.inventory.update({
-            where: { variantId: item.variantId },
+          await tx.inventory.updateMany({
+            where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
             data: {
               reservedQty: { decrement: item.quantity },
               availableQty: { increment: item.quantity },
@@ -1021,13 +1061,17 @@ export class OrdersService {
         // Avoid duplicate deduction if already DELIVERED when transitioning to COMPLETED
         if (order.status !== OrderStatus.DELIVERED && tx.inventory) {
           for (const item of order.items) {
-            await tx.inventory.update({
-              where: { variantId: item.variantId },
+            // Single guarded settlement on this path: entering DELIVERED
+            // consumes the reservation (COMPLETED is only reachable from
+            // DELIVERED, so the outer guard keeps it from deducting twice).
+            const settled = await tx.inventory.updateMany({
+              where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
               data: {
                 quantity: { decrement: item.quantity },
                 reservedQty: { decrement: item.quantity },
               },
             });
+            if (settled.count === 0) continue;
 
             const inv = await tx.inventory.findUnique({ where: { variantId: item.variantId } });
             const balanceAfter = inv ? inv.quantity : 0;
@@ -1066,13 +1110,6 @@ export class OrdersService {
               soldAt: now,
             },
           });
-        }
-
-        // Settle exactly once per fulfilled order: entering DELIVERED consumes
-        // the reservation (COMPLETED is only reachable from DELIVERED, so it
-        // must NOT settle again or one sale would deduct stock twice).
-        if (oldStatus !== OrderStatus.DELIVERED) {
-          await this.settleInventory(tx, order.items);
         }
 
         // P3: cash is collected at the door — flip pending COD payments to
@@ -1253,8 +1290,7 @@ export class OrdersService {
       );
     }
 
-    // Release reserved stock & IMEIs
-    const items = await this.prisma.orderItem.findMany({ where: { orderId: id } });
+    // Release reserved stock & IMEIs (re-read inside txn to avoid stale snapshot)
     await this.prisma.$transaction(async (tx) => {
       // H2: give the voucher use back together with the stock release
       const guarded = await tx.order.updateMany({
@@ -1283,6 +1319,7 @@ export class OrdersService {
 
       await this.rollbackVoucherUsage(tx, order);
 
+      const items = await tx.orderItem.findMany({ where: { orderId: id } });
       for (const item of items) {
         if (item.imeiDeviceId) {
           await tx.imeiDevice.updateMany({
@@ -1290,8 +1327,8 @@ export class OrdersService {
             data: { status: ImeiStatus.AVAILABLE },
           });
         }
-        await tx.inventory.update({
-          where: { variantId: item.variantId },
+        await tx.inventory.updateMany({
+          where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
           data: {
             reservedQty: { decrement: item.quantity },
             availableQty: { increment: item.quantity },

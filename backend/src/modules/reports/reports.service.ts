@@ -198,7 +198,7 @@ export class ReportsService {
             JOIN product_variants pv ON pv.product_id = p.id
             JOIN order_items oi ON oi.variant_id = pv.id
             JOIN orders o ON o.id = oi.order_id
-            WHERE o.status <> 'CANCELLED'
+            WHERE o.status IN ('DELIVERED', 'COMPLETED')
               AND o.created_at >= ${fromDate}
               AND o.created_at <= ${toDate}
             GROUP BY b.id, b.name, b.logo_url
@@ -216,7 +216,7 @@ export class ReportsService {
             JOIN product_variants pv ON pv.product_id = p.id
             JOIN order_items oi ON oi.variant_id = pv.id
             JOIN orders o ON o.id = oi.order_id
-            WHERE o.status <> 'CANCELLED'
+            WHERE o.status IN ('DELIVERED', 'COMPLETED')
             GROUP BY b.id, b.name, b.logo_url
             ORDER BY revenue DESC
           `;
@@ -287,7 +287,7 @@ export class ReportsService {
             JOIN product_variants pv ON pv.product_id = p.id
             JOIN order_items oi ON oi.variant_id = pv.id
             JOIN orders o ON o.id = oi.order_id
-            WHERE o.status <> 'CANCELLED'
+            WHERE o.status IN ('DELIVERED', 'COMPLETED')
               AND o.created_at >= ${fromDate}
               AND o.created_at <= ${toDate}
             GROUP BY c.id, c.name
@@ -304,7 +304,7 @@ export class ReportsService {
             JOIN product_variants pv ON pv.product_id = p.id
             JOIN order_items oi ON oi.variant_id = pv.id
             JOIN orders o ON o.id = oi.order_id
-            WHERE o.status <> 'CANCELLED'
+            WHERE o.status IN ('DELIVERED', 'COMPLETED')
             GROUP BY c.id, c.name
             ORDER BY revenue DESC
           `;
@@ -342,7 +342,7 @@ export class ReportsService {
                SUM(oi.total_price) AS revenue
         FROM order_items oi
         JOIN orders o ON o.id = oi.order_id
-        WHERE o.status <> 'CANCELLED'
+        WHERE o.status IN ('DELIVERED', 'COMPLETED')
         GROUP BY oi.variant_id
         ORDER BY qty DESC
         LIMIT ${Math.min(100, Math.max(1, Math.floor(limit) || 10))}

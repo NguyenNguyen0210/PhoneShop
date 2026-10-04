@@ -99,6 +99,10 @@ export class FlashSalesService {
     }
 
     // Validate item prices & stock limits
+    const variantIds = dto.items.map((i) => i.variantId);
+    if (new Set(variantIds).size !== variantIds.length) {
+      throw new BadRequestException('Duplicate variant in flash sale items');
+    }
     for (const item of dto.items) {
       const variant = await this.prisma.productVariant.findUnique({
         where: { id: item.variantId },
@@ -107,17 +111,36 @@ export class FlashSalesService {
       if (!variant) {
         throw new NotFoundException(`Biến thể ${item.variantId} không tồn tại`);
       }
+      if (variant.isActive === false) {
+        throw new BadRequestException(`Biến thể ${variant.sku} đã ngừng kinh doanh`);
+      }
       if (item.flashPrice >= Number(variant.price)) {
         throw new BadRequestException(
           `Giá Flash Sale (${item.flashPrice.toLocaleString()}₫) phải nhỏ hơn giá gốc (${Number(variant.price).toLocaleString()}₫) của SKU: ${variant.sku}`,
         );
       }
-      const stock = variant.inventory?.quantity || 0;
+      const stock = variant.inventory?.availableQty ?? 0;
       if (item.stockLimit > stock) {
         throw new BadRequestException(
           `Số lượng bán Flash Sale (${item.stockLimit}) vượt quá tồn kho thực tế (${stock}) của SKU: ${variant.sku}`,
         );
       }
+    }
+
+    // Reject overlapping active campaigns on the same variants.
+    const overlapping = await this.prisma.flashSaleItem.findFirst({
+      where: {
+        variantId: { in: variantIds },
+        campaign: {
+          isActive: true,
+          startAt: { lte: endAt },
+          endAt: { gte: startAt },
+        },
+      },
+      select: { id: true },
+    });
+    if (overlapping) {
+      throw new BadRequestException('Một số biến thể đã thuộc chiến dịch Flash Sale khác trong cùng thời gian');
     }
 
     return this.prisma.flashSaleCampaign.create({

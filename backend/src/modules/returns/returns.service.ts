@@ -78,7 +78,7 @@ export class ReturnsService {
     const priorItems = await this.prisma.returnItem.findMany({
       where: {
         orderItemId: { in: orderItemIds },
-        return: { status: { not: ReturnStatus.CANCELLED } },
+        return: { status: { notIn: [ReturnStatus.CANCELLED, ReturnStatus.REJECTED] } },
       },
       select: { orderItemId: true, quantity: true },
     });
@@ -97,23 +97,47 @@ export class ReturnsService {
       }
     }
 
-    return this.prisma.return.create({
-      data: {
-        orderId: dto.orderId,
-        userId,
-        returnNumber: this.generateReturnNumber(),
-        reason: dto.reason,
-        customerNote: dto.customerNote,
-        items: {
-          create: dto.items.map((item) => ({
-            orderItemId: item.orderItemId,
-            quantity: item.quantity,
-            reason: item.reason,
-            condition: item.condition,
-          })),
+    // Re-check + create atomically so two concurrent requests cannot both
+    // pass the remaining-quantity check and over-return the same line.
+    return this.prisma.$transaction(async (tx) => {
+      const freshPrior = await tx.returnItem.findMany({
+        where: {
+          orderItemId: { in: orderItemIds },
+          return: { status: { notIn: [ReturnStatus.CANCELLED, ReturnStatus.REJECTED] } },
         },
-      },
-      include: { items: true, order: true },
+        select: { orderItemId: true, quantity: true },
+      });
+      const freshReturned = new Map<string, number>();
+      for (const pi of freshPrior) {
+        freshReturned.set(pi.orderItemId, (freshReturned.get(pi.orderItemId) || 0) + pi.quantity);
+      }
+      for (const item of dto.items) {
+        const oi = byId.get(item.orderItemId)!;
+        const remaining = oi.quantity - (freshReturned.get(item.orderItemId) || 0);
+        if (item.quantity < 1 || item.quantity > remaining) {
+          throw new BadRequestException(
+            `Invalid return quantity for item ${oi.sku}: at most ${remaining} unit(s) can be returned`,
+          );
+        }
+      }
+      return tx.return.create({
+        data: {
+          orderId: dto.orderId,
+          userId,
+          returnNumber: this.generateReturnNumber(),
+          reason: dto.reason,
+          customerNote: dto.customerNote,
+          items: {
+            create: dto.items.map((item) => ({
+              orderItemId: item.orderItemId,
+              quantity: item.quantity,
+              reason: item.reason,
+              condition: item.condition,
+            })),
+          },
+        },
+        include: { items: true, order: true },
+      });
     });
   }
 
@@ -197,9 +221,9 @@ export class ReturnsService {
   // silently stamping timestamps.
   private static readonly ALLOWED_RETURN_TRANSITIONS: Partial<Record<ReturnStatus, ReturnStatus[]>> = {
     [ReturnStatus.REQUESTED]: [ReturnStatus.APPROVED, ReturnStatus.REJECTED, ReturnStatus.CANCELLED],
-    [ReturnStatus.APPROVED]: [ReturnStatus.SHIPPING, ReturnStatus.RECEIVED, ReturnStatus.INSPECTING, ReturnStatus.CANCELLED],
+    [ReturnStatus.APPROVED]: [ReturnStatus.SHIPPING, ReturnStatus.CANCELLED],
     [ReturnStatus.SHIPPING]: [ReturnStatus.RECEIVED, ReturnStatus.CANCELLED],
-    [ReturnStatus.INSPECTING]: [ReturnStatus.RECEIVED, ReturnStatus.COMPLETED, ReturnStatus.REJECTED],
+    [ReturnStatus.INSPECTING]: [ReturnStatus.COMPLETED, ReturnStatus.REJECTED],
     [ReturnStatus.RECEIVED]: [ReturnStatus.INSPECTING, ReturnStatus.COMPLETED, ReturnStatus.REJECTED],
     [ReturnStatus.REJECTED]: [],
     [ReturnStatus.COMPLETED]: [],
@@ -345,41 +369,44 @@ export class ReturnsService {
       throw new BadRequestException('Refund amount must be greater than zero');
     }
 
-    // A refund must settle against a real PAID payment — never create a
-    // floating refund with no payment link.
-    const paidPayment = await this.prisma.payment.findFirst({
-      where: { orderId: ret.orderId, status: PaymentStatus.PAID },
-      orderBy: { paidAt: 'desc' },
-    });
-    if (!paidPayment) {
-      throw new BadRequestException('No PAID payment found for this order');
-    }
+    // Cap total refunds (non-voided) at what the customer actually paid
+    // (sum of PAID payments), read + written inside one transaction so two
+    // concurrent refunds cannot both pass the cap.
+    return this.prisma.$transaction(async (tx) => {
+      const paidPayments = await tx.payment.findMany({
+        where: { orderId: ret.orderId, status: PaymentStatus.PAID },
+        select: { id: true, amount: true, paidAt: true },
+        orderBy: { paidAt: 'desc' },
+      });
+      if (paidPayments.length === 0) {
+        throw new BadRequestException('No PAID payment found for this order');
+      }
+      const paidTotal = paidPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+      const paidPayment = paidPayments[0];
 
-    // H5: cap total refunds (non-voided) at what the customer actually paid.
-    // findOne includes order:true, so the order total is available.
-    const orderTotal = Number((ret as any).order?.totalAmount ?? 0);
-    const existing = await this.prisma.refund.findMany({
-      where: {
-        returnId: dto.returnId,
-        status: { notIn: [RefundStatus.FAILED, RefundStatus.CANCELLED] },
-      },
-      select: { amount: true },
-    });
-    const alreadyRefunded = existing.reduce((sum, r) => sum + Number(r.amount), 0);
-    if (alreadyRefunded + dto.amount > orderTotal) {
-      throw new BadRequestException(
-        `Refund exceeds paid amount: already refunded ${alreadyRefunded}, order total ${orderTotal}`,
-      );
-    }
+      const existing = await tx.refund.findMany({
+        where: {
+          returnId: dto.returnId,
+          status: { notIn: [RefundStatus.FAILED, RefundStatus.CANCELLED] },
+        },
+        select: { amount: true },
+      });
+      const alreadyRefunded = existing.reduce((sum, r) => sum + Number(r.amount), 0);
+      if (alreadyRefunded + dto.amount > paidTotal) {
+        throw new BadRequestException(
+          `Refund exceeds paid amount: already refunded ${alreadyRefunded}, paid total ${paidTotal}`,
+        );
+      }
 
-    return this.prisma.refund.create({
-      data: {
-        returnId: dto.returnId,
-        paymentId: paidPayment.id,
-        refundNumber: this.generateRefundNumber(),
-        amount: dto.amount,
-        reason: dto.reason,
-      },
+      return tx.refund.create({
+        data: {
+          returnId: dto.returnId,
+          paymentId: paidPayment.id,
+          refundNumber: this.generateRefundNumber(),
+          amount: dto.amount,
+          reason: dto.reason,
+        },
+      });
     });
   }
 
@@ -413,11 +440,41 @@ export class ReturnsService {
     });
   }
 
-  async getRefundHistory() {
-    return this.prisma.refund.findMany({
-      include: { return: { include: { order: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
+  async failRefund(refundId: string) {
+    const refund = await this.prisma.refund.findUnique({ where: { id: refundId } });
+    if (!refund) throw new NotFoundException('Refund not found');
+    if (refund.status !== RefundStatus.PROCESSING) {
+      throw new BadRequestException('Only a PROCESSING refund can be marked as failed');
+    }
+    return this.prisma.refund.update({
+      where: { id: refundId },
+      data: { status: RefundStatus.FAILED },
     });
+  }
+
+  async cancelRefund(refundId: string) {
+    const refund = await this.prisma.refund.findUnique({ where: { id: refundId } });
+    if (!refund) throw new NotFoundException('Refund not found');
+    if (refund.status !== RefundStatus.PROCESSING) {
+      throw new BadRequestException('Only a PROCESSING refund can be cancelled');
+    }
+    return this.prisma.refund.update({
+      where: { id: refundId },
+      data: { status: RefundStatus.CANCELLED },
+    });
+  }
+
+  async getRefundHistory(page?: number | string, limit?: number | string) {
+    const { page: safePage, limit: safeLimit, skip } = getPagination(page, limit, 10);
+    const [total, data] = await Promise.all([
+      this.prisma.refund.count(),
+      this.prisma.refund.findMany({
+        include: { return: { include: { order: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: safeLimit,
+      }),
+    ]);
+    return buildPaginatedResponse(data, total, safePage, safeLimit);
   }
 }

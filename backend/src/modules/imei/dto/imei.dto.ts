@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ArrayMinSize, IsArray, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ImeiStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
@@ -36,7 +36,13 @@ export class UpdateImeiStatusDto {
   status: ImeiStatus;
 }
 
+export class ImportImeiItemDto extends CreateImeiDto {}
+
 export class ImportImeiDto {
-  @ApiProperty({ type: [CreateImeiDto] })
-  items: CreateImeiDto[];
+  @ApiProperty({ type: [ImportImeiItemDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => ImportImeiItemDto)
+  items: ImportImeiItemDto[];
 }

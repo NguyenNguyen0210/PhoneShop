@@ -50,46 +50,76 @@ export class ShippingService {
     const existing = await this.prisma.shipping.findUnique({ where: { orderId: dto.orderId } });
 
     if (existing) {
-      return this.prisma.shipping.update({
-        where: { id: existing.id },
-        data: {
-          providerName: dto.providerName,
-          trackingNumber: dto.trackingNumber ?? existing.trackingNumber,
-          shippingFee: dto.shippingFee ?? existing.shippingFee,
-          estimatedDeliveryDate: dto.estimatedDeliveryDate
-            ? new Date(dto.estimatedDeliveryDate)
-            : existing.estimatedDeliveryDate,
-          status:
-            existing.status === ShippingStatus.PENDING
-              ? ShippingStatus.READY_TO_SHIP
-              : existing.status,
-        },
+      const fee = dto.shippingFee ?? Number(existing.shippingFee);
+      return this.prisma.$transaction(async (tx) => {
+        const updated = await tx.shipping.update({
+          where: { id: existing.id },
+          data: {
+            providerName: dto.providerName,
+            trackingNumber: dto.trackingNumber ?? existing.trackingNumber,
+            shippingFee: dto.shippingFee ?? existing.shippingFee,
+            estimatedDeliveryDate: dto.estimatedDeliveryDate
+              ? new Date(dto.estimatedDeliveryDate)
+              : existing.estimatedDeliveryDate,
+            status:
+              existing.status === ShippingStatus.PENDING
+                ? ShippingStatus.READY_TO_SHIP
+                : existing.status,
+          },
+        });
+        // Keep the order's charged fee in sync with the shipping record.
+        if (dto.shippingFee !== undefined) {
+          await tx.order.update({
+            where: { id: dto.orderId },
+            data: { shippingFee: fee },
+          });
+        }
+        return updated;
       });
     }
 
-    return this.prisma.shipping.create({
-      data: {
-        orderId: dto.orderId,
-        providerName: dto.providerName,
-        trackingNumber: dto.trackingNumber,
-        shippingFee: dto.shippingFee ?? Number(order.shippingFee) ?? this.estimateFee(),
-        estimatedDeliveryDate: dto.estimatedDeliveryDate
-          ? new Date(dto.estimatedDeliveryDate)
-          : undefined,
-        status: ShippingStatus.READY_TO_SHIP,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.shipping.create({
+        data: {
+          orderId: dto.orderId,
+          providerName: dto.providerName,
+          trackingNumber: dto.trackingNumber,
+          shippingFee: dto.shippingFee ?? Number(order.shippingFee) ?? this.estimateFee(),
+          estimatedDeliveryDate: dto.estimatedDeliveryDate
+            ? new Date(dto.estimatedDeliveryDate)
+            : undefined,
+          status: ShippingStatus.READY_TO_SHIP,
+        },
+      });
+      if (dto.shippingFee !== undefined && Number(dto.shippingFee) !== Number(order.shippingFee)) {
+        await tx.order.update({
+          where: { id: dto.orderId },
+          data: { shippingFee: dto.shippingFee },
+        });
+      }
+      return created;
     });
   }
 
   async update(id: string, dto: UpdateShippingDto) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
     const data: any = {
       ...(dto.providerName && { providerName: dto.providerName }),
       ...(dto.trackingNumber && { trackingNumber: dto.trackingNumber }),
       ...(dto.shippingFee !== undefined && { shippingFee: dto.shippingFee }),
       ...(dto.estimatedDeliveryDate && { estimatedDeliveryDate: new Date(dto.estimatedDeliveryDate) }),
     };
-    return this.prisma.shipping.update({ where: { id }, data });
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.shipping.update({ where: { id }, data });
+      // Keep the order's charged fee in sync with the shipping record.
+      if (dto.shippingFee !== undefined) {
+        await tx.order.update({
+          where: { id: existing.orderId },
+          data: { shippingFee: dto.shippingFee },
+        });
+      }
+      return updated;
+    });
   }
 
   async create(dto: CreateShippingDto) {
@@ -101,16 +131,25 @@ export class ShippingService {
     const existing = await this.prisma.shipping.findUnique({ where: { orderId: dto.orderId } });
     if (existing) throw new BadRequestException('Shipping record already exists for this order');
 
-    return this.prisma.shipping.create({
-      data: {
-        orderId: dto.orderId,
-        providerName: dto.providerName,
-        trackingNumber: dto.trackingNumber,
-        // P1: fee defaults to what the buyer was actually charged — a
-        // caller-supplied fee decoupled from the order is a bookkeeping hole.
-        shippingFee: dto.shippingFee ?? Number(order.shippingFee) ?? this.estimateFee(),
-        estimatedDeliveryDate: dto.estimatedDeliveryDate ? new Date(dto.estimatedDeliveryDate) : undefined,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.shipping.create({
+        data: {
+          orderId: dto.orderId,
+          providerName: dto.providerName,
+          trackingNumber: dto.trackingNumber,
+          // P1: fee defaults to what the buyer was actually charged — a
+          // caller-supplied fee decoupled from the order is a bookkeeping hole.
+          shippingFee: dto.shippingFee ?? Number(order.shippingFee) ?? this.estimateFee(),
+          estimatedDeliveryDate: dto.estimatedDeliveryDate ? new Date(dto.estimatedDeliveryDate) : undefined,
+        },
+      });
+      if (dto.shippingFee !== undefined && Number(dto.shippingFee) !== Number(order.shippingFee)) {
+        await tx.order.update({
+          where: { id: dto.orderId },
+          data: { shippingFee: dto.shippingFee },
+        });
+      }
+      return created;
     });
   }
 

@@ -105,8 +105,12 @@ export class PaymentsService {
 
     await this.rejectIfHoldExpired(order);
 
-    if (order.status === OrderStatus.CANCELLED) {
-      throw new BadRequestException('Cannot generate payment QR for cancelled order');
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException(
+        order.status === OrderStatus.CANCELLED
+          ? 'Cannot generate payment QR for cancelled order'
+          : 'Order has already been paid and confirmed',
+      );
     }
 
     const amount = Number(order.totalAmount);
@@ -159,7 +163,10 @@ export class PaymentsService {
 
     const full = await this.prisma.order.findUnique({
       where: { id: order.id },
-      include: { items: true },
+      include: {
+        items: true,
+        installmentApplication: { select: { id: true } },
+      },
     });
     if (full) {
       await this.prisma.$transaction(async (tx) => {
@@ -168,7 +175,9 @@ export class PaymentsService {
           data: {
             status: OrderStatus.CANCELLED,
             cancelledAt: new Date(),
-            cancelledReason: 'Hold expired (15 minutes)',
+            cancelledReason: (full as any).installmentApplication
+              ? 'Hold expired (24 hours)'
+              : 'Hold expired (15 minutes)',
           },
         });
         if (affected.count === 0) return;
@@ -192,8 +201,8 @@ export class PaymentsService {
               data: { status: ImeiStatus.AVAILABLE },
             });
           }
-          await tx.inventory.update({
-            where: { variantId: item.variantId },
+          await tx.inventory.updateMany({
+            where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
             data: {
               reservedQty: { decrement: item.quantity },
               availableQty: { increment: item.quantity },
@@ -649,8 +658,12 @@ export class PaymentsService {
 
     await this.rejectIfHoldExpired(order);
 
-    if (order.status === OrderStatus.CANCELLED) {
-      throw new BadRequestException('Cannot pay for a cancelled order');
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException(
+        order.status === OrderStatus.CANCELLED
+          ? 'Cannot pay for a cancelled order'
+          : 'Order has already been paid and confirmed',
+      );
     }
 
     const existing = await this.prisma.payment.findFirst({
@@ -761,10 +774,13 @@ export class PaymentsService {
         },
       });
 
-      await tx.order.updateMany({
+      const orderClaimed = await tx.order.updateMany({
         where: { id: order.id, status: OrderStatus.PENDING },
         data: { status: OrderStatus.CONFIRMED, confirmedAt: paidAt },
       });
+      if (orderClaimed.count === 0) {
+        throw new BadRequestException('Order was already processed concurrently');
+      }
 
       for (const item of order.items) {
         if (item.imeiDeviceId) {

@@ -386,24 +386,28 @@ export class InstallmentsService {
             select: { id: true },
           });
           if (voucher) {
-            await tx.voucher.update({
-              where: { id: voucher.id },
+            await tx.voucher.updateMany({
+              where: { id: voucher.id, usageCount: { gt: 0 } },
               data: { usageCount: { decrement: 1 } },
             });
           }
           await tx.voucherUsage.deleteMany({ where: { orderId: app.orderId } });
         }
 
-        // Release inventory and reserved IMEIs
-        for (const item of app.order.items) {
+        // Release inventory and reserved IMEIs (re-read items inside the txn
+        // so a concurrent change cannot release stale quantities twice)
+        const freshItems = await tx.orderItem.findMany({
+          where: { orderId: app.orderId },
+        });
+        for (const item of freshItems) {
           if (item.imeiDeviceId) {
             await tx.imeiDevice.updateMany({
               where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
               data: { status: ImeiStatus.AVAILABLE },
             });
           }
-          await tx.inventory.update({
-            where: { variantId: item.variantId },
+          await tx.inventory.updateMany({
+            where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
             data: {
               reservedQty: { decrement: item.quantity },
               availableQty: { increment: item.quantity },

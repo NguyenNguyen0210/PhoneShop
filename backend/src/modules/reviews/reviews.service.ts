@@ -148,7 +148,7 @@ export class ReviewsService {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, requireApproved = false) {
     const review = await this.prisma.review.findUnique({
       where: { id },
       include: {
@@ -162,6 +162,12 @@ export class ReviewsService {
       },
     });
     if (!review) throw new NotFoundException('Review not found');
+    // AUDIT: public detail endpoint must not leak PENDING/REJECTED reviews —
+    // callers serving unauthenticated traffic pass requireApproved=true so
+    // non-approved reviews 404 exactly like missing ones (no oracle).
+    if (requireApproved && review.status !== ReviewStatus.APPROVED) {
+      throw new NotFoundException('Review not found');
+    }
     return review;
   }
 
@@ -208,8 +214,12 @@ export class ReviewsService {
     return this.prisma.review.update({ where: { id }, data: { status: ReviewStatus.REJECTED } });
   }
 
-  async verify(id: string) {
-    await this.findOne(id);
+  async verify(id: string, actorId?: string) {
+    const review = await this.findOne(id);
+    // Separation of duties: staff cannot verify their own review.
+    if (actorId && review.userId === actorId) {
+      throw new ForbiddenException('You cannot verify your own review');
+    }
     return this.prisma.review.update({ where: { id }, data: { isVerified: true } });
   }
 

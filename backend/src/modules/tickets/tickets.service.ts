@@ -65,11 +65,13 @@ export class TicketsService {
             },
           });
 
+          const initialMessageText = dto.message || dto.description || '';
+
           await tx.ticketMessage.create({
             data: {
               ticketId: ticket.id,
               senderId: userId,
-              message: dto.message,
+              message: initialMessageText,
               attachments: dto.attachments || [],
               isInternalNote: false,
             },
@@ -78,7 +80,15 @@ export class TicketsService {
           return tx.ticket.findUnique({
             where: { id: ticket.id },
             include: {
-              messages: true,
+              messages: {
+                where: { isInternalNote: false },
+                orderBy: { createdAt: 'asc' },
+                include: {
+                  sender: {
+                    select: { id: true, firstName: true, lastName: true, avatarUrl: true, roles: { include: { role: true } } },
+                  },
+                },
+              },
               order: { select: { id: true, orderNumber: true, totalAmount: true } },
             },
           });
@@ -287,9 +297,28 @@ export class TicketsService {
     return message;
   }
 
+  // AUDIT: allowed status transitions. Illegal jumps (e.g. CLOSED→RESOLVED,
+  // IN_PROGRESS→OPEN) are rejected so history stays linear and reopening a
+  // CLOSED ticket goes explicitly back to OPEN.
+  private static readonly ALLOWED_TICKET_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
+    [TicketStatus.OPEN]: [TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED, TicketStatus.CLOSED],
+    [TicketStatus.IN_PROGRESS]: [TicketStatus.RESOLVED, TicketStatus.CLOSED],
+    [TicketStatus.RESOLVED]: [TicketStatus.CLOSED, TicketStatus.OPEN],
+    [TicketStatus.CLOSED]: [TicketStatus.OPEN],
+  };
+
   async updateTicketStatus(ticketId: string, status: TicketStatus) {
     const ticket = await this.prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) throw new NotFoundException('Ticket không tồn tại');
+
+    if (ticket.status !== status) {
+      const allowed = TicketsService.ALLOWED_TICKET_TRANSITIONS[ticket.status] ?? [];
+      if (!allowed.includes(status)) {
+        throw new BadRequestException(
+          `Không thể chuyển vé từ ${ticket.status} sang ${status}`,
+        );
+      }
+    }
 
     const updateData: any = { status };
     if (status === TicketStatus.RESOLVED || status === TicketStatus.CLOSED) {
@@ -321,11 +350,22 @@ export class TicketsService {
   async assignTicket(ticketId: string, assignedToId: string) {
     const [ticket, staff] = await Promise.all([
       this.prisma.ticket.findUnique({ where: { id: ticketId } }),
-      this.prisma.user.findUnique({ where: { id: assignedToId } }),
+      this.prisma.user.findUnique({
+        where: { id: assignedToId },
+        include: { roles: { include: { role: true } } },
+      }),
     ]);
 
     if (!ticket) throw new NotFoundException('Ticket không tồn tại');
     if (!staff) throw new NotFoundException('Nhân viên không tồn tại');
+
+    // AUDIT: tickets may only be assigned to staff accounts — assigning to a
+    // plain USER would leak the full ticket thread (incl. internal notes).
+    const staffRoles = (staff.roles ?? []).map((ur) => ur.role.name);
+    const isStaff = staffRoles.some((r) => ['STAFF', 'MANAGER', 'ADMIN'].includes(r));
+    if (!isStaff) {
+      throw new BadRequestException('Chỉ có thể gán vé cho nhân viên (STAFF/MANAGER/ADMIN)');
+    }
 
     return this.prisma.ticket.update({
       where: { id: ticketId },
