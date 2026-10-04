@@ -17,6 +17,15 @@ export const toBackendPaymentMethod = (method: string): BackendPaymentMethod => 
   return method as BackendPaymentMethod;
 };
 
+/** Map the backend PaymentMethod enum back to the storefront label.
+ * Backend stores VietQR as BANK_TRANSFER — the UI only knows VIETQR. */
+export const fromBackendPaymentMethod = (method?: string | null): 'COD' | 'VIETQR' | 'VNPAY' | 'INSTALLMENT' => {
+  if (!method) return 'COD';
+  if (method === 'BANK_TRANSFER') return 'VIETQR';
+  if (method === 'VNPAY' || method === 'COD' || method === 'INSTALLMENT') return method;
+  return 'COD';
+};
+
 export interface CreatePaymentDto {
   orderId: string;
   method: BackendPaymentMethod;

@@ -33,9 +33,12 @@ export const OrderSuccessPage: React.FC = () => {
     return null;
   });
   const [vietQrData, setVietQrData] = useState<VietQrData | null>(null);
+  const [vietQrError, setVietQrError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [transferConfirmed, setTransferConfirmed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [vnpayError, setVnpayError] = useState<string | null>(null);
+  const [vnpayLoading, setVnpayLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -55,12 +58,26 @@ export const OrderSuccessPage: React.FC = () => {
   }, [id]);
 
   useEffect(() => {
-    if (order && order.paymentMethod === 'VIETQR') {
+    // Backend stores VietQR as BANK_TRANSFER — accept both labels so the QR
+    // still loads for orders fetched from the API (not just the snapshot).
+    const rawMethod = (order as any)?.paymentMethod;
+    const isVietQr = rawMethod === 'VIETQR' || rawMethod === 'BANK_TRANSFER';
+    if (order && isVietQr) {
       const oid = order.id || id;
       if (!oid) return;
-      paymentService.createVietQr(oid).then((qr) => {
-        setVietQrData(qr);
-      });
+      setVietQrError(null);
+      paymentService
+        .createVietQr(oid)
+        .then((qr) => {
+          setVietQrData(qr);
+        })
+        .catch((err: any) => {
+          setVietQrError(
+            err?.response?.data?.message ||
+              err?.message ||
+              'Không thể tạo mã QR lúc này. Bạn vẫn có thể chuyển khoản thủ công theo thông tin bên dưới.',
+          );
+        });
     }
   }, [order, id]);
 
@@ -76,15 +93,25 @@ export const OrderSuccessPage: React.FC = () => {
 
   const handleVNPayRedirect = async () => {
     if (!order) return;
+    setVnpayError(null);
+    setVnpayLoading(true);
     try {
       const res = await paymentService.createVnpayUrl({
         orderId: order.id || id || '',
       });
       if (res.paymentUrl) {
         window.location.href = res.paymentUrl;
+      } else {
+        setVnpayError('Không nhận được đường dẫn thanh toán từ VNPay. Vui lòng thử lại.');
       }
-    } catch {
-      alert('Đang kết nối cổng thanh toán VNPAY...');
+    } catch (err: any) {
+      setVnpayError(
+        err?.response?.data?.message ||
+          err?.message ||
+          'Không thể kết nối cổng thanh toán VNPay lúc này. Vui lòng thử lại sau.',
+      );
+    } finally {
+      setVnpayLoading(false);
     }
   };
 
@@ -98,7 +125,8 @@ export const OrderSuccessPage: React.FC = () => {
 
   const orderNum = order?.orderNumber || id || 'ĐƠN HÀNG MỚI';
   const total = order?.totalAmount || 0;
-  const method = order?.paymentMethod || 'VIETQR';
+  const rawMethod = (order as any)?.paymentMethod;
+  const method = rawMethod === 'BANK_TRANSFER' ? 'VIETQR' : rawMethod || 'VIETQR';
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -161,6 +189,10 @@ export const OrderSuccessPage: React.FC = () => {
                   alt="VietQR Code"
                   className="w-64 h-64 object-contain rounded-xl shadow-xs"
                 />
+              ) : vietQrError ? (
+                <div className="w-64 min-h-64 flex items-center justify-center text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-4 text-center">
+                  {vietQrError}
+                </div>
               ) : (
                 <div className="w-64 h-64 flex items-center justify-center text-xs text-slate-400">
                   Đang khởi tạo mã QR ngân hàng...
@@ -295,11 +327,17 @@ export const OrderSuccessPage: React.FC = () => {
           <p className="text-xs text-slate-500 max-w-md mx-auto">
             Nhấn nút bên dưới để qua trang VNPay và hoàn tất thanh toán nhé.
           </p>
+          {vnpayError && (
+            <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3 max-w-md mx-auto">
+              {vnpayError}
+            </p>
+          )}
           <button
             onClick={handleVNPayRedirect}
-            className="inline-flex items-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition"
+            disabled={vnpayLoading}
+            className="inline-flex items-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-md transition"
           >
-            <span>Tiếp tục thanh toán với VNPay</span>
+            <span>{vnpayLoading ? 'Đang kết nối VNPay...' : 'Tiếp tục thanh toán với VNPay'}</span>
             <ExternalLink className="w-4 h-4" />
           </button>
         </div>
