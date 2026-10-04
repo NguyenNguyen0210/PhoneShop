@@ -35,11 +35,14 @@ COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/clie
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/dist ./dist
 
+# Copy Prisma schema + migrations so `prisma migrate deploy` can run at startup
+COPY --from=builder /app/prisma ./prisma
+
 # Expose backend service port
 EXPOSE 3000
 
 # Run container as non-root user
 USER node
 
-# Start NestJS production server
-CMD ["node", "dist/src/main.js"]
+# Apply pending migrations, then start NestJS production server
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
