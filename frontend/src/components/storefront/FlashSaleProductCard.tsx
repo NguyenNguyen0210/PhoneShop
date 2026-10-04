@@ -10,10 +10,11 @@ interface FlashSaleProductCardProps {
 export const FlashSaleProductCard: React.FC<FlashSaleProductCardProps> = ({ item }) => {
   const variant = item.variant;
   const productName = variant?.product?.name || variant?.name || 'Sản phẩm';
-  const originalPrice = variant?.price || variant?.compareAtPrice || item.flashPrice;
+  const flashPrice = Number(item.flashPrice) || 0;
+  const originalPrice = Number(variant?.price || variant?.compareAtPrice || flashPrice);
   const discountPercent =
-    originalPrice > item.flashPrice
-      ? Math.round(((originalPrice - item.flashPrice) / originalPrice) * 100)
+    originalPrice > flashPrice
+      ? Math.round(((originalPrice - flashPrice) / originalPrice) * 100)
       : null;
 
   const productThumb =
@@ -27,9 +28,10 @@ export const FlashSaleProductCard: React.FC<FlashSaleProductCardProps> = ({ item
     variant?.product?.slug || variant?.product?.id || item.variantId;
   const productUrl = `/products/${productTarget}`;
 
-  // Format currency VND without breaking space to match tests and clean typography
-  const formatPrice = (amount: number) => {
-    return `${amount.toLocaleString('vi-VN')}₫`;
+  // Format currency VND with thousand separators (e.g. 11.871.000₫)
+  const formatPrice = (amount: number | string) => {
+    const num = Math.round(Number(amount) || 0);
+    return `${num.toLocaleString('vi-VN')}₫`;
   };
 
   // Progress bar calculation & label
@@ -102,11 +104,11 @@ export const FlashSaleProductCard: React.FC<FlashSaleProductCardProps> = ({ item
       {/* Pricing & Progress Bar */}
       <div className="mt-3 pt-3 border-t border-slate-100 space-y-2.5">
         <div className="flex flex-wrap items-baseline gap-2">
-          <span className="text-base sm:text-lg font-black font-mono text-rose-600 tabular-nums tracking-tight">
-            {formatPrice(item.flashPrice)}
+          <span className="text-base sm:text-lg font-black text-rose-600 tabular-nums tracking-tight">
+            {formatPrice(flashPrice)}
           </span>
-          {originalPrice > item.flashPrice && (
-            <span className="text-xs font-mono text-slate-400 line-through tabular-nums">
+          {originalPrice > flashPrice && (
+            <span className="text-xs text-slate-400 line-through tabular-nums font-medium">
               {formatPrice(originalPrice)}
             </span>
           )}
