@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { X, AlertCircle, Loader2 } from 'lucide-react';
 import type { Order } from '../../../../types';
 import { orderService } from '../../../../services/orderService';
+import { notifyError } from '../../../../utils/notify';
 
 export interface OrderCancelModalProps {
   order: Order;
@@ -27,14 +28,12 @@ export const OrderCancelModal: React.FC<OrderCancelModalProps> = ({
   const [selectedReason, setSelectedReason] = useState<string>(CANCEL_REASONS[0]);
   const [customReason, setCustomReason] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setSelectedReason(CANCEL_REASONS[0]);
       setCustomReason('');
       setLoading(false);
-      setError(null);
     }
   }, [isOpen]);
 
@@ -52,13 +51,12 @@ export const OrderCancelModal: React.FC<OrderCancelModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
 
     const isOther = selectedReason === 'Lý do khác';
     const reasonToSend = isOther ? customReason.trim() : selectedReason;
 
     if (isOther && !reasonToSend) {
-      setError('Vui lòng nhập lý do hủy đơn hàng.');
+      notifyError('Vui lòng nhập lý do hủy đơn hàng.');
       return;
     }
 
@@ -68,11 +66,7 @@ export const OrderCancelModal: React.FC<OrderCancelModalProps> = ({
       onCancelled(updatedOrder);
       onClose();
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Có lỗi xảy ra khi hủy đơn hàng. Vui lòng thử lại sau.';
-      setError(msg);
+      notifyError(err, 'Có lỗi xảy ra khi hủy đơn hàng. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
@@ -122,17 +116,6 @@ export const OrderCancelModal: React.FC<OrderCancelModalProps> = ({
             </span>
           </div>
         </div>
-
-        {/* Error message alert */}
-        {error && (
-          <div
-            role="alert"
-            className="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-2.5 text-xs text-rose-700"
-          >
-            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
 
         {/* Cancellation form */}
         <form onSubmit={handleSubmit} className="space-y-4">

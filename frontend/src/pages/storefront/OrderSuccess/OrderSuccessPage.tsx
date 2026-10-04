@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { paymentService, type VietQrData } from '../../../services/paymentService';
 import { orderService } from '../../../services/orderService';
+import { notifyError } from '../../../utils/notify';
 import type { Order } from '../../../types';
 
 export const OrderSuccessPage: React.FC = () => {
@@ -72,11 +73,12 @@ export const OrderSuccessPage: React.FC = () => {
           setVietQrData(qr);
         })
         .catch((err: any) => {
-          setVietQrError(
+          const msg =
             err?.response?.data?.message ||
-              err?.message ||
-              'Không thể tạo mã QR lúc này. Bạn vẫn có thể chuyển khoản thủ công theo thông tin bên dưới.',
-          );
+            err?.message ||
+            'Không thể tạo mã QR lúc này. Bạn vẫn có thể chuyển khoản thủ công theo thông tin bên dưới.';
+          notifyError(err, msg);
+          setVietQrError(msg);
         });
     }
   }, [order, id]);
@@ -102,14 +104,17 @@ export const OrderSuccessPage: React.FC = () => {
       if (res.paymentUrl) {
         window.location.href = res.paymentUrl;
       } else {
-        setVnpayError('Không nhận được đường dẫn thanh toán từ VNPay. Vui lòng thử lại.');
+        const msg = 'Không nhận được đường dẫn thanh toán từ VNPay. Vui lòng thử lại.';
+        setVnpayError(msg);
+        notifyError(msg);
       }
     } catch (err: any) {
-      setVnpayError(
+      const msg =
         err?.response?.data?.message ||
-          err?.message ||
-          'Không thể kết nối cổng thanh toán VNPay lúc này. Vui lòng thử lại sau.',
-      );
+        err?.message ||
+        'Không thể kết nối cổng thanh toán VNPay lúc này. Vui lòng thử lại sau.';
+      setVnpayError(msg);
+      notifyError(err, msg);
     } finally {
       setVnpayLoading(false);
     }
@@ -190,7 +195,7 @@ export const OrderSuccessPage: React.FC = () => {
                   className="w-64 h-64 object-contain rounded-xl shadow-xs"
                 />
               ) : vietQrError ? (
-                <div className="w-64 min-h-64 flex items-center justify-center text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-4 text-center">
+                <div className="w-64 min-h-64 flex items-center justify-center text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
                   {vietQrError}
                 </div>
               ) : (
@@ -328,7 +333,7 @@ export const OrderSuccessPage: React.FC = () => {
             Nhấn nút bên dưới để qua trang VNPay và hoàn tất thanh toán nhé.
           </p>
           {vnpayError && (
-            <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3 max-w-md mx-auto">
+            <p className="text-xs text-slate-600 max-w-md mx-auto">
               {vnpayError}
             </p>
           )}

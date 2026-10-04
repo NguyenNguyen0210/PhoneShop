@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Typography, Spin, Tag, Button, Tabs, Table, Avatar, Row, Col, Alert } from 'antd';
+import { Card, Typography, Spin, Tag, Button, Tabs, Table, Avatar, Row, Col, Empty, message } from 'antd';
 import {
   ArrowLeftOutlined,
   UserOutlined,
@@ -17,18 +17,16 @@ export const StaffCustomer360Page: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const loadCustomer360 = useCallback(async () => {
     if (!id) return;
     setLoading(true);
-    setError(null);
     try {
       const res = await userService.getCustomer360(id);
       setData(res);
     } catch (err: any) {
       console.error('Failed to load customer 360:', err);
-      setError(err?.response?.data?.message || 'Không thể tải hồ sơ khách hàng 360°');
+      message.error(err?.response?.data?.message || 'Không thể tải hồ sơ khách hàng 360°');
     } finally {
       setLoading(false);
     }
@@ -46,7 +44,7 @@ export const StaffCustomer360Page: React.FC = () => {
     );
   }
 
-  if (error || !data) {
+  if (!data) {
     return (
       <Card style={{ borderRadius: 10 }}>
         <Button
@@ -62,12 +60,11 @@ export const StaffCustomer360Page: React.FC = () => {
         >
           Quay lại danh sách
         </Button>
-        <Alert
-          type="error"
-          message="Lỗi"
-          description={error || 'Không tìm thấy thông tin khách hàng.'}
-          showIcon
-        />
+        <Empty description="Không tìm thấy thông tin khách hàng.">
+          <Button type="primary" onClick={loadCustomer360}>
+            Thử lại
+          </Button>
+        </Empty>
       </Card>
     );
   }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, MapPin, Loader2, Save, Home, Building2 } from 'lucide-react';
 import { addressService } from '../../../../services/addressService';
+import { notifyError } from '../../../../utils/notify';
 import type { Address } from '../../../../types';
 
 export interface AddressCreateModalProps {
@@ -23,7 +24,6 @@ export const AddressCreateModal: React.FC<AddressCreateModalProps> = ({
   const [type, setType] = useState<'HOME' | 'OFFICE'>('HOME');
   const [isDefault, setIsDefault] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -36,7 +36,6 @@ export const AddressCreateModal: React.FC<AddressCreateModalProps> = ({
       setType('HOME');
       setIsDefault(false);
       setLoading(false);
-      setError(null);
     }
   }, [isOpen]);
 
@@ -54,7 +53,6 @@ export const AddressCreateModal: React.FC<AddressCreateModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
 
     const trimmedName = recipientName.trim();
     const trimmedPhone = phone.trim();
@@ -62,23 +60,23 @@ export const AddressCreateModal: React.FC<AddressCreateModalProps> = ({
     const trimmedAddress = addressLine1.trim();
 
     if (!trimmedName) {
-      setError('Vui lòng nhập họ và tên người nhận.');
+      notifyError('Vui lòng nhập họ và tên người nhận.');
       return;
     }
 
     const phoneRegex = /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/;
     if (!phoneRegex.test(trimmedPhone)) {
-      setError('Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam 10 chữ số.');
+      notifyError('Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam 10 chữ số.');
       return;
     }
 
     if (!trimmedCity) {
-      setError('Vui lòng nhập Tỉnh / Thành phố.');
+      notifyError('Vui lòng nhập Tỉnh / Thành phố.');
       return;
     }
 
     if (!trimmedAddress) {
-      setError('Vui lòng nhập địa chỉ chi tiết (số nhà, tên đường).');
+      notifyError('Vui lòng nhập địa chỉ chi tiết (số nhà, tên đường).');
       return;
     }
 
@@ -98,15 +96,7 @@ export const AddressCreateModal: React.FC<AddressCreateModalProps> = ({
       onSuccess(created);
       onClose();
     } catch (err: any) {
-      const responseData = err?.response?.data;
-      let errorMsg = 'Thêm địa chỉ thất bại. Vui lòng thử lại!';
-      if (responseData?.message) {
-        const rawMessage = responseData.message;
-        errorMsg = Array.isArray(rawMessage) ? rawMessage.join(', ') : rawMessage;
-      } else if (err?.message) {
-        errorMsg = err.message;
-      }
-      setError(errorMsg);
+      notifyError(err, 'Thêm địa chỉ thất bại. Vui lòng thử lại!');
     } finally {
       setLoading(false);
     }
@@ -141,12 +131,6 @@ export const AddressCreateModal: React.FC<AddressCreateModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-          {error && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
-              {error}
-            </div>
-          )}
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label htmlFor="addr-name" className="block text-xs font-semibold text-slate-700">

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Phone, Mail, AlertCircle, Loader2, Save } from 'lucide-react';
+import { X, User, Phone, Mail, Loader2, Save } from 'lucide-react';
 import type { User as UserType } from '../../../../types';
 import { authService } from '../../../../services/authService';
+import { notifyError } from '../../../../utils/notify';
 
 export interface EditProfileModalProps {
   isOpen: boolean;
@@ -19,14 +20,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [fullName, setFullName] = useState(user.fullName || '');
   const [phone, setPhone] = useState(user.phone || '');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setFullName(user.fullName || '');
       setPhone(user.phone || '');
       setLoading(false);
-      setError(null);
     }
   }, [isOpen, user]);
 
@@ -44,11 +43,10 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
 
     const trimmedName = fullName.trim();
     if (!trimmedName) {
-      setError('Vui lòng nhập họ và tên của bạn.');
+      notifyError('Vui lòng nhập họ và tên của bạn.');
       return;
     }
 
@@ -56,7 +54,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     if (trimmedPhone) {
       const phoneRegex = /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/;
       if (!phoneRegex.test(trimmedPhone)) {
-        setError('Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam (10 chữ số, vd: 0901234567).');
+        notifyError('Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam (10 chữ số, vd: 0901234567).');
         return;
       }
     }
@@ -76,21 +74,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       onSuccess(updated);
       onClose();
     } catch (err: any) {
-      const responseData = err?.response?.data;
-      let errorMsg = 'Cập nhật thông tin thất bại. Vui lòng thử lại!';
-
-      if (responseData?.message) {
-        const rawMessage = responseData.message;
-        if (typeof rawMessage === 'string') {
-          errorMsg = rawMessage;
-        } else if (Array.isArray(rawMessage)) {
-          errorMsg = rawMessage.join(', ');
-        }
-      } else if (err?.message) {
-        errorMsg = err.message;
-      }
-
-      setError(errorMsg);
+      notifyError(err, 'Cập nhật thông tin thất bại. Vui lòng thử lại!');
     } finally {
       setLoading(false);
     }
@@ -133,13 +117,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="p-3.5 rounded-2xl flex items-center gap-2.5 text-xs bg-rose-50 text-rose-800 border border-rose-200">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
           {/* Họ và tên */}
           <div className="space-y-1.5">
             <label

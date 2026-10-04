@@ -4,10 +4,10 @@ import {
   RotateCcw,
   Minus,
   Plus,
-  AlertCircle,
   Loader2,
 } from 'lucide-react';
 import { returnService } from '../../../../services/returnService';
+import { notifyError } from '../../../../utils/notify';
 import type { Order, OrderItem } from '../../../../types';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../../utils/imageFallback';
 
@@ -42,7 +42,6 @@ const ReturnRequestModalDialog: FC<ReturnRequestModalProps> = ({
   const [reason, setReason] = useState<string>(RETURN_REASONS[0]);
   const [customerNote, setCustomerNote] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -64,7 +63,6 @@ const ReturnRequestModalDialog: FC<ReturnRequestModalProps> = ({
       }
       return next;
     });
-    if (error) setError(null);
   };
 
   const handleQuantityChange = (itemId: string, delta: number, maxQty: number) => {
@@ -85,12 +83,11 @@ const ReturnRequestModalDialog: FC<ReturnRequestModalProps> = ({
 
     const selectedItems = (order.items || []).filter((item) => selectedItemIds.has(item.id));
     if (selectedItems.length === 0) {
-      setError('Vui lòng chọn ít nhất một sản phẩm cần hoàn trả.');
+      notifyError('Vui lòng chọn ít nhất một sản phẩm cần hoàn trả.');
       return;
     }
 
     setLoading(true);
-    setError(null);
 
     try {
       await returnService.createReturn({
@@ -106,11 +103,7 @@ const ReturnRequestModalDialog: FC<ReturnRequestModalProps> = ({
       onSubmitted();
       onClose();
     } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Không thể gửi yêu cầu hoàn trả. Vui lòng thử lại sau.';
-      setError(message);
+      notifyError(err, 'Không thể gửi yêu cầu hoàn trả. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
@@ -159,17 +152,6 @@ const ReturnRequestModalDialog: FC<ReturnRequestModalProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-6 max-h-[calc(85vh-160px)] overflow-y-auto">
-            {/* Error Alert */}
-            {error && (
-              <div
-                role="alert"
-                className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3 text-xs text-rose-700"
-              >
-                <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
-                <div className="flex-1 font-medium">{error}</div>
-              </div>
-            )}
-
             {/* Product Selection List */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">

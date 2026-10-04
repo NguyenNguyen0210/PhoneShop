@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Typography, Row, Col, Button, Alert, Space, message } from 'antd';
+import { Typography, Row, Col, Button, Space, message } from 'antd';
 import {
   ReloadOutlined,
   DashboardOutlined,
@@ -21,7 +21,6 @@ const { Title, Text } = Typography;
 
 export const StaffDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -32,7 +31,6 @@ export const StaffDashboardPage: React.FC = () => {
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
-    setError(null);
 
     // CRITICAL: ZERO calls to reportService! (Never call reportService to avoid 403 Forbidden).
     const [ordersRes, ticketsRes, returnsRes, installmentsRes, inventoryRes] =
@@ -137,7 +135,7 @@ export const StaffDashboardPage: React.FC = () => {
     }
 
     if (anyFailed) {
-      setError('Không thể tải một số dữ liệu vận hành. Vui lòng bấm thử lại.');
+      message.error('Không thể tải một số dữ liệu vận hành. Vui lòng bấm thử lại.');
     }
 
     setLoading(false);
@@ -216,24 +214,6 @@ export const StaffDashboardPage: React.FC = () => {
           </Button>
         </Space>
       </div>
-
-      {/* Error Alert with retry */}
-      {error && (
-        <Alert
-          title="Lỗi tải dữ liệu"
-          description={error}
-          type="error"
-          showIcon
-          action={
-            <Button size="small" danger onClick={fetchDashboardData} data-testid="retry-btn">
-              Thử lại
-            </Button>
-          }
-          style={{ marginBottom: 20, borderRadius: 8 }}
-          closable
-          onClose={() => setError(null)}
-        />
-      )}
 
       {/* Counter Action Cards */}
       <div style={{ marginBottom: 20 }}>

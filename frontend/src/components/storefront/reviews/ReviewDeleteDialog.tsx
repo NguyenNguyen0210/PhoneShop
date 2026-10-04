@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { reviewService } from '../../../services/reviewService';
+import { notifyError } from '../../../utils/notify';
 
 export interface ReviewDeleteDialogProps {
   isOpen: boolean;
@@ -15,7 +16,6 @@ const ReviewDeleteDialogContent: React.FC<Omit<ReviewDeleteDialogProps, 'isOpen'
   onSuccess,
 }) => {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -36,16 +36,12 @@ const ReviewDeleteDialogContent: React.FC<Omit<ReviewDeleteDialogProps, 'isOpen'
 
   const handleDelete = async () => {
     setLoading(true);
-    setError(null);
     try {
       await reviewService.deleteReview(reviewId);
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } } };
-      setError(
-        errorObj.response?.data?.message || 'Không thể xóa đánh giá. Vui lòng thử lại sau.',
-      );
+      notifyError(err, 'Không thể xóa đánh giá. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
@@ -75,12 +71,6 @@ const ReviewDeleteDialogContent: React.FC<Omit<ReviewDeleteDialogProps, 'isOpen'
             Hành động này không thể hoàn tác. Bạn sẽ có thể viết đánh giá mới cho sản phẩm này sau khi xóa.
           </p>
         </div>
-
-        {error && (
-          <div className="p-2.5 bg-red-50 text-red-600 text-xs rounded-xl font-medium border border-red-100">
-            {error}
-          </div>
-        )}
 
         <div className="flex items-center gap-3 pt-2">
           <button
