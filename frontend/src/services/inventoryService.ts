@@ -15,6 +15,16 @@ export interface StockCheckResult {
 }
 
 export const inventoryService = {
+  getStockLevels: async (params?: {
+    limit?: number;
+    page?: number;
+    search?: string;
+  }): Promise<InventoryRecord[]> => {
+    const response = await apiClient.get('/inventory', { params });
+    const data = response.data?.data ?? response.data;
+    return Array.isArray(data) ? data : data?.items ?? [];
+  },
+
   getInventoryList: async (): Promise<InventoryRecord[]> => {
     const response = await apiClient.get('/inventory');
     return response.data?.data ?? response.data;

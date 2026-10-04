@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { Layout, Menu, Button, Dropdown, Avatar, Tag, Breadcrumb, ConfigProvider } from 'antd';
+import { Layout, Menu, Button, Dropdown, Avatar, Tag, Breadcrumb, ConfigProvider, Input } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   DashboardOutlined,
-  ShoppingOutlined,
   BarcodeOutlined,
   OrderedListOutlined,
   UserOutlined,
@@ -12,107 +11,69 @@ import {
   ShopOutlined,
   MenuUnfoldOutlined,
   MenuFoldOutlined,
-  ThunderboltOutlined,
   CreditCardOutlined,
-  DollarOutlined,
   UndoOutlined,
   CommentOutlined,
   CustomerServiceOutlined,
-  FolderOpenOutlined,
-  TagOutlined,
-  TagsOutlined,
-  SettingOutlined,
+  SearchOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
 
-const { Header, Sider, Content } = Layout;
+const { Header, Sider, Content, Footer } = Layout;
 
-export const AdminLayout: React.FC = () => {
+export const StaffLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
   const [collapsed, setCollapsed] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const menuItems = [
+  const menuItems: MenuProps['items'] = [
     {
-      key: '/admin',
+      key: '/staff',
       icon: <DashboardOutlined style={{ fontSize: 16 }} />,
-      label: 'Tổng quan (Dashboard)',
+      label: 'Bàn làm việc (Dashboard)',
     },
     {
-      key: '/admin/products',
-      icon: <ShoppingOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Sản phẩm',
-    },
-    {
-      key: '/admin/categories',
-      icon: <FolderOpenOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Danh mục',
-    },
-    {
-      key: '/admin/brands',
-      icon: <TagsOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Thương hiệu',
-    },
-    {
-      key: '/admin/suppliers',
-      icon: <ShopOutlined style={{ fontSize: 16 }} />,
-      label: 'Nhà cung cấp',
-    },
-    {
-      key: '/admin/imei',
-      icon: <BarcodeOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Kho & IMEI',
-    },
-    {
-      key: '/admin/orders',
+      key: '/staff/orders',
       icon: <OrderedListOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Đơn hàng',
+      label: 'Đơn hàng & Giao vận',
     },
     {
-      key: '/admin/promotions',
-      icon: <TagOutlined style={{ fontSize: 16 }} />,
-      label: 'Khuyến mãi & Flash Sale',
+      key: '/staff/inventory',
+      icon: <BarcodeOutlined style={{ fontSize: 16 }} />,
+      label: 'Kho hàng & Quản lý IMEI',
     },
     {
-      key: '/admin/payments',
-      icon: <DollarOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Thanh toán',
-    },
-    {
-      key: '/admin/returns',
-      icon: <UndoOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Đổi trả',
-    },
-    {
-      key: '/admin/customers',
-      icon: <UserOutlined style={{ fontSize: 16 }} />,
-      label: 'Khách hàng (360°)',
-    },
-    {
-      key: '/admin/tickets',
+      key: '/staff/tickets',
       icon: <CustomerServiceOutlined style={{ fontSize: 16 }} />,
-      label: 'Hỗ trợ khách hàng',
+      label: 'Vé hỗ trợ CSKH',
     },
     {
-      key: '/admin/reviews',
-      icon: <CommentOutlined style={{ fontSize: 16 }} />,
-      label: 'Quản lý Đánh giá',
+      key: '/staff/returns',
+      icon: <UndoOutlined style={{ fontSize: 16 }} />,
+      label: 'Xử lý Đổi trả',
     },
     {
-      key: '/admin/installments',
+      key: '/staff/installments',
       icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
-      label: 'Hồ sơ trả góp',
+      label: 'Thẩm định Trả góp',
     },
     {
-      key: '/admin/settings',
-      icon: <SettingOutlined style={{ fontSize: 16 }} />,
-      label: 'Cấu hình Hệ thống',
+      key: '/staff/reviews',
+      icon: <CommentOutlined style={{ fontSize: 16 }} />,
+      label: 'Đánh giá & Phản hồi',
+    },
+    {
+      key: '/staff/customers',
+      icon: <UserOutlined style={{ fontSize: 16 }} />,
+      label: 'Tra cứu Khách hàng',
     },
   ];
 
@@ -120,12 +81,24 @@ export const AdminLayout: React.FC = () => {
     navigate(e.key);
   };
 
+  const handleQuickSearch = () => {
+    const query = searchValue.trim();
+    if (!query) return;
+
+    // Detect search type:
+    // 15 digits -> IMEI
+    // Phone number (0xxxxxxxxx or +84xxxxxxxxx) -> Customer lookup
+    // Otherwise -> Orders lookup
+    if (/^\d{15}$/.test(query)) {
+      navigate(`/staff/inventory?search=${encodeURIComponent(query)}`);
+    } else if (/^(0|\+84)\d{9,10}$/.test(query)) {
+      navigate(`/staff/customers?search=${encodeURIComponent(query)}`);
+    } else {
+      navigate(`/staff/orders?search=${encodeURIComponent(query)}`);
+    }
+  };
+
   const userMenuItems: MenuProps['items'] = [
-    {
-      key: 'staff-workspace',
-      icon: <DashboardOutlined />,
-      label: <Link to="/staff">Cổng Vận hành (Staff)</Link>,
-    },
     {
       key: 'storefront',
       icon: <ShopOutlined />,
@@ -143,23 +116,28 @@ export const AdminLayout: React.FC = () => {
     },
   ];
 
-  // Dynamic breadcrumb labels
+  // Dynamic breadcrumb label based on path
   const getBreadcrumbTitle = () => {
-    if (location.pathname === '/admin/products') return 'Quản lý Sản phẩm & Biến thể';
-    if (location.pathname === '/admin/categories') return 'Quản lý Danh mục Smartphone';
-    if (location.pathname === '/admin/brands') return 'Quản lý Thương hiệu Smartphone';
-    if (location.pathname === '/admin/suppliers') return 'Quản lý Nhà cung cấp';
-    if (location.pathname === '/admin/imei') return 'Quản trị Kho Thiết bị & Quản lý IMEI';
-    if (location.pathname === '/admin/orders') return 'Quản lý Đơn hàng & Điều phối';
-    if (location.pathname.startsWith('/admin/promotions')) return 'Quản lý Khuyến mãi & Flash Sale';
-    if (location.pathname === '/admin/payments') return 'Quản lý Thanh toán & Đối soát';
-    if (location.pathname === '/admin/returns') return 'Quản lý Đổi trả & Hoàn tiền';
-    if (location.pathname.startsWith('/admin/customers')) return 'Hồ sơ Khách hàng Customer 360°';
-    if (location.pathname.startsWith('/admin/tickets')) return 'Hệ thống Vé Hỗ trợ & Khiếu nại';
-    if (location.pathname === '/admin/installments') return 'Quản lý Hồ sơ trả góp & Thẩm định';
-    if (location.pathname === '/admin/reviews') return 'Quản lý Đánh giá & Phản hồi';
-    if (location.pathname === '/admin/settings') return 'Cấu hình & Tham số Hệ thống';
-    return 'Tổng quan hệ thống (Dashboard)';
+    if (location.pathname.startsWith('/staff/orders')) return 'Quản lý Đơn hàng & Giao vận';
+    if (location.pathname.startsWith('/staff/inventory')) return 'Quản lý Kho & Thiết bị IMEI';
+    if (location.pathname.startsWith('/staff/tickets')) return 'Hệ thống Vé hỗ trợ CSKH';
+    if (location.pathname.startsWith('/staff/returns')) return 'Xử lý Yêu cầu Đổi trả';
+    if (location.pathname.startsWith('/staff/installments')) return 'Thẩm định Hồ sơ Trả góp';
+    if (location.pathname.startsWith('/staff/reviews')) return 'Quản lý Đánh giá & Phản hồi';
+    if (location.pathname.startsWith('/staff/customers')) return 'Tra cứu Thông tin Khách hàng';
+    return 'Bàn làm việc Tổng quan';
+  };
+
+  const getSelectedKey = () => {
+    const path = location.pathname;
+    if (path.startsWith('/staff/orders')) return '/staff/orders';
+    if (path.startsWith('/staff/inventory')) return '/staff/inventory';
+    if (path.startsWith('/staff/tickets')) return '/staff/tickets';
+    if (path.startsWith('/staff/returns')) return '/staff/returns';
+    if (path.startsWith('/staff/installments')) return '/staff/installments';
+    if (path.startsWith('/staff/reviews')) return '/staff/reviews';
+    if (path.startsWith('/staff/customers')) return '/staff/customers';
+    return '/staff';
   };
 
   return (
@@ -169,7 +147,7 @@ export const AdminLayout: React.FC = () => {
           colorBgContainer: '#ffffff',
           colorBgElevated: '#ffffff',
           colorBgLayout: '#f8fafc',
-          colorPrimary: '#2563eb',
+          colorPrimary: '#4f46e5',
           colorBorder: '#e2e8f0',
           colorBorderSecondary: '#f1f5f9',
           colorText: '#0f172a',
@@ -182,8 +160,8 @@ export const AdminLayout: React.FC = () => {
           Menu: {
             itemBg: '#ffffff',
             subMenuItemBg: '#ffffff',
-            itemSelectedBg: '#eff6ff',
-            itemSelectedColor: '#2563eb',
+            itemSelectedBg: '#eef2ff',
+            itemSelectedColor: '#4f46e5',
             itemColor: '#475569',
             itemHoverBg: '#f8fafc',
             itemHoverColor: '#0f172a',
@@ -209,12 +187,12 @@ export const AdminLayout: React.FC = () => {
       }}
     >
       <Layout style={{ minHeight: '100vh', background: '#f8fafc' }}>
-        {/* Sider - Clean Light Mode */}
+        {/* Sider */}
         <Sider
           trigger={null}
           collapsible
           collapsed={collapsed}
-          width={250}
+          width={260}
           style={{
             overflow: 'auto',
             height: '100vh',
@@ -262,18 +240,19 @@ export const AdminLayout: React.FC = () => {
                 />
                 <span
                   style={{
-                    color: '#2563eb',
+                    color: '#4338ca',
                     fontSize: 9,
                     fontWeight: 700,
                     letterSpacing: 1,
                     textTransform: 'uppercase',
-                    background: '#eff6ff',
+                    background: '#eef2ff',
                     padding: '2px 6px',
                     borderRadius: 4,
-                    border: '1px solid #dbeafe',
+                    border: '1px solid #c7d2fe',
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  Admin
+                  STAFF WORKSPACE
                 </span>
               </div>
             )}
@@ -283,7 +262,7 @@ export const AdminLayout: React.FC = () => {
           <div style={{ padding: '12px 0' }}>
             <Menu
               mode="inline"
-              selectedKeys={[location.pathname]}
+              selectedKeys={[getSelectedKey()]}
               items={menuItems}
               onClick={handleMenuClick}
               style={{
@@ -292,45 +271,10 @@ export const AdminLayout: React.FC = () => {
               }}
             />
           </div>
-
-          {/* Sider Footer System Metric */}
-          {!collapsed && (
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 16,
-                left: 12,
-                right: 12,
-                padding: '12px 14px',
-                borderRadius: 10,
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span
-                  style={{
-                    display: 'inline-block',
-                    width: 7,
-                    height: 7,
-                    borderRadius: '50%',
-                    background: '#10b981',
-                    boxShadow: '0 0 6px rgba(16, 185, 129, 0.4)',
-                  }}
-                />
-                <span style={{ fontSize: 11, fontWeight: 600, color: '#0f172a' }}>
-                  Hệ thống Quản trị
-                </span>
-              </div>
-              <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
-                Đồng bộ kho: Thời gian thực
-              </div>
-            </div>
-          )}
         </Sider>
 
-        {/* Main Layout */}
-        <Layout style={{ background: '#f8fafc' }}>
+        {/* Main Layout Area */}
+        <Layout style={{ background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
           {/* Header */}
           <Header
             style={{
@@ -346,9 +290,11 @@ export const AdminLayout: React.FC = () => {
               height: 64,
             }}
           >
+            {/* Left Header: Collapse Toggle & Breadcrumb */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <Button
                 type="text"
+                aria-label="toggle collapse"
                 icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                 onClick={() => setCollapsed(!collapsed)}
                 style={{
@@ -363,8 +309,8 @@ export const AdminLayout: React.FC = () => {
                 items={[
                   {
                     title: (
-                      <Link to="/admin" style={{ color: '#64748b' }}>
-                        Admin
+                      <Link to="/staff" style={{ color: '#64748b' }}>
+                        Staff
                       </Link>
                     ),
                   },
@@ -379,12 +325,28 @@ export const AdminLayout: React.FC = () => {
               />
             </div>
 
-            {/* Right Header System Metrics & Profile */}
+            {/* Center/Right Header: Quick Search, Online Pill, Storefront, Role Tag, Profile */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              {/* System status pill */}
+              {/* Quick Search Input */}
+              <Input
+                placeholder="Tìm nhanh Mã đơn, IMEI, SĐT khách..."
+                prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleQuickSearch();
+                  }
+                }}
+                onPressEnter={handleQuickSearch}
+                style={{ width: 280, borderRadius: 8 }}
+                allowClear
+              />
+
+              {/* Online status pill */}
               <div
                 style={{
-                  display: 'none',
+                  display: 'flex',
                   alignItems: 'center',
                   gap: 6,
                   padding: '4px 10px',
@@ -395,12 +357,12 @@ export const AdminLayout: React.FC = () => {
                   color: '#059669',
                   fontWeight: 600,
                 }}
-                className="sm:flex"
               >
                 <ThunderboltOutlined style={{ fontSize: 12, color: '#059669' }} />
-                <span>Hệ thống trực tuyến 100%</span>
+                <span>Trực tuyến</span>
               </div>
 
+              {/* Storefront button */}
               <Link to="/">
                 <Button
                   icon={<ShopOutlined />}
@@ -417,22 +379,24 @@ export const AdminLayout: React.FC = () => {
                 </Button>
               </Link>
 
+              {/* Role Tag */}
               <Tag
                 style={{
                   margin: 0,
                   fontWeight: 700,
                   fontSize: 10,
                   letterSpacing: 0.5,
-                  background: '#eff6ff',
-                  borderColor: '#bfdbfe',
-                  color: '#2563eb',
+                  background: '#eef2ff',
+                  borderColor: '#c7d2fe',
+                  color: '#4338ca',
                   padding: '2px 8px',
                   borderRadius: 6,
                 }}
               >
-                {user?.role || 'ADMIN'}
+                NHÂN VIÊN VẬN HÀNH
               </Tag>
 
+              {/* Avatar Dropdown */}
               <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" arrow>
                 <div
                   style={{
@@ -448,14 +412,14 @@ export const AdminLayout: React.FC = () => {
                   <Avatar
                     src={user?.avatar || (user as any)?.avatarUrl}
                     style={{
-                      backgroundColor: '#2563eb',
+                      backgroundColor: '#4f46e5',
                       color: '#ffffff',
                       fontWeight: 'bold',
-                      boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+                      boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)',
                     }}
                     icon={!(user?.avatar || (user as any)?.avatarUrl) && <UserOutlined />}
                   >
-                    {!(user?.avatar || (user as any)?.avatarUrl) && (user?.fullName?.charAt(0) || 'A')}
+                    {!(user?.avatar || (user as any)?.avatarUrl) && (user?.fullName?.charAt(0) || 'S')}
                   </Avatar>
                   <span
                     style={{
@@ -464,7 +428,7 @@ export const AdminLayout: React.FC = () => {
                       color: '#0f172a',
                     }}
                   >
-                    {user?.fullName || 'Quản trị viên'}
+                    {user?.fullName || 'Nhân viên'}
                   </span>
                 </div>
               </Dropdown>
@@ -478,12 +442,43 @@ export const AdminLayout: React.FC = () => {
               padding: 0,
               minHeight: 280,
               background: 'transparent',
+              flex: 1,
             }}
           >
             <Outlet />
           </Content>
+
+          {/* Footer */}
+          <Footer
+            style={{
+              textAlign: 'center',
+              background: '#ffffff',
+              borderTop: '1px solid #e2e8f0',
+              padding: '14px 24px',
+              fontSize: 12,
+              color: '#64748b',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: '#10b981',
+                boxShadow: '0 0 6px rgba(16, 185, 129, 0.5)',
+              }}
+            />
+            <span>Ca trực Vận hành - Đồng bộ đơn hàng: Thời gian thực</span>
+          </Footer>
         </Layout>
       </Layout>
     </ConfigProvider>
   );
 };
+
+export default StaffLayout;

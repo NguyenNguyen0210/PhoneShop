@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 // Layouts
 import { StorefrontLayout } from '../layouts/StorefrontLayout';
 import { AdminLayout } from '../layouts/AdminLayout';
+import { StaffLayout } from '../layouts/StaffLayout';
 
 // Storefront Pages
 import { HomePage } from '../pages/storefront/Home/HomePage';
@@ -45,8 +46,15 @@ import { AdminAuditLogsPage } from '../pages/Admin/AuditLogs/AdminAuditLogsPage'
 import { AdminSettingsPage } from '../pages/Admin/Settings/AdminSettingsPage';
 import { AdminPromotionsPage } from '../pages/Admin/Promotions/AdminPromotionsPage';
 
+// Staff Operational Pages
+import { StaffDashboardPage } from '../pages/Staff/Dashboard/StaffDashboardPage';
+import { StaffCustomersPage } from '../pages/Staff/Customers/StaffCustomersPage';
+import { StaffCustomer360Page } from '../pages/Staff/Customers/StaffCustomer360Page';
+import { StaffInventoryPage } from '../pages/Staff/Inventory/StaffInventoryPage';
+
 // Route Guards
 import { AdminRoute } from './AdminRoute';
+import { StaffRoute } from './StaffRoute';
 import { ProtectedRoute } from './ProtectedRoute';
 import { RoleGuard } from './RoleGuard';
 import { ROLES } from '../types';
@@ -190,6 +198,23 @@ export const AppRoutes: React.FC = () => {
           />
           <Route path="/admin/tickets" element={<AdminTicketsPage />} />
           <Route path="/admin/tickets/:id" element={<AdminTicketDetailPage />} />
+        </Route>
+      </Route>
+
+      {/* Staff Operational Portal Routes (Protected) */}
+      <Route element={<StaffRoute />}>
+        <Route element={<StaffLayout />}>
+          <Route path="/staff" element={<StaffDashboardPage />} />
+          <Route path="/staff/orders" element={<AdminOrdersPage />} />
+          <Route path="/staff/inventory" element={<StaffInventoryPage />} />
+          <Route path="/staff/imei" element={<Navigate to="/staff/inventory?tab=imei" replace />} />
+          <Route path="/staff/tickets" element={<AdminTicketsPage />} />
+          <Route path="/staff/tickets/:id" element={<AdminTicketDetailPage />} />
+          <Route path="/staff/returns" element={<AdminReturnsPage />} />
+          <Route path="/staff/installments" element={<AdminInstallmentsPage />} />
+          <Route path="/staff/reviews" element={<AdminReviewsPage />} />
+          <Route path="/staff/customers" element={<StaffCustomersPage />} />
+          <Route path="/staff/customers/:id" element={<StaffCustomer360Page />} />
         </Route>
       </Route>
 

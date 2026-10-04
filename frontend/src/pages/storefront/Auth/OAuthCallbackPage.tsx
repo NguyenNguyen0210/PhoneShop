@@ -52,7 +52,9 @@ export const OAuthCallbackPage: React.FC = () => {
         const user = await loginWithGoogle(code, returnedState);
         setStatus('success');
         setTimeout(() => {
-          if (user.role === 'ADMIN' || user.role === 'STAFF' || user.role === 'MANAGER') {
+          if (user.role === 'STAFF') {
+            navigate('/staff');
+          } else if (user.role === 'ADMIN' || user.role === 'MANAGER') {
             navigate('/admin');
           } else {
             navigate('/');
