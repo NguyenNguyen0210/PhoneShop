@@ -9,7 +9,6 @@ import {
   Truck,
   CheckCircle2,
   ChevronLeft,
-  AlertCircle,
   Loader2,
   Sparkles,
   Building2,
@@ -27,6 +26,7 @@ import {
   calculateShippingFee,
 } from '../../../components/storefront/checkout/ShippingMethodSelector';
 import { CheckoutCouponSection } from '../../../components/storefront/checkout/CheckoutCouponSection';
+import { notifyError } from '../../../utils/notify';
 import type { PaymentMethod, InstallmentFormData, Address, ShippingMethod } from '../../../types';
 
 export const CheckoutPage: React.FC = () => {
@@ -71,7 +71,6 @@ export const CheckoutPage: React.FC = () => {
   const [installmentErrors, setInstallmentErrors] = useState<Record<string, string>>({});
 
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
 
   // Voucher State
   const [appliedVoucher, setAppliedVoucher] = useState<any>(() => {
@@ -174,23 +173,22 @@ export const CheckoutPage: React.FC = () => {
 
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage('');
 
     if (!customerName.trim()) {
-      setErrorMessage('Vui lòng nhập họ và tên người nhận.');
+      notifyError('Vui lòng nhập họ và tên người nhận.');
       return;
     }
     if (!shippingPhone.trim() || shippingPhone.trim().length < 9) {
-      setErrorMessage('Vui lòng nhập số điện thoại hợp lệ để giao hàng.');
+      notifyError('Vui lòng nhập số điện thoại hợp lệ để giao hàng.');
       return;
     }
     if (!shippingAddress.trim()) {
-      setErrorMessage('Vui lòng nhập địa chỉ nhận hàng chi tiết.');
+      notifyError('Vui lòng nhập địa chỉ nhận hàng chi tiết.');
       return;
     }
 
     if (secondsRemaining <= 0) {
-      setErrorMessage('Đơn này đã hết thời gian giữ. Bạn quay lại giỏ hàng để đặt lại giúp shop nhé.');
+      notifyError('Đơn này đã hết thời gian giữ. Bạn quay lại giỏ hàng để đặt lại giúp shop nhé.');
       return;
     }
 
@@ -235,7 +233,7 @@ export const CheckoutPage: React.FC = () => {
 
       if (Object.keys(fieldErrors).length > 0) {
         setInstallmentErrors(fieldErrors);
-        setErrorMessage('Vui lòng kiểm tra lại thông tin hồ sơ trả góp còn thiếu hoặc chưa hợp lệ.');
+        notifyError('Vui lòng kiểm tra lại thông tin hồ sơ trả góp còn thiếu hoặc chưa hợp lệ.');
         return;
       }
       setInstallmentErrors({});
@@ -289,13 +287,7 @@ export const CheckoutPage: React.FC = () => {
 
       navigate(`/order-success/${orderId}`);
     } catch (err: any) {
-      const errorMsg =
-        err.response?.data?.message ||
-        err.message ||
-        'Đặt hàng thất bại. Vui lòng thử lại!';
-      setErrorMessage(
-        Array.isArray(errorMsg) ? errorMsg.join(', ') : errorMsg
-      );
+      notifyError(err, 'Đặt hàng thất bại. Vui lòng thử lại!');
     } finally {
       setLoading(false);
     }
@@ -425,16 +417,6 @@ export const CheckoutPage: React.FC = () => {
                     </button>
                   )}
                 </div>
-
-                {errorMessage && (
-                  <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-start gap-3 shadow-xs">
-                    <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <span className="font-bold text-sm block mb-0.5 text-rose-900">Đặt hàng không thành công</span>
-                      <span>{errorMessage}</span>
-                    </div>
-                  </div>
-                )}
 
                 {selectedAddress && !useManualAddress ? (
                   <div className="space-y-4">

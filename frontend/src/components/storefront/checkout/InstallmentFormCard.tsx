@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { InstallmentFormData, InstallmentProvider } from '../../../types';
 import { apiClient } from '../../../services/apiClient';
+import { notifyError } from '../../../utils/notify';
 
 interface InstallmentFormCardProps {
   totalAmount: number;
@@ -35,7 +36,6 @@ export const InstallmentFormCard: React.FC<InstallmentFormCardProps> = ({
 
   const [uploadingFront, setUploadingFront] = useState(false);
   const [uploadingBack, setUploadingBack] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
@@ -93,12 +93,11 @@ export const InstallmentFormCard: React.FC<InstallmentFormCardProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingFront(true);
-    setUploadError(null);
     try {
       const url = await uploadFile(file);
       handleFieldChange('cccdFrontUrl', url);
     } catch (err: any) {
-      setUploadError(err.message || 'Lỗi tải ảnh mặt trước CCCD');
+      notifyError(err, 'Lỗi tải ảnh mặt trước CCCD');
     } finally {
       setUploadingFront(false);
       if (frontInputRef.current) frontInputRef.current.value = '';
@@ -109,12 +108,11 @@ export const InstallmentFormCard: React.FC<InstallmentFormCardProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingBack(true);
-    setUploadError(null);
     try {
       const url = await uploadFile(file);
       handleFieldChange('cccdBackUrl', url);
     } catch (err: any) {
-      setUploadError(err.message || 'Lỗi tải ảnh mặt sau CCCD');
+      notifyError(err, 'Lỗi tải ảnh mặt sau CCCD');
     } finally {
       setUploadingBack(false);
       if (backInputRef.current) backInputRef.current.value = '';
@@ -453,13 +451,6 @@ export const InstallmentFormCard: React.FC<InstallmentFormCardProps> = ({
           </div>
           <span className="text-[11px] text-slate-500">Tối đa 5MB • JPG, PNG, WebP</span>
         </div>
-
-        {uploadError && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>{uploadError}</span>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Mặt trước CCCD */}

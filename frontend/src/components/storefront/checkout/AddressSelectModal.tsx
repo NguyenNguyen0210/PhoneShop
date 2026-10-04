@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { Address, CreateAddressPayload } from '../../../types';
 import { addressService } from '../../../services/addressService';
+import { notifyError } from '../../../utils/notify';
 
 export interface AddressSelectModalProps {
   isOpen: boolean;
@@ -26,13 +27,11 @@ export const AddressSelectModal: React.FC<AddressSelectModalProps> = ({
 }) => {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | undefined>(selectedAddressId);
 
   // Toggle inline create form
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   // Form field state
   const [recipientName, setRecipientName] = useState('');
@@ -55,12 +54,10 @@ export const AddressSelectModal: React.FC<AddressSelectModalProps> = ({
     setAddressType('HOME');
     setIsDefault(false);
     setFieldErrors({});
-    setFormError(null);
   }, []);
 
   const loadAddresses = useCallback(async () => {
     setIsLoading(true);
-    setLoadError(null);
     try {
       const data = await addressService.getAddresses();
       setAddresses(data);
@@ -73,8 +70,8 @@ export const AddressSelectModal: React.FC<AddressSelectModalProps> = ({
           setActiveId(defaultAddr.id);
         }
       }
-    } catch {
-      setLoadError('Không thể tải danh sách địa chỉ. Vui lòng thử lại sau.');
+    } catch (err) {
+      notifyError(err, 'Không thể tải danh sách địa chỉ. Vui lòng thử lại sau.');
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +130,6 @@ export const AddressSelectModal: React.FC<AddressSelectModalProps> = ({
     if (!validateForm()) return;
 
     setIsSubmitting(true);
-    setFormError(null);
 
     const payload: CreateAddressPayload = {
       recipientName: recipientName.trim(),
@@ -160,9 +156,7 @@ export const AddressSelectModal: React.FC<AddressSelectModalProps> = ({
       resetForm();
       onClose();
     } catch (err: any) {
-      const message =
-        err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi tạo địa chỉ';
-      setFormError(Array.isArray(message) ? message.join(', ') : message);
+      notifyError(err, 'Có lỗi xảy ra khi tạo địa chỉ');
     } finally {
       setIsSubmitting(false);
     }
@@ -233,25 +227,9 @@ export const AddressSelectModal: React.FC<AddressSelectModalProps> = ({
               <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto" />
               <p className="text-sm text-slate-500 font-medium">Đang tải danh sách địa chỉ...</p>
             </div>
-          ) : loadError ? (
-            <div className="py-12 text-center space-y-3">
-              <p className="text-sm text-rose-600">{loadError}</p>
-              <button
-                type="button"
-                onClick={loadAddresses}
-                className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 transition cursor-pointer"
-              >
-                Thử lại
-              </button>
-            </div>
           ) : isAddingNew ? (
             /* Inline Create Address Form */
             <form onSubmit={handleCreateAddress} className="space-y-4">
-              {formError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl">
-                  {formError}
-                </div>
-              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>

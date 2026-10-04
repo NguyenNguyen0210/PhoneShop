@@ -14,7 +14,6 @@ import {
   Sparkles,
   Lock,
   RefreshCw,
-  AlertCircle,
   X,
 } from 'lucide-react';
 import { useCartStore } from '../../../stores/useCartStore';
@@ -24,6 +23,7 @@ import { productService } from '../../../services/productService';
 import type { Product, FlashSaleCampaign } from '../../../types';
 import { resolveColorHex } from '../../../utils/colorHelper';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
+import { notifyError } from '../../../utils/notify';
 
 export const CartPage: React.FC = () => {
   const navigate = useNavigate();
@@ -51,7 +51,6 @@ export const CartPage: React.FC = () => {
     discount: number;
     description: string;
   } | null>(null);
-  const [voucherError, setVoucherError] = useState('');
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [suggestedProducts, setSuggestedProducts] = useState<Product[]>([]);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -129,16 +128,15 @@ export const CartPage: React.FC = () => {
 
   const handleApplyVoucher = async (e?: React.FormEvent, directCode?: string) => {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
-    setVoucherError('');
     const code = (directCode || voucherCode).trim().toUpperCase();
 
     if (!code) {
-      setVoucherError('Vui lòng nhập mã giảm giá.');
+      notifyError('Vui lòng nhập mã giảm giá.');
       return;
     }
 
     if (subtotal === 0) {
-      setVoucherError('Giỏ hàng trống hoặc chưa chọn sản phẩm. Vui lòng chọn sản phẩm trước khi áp dụng mã.');
+      notifyError('Giỏ hàng trống hoặc chưa chọn sản phẩm. Vui lòng chọn sản phẩm trước khi áp dụng mã.');
       return;
     }
 
@@ -156,11 +154,7 @@ export const CartPage: React.FC = () => {
         sessionStorage.setItem('phoneshop_voucher', JSON.stringify(voucherData));
       }
     } catch (err: any) {
-      const msg =
-        err.response?.data?.message ||
-        err.message ||
-        'Mã giảm giá không hợp lệ hoặc không đủ điều kiện đơn hàng tối thiểu.';
-      setVoucherError(Array.isArray(msg) ? msg.join(', ') : msg);
+      notifyError(err, 'Mã giảm giá không hợp lệ hoặc không đủ điều kiện đơn hàng tối thiểu.');
     } finally {
       setVoucherLoading(false);
     }
@@ -169,7 +163,6 @@ export const CartPage: React.FC = () => {
   const handleRemoveVoucher = () => {
     setAppliedVoucher(null);
     setVoucherCode('');
-    setVoucherError('');
     sessionStorage.removeItem('phoneshop_voucher');
   };
 
@@ -716,14 +709,6 @@ export const CartPage: React.FC = () => {
                   {voucherLoading ? 'Đang kiểm tra...' : 'Áp dụng'}
                 </button>
               </form>
-
-              {/* Error Message */}
-              {voucherError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-xs text-rose-700">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
-                  <span>{voucherError}</span>
-                </div>
-              )}
 
               {/* Applied Voucher Card */}
               {appliedVoucher && (
