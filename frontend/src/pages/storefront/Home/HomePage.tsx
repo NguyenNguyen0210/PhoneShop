@@ -542,7 +542,14 @@ export const HomePage: React.FC = () => {
           </div>
 
           {/* Integrated Segmented Brand Filter Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none pt-1">
+          <div
+            className="flex items-center gap-2 overflow-x-auto pb-3 pt-1 scroll-smooth"
+            onWheel={(e) => {
+              if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
+                e.currentTarget.scrollLeft += e.deltaY;
+              }
+            }}
+          >
             <button
               type="button"
               onClick={() => handleSelectBrand('all')}
