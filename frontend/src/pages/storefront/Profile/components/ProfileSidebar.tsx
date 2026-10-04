@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import {
   User as UserIcon,
   Package,
@@ -8,6 +9,7 @@ import {
   Lock,
   LogOut,
   ShieldCheck,
+  LayoutDashboard,
 } from 'lucide-react';
 import type { User } from '../../../../types';
 
@@ -42,41 +44,64 @@ export const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
   const avatarSrc = user.avatar || user.avatarUrl;
   const initial = (user.fullName || user.email || 'U').trim().charAt(0).toUpperCase();
 
-  const navItems: NavItem[] = [
-    {
-      key: 'profile',
-      label: 'Hồ sơ cá nhân',
-      icon: UserIcon,
-    },
-    {
-      key: 'orders',
-      label: 'Đơn hàng của tôi',
-      icon: Package,
-      badge: orderCount,
-    },
-    {
-      key: 'addresses',
-      label: 'Sổ địa chỉ',
-      icon: MapPin,
-      badge: addressCount,
-    },
-    {
-      key: 'returns',
-      label: 'Đổi trả & Hoàn tiền',
-      icon: RotateCcw,
-      badge: returnCount,
-    },
-    {
-      key: 'tickets',
-      label: 'Khiếu nại (CSKH)',
-      icon: Headphones,
-    },
-    {
-      key: 'password',
-      label: 'Đổi mật khẩu',
-      icon: Lock,
-    },
-  ];
+  const role = user.role || (user as any).roles?.[0];
+  const roles: string[] = Array.isArray((user as any).roles) ? (user as any).roles : [];
+  const isAdminOrManager =
+    role === 'ADMIN' ||
+    role === 'MANAGER' ||
+    roles.includes('ADMIN') ||
+    roles.includes('MANAGER');
+  const isStaff = role === 'STAFF' || roles.includes('STAFF');
+  const isInternalStaff = isAdminOrManager || isStaff;
+
+  const navItems: NavItem[] = isInternalStaff
+    ? [
+        {
+          key: 'profile',
+          label: 'Hồ sơ cá nhân',
+          icon: UserIcon,
+        },
+        {
+          key: 'password',
+          label: 'Đổi mật khẩu',
+          icon: Lock,
+        },
+      ]
+    : [
+        {
+          key: 'profile',
+          label: 'Hồ sơ cá nhân',
+          icon: UserIcon,
+        },
+        {
+          key: 'orders',
+          label: 'Đơn hàng của tôi',
+          icon: Package,
+          badge: orderCount,
+        },
+        {
+          key: 'addresses',
+          label: 'Sổ địa chỉ',
+          icon: MapPin,
+          badge: addressCount,
+        },
+        {
+          key: 'returns',
+          label: 'Đổi trả & Hoàn tiền',
+          icon: RotateCcw,
+          badge: returnCount,
+        },
+        {
+          key: 'tickets',
+          label: 'Khiếu nại (CSKH)',
+          icon: Headphones,
+        },
+        {
+          key: 'password',
+          label: 'Đổi mật khẩu',
+          icon: Lock,
+        },
+      ];
 
   return (
     <aside className="w-full bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 flex flex-col gap-5">
@@ -101,15 +126,57 @@ export const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
           <h2 className="font-bold text-slate-900 text-base leading-snug truncate" title={user.fullName}>
             {user.fullName || 'Tài khoản của tôi'}
           </h2>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mt-1 bg-amber-50 text-amber-700 border border-amber-200/80 rounded-full text-xs font-medium">
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-            <span className="truncate">Thành viên thân thiết</span>
-          </div>
+          {isAdminOrManager ? (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mt-1 bg-purple-50 text-purple-700 border border-purple-200/80 rounded-full text-xs font-bold">
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+              <span className="truncate">Quản trị viên Hệ thống</span>
+            </div>
+          ) : isStaff ? (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mt-1 bg-indigo-50 text-indigo-700 border border-indigo-200/80 rounded-full text-xs font-bold">
+              <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span className="truncate">Nhân viên Vận hành</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mt-1 bg-amber-50 text-amber-700 border border-amber-200/80 rounded-full text-xs font-medium">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span className="truncate">Thành viên thân thiết</span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* 2. Navigation Menu */}
       <nav className="flex flex-col gap-1" aria-label="Menu tài khoản">
+        {isAdminOrManager && (
+          <Link
+            to="/admin"
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-sm font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/80 group mb-1 shadow-2xs"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <LayoutDashboard className="w-5 h-5 text-purple-600 shrink-0" />
+              <span className="truncate">Về Trang Quản Trị</span>
+            </div>
+            <span className="text-[10px] uppercase font-extrabold tracking-wider bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">
+              Admin
+            </span>
+          </Link>
+        )}
+
+        {isStaff && (
+          <Link
+            to="/staff"
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-sm font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/80 group mb-1 shadow-2xs"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <LayoutDashboard className="w-5 h-5 text-indigo-600 shrink-0" />
+              <span className="truncate">Về Cổng Vận Hành</span>
+            </div>
+            <span className="text-[10px] uppercase font-extrabold tracking-wider bg-indigo-200 text-indigo-800 px-1.5 py-0.5 rounded">
+              Staff
+            </span>
+          </Link>
+        )}
+
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.key;

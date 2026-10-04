@@ -35,19 +35,32 @@ export const ProfilePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
 
+  const role = user?.role || (user as any)?.roles?.[0];
+  const roles: string[] = Array.isArray((user as any)?.roles) ? (user as any).roles : [];
+  const isAdminOrManager =
+    role === 'ADMIN' ||
+    role === 'MANAGER' ||
+    roles.includes('ADMIN') ||
+    roles.includes('MANAGER');
+  const isStaff = role === 'STAFF' || roles.includes('STAFF');
+  const isInternalStaff = isAdminOrManager || isStaff;
+
   const getInitialTab = (): ProfileTabKey => {
     const queryTab = searchParams.get('tab') as ProfileTabKey | null;
-    if (
-      queryTab &&
-      ['profile', 'orders', 'addresses', 'returns', 'tickets', 'password'].includes(queryTab)
-    ) {
+    const allowedTabs: ProfileTabKey[] = isInternalStaff
+      ? ['profile', 'password']
+      : ['profile', 'orders', 'addresses', 'returns', 'tickets', 'password'];
+
+    if (queryTab && allowedTabs.includes(queryTab)) {
       return queryTab;
     }
-    if (location.pathname === '/orders' || location.hash === '#orders') return 'orders';
+    if (!isInternalStaff) {
+      if (location.pathname === '/orders' || location.hash === '#orders') return 'orders';
+      if (location.hash === '#returns') return 'returns';
+      if (location.hash === '#tickets' || location.search.includes('tab=tickets')) return 'tickets';
+      if (location.hash === '#addresses') return 'addresses';
+    }
     if (location.hash === '#password' || location.hash === '#change-password') return 'password';
-    if (location.hash === '#returns') return 'returns';
-    if (location.hash === '#tickets' || location.search.includes('tab=tickets')) return 'tickets';
-    if (location.hash === '#addresses') return 'addresses';
     return 'profile';
   };
 
@@ -55,9 +68,9 @@ export const ProfilePage: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState(() => Boolean(user));
+  const [loadingOrders, setLoadingOrders] = useState(() => Boolean(user && !isInternalStaff));
   const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
-  const [loadingReturns, setLoadingReturns] = useState(() => Boolean(user));
+  const [loadingReturns, setLoadingReturns] = useState(() => Boolean(user && !isInternalStaff));
   const [addressCount, setAddressCount] = useState<number>(0);
   const [cancellingOrder, setCancellingOrder] = useState<Order | null>(null);
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
@@ -66,9 +79,14 @@ export const ProfilePage: React.FC = () => {
   useEffect(() => {
     const tab = getInitialTab();
     setActiveTab(tab);
-  }, [searchParams, location.pathname, location.hash]);
+  }, [searchParams, location.pathname, location.hash, isInternalStaff]);
 
   const handleTabChange = (newTab: ProfileTabKey) => {
+    if (isInternalStaff && !['profile', 'password'].includes(newTab)) {
+      setActiveTab('profile');
+      setSearchParams({ tab: 'profile' });
+      return;
+    }
     setActiveTab(newTab);
     setSearchParams({ tab: newTab });
   };
@@ -78,7 +96,7 @@ export const ProfilePage: React.FC = () => {
   }, [fetchProfile]);
 
   const fetchReturns = () => {
-    if (!user) return;
+    if (!user || isInternalStaff) return;
     setLoadingReturns(true);
     returnService
       .getMyReturns()
@@ -89,11 +107,11 @@ export const ProfilePage: React.FC = () => {
 
   useEffect(() => {
     fetchReturns();
-  }, [user]);
+  }, [user, isInternalStaff]);
 
   useEffect(() => {
     let isMounted = true;
-    if (user) {
+    if (user && !isInternalStaff) {
       orderService
         .getMyOrders()
         .then((data) => {
@@ -105,11 +123,13 @@ export const ProfilePage: React.FC = () => {
         .finally(() => {
           if (isMounted) setLoadingOrders(false);
         });
+    } else {
+      setLoadingOrders(false);
     }
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [user, isInternalStaff]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -192,7 +212,9 @@ export const ProfilePage: React.FC = () => {
               Quản lý tài khoản
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Trung tâm quản lý thông tin cá nhân, đơn hàng, sổ địa chỉ và bảo mật
+              {isInternalStaff
+                ? 'Trung tâm quản lý thông tin cá nhân và bảo mật tài khoản nhân sự'
+                : 'Trung tâm quản lý thông tin cá nhân, đơn hàng, sổ địa chỉ và bảo mật'}
             </p>
           </div>
         </div>
@@ -307,11 +329,21 @@ export const ProfilePage: React.FC = () => {
                       <p className="text-xs text-slate-500 font-medium">
                         Định dạng hỗ trợ: PNG, JPG, WEBP. Dung lượng tối đa: 5MB.
                       </p>
-                      <div className="pt-1">
+                      <div className="pt-1 flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
                           <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
                           <span>Tài khoản đã xác thực</span>
                         </span>
+                        {isAdminOrManager && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200 uppercase">
+                            Admin
+                          </span>
+                        )}
+                        {isStaff && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200 uppercase">
+                            Staff
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -361,7 +393,7 @@ export const ProfilePage: React.FC = () => {
               )}
 
               {/* TAB 2: Orders */}
-              {activeTab === 'orders' && (
+              {!isInternalStaff && activeTab === 'orders' && (
                 <OrdersTab
                   orders={orders}
                   loading={loadingOrders}
@@ -370,12 +402,12 @@ export const ProfilePage: React.FC = () => {
               )}
 
               {/* TAB 3: Addresses */}
-              {activeTab === 'addresses' && (
+              {!isInternalStaff && activeTab === 'addresses' && (
                 <AddressesTab onAddressesLoaded={(count) => setAddressCount(count)} />
               )}
 
               {/* TAB 4: Returns & Refunds */}
-              {activeTab === 'returns' && (
+              {!isInternalStaff && activeTab === 'returns' && (
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200">
                     <div>
@@ -437,7 +469,7 @@ export const ProfilePage: React.FC = () => {
               )}
 
               {/* TAB 5: Support Tickets (CSKH) */}
-              {activeTab === 'tickets' && (
+              {!isInternalStaff && activeTab === 'tickets' && (
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 pb-4 border-b border-slate-200">
                     <Headphones className="w-5 h-5 text-blue-600" />

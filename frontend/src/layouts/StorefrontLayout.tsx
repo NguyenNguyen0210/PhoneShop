@@ -4,8 +4,12 @@ import { Navbar } from '../components/common/Navbar';
 import { Footer } from '../components/common/Footer';
 import { CartDrawer } from '../components/storefront/CartDrawer';
 import { LiveSupportChatWidget } from '../components/storefront/LiveSupportChatWidget';
+import { useAuthStore } from '../stores/useAuthStore';
 
 export const StorefrontLayout: React.FC = () => {
+  const { isStaffOrAdmin } = useAuthStore();
+  const hideCustomerWidgets = isStaffOrAdmin();
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col selection:bg-blue-500/20 selection:text-blue-900">
       {/* Global Floating Clean Light Navbar */}
@@ -16,11 +20,11 @@ export const StorefrontLayout: React.FC = () => {
         <Outlet />
       </main>
 
-      {/* Slide-over Cart Drawer */}
-      <CartDrawer />
+      {/* Slide-over Cart Drawer (Customer only) */}
+      {!hideCustomerWidgets && <CartDrawer />}
 
-      {/* Live Support Chat Widget */}
-      <LiveSupportChatWidget />
+      {/* Live Support Chat Widget (Customer only) */}
+      {!hideCustomerWidgets && <LiveSupportChatWidget />}
 
       {/* Clean Light Architecture Footer */}
       <Footer />

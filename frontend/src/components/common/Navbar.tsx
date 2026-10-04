@@ -226,37 +226,41 @@ export const Navbar: React.FC = () => {
                 <span>Tra cứu bảo hành</span>
               </Link>
 
-              {/* Wishlist Link */}
-              <Link
-                to="/wishlist"
-                className="relative p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-rose-600 rounded-xl transition cursor-pointer shadow-2xs group"
-                aria-label="Sản phẩm yêu thích"
-                title="Sản phẩm yêu thích"
-              >
-                <Heart className="w-5 h-5 group-hover:scale-105 transition-transform" />
-                {wishlistCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-rose-500 text-white font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-in zoom-in-75">
-                    {wishlistCount}
-                  </span>
-                )}
-              </Link>
+              {/* Wishlist Link (Customers only) */}
+              {!isStaffOrAdmin() && (
+                <Link
+                  to="/wishlist"
+                  className="relative p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-rose-600 rounded-xl transition cursor-pointer shadow-2xs group"
+                  aria-label="Sản phẩm yêu thích"
+                  title="Sản phẩm yêu thích"
+                >
+                  <Heart className="w-5 h-5 group-hover:scale-105 transition-transform" />
+                  {wishlistCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-in zoom-in-75">
+                      {wishlistCount}
+                    </span>
+                  )}
+                </Link>
+              )}
 
               {/* Notification Dropdown (Desktop, Logged-in only) */}
               {user && <NotificationDropdown />}
 
-              {/* Cart Page Direct Link */}
-              <Link
-                to="/cart"
-                className="relative p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-xl transition cursor-pointer shadow-2xs"
-                aria-label="Giỏ hàng"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                {totalCount() > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-blue-600 text-white font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-xs">
-                    {totalCount()}
-                  </span>
-                )}
-              </Link>
+              {/* Cart Page Direct Link (Customers only) */}
+              {!isStaffOrAdmin() && (
+                <Link
+                  to="/cart"
+                  className="relative p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-xl transition cursor-pointer shadow-2xs"
+                  aria-label="Giỏ hàng"
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                  {totalCount() > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-blue-600 text-white font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                      {totalCount()}
+                    </span>
+                  )}
+                </Link>
+              )}
 
               {/* User Authentication Menu */}
               {user ? (
@@ -540,18 +544,20 @@ export const Navbar: React.FC = () => {
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 <span>Tra cứu bảo hành</span>
               </Link>
-              <Link
-                to="/cart"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition flex items-center justify-between"
-              >
-                <span>🛒 Giỏ hàng</span>
-                {totalCount() > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px]">
-                    {totalCount()}
-                  </span>
-                )}
-              </Link>
+              {!isStaffOrAdmin() && (
+                <Link
+                  to="/cart"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition flex items-center justify-between"
+                >
+                  <span>🛒 Giỏ hàng</span>
+                  {totalCount() > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px]">
+                      {totalCount()}
+                    </span>
+                  )}
+                </Link>
+              )}
               {!user && (
                 <Link
                   to="/wishlist"
