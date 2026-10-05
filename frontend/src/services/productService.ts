@@ -63,6 +63,14 @@ export const normalizeProduct = (p: any): Product => {
   const variants = Array.isArray(p.variants)
     ? p.variants.map((v: any) => ({
         ...v,
+        // Backend Prisma Decimal may arrive as string in JSON — coerce here
+        // (boundary) so every consumer (filters, sort, cards) sees numbers.
+        price:
+          v.price !== null && v.price !== undefined ? Number(v.price) : v.price,
+        compareAtPrice:
+          v.compareAtPrice !== null && v.compareAtPrice !== undefined
+            ? Number(v.compareAtPrice)
+            : v.compareAtPrice,
         imageUrl: v.imageUrl || thumb,
         images: Array.isArray(v.images) && v.images.length > 0 ? v.images : [v.imageUrl || thumb],
       }))
