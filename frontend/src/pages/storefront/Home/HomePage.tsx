@@ -280,12 +280,24 @@ export const HomePage: React.FC = () => {
     });
   };
 
+  const toPriceNumber = (val: unknown): number | null => {
+    if (val === null || val === undefined) return null;
+    const n = typeof val === 'number' ? val : Number(val);
+    return typeof n === 'number' && !isNaN(n) ? n : null;
+  };
+
   const getMinVariantPrice = (p: Product): number => {
     if (!p.variants || p.variants.length === 0) return 0;
     const prices = p.variants
-      .map((v) => v.price)
-      .filter((pr) => typeof pr === 'number' && !isNaN(pr));
+      .map((v) => toPriceNumber(v.price))
+      .filter((pr): pr is number => pr !== null);
     return prices.length > 0 ? Math.min(...prices) : 0;
+  };
+
+  const isVariantOnSale = (v: { price?: unknown; compareAtPrice?: unknown }): boolean => {
+    const price = toPriceNumber(v.price);
+    const compareAt = toPriceNumber(v.compareAtPrice);
+    return price !== null && compareAt !== null && compareAt > price;
   };
 
   const matchesScreen = (screenSize?: number, ranges?: string[]): boolean => {
@@ -419,9 +431,7 @@ export const HomePage: React.FC = () => {
 
       // On sale only filter
       if (onSaleOnly) {
-        const onSale = p.variants?.some(
-          (v) => typeof v.compareAtPrice === 'number' && v.compareAtPrice > v.price
-        );
+        const onSale = p.variants?.some((v) => isVariantOnSale(v));
         if (!onSale) return false;
       }
 
@@ -452,14 +462,18 @@ export const HomePage: React.FC = () => {
     } else if (sortBy === 'top-discount') {
       filtered.sort((a, b) => {
         const discountA = a.variants?.reduce((max, v) => {
-          if (typeof v.compareAtPrice === 'number' && v.compareAtPrice > v.price) {
-            return Math.max(max, (v.compareAtPrice - v.price) / v.compareAtPrice);
+          const price = toPriceNumber(v.price);
+          const compareAt = toPriceNumber(v.compareAtPrice);
+          if (price !== null && compareAt !== null && compareAt > price) {
+            return Math.max(max, (compareAt - price) / compareAt);
           }
           return max;
         }, 0) || 0;
         const discountB = b.variants?.reduce((max, v) => {
-          if (typeof v.compareAtPrice === 'number' && v.compareAtPrice > v.price) {
-            return Math.max(max, (v.compareAtPrice - v.price) / v.compareAtPrice);
+          const price = toPriceNumber(v.price);
+          const compareAt = toPriceNumber(v.compareAtPrice);
+          if (price !== null && compareAt !== null && compareAt > price) {
+            return Math.max(max, (compareAt - price) / compareAt);
           }
           return max;
         }, 0) || 0;

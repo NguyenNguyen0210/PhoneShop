@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act } from '@testing-library/react';
-import { MemoryRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ScrollToTop } from '../ScrollToTop';
 
 describe('ScrollToTop component', () => {
@@ -144,5 +144,90 @@ describe('ScrollToTop component', () => {
 
     // Clean up
     sessionStorage.removeItem('scroll_/');
+  });
+
+  it('preserves scroll when only search params change (in-page filter, e.g. ?page=1 -> ?page=2)', async () => {
+    const FilterButton = () => {
+      const [, setSearchParams] = useSearchParams();
+      return (
+        <button
+          onClick={() =>
+            setSearchParams((prev) => {
+              const next = new URLSearchParams(prev);
+              next.set('page', '2');
+              return next;
+            })
+          }
+        >
+          Apply filter
+        </button>
+      );
+    };
+
+    const { getByText } = render(
+      <MemoryRouter initialEntries={['/?page=1']}>
+        <ScrollToTop />
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <div>
+                <h1>Home Page</h1>
+                <FilterButton />
+              </div>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    (window.scrollTo as any).mockClear();
+    document.documentElement.scrollTop = 800;
+    document.body.scrollTop = 800;
+
+    await act(async () => {
+      getByText('Apply filter').click();
+    });
+
+    // Same page, only query changed -> must NOT jump to top
+    expect(window.scrollTo).not.toHaveBeenCalled();
+    expect(document.documentElement.scrollTop).toBe(800);
+    expect(document.body.scrollTop).toBe(800);
+  });
+
+  it('does not scroll to top when setSearchParams keeps the identical query (filter toggle no-op)', async () => {
+    const FilterButton = () => {
+      const [, setSearchParams] = useSearchParams();
+      return <button onClick={() => setSearchParams((prev) => prev)}>Toggle filter</button>;
+    };
+
+    const { getByText } = render(
+      <MemoryRouter initialEntries={['/']}>
+        <ScrollToTop />
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <div>
+                <h1>Home Page</h1>
+                <FilterButton />
+              </div>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    (window.scrollTo as any).mockClear();
+    document.documentElement.scrollTop = 800;
+    document.body.scrollTop = 800;
+
+    await act(async () => {
+      getByText('Toggle filter').click();
+    });
+
+    expect(window.scrollTo).not.toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'instant' });
+    expect(document.documentElement.scrollTop).toBe(800);
+    expect(document.body.scrollTop).toBe(800);
   });
 });

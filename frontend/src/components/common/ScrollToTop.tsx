@@ -3,7 +3,9 @@ import { useLocation, useNavigationType } from 'react-router-dom';
 
 /**
  * Universal Scroll Restoration Component
- * - Forwards (PUSH / REPLACE): Resets window and container scroll to (0, 0) (or scrolls to target element if hash exists).
+ * - Forwards (PUSH / REPLACE) to a DIFFERENT PATH: Resets window and container scroll to (0, 0) (or scrolls to target element if hash exists).
+ * - Pure query-param changes on the SAME path (in-page filters, tabs, pagination via setSearchParams) preserve scroll —
+ *   pages that need a scroll jump (e.g. HomePage pagination) handle it themselves via scrollIntoView.
  * - Backwards (POP / return): Accurately restores scroll position across ALL screens (Storefront, Admin, Staff).
  * - Handles asynchronous data hydration and dynamic content rendering via ResizeObserver and multi-frame retry.
  * - Protects against scroll state poisoning from route transition clamping.
@@ -13,6 +15,7 @@ export const ScrollToTop: React.FC = () => {
   const location = useLocation();
   const navigationType = useNavigationType();
   const prevPathRef = useRef<string>(location.pathname + location.search);
+  const prevPathnameRef = useRef<string | null>(null);
   const isRestoringRef = useRef<boolean>(false);
   const stopRestoringRef = useRef<(() => void) | null>(null);
 
@@ -99,6 +102,10 @@ export const ScrollToTop: React.FC = () => {
     const currentPath = location.pathname + location.search;
     const isNewRoute = prevPathRef.current !== currentPath;
     prevPathRef.current = currentPath;
+
+    const isNewPathname =
+      prevPathnameRef.current === null || prevPathnameRef.current !== location.pathname;
+    prevPathnameRef.current = location.pathname;
 
     // Clean up any pending restoration observer from previous transition
     if (stopRestoringRef.current) {
@@ -235,7 +242,13 @@ export const ScrollToTop: React.FC = () => {
       return () => clearTimeout(timer);
     }
 
-    // 3. On PUSH / REPLACE (user clicks link to a new page) or initial mount:
+    // 3. On PUSH / REPLACE to a DIFFERENT PATH (real page change) or initial mount:
+    // reset scroll to top. Pure query-param changes on the SAME path (in-page
+    // filters, tabs, pagination) must preserve scroll position instead of
+    // jumping to the top — those screens manage their own scroll targets.
+    if (!isNewPathname) {
+      return;
+    }
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     if (document.documentElement) document.documentElement.scrollTop = 0;
     if (document.body) document.body.scrollTop = 0;

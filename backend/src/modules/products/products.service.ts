@@ -72,6 +72,17 @@ export class ProductsService {
     const variants = Array.isArray(product.variants)
       ? product.variants.map((v: any) => ({
           ...v,
+          // Prisma Decimal serializes to string in JSON — coerce to number
+          // to honor the API contract (price/compareAtPrice are numbers).
+          price: v.price !== null && v.price !== undefined ? Number(v.price) : v.price,
+          compareAtPrice:
+            v.compareAtPrice !== null && v.compareAtPrice !== undefined
+              ? Number(v.compareAtPrice)
+              : v.compareAtPrice,
+          costPrice:
+            v.costPrice !== null && v.costPrice !== undefined
+              ? Number(v.costPrice)
+              : v.costPrice,
           imageUrl: v.imageUrl || thumb,
           images: [v.imageUrl || thumb],
         }))
