@@ -99,3 +99,15 @@
 .obsidian-glow-emerald {
   box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
 }
+
+/* Fix AntD unlayered `a` reset overriding Tailwind v4 layered utilities.
+   AntD injects `:where(...) a { color: var(--ant-color-link); background-color: transparent }`
+   with specificity (0,0,1) in unlayered CSS, which beats Tailwind v4 `@layer utilities`
+   (unlayered always wins over layered for normal declarations).
+   Ours uses `a[class]` (0,1,1) so it wins over AntD, and `revert-layer`
+   restores the Tailwind layered value (e.g. text-slate-600, bg-emerald-600).
+   Links without Tailwind colors fall back to inherited/body color instead of forced blue. */
+a[class] {
+  color: revert-layer;
+  background-color: revert-layer;
+}
