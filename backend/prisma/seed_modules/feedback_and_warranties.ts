@@ -424,35 +424,61 @@ export async function seedFeedbackAndAftersales(
     take: 12,
   });
   if (flashVariants.length >= 8) {
+    const HOUR = 3600000;
+    const FRIENDLY_DESC = 'Săn deal công nghệ chớp nhoáng — 8 dòng điện thoại giảm sâu nhất tuần';
+    // Khung giờ vàng trong ngày để giữ hiệu ứng FOMO (kết thúc sau vài tiếng, không để 100+ giờ)
+    const activeStart = new Date(nowTs - 1 * HOUR);
+    const activeEnd = new Date(nowTs + 4 * HOUR + 44 * 60 * 1000);
+    // % giảm giá đa dạng, bất quy tắc như thực tế (tránh hardcode đồng loạt -12%)
+    const DISCOUNT_RATES = [0.15, 0.24, 0.08, 0.31, 0.18, 0.27, 0.12, 0.21];
+    const STOCK_LIMITS = [20, 15, 25, 12, 30, 18, 22, 16];
+    const SOLD_COUNTS = [6, 12, 3, 10, 9, 15, 2, 13];
     const activeCampaign = await prisma.flashSaleCampaign.upsert({
       where: { id: '00000000-0000-4000-8000-flashsale01' } as any,
-      update: { name: 'Flash Sale Giữa Tháng', isActive: true },
+      update: {
+        name: 'Flash Sale Giữa Tháng',
+        description: FRIENDLY_DESC,
+        startAt: activeStart,
+        endAt: activeEnd,
+        isActive: true,
+      },
       create: {
         name: 'Flash Sale Giữa Tháng',
-        description: 'Giảm sâu 8 variant hot nhất trong 7 ngày',
-        startAt: new Date(nowTs - 1 * DAY),
-        endAt: new Date(nowTs + 6 * DAY),
+        description: FRIENDLY_DESC,
+        startAt: activeStart,
+        endAt: activeEnd,
         isActive: true,
       },
     }).catch(async () => {
       const existing = await prisma.flashSaleCampaign.findFirst({ where: { name: 'Flash Sale Giữa Tháng' } });
-      return existing ?? (await prisma.flashSaleCampaign.create({
+      if (existing) {
+        return await prisma.flashSaleCampaign.update({
+          where: { id: (existing as any).id },
+          data: {
+            description: FRIENDLY_DESC,
+            startAt: activeStart,
+            endAt: activeEnd,
+            isActive: true,
+          },
+        });
+      }
+      return (await prisma.flashSaleCampaign.create({
         data: {
           name: 'Flash Sale Giữa Tháng',
-          description: 'Giảm sâu 8 variant hot nhất trong 7 ngày',
-          startAt: new Date(nowTs - 1 * DAY),
-          endAt: new Date(nowTs + 6 * DAY),
+          description: FRIENDLY_DESC,
+          startAt: activeStart,
+          endAt: activeEnd,
           isActive: true,
         },
       }));
     });
     for (let i = 0; i < 8; i++) {
       const v = flashVariants[i];
-      const flashPrice = Math.round(Number(v.price) * 0.88 / 1000) * 1000;
+      const flashPrice = Math.round(Number(v.price) * (1 - DISCOUNT_RATES[i]) / 1000) * 1000;
       await prisma.flashSaleItem.upsert({
         where: { campaignId_variantId: { campaignId: (activeCampaign as any).id, variantId: v.id } },
-        update: { flashPrice, stockLimit: 20, soldCount: i * 2 },
-        create: { campaignId: (activeCampaign as any).id, variantId: v.id, flashPrice, stockLimit: 20, soldCount: i * 2 },
+        update: { flashPrice, stockLimit: STOCK_LIMITS[i], soldCount: SOLD_COUNTS[i] },
+        create: { campaignId: (activeCampaign as any).id, variantId: v.id, flashPrice, stockLimit: STOCK_LIMITS[i], soldCount: SOLD_COUNTS[i] },
       });
     }
     const expiredCampaign = await prisma.flashSaleCampaign.findFirst({ where: { name: 'Flash Sale Khai Trương' } })

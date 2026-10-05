@@ -39,37 +39,38 @@ export const FlashSaleProductCard: React.FC<FlashSaleProductCardProps> = ({ item
   const soldCount = item.soldCount || 0;
   const percent = Math.min(100, Math.max(0, Math.round((soldCount / stockLimit) * 100)));
 
-  let soldStatusText = `🔥 ĐÃ BÁN ${soldCount}/${stockLimit}`;
+  let soldStatusText = `Đã bán ${soldCount}/${stockLimit}`;
   if (soldCount === 0) {
-    soldStatusText = 'VỪA MỞ BÁN';
+    soldStatusText = 'Vừa mở bán';
   } else if (soldCount / stockLimit >= 0.8) {
-    soldStatusText = `🔥 SẮP CHÁY HÀNG (${soldCount}/${stockLimit})`;
+    soldStatusText = `Sắp cháy hàng (${soldCount}/${stockLimit})`;
   }
 
   return (
     <div className="group relative flex flex-col justify-between rounded-2xl bg-white p-3.5 sm:p-4 border border-slate-200/90 shadow-xs hover:shadow-xl hover:border-rose-300 transition-all duration-300 hover:-translate-y-1">
       <div>
-        {/* Top Badges */}
-        <div className="flex items-center justify-between gap-1.5 min-h-[22px]">
-          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md">
-            ⚡ Giá Sốc
-          </span>
+        {/* Top Badges — chỉ giữ badge % giảm giá góc phải cho thoáng */}
+        <div className="flex items-center justify-end gap-1.5 min-h-[22px]">
           {discountPercent ? (
             <span className="rounded-md bg-rose-600 px-2 py-0.5 text-xs font-black text-white shadow-xs">
               -{discountPercent}%
             </span>
-          ) : null}
+          ) : (
+            <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">
+              Hot
+            </span>
+          )}
         </div>
 
-        {/* Product Image */}
+        {/* Product Image — khung cố định để mọi máy cân đối */}
         <Link
           to={productUrl}
-          className="relative my-3 flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-slate-50/70 p-2.5 block"
+          className="relative my-3 flex h-40 w-full items-center justify-center overflow-hidden rounded-xl bg-slate-50/70 p-2 block"
         >
           <img
             src={productThumb}
             alt={productName}
-            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+            className="max-h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
             loading="lazy"
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
@@ -114,14 +115,34 @@ export const FlashSaleProductCard: React.FC<FlashSaleProductCardProps> = ({ item
           )}
         </div>
 
-        {/* Urgency Progress Bar */}
+        {/* Urgency Progress Bar — track nhạt + fill đỏ cam + chữ trắng tương phản cao */}
         <div className="space-y-1">
-          <div className="relative w-full h-4 sm:h-4.5 bg-rose-100 rounded-full overflow-hidden flex items-center justify-center shadow-inner">
+          <div
+            className="relative w-full h-5 bg-red-100 rounded-full overflow-hidden"
+            role="progressbar"
+            aria-valuenow={percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={soldStatusText}
+            title={soldStatusText}
+          >
             <div
-              className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-amber-500 via-rose-500 to-rose-600 transition-all duration-500 rounded-full"
-              style={{ width: `${percent}%` }}
-            />
-            <span className="relative z-10 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-rose-950 px-2 drop-shadow-2xs select-none">
+              className="h-full bg-gradient-to-r from-amber-500 to-red-600 rounded-full flex items-center justify-end pr-1 transition-all duration-500"
+              style={{ width: `${Math.max(percent, soldCount > 0 ? 12 : 0)}%` }}
+            >
+              {percent > 8 && (
+                <span className="text-[10px] leading-none" aria-hidden="true">
+                  🔥
+                </span>
+              )}
+            </div>
+            <span
+              className={
+                percent === 0
+                  ? 'absolute inset-0 flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider text-red-800 select-none px-2 truncate'
+                  : 'absolute inset-0 flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider text-white [text-shadow:0_1px_3px_rgba(127,29,29,0.9)] select-none px-2 truncate'
+              }
+            >
               {soldStatusText}
             </span>
           </div>
