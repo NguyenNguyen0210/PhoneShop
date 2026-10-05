@@ -1,15 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  ShoppingCart,
-  ChevronRight,
-  ChevronLeft,
-  Sparkles,
-  ShieldCheck,
-  Battery,
-  Zap,
-  Smartphone,
-} from 'lucide-react';
+import { ShoppingCart, ChevronRight, ChevronLeft, Sparkles, ShieldCheck } from 'lucide-react';
 import type { Product } from '../../types';
 import { FALLBACK_PRODUCT_IMAGE } from '../../utils/imageFallback';
 import { getHeroCutoutImage } from '../../utils/heroCutouts';
@@ -25,9 +16,7 @@ interface BrandTheme {
   glowColor: string;
   badgeStyle: string;
   primaryBtn: string;
-  primaryBtnStyle?: React.CSSProperties;
   priceColor: string;
-  priceStyle?: React.CSSProperties;
   accentText: string;
 }
 
@@ -49,10 +38,8 @@ const getBrandTheme = (
       bgGradient: 'from-emerald-50/90 via-teal-50/20 to-white',
       glowColor: 'bg-emerald-500/30',
       badgeStyle: 'bg-emerald-100 text-emerald-800 border-emerald-200/80',
-      primaryBtn: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25 !text-white',
-      primaryBtnStyle: { backgroundColor: '#059669', color: '#ffffff' },
+      primaryBtn: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25',
       priceColor: 'text-emerald-600',
-      priceStyle: { color: '#059669' },
       accentText: 'text-emerald-700',
     };
   }
@@ -63,34 +50,30 @@ const getBrandTheme = (
       bgGradient: 'from-orange-50/80 via-amber-50/20 to-white',
       glowColor: 'bg-orange-500/35',
       badgeStyle: 'bg-orange-100 text-orange-800 border-orange-200/60',
-      primaryBtn: 'bg-orange-600 hover:bg-orange-700 shadow-orange-500/25 !text-white',
-      primaryBtnStyle: { backgroundColor: '#ea580c', color: '#ffffff' },
+      primaryBtn: 'bg-orange-600 hover:bg-orange-700 shadow-orange-500/25',
       priceColor: 'text-orange-600',
-      priceStyle: { color: '#ea580c' },
       accentText: 'text-orange-700',
     };
   }
 
   if (s.includes('honor-200') || name.includes('honor 200')) {
-    // HONOR 200 Moonlight White / Studio Portrait (Studio Slate & Soft Aura)
+    // HONOR 200 Moonlight White / Marble Cyan
     return {
-      bgGradient: 'from-slate-100/80 via-zinc-50/30 to-white',
-      glowColor: 'bg-cyan-500/20',
-      badgeStyle: 'bg-slate-100 text-slate-800 border-slate-200/80',
-      primaryBtn: 'bg-slate-900 hover:bg-black shadow-slate-900/25 !text-white',
-      primaryBtnStyle: { backgroundColor: '#0f172a', color: '#ffffff' },
-      priceColor: 'text-slate-900',
-      accentText: 'text-slate-700',
+      bgGradient: 'from-sky-50/80 via-indigo-50/20 to-white',
+      glowColor: 'bg-cyan-500/25',
+      badgeStyle: 'bg-sky-100 text-sky-800 border-sky-200/70',
+      primaryBtn: 'bg-sky-600 hover:bg-sky-700 shadow-sky-500/25',
+      priceColor: 'text-sky-700',
+      accentText: 'text-sky-800',
     };
   }
 
   if (s.includes('sony') || brand.includes('sony') || name.includes('xperia')) {
     return {
-      bgGradient: 'from-slate-100/90 via-zinc-50/30 to-white',
+      bgGradient: 'from-slate-100/90 via-sky-50/20 to-white',
       glowColor: 'bg-teal-500/25',
       badgeStyle: 'bg-slate-100 text-slate-800 border-slate-200/80',
-      primaryBtn: 'bg-slate-900 hover:bg-black shadow-slate-900/25 !text-white',
-      primaryBtnStyle: { backgroundColor: '#0f172a', color: '#ffffff' },
+      primaryBtn: 'bg-slate-900 hover:bg-black shadow-slate-900/25',
       priceColor: 'text-slate-900',
       accentText: 'text-slate-700',
     };
@@ -99,20 +82,18 @@ const getBrandTheme = (
   // 2. Color keyword detection (e.g. Green, Emerald, Mint, Olive, Xanh lá)
   if (
     color.includes('green') ||
+    color.includes('xanh') ||
     color.includes('emerald') ||
     color.includes('mint') ||
     color.includes('sage') ||
-    color.includes('xanh lá') ||
     name.includes('green')
   ) {
     return {
       bgGradient: 'from-emerald-50/90 via-teal-50/20 to-white',
       glowColor: 'bg-emerald-500/30',
       badgeStyle: 'bg-emerald-100 text-emerald-800 border-emerald-200/80',
-      primaryBtn: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25 !text-white',
-      primaryBtnStyle: { backgroundColor: '#059669', color: '#ffffff' },
+      primaryBtn: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25',
       priceColor: 'text-emerald-600',
-      priceStyle: { color: '#059669' },
       accentText: 'text-emerald-700',
     };
   }
@@ -123,10 +104,8 @@ const getBrandTheme = (
       bgGradient: 'from-orange-50/80 via-amber-50/20 to-white',
       glowColor: 'bg-orange-500/35',
       badgeStyle: 'bg-orange-100 text-orange-800 border-orange-200/60',
-      primaryBtn: 'bg-orange-600 hover:bg-orange-700 shadow-orange-500/25 !text-white',
-      primaryBtnStyle: { backgroundColor: '#ea580c', color: '#ffffff' },
+      primaryBtn: 'bg-orange-600 hover:bg-orange-700 shadow-orange-500/25',
       priceColor: 'text-orange-600',
-      priceStyle: { color: '#ea580c' },
       accentText: 'text-orange-700',
     };
   }
@@ -136,10 +115,8 @@ const getBrandTheme = (
       bgGradient: 'from-amber-100/40 via-stone-50/30 to-white',
       glowColor: 'bg-amber-600/25',
       badgeStyle: 'bg-amber-100 text-amber-800 border-amber-200/60',
-      primaryBtn: 'bg-stone-900 hover:bg-black shadow-stone-900/25 !text-white',
-      primaryBtnStyle: { backgroundColor: '#1c1917', color: '#ffffff' },
+      primaryBtn: 'bg-stone-900 hover:bg-black shadow-stone-900/25',
       priceColor: 'text-amber-700',
-      priceStyle: { color: '#b45309' },
       accentText: 'text-amber-800',
     };
   }
@@ -149,22 +126,19 @@ const getBrandTheme = (
       bgGradient: 'from-blue-50/80 via-sky-50/20 to-white',
       glowColor: 'bg-blue-500/30',
       badgeStyle: 'bg-blue-100 text-blue-800 border-blue-200/60',
-      primaryBtn: 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25 !text-white',
-      primaryBtnStyle: { backgroundColor: '#2563eb', color: '#ffffff' },
+      primaryBtn: 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25',
       priceColor: 'text-blue-600',
-      priceStyle: { color: '#2563eb' },
       accentText: 'text-blue-700',
     };
   }
 
   return {
-    bgGradient: 'from-slate-50 via-zinc-50/30 to-white',
-    glowColor: 'bg-slate-400/20',
-    badgeStyle: 'bg-slate-100 text-slate-800 border-slate-200/60',
-    primaryBtn: 'bg-slate-900 hover:bg-black shadow-slate-900/25 !text-white',
-    primaryBtnStyle: { backgroundColor: '#0f172a', color: '#ffffff' },
-    priceColor: 'text-slate-900',
-    accentText: 'text-slate-700',
+    bgGradient: 'from-indigo-50/70 via-slate-50/30 to-white',
+    glowColor: 'bg-indigo-500/25',
+    badgeStyle: 'bg-indigo-100 text-indigo-800 border-indigo-200/60',
+    primaryBtn: 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/25',
+    priceColor: 'text-indigo-600',
+    accentText: 'text-indigo-700',
   };
 };
 
@@ -191,15 +165,13 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
 
       if (specs.batteryCapacity) {
         floatingBadges.push({
-          icon: <Battery className="w-4 h-4 text-emerald-600" />,
-          iconBg: 'bg-emerald-500/10 text-emerald-600',
+          icon: '🔋',
           label: 'Pin khủng',
           value: `${new Intl.NumberFormat('vi-VN').format(specs.batteryCapacity)} mAh`,
         });
       } else {
         floatingBadges.push({
-          icon: <ShieldCheck className="w-4 h-4 text-blue-600" />,
-          iconBg: 'bg-blue-500/10 text-blue-600',
+          icon: '🛡️',
           label: 'Bền bỉ',
           value: 'Ultra-Bounce 360°',
         });
@@ -207,22 +179,19 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
 
       if (specs.chipset) {
         floatingBadges.push({
-          icon: <Zap className="w-4 h-4 text-amber-600" />,
-          iconBg: 'bg-amber-500/10 text-amber-600',
+          icon: '⚡',
           label: 'Hiệu năng',
           value: specs.chipset,
         });
       } else if (specs.screenSize) {
         floatingBadges.push({
-          icon: <Smartphone className="w-4 h-4 text-blue-600" />,
-          iconBg: 'bg-blue-500/10 text-blue-600',
+          icon: '📱',
           label: 'Màn hình',
           value: `${specs.screenSize}" OLED 120Hz`,
         });
       } else {
         floatingBadges.push({
-          icon: <Sparkles className="w-4 h-4 text-amber-600" />,
-          iconBg: 'bg-amber-500/10 text-amber-600',
+          icon: '✨',
           label: 'Chính hãng',
           value: '100% Nguyên Seal',
         });
@@ -330,10 +299,7 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
 
             {/* Khối giá & Trả góp */}
             <div className="flex flex-wrap items-baseline gap-3 pt-1">
-              <span
-                style={theme.priceStyle}
-                className={`text-2xl sm:text-3xl md:text-4xl font-black font-mono tracking-tight tabular-nums ${theme.priceColor}`}
-              >
+              <span className={`text-2xl sm:text-3xl md:text-4xl font-black font-mono tracking-tight tabular-nums ${theme.priceColor}`}>
                 {formatPrice(current.price)}
               </span>
               {current.comparePrice > current.price && (
@@ -341,7 +307,7 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
                   <span className="text-sm sm:text-base text-slate-400 line-through font-mono tabular-nums">
                     {formatPrice(current.comparePrice)}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200 text-xs font-bold font-mono">
+                  <span className="px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200/80 text-rose-600 text-xs font-bold font-mono">
                     -{Math.round(((current.comparePrice - current.price) / current.comparePrice) * 100)}%
                   </span>
                 </>
@@ -355,11 +321,10 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link
                 to={`/products/${current.id}`}
-                style={theme.primaryBtnStyle}
                 className={`px-7 py-3 rounded-xl text-white font-bold text-sm sm:text-base flex items-center gap-2 shadow-lg transition-all active:scale-[0.98] cursor-pointer ${theme.primaryBtn}`}
               >
-                <ShoppingCart className="w-4 h-4 text-white" />
-                <span className="text-white">Mua ngay</span>
+                <ShoppingCart className="w-4 h-4" />
+                <span>Mua ngay</span>
               </Link>
               <Link
                 to={`/products/${current.id}`}
@@ -408,7 +373,7 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
                 />
               </Link>
 
-              {/* Realistic Grounded Pedestal Shadows */}
+              {/* Realistic Grounded Pedestal Shadows (Khử cảm giác lơ lửng, tạo độ sâu 3D chân thực) */}
               <div
                 aria-hidden="true"
                 className="absolute -bottom-2 sm:-bottom-3 left-1/2 -translate-x-1/2 w-48 sm:w-56 h-4 sm:h-5 bg-slate-900/20 blur-md rounded-[100%] pointer-events-none transition-all duration-500 group-hover/device:w-52 group-hover/device:opacity-60"
@@ -420,34 +385,22 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
 
               {/* Floating Badge 1 (Top Right) */}
               {current.floatingBadges[0] && (
-                <div className="absolute top-6 sm:top-8 -right-2 sm:-right-4 z-20 bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-xl rounded-2xl p-2.5 sm:p-3 flex items-center gap-2.5 pointer-events-none select-none transition-transform duration-500 group-hover/device:translate-x-1">
-                  <div className={`w-8 h-8 rounded-xl ${current.floatingBadges[0].iconBg} flex items-center justify-center shrink-0`}>
-                    {current.floatingBadges[0].icon}
-                  </div>
+                <div className="absolute -top-3 -right-4 sm:-right-6 z-20 bg-white/95 backdrop-blur-md border border-slate-100/90 shadow-xl rounded-2xl px-3.5 py-2 flex items-center gap-2.5 pointer-events-none select-none transition-transform duration-500 group-hover/device:translate-x-1">
+                  <span className="text-xl">{current.floatingBadges[0].icon}</span>
                   <div>
-                    <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                      {current.floatingBadges[0].label}
-                    </div>
-                    <div className="text-xs sm:text-sm font-extrabold text-slate-800 leading-tight">
-                      {current.floatingBadges[0].value}
-                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium leading-none">{current.floatingBadges[0].label}</div>
+                    <div className="text-xs font-bold text-slate-900 leading-tight mt-0.5">{current.floatingBadges[0].value}</div>
                   </div>
                 </div>
               )}
 
               {/* Floating Badge 2 (Bottom Left) */}
               {current.floatingBadges[1] && (
-                <div className="absolute bottom-6 sm:bottom-8 -left-2 sm:-left-4 z-20 bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-xl rounded-2xl p-2.5 sm:p-3 flex items-center gap-2.5 pointer-events-none select-none transition-transform duration-500 group-hover/device:-translate-x-1">
-                  <div className={`w-8 h-8 rounded-xl ${current.floatingBadges[1].iconBg} flex items-center justify-center shrink-0`}>
-                    {current.floatingBadges[1].icon}
-                  </div>
+                <div className="absolute -bottom-3 -left-4 sm:-left-6 z-20 bg-white/95 backdrop-blur-md border border-slate-100/90 shadow-xl rounded-2xl px-3.5 py-2 flex items-center gap-2.5 pointer-events-none select-none transition-transform duration-500 group-hover/device:-translate-x-1">
+                  <span className="text-xl">{current.floatingBadges[1].icon}</span>
                   <div>
-                    <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                      {current.floatingBadges[1].label}
-                    </div>
-                    <div className="text-xs sm:text-sm font-extrabold text-slate-800 leading-tight">
-                      {current.floatingBadges[1].value}
-                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium leading-none">{current.floatingBadges[1].label}</div>
+                    <div className="text-xs font-bold text-slate-900 leading-tight mt-0.5">{current.floatingBadges[1].value}</div>
                   </div>
                 </div>
               )}
@@ -459,7 +412,7 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
                 <button
                   type="button"
                   onClick={() => setCurrentIndex((prev) => (prev - 1 + heroItems.length) % heroItems.length)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-slate-700 shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border border-slate-200/60"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 hover:bg-white text-slate-700 shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                   aria-label="Slide trước"
                 >
                   <ChevronLeft className="w-5 h-5" />
@@ -467,7 +420,7 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
                 <button
                   type="button"
                   onClick={() => setCurrentIndex((prev) => (prev + 1) % heroItems.length)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-slate-700 shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer border border-slate-200/60"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 hover:bg-white text-slate-700 shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                   aria-label="Slide tiếp theo"
                 >
                   <ChevronRight className="w-5 h-5" />
