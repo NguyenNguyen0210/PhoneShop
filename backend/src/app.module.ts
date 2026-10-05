@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { resolveEnvFile } from './config/resolve-env-file';
 
 // Core Infrastructure
 import { PrismaModule } from './prisma/prisma.module';
@@ -48,15 +49,15 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
-      // Load the env file matching NODE_ENV. In production the platform
-      // injects real env vars, so skip file loading unless DOTENV_FILE is
-      // explicitly set (local prod-like runs).
-      envFilePath:
-        process.env.NODE_ENV === 'production'
-          ? '.env.production'
-          : '.env.development',
-      ignoreEnvFile:
-        process.env.NODE_ENV === 'production' && !process.env.DOTENV_FILE,
+      // Same resolver as load-env.ts (single source of truth).
+      // DOTENV_FILE = explicit path override; missing files are tolerated
+      // (platform-injected env vars always win over file values).
+      // Note: evaluated when this file is imported. main.ts imports
+      // './load-env' before './app.module' so the preload already ran;
+      // Jest tests importing AppModule directly skip the preload, but the
+      // resolver only reads NODE_ENV/DOTENV_FILE (from the shell) and hands
+      // the path to ConfigModule, which loads it itself — no preload needed.
+      envFilePath: resolveEnvFile(),
     }),
 
     // ----- Infrastructure (Global) -----

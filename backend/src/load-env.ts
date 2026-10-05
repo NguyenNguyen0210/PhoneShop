@@ -11,12 +11,9 @@
 // work — under CommonJS emit all require()s run before body statements.
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { resolveEnvFile } from './config/resolve-env-file';
 
-dotenv.config({
-  path: path.resolve(
-    process.cwd(),
-    process.env.NODE_ENV === 'production'
-      ? '.env.production'
-      : '.env.development',
-  ),
-});
+if (!process.env.NODE_ENV) {
+  console.warn('[env] NODE_ENV is unset — falling back to .env.development');
+}
+dotenv.config({ path: path.resolve(process.cwd(), resolveEnvFile()) });
