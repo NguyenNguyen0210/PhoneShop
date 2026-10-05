@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { render, waitFor, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ProductDetailPage } from '../ProductDetailPage';
 import { productService } from '../../../../services/productService';
+import { flashSaleService } from '../../../../services/flashSaleService';
 
 vi.mock('../../../../services/productService', () => ({
   productService: {
@@ -79,5 +80,112 @@ describe('ProductDetailPage scroll behavior', () => {
 
     // Re-verified call on loaded product
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'instant' });
+  });
+});
+
+describe('ProductDetailPage flash sale variant switching (regression)', () => {
+  const originalScrollTo = window.scrollTo;
+
+  // 2 variant cùng Đen/256GB khác RAM; variant flash (var-1-flash) đứng SAU variant thường
+  const mockProductMultiRam = {
+    id: 'prod-multi-ram',
+    name: 'Galaxy S24 Ultra',
+    slug: 'galaxy-s24-ultra',
+    brandId: 'b1',
+    categoryId: 'c1',
+    status: 'ACTIVE',
+    variants: [
+      {
+        id: 'var-2',
+        productId: 'prod-multi-ram',
+        color: 'Đen',
+        storage: '256GB',
+        ram: '8GB',
+        price: 28000000,
+        sku: 'S24U-256-BLK-8',
+      },
+      {
+        id: 'var-1-flash',
+        productId: 'prod-multi-ram',
+        color: 'Đen',
+        storage: '256GB',
+        ram: '12GB',
+        price: 30000000,
+        sku: 'S24U-256-BLK-12',
+      },
+      {
+        id: 'var-3',
+        productId: 'prod-multi-ram',
+        color: 'Trắng',
+        storage: '256GB',
+        ram: '12GB',
+        price: 31000000,
+        sku: 'S24U-256-WHT-12',
+      },
+    ],
+    images: ['/images/s24-1.webp'],
+  };
+
+  const mockFlashCampaign = {
+    id: 'camp-1',
+    name: 'Flash Sale Giữa Tháng',
+    startAt: new Date(Date.now() - 3600000).toISOString(),
+    endAt: new Date(Date.now() + 4 * 3600000).toISOString(),
+    isActive: true,
+    items: [
+      {
+        id: 'fi-1',
+        campaignId: 'camp-1',
+        variantId: 'var-1-flash',
+        flashPrice: 25000000,
+        stockLimit: 20,
+        soldCount: 5,
+      },
+    ],
+  };
+
+  const renderWithFlashVariant = () =>
+    render(
+      <MemoryRouter initialEntries={['/products/prod-multi-ram?variantId=var-1-flash']}>
+        <Routes>
+          <Route path="/products/:id" element={<ProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+  beforeEach(() => {
+    window.scrollTo = vi.fn();
+    vi.mocked(productService.getProductById).mockResolvedValue(mockProductMultiRam as any);
+    vi.mocked(flashSaleService.getActiveCampaign).mockResolvedValue(mockFlashCampaign as any);
+  });
+
+  afterEach(() => {
+    window.scrollTo = originalScrollTo;
+    vi.restoreAllMocks();
+  });
+
+  it('giữ giá flash sale sau khi đổi cấu hình khác rồi chọn lại cấu hình flash', async () => {
+    renderWithFlashVariant();
+
+    // Ban đầu: đúng giá flash 25.000.000₫ + banner
+    // (Intl VND có nbsp trước ₫ nên match nới lỏng khoảng trắng)
+    await waitFor(() => {
+      expect(screen.getByText(/FLASH SALE GIÁ SỐC/i)).toBeTruthy();
+    });
+    // (giá render ở cả price box + sticky bar nên dùng getAllByText)
+    expect(screen.getAllByText(/25\.000\.000\s*₫/i).length).toBeGreaterThan(0);
+
+    // Đổi sang màu Trắng (cấu hình thường)
+    fireEvent.click(screen.getByRole('button', { name: 'Trắng' }));
+    await waitFor(() => {
+      expect(screen.queryByText(/FLASH SALE GIÁ SỐC/i)).toBeNull();
+    });
+
+    // Chọn lại màu Đen (cấu hình flash) → phải về giá flash, không kẹt ở variant thường
+    fireEvent.click(screen.getByRole('button', { name: 'Đen' }));
+    await waitFor(() => {
+      expect(screen.getByText(/FLASH SALE GIÁ SỐC/i)).toBeTruthy();
+    });
+    expect(screen.getAllByText(/25\.000\.000\s*₫/i).length).toBeGreaterThan(0);
   });
 });
