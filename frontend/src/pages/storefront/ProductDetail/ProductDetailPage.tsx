@@ -25,6 +25,7 @@ import { useCartStore } from '../../../stores/useCartStore';
 import { useWishlistStore } from '../../../stores/useWishlistStore';
 import { useCatalogStore } from '../../../stores/useCatalogStore';
 import { resolveColorStyle } from '../../../utils/colorHelper';
+import { resolveVariantBySpecs } from '../../../utils/variantResolver';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 import {
   ProductPromotionBox,
@@ -68,6 +69,22 @@ export const ProductDetailPage: React.FC = () => {
 
   const isInWishlist = useWishlistStore((state) => state.isInWishlist(product?.id || ''));
   const toggleWishlist = useWishlistStore((state) => state.toggleWishlist);
+
+  // Variant đang flash sale còn suất — ưu tiên giữ deal khi lựa chọn cấu hình
+  // mơ hồ (2 variant cùng màu+dung lượng nhưng khác RAM, UI không phân biệt được)
+  const flashVariantIds = (() => {
+    const now = Date.now();
+    const ongoing =
+      !!activeFlashSale &&
+      (!activeFlashSale.startAt || new Date(activeFlashSale.startAt).getTime() <= now) &&
+      (!activeFlashSale.endAt || new Date(activeFlashSale.endAt).getTime() > now);
+    if (!ongoing) return new Set<string>();
+    return new Set(
+      (activeFlashSale!.items || [])
+        .filter((fi) => Number(fi.stockLimit) - Number(fi.soldCount) > 0)
+        .map((fi) => String(fi.variantId))
+    );
+  })();
 
   useEffect(() => {
     // Fetch active flash sale campaign
@@ -236,9 +253,16 @@ export const ProductDetailPage: React.FC = () => {
   const availableStorages = Array.from(new Set(product.variants.map((v) => v.storage)));
 
   const handleColorChange = (color: string) => {
-    const matched =
-      product.variants.find((v) => v.color === color && v.storage === selectedVariant.storage) ||
-      product.variants.find((v) => v.color === color);
+    const ram = selectedVariant.ram || '';
+    const matched = resolveVariantBySpecs(
+      product.variants,
+      [
+        { color, storage: selectedVariant.storage, ram },
+        { color, storage: selectedVariant.storage },
+        { color },
+      ],
+      flashVariantIds
+    );
     if (matched) {
       setSelectedVariant(matched);
       if (matched.images?.[0]) {
@@ -248,9 +272,16 @@ export const ProductDetailPage: React.FC = () => {
   };
 
   const handleStorageChange = (storage: string) => {
-    const matched =
-      product.variants.find((v) => v.storage === storage && v.color === selectedVariant.color) ||
-      product.variants.find((v) => v.storage === storage);
+    const ram = selectedVariant.ram || '';
+    const matched = resolveVariantBySpecs(
+      product.variants,
+      [
+        { storage, color: selectedVariant.color, ram },
+        { storage, color: selectedVariant.color },
+        { storage },
+      ],
+      flashVariantIds
+    );
     if (matched) {
       setSelectedVariant(matched);
     }
@@ -706,10 +737,17 @@ export const ProductDetailPage: React.FC = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {availableStorages.map((storage) => {
                   const isSelected = selectedVariant.storage === storage;
-                  const v =
-                    product.variants.find(
-                      (item) => item.storage === storage && item.color === selectedVariant.color
-                    ) || product.variants.find((item) => item.storage === storage);
+                  // Dùng chung resolver với handleStorageChange để giá preview
+                  // trên nút luôn bằng giá sau khi bấm
+                  const v = resolveVariantBySpecs(
+                    product.variants,
+                    [
+                      { storage, color: selectedVariant.color, ram: selectedVariant.ram || '' },
+                      { storage, color: selectedVariant.color },
+                      { storage },
+                    ],
+                    flashVariantIds
+                  );
 
                   return (
                     <button
