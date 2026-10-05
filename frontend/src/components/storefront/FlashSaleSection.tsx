@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Zap, Clock } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Zap, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { FlashSaleCampaign } from '../../types';
 import { FlashSaleProductCard } from './FlashSaleProductCard';
 
@@ -62,8 +62,31 @@ export const FlashSaleSection: React.FC<FlashSaleSectionProps> = ({ campaign }) 
     return raw;
   })();
 
-  // Lưới 4 cột x 2 hàng: luôn lấp đầy, không hẫng góc phải
-  const visibleItems = (campaign.items || []).slice(0, 8);
+  // Slider 1 hàng: hiển thị toàn bộ items, lướt ngang thay vì chia lưới
+  const visibleItems = campaign.items || [];
+
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+
+  const updateNavState = () => {
+    const el = trackRef.current;
+    if (!el) return;
+    setCanPrev(el.scrollLeft > 8);
+    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 8);
+  };
+
+  useEffect(() => {
+    updateNavState();
+    window.addEventListener('resize', updateNavState);
+    return () => window.removeEventListener('resize', updateNavState);
+  }, [campaign.id, visibleItems.length]);
+
+  const scrollByPage = (dir: 1 | -1) => {
+    const el = trackRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * el.clientWidth * 0.85, behavior: 'smooth' });
+  };
 
   const TimeBox: React.FC<{ value: string; label?: string }> = ({ value, label }) => (
     <div className="flex flex-col items-center gap-0.5">
@@ -139,14 +162,51 @@ export const FlashSaleSection: React.FC<FlashSaleSectionProps> = ({ campaign }) 
 
         {/* Thân dịu mắt: nền đỏ nhạt chuyển sang trắng để card trắng nổi bật */}
         <div className="relative z-10 p-4 sm:p-6 bg-gradient-to-b from-red-50/80 via-red-50/40 to-white">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
-            {visibleItems.map((item) => (
-              <FlashSaleProductCard key={item.id} item={item} />
-            ))}
+          {/* Slider trượt ngang 1 hàng kiểu Shopee: 2 mobile / 3 sm / 4 md / 5 lg / 6 xl */}
+          <div className="relative">
+            <div
+              ref={trackRef}
+              onScroll={updateNavState}
+              role="region"
+              aria-roledescription="carousel"
+              aria-label="Danh sách sản phẩm Flash Sale"
+              className="flex gap-3.5 sm:gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {visibleItems.map((item) => (
+                <div
+                  key={item.id}
+                  role="group"
+                  aria-roledescription="slide"
+                  className="shrink-0 snap-start w-[calc(50%-7px)] sm:w-[calc(33.333%-11px)] md:w-[calc(25%-12px)] lg:w-[calc(20%-13px)] xl:w-[calc(16.666%-14px)] [&>div]:h-full"
+                >
+                  <FlashSaleProductCard item={item} />
+                </div>
+              ))}
+            </div>
+
+            {/* Nút mũi tên điều hướng — overlay 2 cạnh, chỉ hiện khi còn nội dung để lướt */}
+            <button
+              type="button"
+              aria-label="Xem các deal trước"
+              disabled={!canPrev}
+              onClick={() => scrollByPage(-1)}
+              className="hidden md:flex absolute left-2 top-[38%] -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/95 shadow-lg border border-slate-200 items-center justify-center text-slate-700 hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors disabled:opacity-0 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Xem các deal tiếp"
+              disabled={!canNext}
+              onClick={() => scrollByPage(1)}
+              className="hidden md:flex absolute right-2 top-[38%] -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/95 shadow-lg border border-slate-200 items-center justify-center text-slate-700 hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors disabled:opacity-0 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
 
           <p className="mt-4 text-center text-[11px] sm:text-xs font-medium text-red-800/60">
-            🔥 {visibleItems.length} deal hot nhất tuần — hết giờ là về giá gốc
+            🔥 {visibleItems.length} deal hot nhất tuần — lướt sang để xem thêm, hết giờ là về giá gốc
           </p>
         </div>
       </div>

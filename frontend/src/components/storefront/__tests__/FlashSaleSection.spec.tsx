@@ -38,6 +38,38 @@ describe('FlashSaleSection', () => {
     expect(screen.getByText(/ĐÃ BÁN 30\/50/i)).toBeTruthy();
   });
 
+  it('renders carousel region with prev/next navigation buttons', () => {
+    const mockCampaign: any = {
+      id: 'camp-carousel',
+      name: 'Flash Sale Giá Sốc',
+      startAt: new Date(Date.now() - 1000).toISOString(),
+      endAt: new Date(Date.now() + 3600000).toISOString(),
+      items: [1, 2, 3].map((n) => ({
+        id: `item-${n}`,
+        flashPrice: 20000000,
+        stockLimit: 50,
+        soldCount: 10,
+        variant: {
+          name: `Phone ${n}`,
+          price: 25000000,
+          product: { name: `Phone ${n}`, slug: `phone-${n}` },
+        },
+      })),
+    };
+
+    render(
+      <BrowserRouter>
+        <FlashSaleSection campaign={mockCampaign} />
+      </BrowserRouter>
+    );
+
+    expect(
+      screen.getByRole('region', { name: /Danh sách sản phẩm Flash Sale/i })
+    ).toBeTruthy();
+    expect(screen.getByLabelText(/Xem các deal trước/i)).toBeTruthy();
+    expect(screen.getByLabelText(/Xem các deal tiếp/i)).toBeTruthy();
+  });
+
   it('renders null when campaign has no items or is null', () => {
     const { container: c1 } = render(<FlashSaleSection campaign={null} />);
     expect(c1.firstChild).toBeNull();
