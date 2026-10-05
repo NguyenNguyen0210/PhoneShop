@@ -189,3 +189,97 @@ describe('ProductDetailPage flash sale variant switching (regression)', () => {
     expect(screen.getAllByText(/25\.000\.000\s*₫/i).length).toBeGreaterThan(0);
   });
 });
+
+describe('ProductDetailPage dependent selectors (regression)', () => {
+  const originalScrollTo = window.scrollTo;
+
+  // Vàng chỉ có 256GB; Xám Titan có 256GB + 512GB
+  const mockProductDependent = {
+    id: 'prod-s24-ultra',
+    name: 'Samsung Galaxy S24 Ultra',
+    slug: 'samsung-galaxy-s24-ultra',
+    brandId: 'b1',
+    categoryId: 'c1',
+    status: 'ACTIVE',
+    variants: [
+      {
+        id: 'var-yellow-256',
+        productId: 'prod-s24-ultra',
+        color: 'Vàng',
+        storage: '256GB',
+        price: 29000000,
+        sku: 'S24U-256-YLW',
+      },
+      {
+        id: 'var-titan-256',
+        productId: 'prod-s24-ultra',
+        color: 'Xám Titan',
+        storage: '256GB',
+        price: 29000000,
+        sku: 'S24U-256-TTN',
+      },
+      {
+        id: 'var-titan-512',
+        productId: 'prod-s24-ultra',
+        color: 'Xám Titan',
+        storage: '512GB',
+        price: 33000000,
+        sku: 'S24U-512-TTN',
+      },
+    ],
+    images: ['/images/s24u-1.webp'],
+  };
+
+  beforeEach(() => {
+    window.scrollTo = vi.fn();
+    vi.mocked(productService.getProductById).mockResolvedValue(mockProductDependent as any);
+    vi.mocked(flashSaleService.getActiveCampaign).mockResolvedValue(null);
+  });
+
+  afterEach(() => {
+    window.scrollTo = originalScrollTo;
+    vi.restoreAllMocks();
+  });
+
+  const storageButtons = () =>
+    screen
+      .getAllByRole('button')
+      .filter((b) => /256GB|512GB|128GB/.test(b.textContent || ''));
+
+  it('chỉ hiện dung lượng tồn tại của màu đang chọn, không nhảy màu khi đổi bản', async () => {
+    render(
+      <MemoryRouter initialEntries={['/products/prod-s24-ultra?variantId=var-yellow-256']}>
+        <Routes>
+          <Route path="/products/:id" element={<ProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Vàng' })).toBeTruthy();
+    });
+
+    // Đang chọn Vàng (chỉ có 256GB) → không được hiện nút 512GB
+    expect(storageButtons().map((b) => b.textContent)).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /512GB/ })).toBeNull();
+
+    // Đổi sang Xám Titan → hiện đủ 256GB + 512GB
+    fireEvent.click(screen.getByRole('button', { name: 'Xám Titan' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /512GB/ })).toBeTruthy();
+    });
+
+    // Chọn 512GB → ở yên Xám Titan, giá đúng bản xám/512 (33tr chỉ tồn tại ở bản này)
+    fireEvent.click(screen.getByRole('button', { name: /512GB/ }));
+    await waitFor(() => {
+      expect(screen.getAllByText(/33\.000\.000\s*₫/i).length).toBeGreaterThan(0);
+    });
+
+    // Chọn lại Vàng → dung lượng tự về 256GB (bản tồn tại), màu giữ Vàng, không nhảy
+    fireEvent.click(screen.getByRole('button', { name: 'Vàng' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /512GB/ })).toBeNull();
+    });
+    expect(screen.getAllByText(/29\.000\.000\s*₫/i).length).toBeGreaterThan(0);
+  });
+});

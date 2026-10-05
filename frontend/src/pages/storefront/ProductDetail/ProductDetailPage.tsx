@@ -25,7 +25,7 @@ import { useCartStore } from '../../../stores/useCartStore';
 import { useWishlistStore } from '../../../stores/useWishlistStore';
 import { useCatalogStore } from '../../../stores/useCatalogStore';
 import { resolveColorStyle } from '../../../utils/colorHelper';
-import { resolveVariantBySpecs } from '../../../utils/variantResolver';
+import { resolveVariantBySpecs, getStoragesForColor } from '../../../utils/variantResolver';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 import {
   ProductPromotionBox,
@@ -248,9 +248,10 @@ export const ProductDetailPage: React.FC = () => {
     );
   }
 
-  // Extract unique colors and unique storages
+  // Extract unique colors and storages tồn tại của màu đang chọn (selector phụ thuộc:
+  // màu nào chỉ hiện bản đó — không cho bấm bản không tồn tại rồi nhảy sang màu khác)
   const availableColors = Array.from(new Set(product.variants.map((v) => v.color)));
-  const availableStorages = Array.from(new Set(product.variants.map((v) => v.storage)));
+  const availableStorages = getStoragesForColor(product.variants, selectedVariant.color);
 
   const handleColorChange = (color: string) => {
     const ram = selectedVariant.ram || '';
