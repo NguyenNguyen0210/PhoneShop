@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { resolveVariantBySpecs } from '../variantResolver';
+import { resolveVariantBySpecs, getStoragesForColor } from '../variantResolver';
 import type { ProductVariant } from '../../types';
 
 const mk = (id: string, color: string, storage: string, ram?: string): ProductVariant =>
@@ -49,5 +49,22 @@ describe('resolveVariantBySpecs', () => {
 
   it('trả về undefined khi không specs nào khớp', () => {
     expect(resolveVariantBySpecs(variants, [{ color: 'Tím' }], flashIds)).toBeUndefined();
+  });
+});
+
+describe('getStoragesForColor', () => {
+  const multi = [
+    mk('y256', 'Vàng', '256GB'),
+    mk('t256', 'Xám Titan', '256GB'),
+    mk('t512', 'Xám Titan', '512GB'),
+  ];
+
+  it('màu nào chỉ trả về bản của màu đó', () => {
+    expect(getStoragesForColor(multi, 'Vàng')).toEqual(['256GB']);
+    expect(getStoragesForColor(multi, 'Xám Titan')).toEqual(['256GB', '512GB']);
+  });
+
+  it('trả về mảng rỗng khi màu không tồn tại', () => {
+    expect(getStoragesForColor(multi, 'Tím')).toEqual([]);
   });
 });

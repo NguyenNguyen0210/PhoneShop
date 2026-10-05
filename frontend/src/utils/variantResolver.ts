@@ -15,6 +15,19 @@ export function matchVariantSpecs(v: ProductVariant, specs: VariantSpecs): boole
 }
 
 /**
+ * Dung lượng tồn tại của một màu (giữ thứ tự xuất hiện trong mảng variants).
+ * Dùng cho selector phụ thuộc: màu nào chỉ hiện bản đó, không cho bấm bản không tồn tại.
+ */
+export function getStoragesForColor(variants: ProductVariant[], color: string): string[] {
+  const seen = new Set<string>();
+  for (const v of variants) {
+    if (v.color === color && !seen.has(v.storage)) {
+      seen.add(v.storage);
+    }
+  }
+  return Array.from(seen);
+}
+/**
  * Resolve variant từ lựa chọn cấu hình (màu / dung lượng).
  *
  * Root cause từng gây mất giá flash sale: handler cũ dùng `Array.find` chỉ theo
