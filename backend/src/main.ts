@@ -1,10 +1,13 @@
-// IMPORTANT: load .env FIRST, before any other import. Several modules read
-// process.env at import time (e.g. REDIS_ENABLED in background-jobs and
-// orders modules to decide between real BullMQ queues and the local
-// fallback). Nest's ConfigModule populates process.env only later during
-// bootstrap — too late for those constants. This import runs first because
-// ES imports execute depth-first in source order.
-import 'dotenv/config';
+// IMPORTANT: load the env file matching NODE_ENV FIRST, before any other
+// import. Several modules read process.env at import time (e.g.
+// REDIS_ENABLED in background-jobs and orders modules to decide between
+// real BullMQ queues and the local fallback). Nest's ConfigModule
+// populates process.env only later during bootstrap — too late for those
+// constants. This side-effect import runs first because ES imports
+// execute depth-first in source order (see load-env.ts — a
+// dotenv.config() call in the main.ts body would NOT work: under
+// CommonJS emit all require()s run before body statements).
+import './load-env';
 
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';

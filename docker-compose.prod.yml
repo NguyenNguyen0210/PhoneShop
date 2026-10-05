@@ -32,12 +32,12 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env # In production, use .env or pass through CI/CD
+      - ./backend/.env.production
     environment:
       - NODE_ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      - REDIS_ENABLED=true
     depends_on:
       redis:
         condition: service_healthy

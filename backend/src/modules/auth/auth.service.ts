@@ -168,11 +168,8 @@ export class AuthService {
 
   getGoogleAuthUrl(): { url: string; state: string } {
     const clientId =
-      this.configService.get<string>('ExternalAuth__Google__ClientId') ||
-      this.configService.get<string>('GOOGLE_CLIENT_ID') ||
-      '';
+      this.configService.get<string>('GOOGLE_CLIENT_ID') || '';
     const redirectUri =
-      this.configService.get<string>('ExternalAuth__RedirectUri') ||
       this.configService.get<string>('GOOGLE_REDIRECT_URI') ||
       'http://localhost:5173/auth/oauth/callback';
 
@@ -229,15 +226,10 @@ export class AuthService {
     }
 
     const clientId =
-      this.configService.get<string>('ExternalAuth__Google__ClientId') ||
-      this.configService.get<string>('GOOGLE_CLIENT_ID') ||
-      '';
+      this.configService.get<string>('GOOGLE_CLIENT_ID') || '';
     const clientSecret =
-      this.configService.get<string>('ExternalAuth__Google__ClientSecret') ||
-      this.configService.get<string>('GOOGLE_CLIENT_SECRET') ||
-      '';
+      this.configService.get<string>('GOOGLE_CLIENT_SECRET') || '';
     const redirectUri =
-      this.configService.get<string>('ExternalAuth__RedirectUri') ||
       this.configService.get<string>('GOOGLE_REDIRECT_URI') ||
       'http://localhost:5173/auth/oauth/callback';
 

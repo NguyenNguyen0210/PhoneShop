@@ -280,9 +280,10 @@ Khi Quản trị viên tải ảnh sản phẩm hoặc người dùng cập nh�
 
 ```text
 PhoneShop/
-├── docker-compose.yml              # Cấu hình Docker cho Redis 7 và Backend container
+├── docker-compose.yml              # Dev: Redis 7 + backend container (nạp backend/.env.development)
+├── docker-compose.prod.yml         # Prod VPS: Redis + backend (nạp backend/.env.production)
+├── frontend/.env.development       # Giá trị VITE_* dev công khai (tracked)
 ├── .gitignore                      # Quy chuẩn loại trừ artifacts, secrets, docs, test scripts
-├── .env.example                    # Template biến môi trường công khai
 │
 ├── backend/                        # Ứng dụng Backend NestJS
 │   ├── package.json                # Dependencies & script quản lý backend
@@ -293,7 +294,8 @@ PhoneShop/
 │   │   └── migrations/             # Lịch sử migration cơ sở dữ liệu
 │   │
 │   ├── src/
-│   │   ├── main.ts                 # Điểm khởi chạy ứng dụng (Bootstrap & dotenv early load)
+│   │   ├── main.ts                 # Điểm khởi chạy ứng dụng (Bootstrap & load-env theo NODE_ENV)
+│   │   ├── load-env.ts             # Nạp backend/.env.development|production trước mọi import
 │   │   ├── app.module.ts           # Root module kết nối toàn bộ hệ thống
 │   │   │
 │   │   ├── common/                 # Thành phần dùng chung toàn hệ thống
@@ -391,55 +393,23 @@ PhoneShop/
 
 ### 7.3. Cấu Hình Biến Môi Trường (.env)
 
-Tạo file cấu hình môi trường cho Backend và Frontend dựa trên file mẫu:
+Mỗi app giữ file env riêng — không còn file `.env` chung ở thư mục root:
 
-#### 1. Cấu hình Backend (`PhoneShop/backend/.env`):
-Tạo file `PhoneShop/backend/.env` với nội dung tương ứng:
-```env
-# Server
-PORT=3000
-NODE_ENV=development
-API_PREFIX=api
-
-# Supabase Cloud Database (PostgreSQL)
-DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@[YOUR-PROJECT-REF].supabase.co:5432/postgres?sslmode=require"
-DIRECT_URL="postgresql://postgres:[YOUR-PASSWORD]@[YOUR-PROJECT-REF].supabase.co:5432/postgres?sslmode=require"
-
-# JWT Secret Keys
-JWT_ACCESS_SECRET="your-super-secret-jwt-access-key-here-32chars"
-JWT_REFRESH_SECRET="your-super-secret-jwt-refresh-key-here-32chars"
-JWT_ACCESS_EXPIRES_IN="15m"
-JWT_REFRESH_EXPIRES_IN="7d"
-
-# Redis Cache & BullMQ Queue
-REDIS_ENABLED=true
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=""
-
-# Supabase Cloud Storage (Bucket: phoneshop)
-SUPABASE_URL="https://[YOUR-PROJECT-REF].supabase.co"
-SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
-SUPABASE_STORAGE_BUCKET="phoneshop"
-
-# Cổng thanh toán VNPay Sandbox (Tùy chọn - COD & VietQR hoạt động độc lập không cần key này)
-VNPAY_TMN_CODE="SANDBOX1"
-VNPAY_HASH_SECRET="YOUR_VNPAY_HASH_SECRET"
-VNPAY_URL="https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
-VNPAY_RETURN_URL="https://phoneshop-blond.vercel.app/order/vnpay-return"
-
-# Cổng thanh toán VietQR (NAPAS 247 - Hoạt động ngay lập tức)
-VIETQR_BANK_ID="MB"
-VIETQR_ACCOUNT_NO="09012345678"
-VIETQR_ACCOUNT_NAME="CONG TY PHONESHOP"
+#### 1. Cấu hình Backend (`backend/.env.development`):
+Copy từ template rồi điền giá trị thật (file này đã git-ignored, không commit):
+```bash
+cp backend/.env.example backend/.env.development
 ```
+Xem đầy đủ danh sách biến trong `backend/.env.example` (DATABASE_URL Supabase, JWT_SECRET, REDIS_HOST, SUPABASE_*, VNPay/VietQR Sandbox, GOOGLE_CLIENT_ID/SECRET, CLOUDFLARE_R2_*, GEMINI_API_KEY...).
 
-#### 2. Cấu hình Frontend (`PhoneShop/frontend/.env`):
-Tạo file `PhoneShop/frontend/.env`:
-```env
-VITE_API_BASE_URL="http://localhost:3000/api"
-VITE_APP_NAME="PhoneShop"
-```
+Backend tự nạp đúng file theo `NODE_ENV` (nhờ `src/load-env.ts` chạy trước mọi import + `ConfigModule` trong `app.module.ts`):
+* Dev/local (`NODE_ENV != production`) → `backend/.env.development`
+* Prod (`NODE_ENV=production`) → `backend/.env.production`
+
+**Production (VPS):** tạo file `backend/.env.production` thủ công trên server theo template (giá trị thật). Workflow deploy (`.github/workflows/deploy.yml`) sẽ dừng lại nếu thiếu file này.
+
+#### 2. Cấu hình Frontend:
+File `frontend/.env.development` đã commit sẵn giá trị dev công khai (`VITE_API_URL=http://localhost:3000/api`, ...) nên chạy local không cần tạo gì thêm. Nếu cần override cục bộ, đặt trong `frontend/.env.development.local` (untracked). Biến môi trường production cấu hình trong Vercel Dashboard (Environment Variables).
 
 ---
 

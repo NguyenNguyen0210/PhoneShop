@@ -35,6 +35,7 @@ test_*.js
 **/.env.*
 !.env.example
 !**/.env.example
+!frontend/.env.development
 
 # Logs
 logs
@@ -62,3 +63,6 @@ Thumbs.db
 
 # Generated R2 upload mapping (local only)
 backend/scripts/r2-mapping.json
+*.backup-local
+backend/.env.development
+backend/.env.production

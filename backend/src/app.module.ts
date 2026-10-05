@@ -48,7 +48,15 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
-      envFilePath: '.env',
+      // Load the env file matching NODE_ENV. In production the platform
+      // injects real env vars, so skip file loading unless DOTENV_FILE is
+      // explicitly set (local prod-like runs).
+      envFilePath:
+        process.env.NODE_ENV === 'production'
+          ? '.env.production'
+          : '.env.development',
+      ignoreEnvFile:
+        process.env.NODE_ENV === 'production' && !process.env.DOTENV_FILE,
     }),
 
     // ----- Infrastructure (Global) -----
