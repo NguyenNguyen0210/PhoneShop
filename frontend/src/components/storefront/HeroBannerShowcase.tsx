@@ -16,6 +16,7 @@ interface BrandTheme {
   glowColor: string;
   badgeStyle: string;
   primaryBtn: string;
+  primaryBtnStyle?: React.CSSProperties;
   priceColor: string;
   accentText: string;
 }
@@ -39,6 +40,7 @@ const getBrandTheme = (
       glowColor: 'bg-emerald-500/30',
       badgeStyle: 'bg-emerald-100 text-emerald-800 border-emerald-200/80',
       primaryBtn: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25',
+      primaryBtnStyle: { backgroundColor: '#059669', color: '#ffffff' },
       priceColor: 'text-emerald-600',
       accentText: 'text-emerald-700',
     };
@@ -51,6 +53,7 @@ const getBrandTheme = (
       glowColor: 'bg-orange-500/35',
       badgeStyle: 'bg-orange-100 text-orange-800 border-orange-200/60',
       primaryBtn: 'bg-orange-600 hover:bg-orange-700 shadow-orange-500/25',
+      primaryBtnStyle: { backgroundColor: '#ea580c', color: '#ffffff' },
       priceColor: 'text-orange-600',
       accentText: 'text-orange-700',
     };
@@ -63,6 +66,7 @@ const getBrandTheme = (
       glowColor: 'bg-cyan-500/25',
       badgeStyle: 'bg-sky-100 text-sky-800 border-sky-200/70',
       primaryBtn: 'bg-sky-600 hover:bg-sky-700 shadow-sky-500/25',
+      primaryBtnStyle: { backgroundColor: '#0284c7', color: '#ffffff' },
       priceColor: 'text-sky-700',
       accentText: 'text-sky-800',
     };
@@ -74,6 +78,7 @@ const getBrandTheme = (
       glowColor: 'bg-teal-500/25',
       badgeStyle: 'bg-slate-100 text-slate-800 border-slate-200/80',
       primaryBtn: 'bg-slate-900 hover:bg-black shadow-slate-900/25',
+      primaryBtnStyle: { backgroundColor: '#0f172a', color: '#ffffff' },
       priceColor: 'text-slate-900',
       accentText: 'text-slate-700',
     };
@@ -93,6 +98,7 @@ const getBrandTheme = (
       glowColor: 'bg-emerald-500/30',
       badgeStyle: 'bg-emerald-100 text-emerald-800 border-emerald-200/80',
       primaryBtn: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25',
+      primaryBtnStyle: { backgroundColor: '#059669', color: '#ffffff' },
       priceColor: 'text-emerald-600',
       accentText: 'text-emerald-700',
     };
@@ -105,6 +111,7 @@ const getBrandTheme = (
       glowColor: 'bg-orange-500/35',
       badgeStyle: 'bg-orange-100 text-orange-800 border-orange-200/60',
       primaryBtn: 'bg-orange-600 hover:bg-orange-700 shadow-orange-500/25',
+      primaryBtnStyle: { backgroundColor: '#ea580c', color: '#ffffff' },
       priceColor: 'text-orange-600',
       accentText: 'text-orange-700',
     };
@@ -116,6 +123,7 @@ const getBrandTheme = (
       glowColor: 'bg-amber-600/25',
       badgeStyle: 'bg-amber-100 text-amber-800 border-amber-200/60',
       primaryBtn: 'bg-stone-900 hover:bg-black shadow-stone-900/25',
+      primaryBtnStyle: { backgroundColor: '#1c1917', color: '#ffffff' },
       priceColor: 'text-amber-700',
       accentText: 'text-amber-800',
     };
@@ -127,6 +135,7 @@ const getBrandTheme = (
       glowColor: 'bg-blue-500/30',
       badgeStyle: 'bg-blue-100 text-blue-800 border-blue-200/60',
       primaryBtn: 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25',
+      primaryBtnStyle: { backgroundColor: '#2563eb', color: '#ffffff' },
       priceColor: 'text-blue-600',
       accentText: 'text-blue-700',
     };
@@ -137,6 +146,7 @@ const getBrandTheme = (
     glowColor: 'bg-indigo-500/25',
     badgeStyle: 'bg-indigo-100 text-indigo-800 border-indigo-200/60',
     primaryBtn: 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/25',
+    primaryBtnStyle: { backgroundColor: '#4f46e5', color: '#ffffff' },
     priceColor: 'text-indigo-600',
     accentText: 'text-indigo-700',
   };
@@ -321,13 +331,15 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link
                 to={`/products/${current.id}`}
+                style={theme.primaryBtnStyle}
                 className={`px-7 py-3 rounded-xl text-white font-bold text-sm sm:text-base flex items-center gap-2 shadow-lg transition-all active:scale-[0.98] cursor-pointer ${theme.primaryBtn}`}
               >
-                <ShoppingCart className="w-4 h-4" />
-                <span>Mua ngay</span>
+                <ShoppingCart className="w-4 h-4 text-white" />
+                <span className="text-white">Mua ngay</span>
               </Link>
               <Link
                 to={`/products/${current.id}`}
+                style={{ backgroundColor: '#ffffff', color: '#334155' }}
                 className="px-5 py-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-sm sm:text-base flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
               >
                 <span>Xem thông số kỹ thuật</span>
