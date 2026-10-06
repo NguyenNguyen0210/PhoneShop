@@ -427,22 +427,51 @@ export const OrderDetailPage: React.FC = () => {
                   className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs"
                 >
                   <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center shrink-0">
-                      <img
-                        src={
-                          item.variant?.images?.[0] ||
-                          item.variant?.imageUrl ||
-                          item.variant?.product?.thumbnail ||
-                          FALLBACK_PRODUCT_IMAGE
-                        }
-                        alt={item.productName || 'Sản phẩm'}
-                        className="w-full h-full object-contain"
-                      />
+                    <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                      {pId ? (
+                        <Link
+                          to={`/products/${pId}`}
+                          title="Xem chi tiết sản phẩm"
+                          className="w-full h-full flex items-center justify-center"
+                        >
+                          <img
+                            src={
+                              item.variant?.images?.[0] ||
+                              item.variant?.imageUrl ||
+                              item.variant?.product?.thumbnail ||
+                              FALLBACK_PRODUCT_IMAGE
+                            }
+                            alt={item.productName || 'Sản phẩm'}
+                            className="w-full h-full object-contain hover:scale-105 transition-transform"
+                          />
+                        </Link>
+                      ) : (
+                        <img
+                          src={
+                            item.variant?.images?.[0] ||
+                            item.variant?.imageUrl ||
+                            item.variant?.product?.thumbnail ||
+                            FALLBACK_PRODUCT_IMAGE
+                          }
+                          alt={item.productName || 'Sản phẩm'}
+                          className="w-full h-full object-contain"
+                        />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-sm text-slate-900 truncate">
-                        {item.productName || item.variant?.product?.name || 'Điện thoại'}
-                      </h4>
+                      {pId ? (
+                        <Link
+                          to={`/products/${pId}`}
+                          title="Xem chi tiết sản phẩm"
+                          className="font-bold text-sm text-slate-900 truncate hover:text-blue-600 hover:underline transition-colors block"
+                        >
+                          {item.productName || item.variant?.product?.name || 'Điện thoại'}
+                        </Link>
+                      ) : (
+                        <h4 className="font-bold text-sm text-slate-900 truncate">
+                          {item.productName || item.variant?.product?.name || 'Điện thoại'}
+                        </h4>
+                      )}
                       <p className="text-slate-500 mt-0.5">
                         {item.variant?.color} • {item.variant?.storage} • Số lượng: x{item.quantity}
                       </p>
