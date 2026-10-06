@@ -70,13 +70,31 @@ export class PaymentsController {
     return this.paymentsService.createVnpayPaymentUrl(dto, ipAddr, isAdmin ? undefined : user?.id);
   }
 
+  @Post('vnpay/create-prepay-url')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.USER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Generate signed VNPay URL for an approved installment prepay' })
+  createPrepayUrl(
+    @Body() dto: CreateVnpayUrlDto,
+    @Req() req: Request,
+    @CurrentUser() user: any,
+  ) {
+    const ipAddr =
+      (req.headers['x-forwarded-for'] as string) ||
+      req.socket.remoteAddress ||
+      '127.0.0.1';
+    const roles: string[] = user?.roles ?? [];
+    const isAdmin = user?.role === Role.ADMIN || roles.includes(Role.ADMIN);
+    return this.paymentsService.createPrepayPaymentUrl(dto, ipAddr, isAdmin ? undefined : user?.id);
+  }
+
   @Get('vnpay/ipn')
   @ApiOperation({ summary: 'VNPay Server-to-Server IPN Webhook (Public)' })
   async handleVnpayIpn(@Query() query: any, @Res() res: Response) {
     const result = await this.paymentsService.handleVnpayIpn(query);
     return res.status(200).json(result);
   }
-
   @Get('vnpay/return')
   @ApiOperation({ summary: 'VNPay Customer Return URL (Public)' })
   handleVnpayReturn(@Query() query: Record<string, any>) {

@@ -25,6 +25,7 @@ import {
   Headphones,
 } from 'lucide-react';
 import { orderService } from '../../../services/orderService';
+import { paymentService } from '../../../services/paymentService';
 import { installmentService } from '../../../services/installmentService';
 import { reviewService } from '../../../services/reviewService';
 import { ReviewModal } from '../../../components/storefront/reviews';
@@ -49,6 +50,10 @@ export const OrderDetailPage: React.FC = () => {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [reorderSuccessMsg, setReorderSuccessMsg] = useState<string | null>(null);
+
+  // Online prepay (VNPay) for approved installment applications
+  const [prepayLoading, setPrepayLoading] = useState(false);
+  const [prepayError, setPrepayError] = useState<string | null>(null);
 
   // Review states for delivered orders
   const [reviewedProducts, setReviewedProducts] = useState<
@@ -206,6 +211,31 @@ export const OrderDetailPage: React.FC = () => {
     setReorderSuccessMsg(`Đã thêm ${result.addedCount} sản phẩm vào giỏ hàng`);
     setTimeout(() => setReorderSuccessMsg(null), 4000);
     navigate('/cart');
+  };
+
+  const handlePrepayOnline = async () => {
+    if (!order) return;
+    setPrepayError(null);
+    setPrepayLoading(true);
+    try {
+      const res = await paymentService.createPrepayUrl({ orderId: order.id });
+      if (res?.paymentUrl) {
+        window.location.href = res.paymentUrl;
+      } else {
+        const msg = 'Không nhận được đường dẫn thanh toán từ VNPay. Vui lòng thử lại.';
+        setPrepayError(msg);
+        notifyError(msg);
+      }
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Không thể kết nối cổng thanh toán VNPay lúc này. Vui lòng thử lại sau.';
+      setPrepayError(msg);
+      notifyError(err, msg);
+    } finally {
+      setPrepayLoading(false);
+    }
   };
 
   return (
@@ -384,6 +414,52 @@ export const OrderDetailPage: React.FC = () => {
                 <span className="text-[10px] text-blue-700 font-semibold">Đã gồm lãi 0%</span>
               </div>
             </div>
+
+            {/* Online prepay (VNPay) — approved applications, before shipment */}
+            {(() => {
+              if (instApp?.status !== 'APPROVED') return null;
+              const prepay = Math.round(Number(instApp?.prepayAmount ?? 0));
+              if (!(prepay > 0)) return null;
+              if (!['CONFIRMED', 'PROCESSING', 'PACKED'].includes(order.status)) return null;
+              const pays: any[] = (order as any).payments ?? [];
+              const paid = pays.some((p) => p?.method === 'VNPAY' && p?.status === 'PAID');
+              if (paid) {
+                return (
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3 text-xs text-emerald-800">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <span>
+                      Đã thanh toán trả trước <strong>{formatPrice(prepay)}</strong> online qua
+                      VNPay. Phần còn lại góp {instApp?.termMonths || 6} tháng qua công ty tài chính.
+                    </span>
+                  </div>
+                );
+              }
+              return (
+                <div className="p-4 bg-indigo-50/70 border border-indigo-200 rounded-2xl space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="text-xs text-slate-600">
+                      <span className="font-bold text-slate-900 block text-sm">
+                        Thanh toán trả trước online
+                      </span>
+                      <span>
+                        Trả ngay {formatPrice(prepay)} qua VNPay, phần còn lại góp{' '}
+                        {instApp?.termMonths || 6} tháng.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handlePrepayOnline}
+                      disabled={prepayLoading}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-md transition shrink-0 cursor-pointer"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      <span>{prepayLoading ? 'Đang kết nối VNPay...' : 'Trả trước qua VNPay'}</span>
+                    </button>
+                  </div>
+                  {prepayError && <p className="text-xs text-rose-600">{prepayError}</p>}
+                </div>
+              );
+            })()}
 
             {/* Rejection notice if rejected */}
             {instApp?.status === 'REJECTED' && instApp?.rejectionReason && (

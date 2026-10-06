@@ -75,6 +75,16 @@ export const paymentService = {
     return response.data?.data ?? response.data;
   },
 
+  /** Generate a VNPay URL for an approved installment prepay (partial amount). */
+  async createPrepayUrl(data: {
+    orderId: string;
+    bankCode?: string;
+    ipAddr?: string;
+  }): Promise<{ paymentUrl: string; orderNumber?: string; amount?: number; purpose?: string }> {
+    const response = await apiClient.post('/payments/vnpay/create-prepay-url', data);
+    return response.data?.data ?? response.data;
+  },
+
   async verifyVnpayReturn(params: Record<string, string>): Promise<{
     success: boolean;
     isValid: boolean;

@@ -21,6 +21,7 @@ import {
   TransactionType,
   PaymentMethod,
   OrderStatus,
+  InstallmentStatus,
   ImeiStatus,
   WarrantyStatus,
 } from '@prisma/client';
@@ -51,6 +52,19 @@ export function vnpSignaturesEqual(a: string, b: string): boolean {
   const bb = Buffer.from(b, 'utf-8');
   if (ba.length !== bb.length) return false;
   return timingSafeEqual(ba, bb);
+}
+
+// Installment prepay via VNPay uses a suffixed merchant ref so the IPN and
+// browser-return handlers can route it to the prepay settlement (partial
+// amount, no order-status change) instead of the full-order settlement.
+export const VNPAY_PREPAY_TXN_SUFFIX = '-PREPAY';
+
+export function isVnpayPrepayRef(txnRef: unknown): boolean {
+  return typeof txnRef === 'string' && txnRef.endsWith(VNPAY_PREPAY_TXN_SUFFIX);
+}
+
+export function prepayOrderNumber(txnRef: string): string {
+  return txnRef.slice(0, -VNPAY_PREPAY_TXN_SUFFIX.length);
 }
 
 @Injectable()
@@ -270,32 +284,12 @@ export class PaymentsService {
     }
   }
 
-  async createVnpayPaymentUrl(dto: CreateVnpayUrlDto, clientIp?: string, userId?: string) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: dto.orderId },
-      include: { payments: true },
-    });
-
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
-
-    if (userId && order.userId !== userId) {
-      throw new BadRequestException('Unauthorized order access');
-    }
-
-    await this.rejectIfHoldExpired(order);
-
-    // Only a PENDING order may start a new payment attempt — anything else
-    // is either already paid/confirmed or already out of the payable funnel.
-    if (order.status !== OrderStatus.PENDING) {
-      throw new BadRequestException(
-        order.status === OrderStatus.CANCELLED
-          ? 'Cannot pay for a cancelled order'
-          : 'Order has already been paid and confirmed',
-      );
-    }
-
+  private async resolveVnpayConfig(): Promise<{
+    tmnCode: string;
+    hashSecret: string;
+    vnpUrl: string;
+    returnUrl: string;
+  }> {
     const isVnpayEnabled = this.settingsService
       ? (await this.settingsService.get('PAYMENT_VNPAY_ENABLED', 'true')) === 'true'
       : (this.configService.get<string>('PAYMENT_VNPAY_ENABLED', 'true')) === 'true';
@@ -347,14 +341,59 @@ export class PaymentsService {
       returnUrl = returnUrl.replace('/payment/vnpay-return', '/order/vnpay-return');
     }
 
-    const now = new Date();
-    const createDate =
-      now.getFullYear().toString() +
-      (now.getMonth() + 1).toString().padStart(2, '0') +
-      now.getDate().toString().padStart(2, '0') +
-      now.getHours().toString().padStart(2, '0') +
-      now.getMinutes().toString().padStart(2, '0') +
-      now.getSeconds().toString().padStart(2, '0');
+    return { tmnCode, hashSecret, vnpUrl, returnUrl: returnUrl as string };
+  }
+
+  private buildVnpayCreateDate(date: Date = new Date()): string {
+    return (
+      date.getFullYear().toString() +
+      (date.getMonth() + 1).toString().padStart(2, '0') +
+      date.getDate().toString().padStart(2, '0') +
+      date.getHours().toString().padStart(2, '0') +
+      date.getMinutes().toString().padStart(2, '0') +
+      date.getSeconds().toString().padStart(2, '0')
+    );
+  }
+
+  async createVnpayPaymentUrl(dto: CreateVnpayUrlDto, clientIp?: string, userId?: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: dto.orderId },
+      include: { payments: true, installmentApplication: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (userId && order.userId !== userId) {
+      throw new BadRequestException('Unauthorized order access');
+    }
+
+    await this.rejectIfHoldExpired(order);
+
+    // Only a PENDING order may start a new payment attempt — anything else
+    // is either already paid/confirmed or already out of the payable funnel.
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException(
+        order.status === OrderStatus.CANCELLED
+          ? 'Cannot pay for a cancelled order'
+          : 'Order has already been paid and confirmed',
+      );
+    }
+
+    // An installment order awaiting finance review must not be paid in full
+    // through the generic URL: it would bypass review and mark the whole
+    // order PAID. After approval, use the dedicated prepay URL instead.
+    const pendingApp = (order as any).installmentApplication;
+    if (pendingApp && pendingApp.status === InstallmentStatus.PENDING) {
+      throw new BadRequestException(
+        'Đơn trả góp cần được thẩm định trước — sau khi duyệt bạn có thể thanh toán khoản trả trước online',
+      );
+    }
+
+    const { tmnCode, hashSecret, vnpUrl, returnUrl } = await this.resolveVnpayConfig();
+
+    const createDate = this.buildVnpayCreateDate();
 
     const vnpParams: Record<string, string> = {
       vnp_Version: '2.1.0',
@@ -385,6 +424,173 @@ export class PaymentsService {
       orderNumber: order.orderNumber,
       amount: Number(order.totalAmount),
     };
+  }
+
+  // ── INSTALLMENT PREPAY VIA VNPAY ──────────────────────────
+  // After the finance application is APPROVED the buyer may pay the prepay
+  // (trả trước) online instead of handing cash at delivery. Only the prepay
+  // amount travels through VNPay (merchant ref "<orderNumber>-PREPAY"); the
+  // order itself stays CONFIRMED and the remaining INSTALLMENT balance is
+  // settled at delivery by the shared DELIVERED auto-PAID step.
+  async createPrepayPaymentUrl(dto: CreateVnpayUrlDto, clientIp?: string, userId?: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: dto.orderId },
+      include: { payments: true, installmentApplication: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (userId && order.userId !== userId) {
+      throw new BadRequestException('Unauthorized order access');
+    }
+
+    const app = (order as any).installmentApplication;
+    if (!app || app.status !== InstallmentStatus.APPROVED) {
+      throw new BadRequestException(
+        'Khoản trả trước chỉ thanh toán được sau khi hồ sơ trả góp được phê duyệt',
+      );
+    }
+
+    if (order.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException('Cannot pay for a cancelled order');
+    }
+
+    // Prepay is a pre-shipment payment: once the parcel ships, the handover
+    // flow owns the money and a late online prepay would double-collect.
+    const prepayable = [OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.PACKED];
+    if (!(prepayable as OrderStatus[]).includes(order.status as OrderStatus)) {
+      throw new BadRequestException('Khoản trả trước chỉ thanh toán được trước khi đơn được giao đi');
+    }
+
+    const prepay = Math.round(Number(app.prepayAmount));
+    if (!prepay || prepay <= 0) {
+      throw new BadRequestException('Đơn này không có khoản trả trước để thanh toán online');
+    }
+
+    const alreadyPaid = (order.payments || []).some(
+      (p: any) =>
+        p.method === PaymentMethod.VNPAY &&
+        p.status === PaymentStatus.PAID &&
+        Math.round(Number(p.amount)) === prepay,
+    );
+    if (alreadyPaid) {
+      throw new BadRequestException('Khoản trả trước đã được thanh toán');
+    }
+
+    const { tmnCode, hashSecret, vnpUrl, returnUrl } = await this.resolveVnpayConfig();
+    const createDate = this.buildVnpayCreateDate();
+
+    const vnpParams: Record<string, string> = {
+      vnp_Version: '2.1.0',
+      vnp_Command: 'pay',
+      vnp_TmnCode: tmnCode,
+      vnp_Locale: 'vn',
+      vnp_CurrCode: 'VND',
+      vnp_TxnRef: `${order.orderNumber}${VNPAY_PREPAY_TXN_SUFFIX}`,
+      vnp_OrderInfo: `Tra truoc don hang ${order.orderNumber}`,
+      vnp_OrderType: 'other',
+      vnp_Amount: (prepay * 100).toString(),
+      vnp_ReturnUrl: returnUrl,
+      vnp_IpAddr: clientIp || dto.ipAddr || '127.0.0.1',
+      vnp_CreateDate: createDate,
+    };
+
+    if (dto.bankCode) {
+      vnpParams['vnp_BankCode'] = dto.bankCode;
+    }
+
+    const signData = buildVnpaySignData(vnpParams);
+    const signed = hashVnpayParams(vnpParams, hashSecret);
+
+    const paymentUrl = `${vnpUrl}?${signData}&vnp_SecureHash=${signed}`;
+
+    return {
+      paymentUrl,
+      orderNumber: order.orderNumber,
+      amount: prepay,
+      purpose: 'INSTALLMENT_PREPAY',
+    };
+  }
+
+  // Records an approved prepay: own VNPay PAID row + shrink the remaining
+  // INSTALLMENT balance so delivery settles only the rest. Order status,
+  // IMEIs and warranties are untouched (delivery owns them). Idempotent via
+  // the provider-transaction dedupe — concurrent IPN + return retries land
+  // on VNPAY_ALREADY_PROCESSED.
+  private async settleVnpayPrepay(
+    order: { id: string; orderNumber: string; payments: any[] },
+    query: Record<string, any>,
+    prepay: number,
+  ): Promise<void> {
+    const txnNo = query['vnp_TransactionNo'];
+    await this.prisma.$transaction(async (tx) => {
+      if (txnNo) {
+        const dup = await tx.payment.findFirst({
+          where: { orderId: order.id, providerOrderId: txnNo, status: PaymentStatus.PAID },
+          select: { id: true },
+        });
+        if (dup) {
+          const already: any = new Error('Prepay already processed');
+          already.code = 'VNPAY_ALREADY_PROCESSED';
+          throw already;
+        }
+      }
+
+      // No pending installment balance left (e.g. settled at delivery while
+      // a stale prepay URL was still in flight) — ack without writing so a
+      // late prepay can never double-collect.
+      const pending = await tx.payment.findFirst({
+        where: {
+          orderId: order.id,
+          method: PaymentMethod.INSTALLMENT,
+          status: PaymentStatus.PENDING,
+        },
+      });
+      if (!pending) {
+        const settled: any = new Error('No pending installment balance for prepay');
+        settled.code = 'VNPAY_ALREADY_PROCESSED';
+        throw settled;
+      }
+
+      const vnpayPayment = await tx.payment.create({
+        data: {
+          orderId: order.id,
+          method: PaymentMethod.VNPAY,
+          status: PaymentStatus.PAID,
+          amount: prepay,
+          provider: 'VNPAY',
+          providerOrderId: txnNo || query['vnp_TxnRef'],
+          paidAt: new Date(),
+        },
+      });
+
+      await tx.paymentTransaction.create({
+        data: {
+          paymentId: vnpayPayment.id,
+          transactionCode: txnNo || this.generateTransactionCode(),
+          type: TransactionType.PAYMENT,
+          status: TransactionStatus.SUCCESS,
+          amount: prepay,
+          providerReference: query['vnp_BankTranNo'],
+          responseData: { ...query, purpose: 'INSTALLMENT_PREPAY' },
+        },
+      });
+
+      const rest = Math.round(Number(pending.amount)) - prepay;
+      if (rest <= 0) {
+        await tx.payment.update({
+          where: { id: pending.id },
+          data: { status: PaymentStatus.PAID, paidAt: new Date() },
+        });
+      } else {
+        await tx.payment.update({
+          where: { id: pending.id },
+          data: { amount: rest },
+        });
+      }
+    });
   }
 
   // ── VNPAY SUCCESS SETTLEMENT (shared by IPN + Return) ────
@@ -510,8 +716,103 @@ export class PaymentsService {
     }
   }
 
+  async handlePrepayIpn(query: Record<string, any>) {
+    const orderNumber = prepayOrderNumber(String(query['vnp_TxnRef']));
+
+    const secureHash = query['vnp_SecureHash'];
+    const hashSecret = this.settingsService
+      ? await this.settingsService.get(
+          'VNPAY_HASH_SECRET',
+          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
+        )
+      : this.configService.get<string>(
+          'VNPAY_HASH_SECRET',
+          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
+        );
+
+    const cleanParams: Record<string, string> = {};
+    for (const [key, value] of Object.entries(query)) {
+      if (key !== 'vnp_SecureHash' && key !== 'vnp_SecureHashType' && value !== undefined && value !== null) {
+        cleanParams[key] = String(value);
+      }
+    }
+
+    if (!vnpSignaturesEqual(hashVnpayParams(cleanParams, hashSecret), secureHash)) {
+      this.logger.warn(`VNPay Prepay IPN: Invalid checksum for ${orderNumber}`);
+      return { RspCode: '97', Message: 'Invalid Checksum' };
+    }
+
+    const order = await this.prisma.order.findUnique({
+      where: { orderNumber },
+      include: { payments: true, installmentApplication: true },
+    });
+    if (!order) {
+      this.logger.warn(`VNPay Prepay IPN: Order not found: ${orderNumber}`);
+      return { RspCode: '01', Message: 'Order not found' };
+    }
+
+    const app = (order as any).installmentApplication;
+    const prepay = app ? Math.round(Number(app.prepayAmount)) : 0;
+    const vnpAmount = Math.round(Number(query['vnp_Amount']) / 100);
+    if (!app || app.status !== InstallmentStatus.APPROVED || prepay !== vnpAmount) {
+      this.logger.warn(
+        `VNPay Prepay IPN: Invalid prepay (order: ${orderNumber}, expected: ${prepay}, vnp: ${vnpAmount})`,
+      );
+      return { RspCode: '04', Message: 'Invalid amount' };
+    }
+
+    if (order.status === OrderStatus.CANCELLED) {
+      this.logger.warn(`VNPay Prepay IPN: Order ${orderNumber} already cancelled`);
+      return { RspCode: '02', Message: 'Order already cancelled' };
+    }
+
+    if (query['vnp_ResponseCode'] === '00') {
+      try {
+        await this.settleVnpayPrepay(order as any, query, prepay);
+      } catch (txErr: any) {
+        if (txErr?.code === 'VNPAY_ALREADY_PROCESSED') {
+          this.logger.log(`VNPay Prepay IPN: Order ${orderNumber} already processed`);
+          return { RspCode: '02', Message: 'Prepay already processed' };
+        }
+        throw txErr;
+      }
+      this.logger.log(`VNPay Prepay IPN: Successfully processed order ${orderNumber}`);
+      return { RspCode: '00', Message: 'Confirm Success' };
+    }
+
+    this.logger.warn(
+      `VNPay Prepay IPN: Prepay failed for order ${orderNumber} with code ${query['vnp_ResponseCode']}`,
+    );
+    const txnNo = query['vnp_TransactionNo'];
+    const alreadyRecorded = txnNo
+      ? await this.prisma.payment.findFirst({
+          where: { orderId: order.id, status: PaymentStatus.FAILED, providerOrderId: txnNo },
+          select: { id: true },
+        })
+      : null;
+    if (!alreadyRecorded) {
+      await this.prisma.payment.create({
+        data: {
+          orderId: order.id,
+          method: PaymentMethod.VNPAY,
+          status: PaymentStatus.FAILED,
+          amount: prepay,
+          provider: 'VNPAY',
+          providerOrderId: txnNo,
+        },
+      });
+    }
+    return { RspCode: '00', Message: 'Confirm Success' };
+  }
+
   async handleVnpayIpn(query: Record<string, any>) {
     this.logger.log(`Received VNPay IPN webhook: ${JSON.stringify(query)}`);
+
+    // Installment prepays carry a suffixed merchant ref and settle a partial
+    // amount without touching the order status — route them separately.
+    if (isVnpayPrepayRef(query['vnp_TxnRef'])) {
+      return this.handlePrepayIpn(query);
+    }
 
     const secureHash = query['vnp_SecureHash'];
     const hashSecret = this.settingsService
@@ -638,7 +939,96 @@ export class PaymentsService {
     }
   }
 
+  async handlePrepayReturn(query: Record<string, any>) {
+    const orderNumber = prepayOrderNumber(String(query['vnp_TxnRef']));
+
+    const secureHash = query['vnp_SecureHash'];
+    const hashSecret = this.settingsService
+      ? await this.settingsService.get(
+          'VNPAY_HASH_SECRET',
+          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
+        )
+      : this.configService.get<string>(
+          'VNPAY_HASH_SECRET',
+          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
+        );
+
+    const cleanParams: Record<string, string> = {};
+    for (const [key, value] of Object.entries(query)) {
+      if (key !== 'vnp_SecureHash' && key !== 'vnp_SecureHashType' && value !== undefined && value !== null) {
+        cleanParams[key] = String(value);
+      }
+    }
+
+    const isValid = vnpSignaturesEqual(hashVnpayParams(cleanParams, hashSecret), secureHash);
+    const paidByVnpay = isValid && query['vnp_ResponseCode'] === '00';
+
+    const fail = (message: string) => ({
+      success: false,
+      isValid,
+      orderNumber,
+      amount: Number(query['vnp_Amount']) / 100,
+      responseCode: query['vnp_ResponseCode'],
+      transactionNo: query['vnp_TransactionNo'],
+      purpose: 'INSTALLMENT_PREPAY',
+      message,
+    });
+
+    if (!paidByVnpay) {
+      return fail('Giao dịch không thành công hoặc chữ ký không hợp lệ');
+    }
+
+    try {
+      const order = await this.prisma.order.findUnique({
+        where: { orderNumber },
+        include: { payments: true, installmentApplication: true },
+      });
+      if (!order) return fail('Không tìm thấy đơn hàng');
+
+      const app = (order as any).installmentApplication;
+      const prepay = app ? Math.round(Number(app.prepayAmount)) : 0;
+      const vnpAmount = Math.round(Number(query['vnp_Amount']) / 100);
+      const businessOk =
+        app &&
+        app.status === InstallmentStatus.APPROVED &&
+        order.status !== OrderStatus.CANCELLED &&
+        prepay === vnpAmount;
+      if (!businessOk) return fail('Khoản trả trước không còn hợp lệ cho đơn hàng này');
+
+      try {
+        await this.settleVnpayPrepay(order as any, query, prepay);
+        this.logger.log(`VNPay Return: settled prepay for order ${orderNumber}`);
+      } catch (settleErr: any) {
+        if (settleErr?.code !== 'VNPAY_ALREADY_PROCESSED') throw settleErr;
+        this.logger.log(`VNPay Return: prepay for order ${orderNumber} already settled`);
+      }
+    } catch (settleErr) {
+      // Never break the return page on settlement errors — signature is
+      // valid, so report success and let IPN/retry finish the job.
+      this.logger.warn(
+        `VNPay Return: prepay settlement deferred for ${orderNumber}: ${(settleErr as Error).message}`,
+      );
+    }
+
+    return {
+      success: true,
+      isValid,
+      orderNumber,
+      amount: Number(query['vnp_Amount']) / 100,
+      responseCode: query['vnp_ResponseCode'],
+      transactionNo: query['vnp_TransactionNo'],
+      purpose: 'INSTALLMENT_PREPAY',
+      message: 'Thanh toán trả trước thành công',
+    };
+  }
+
   async handleVnpayReturn(query: Record<string, any>) {
+    // Suffixed prepay refs settle a partial amount without touching the
+    // order status — the generic VNPayReturnPage renders the result as-is.
+    if (isVnpayPrepayRef(query['vnp_TxnRef'])) {
+      return this.handlePrepayReturn(query);
+    }
+
     const secureHash = query['vnp_SecureHash'];
     const hashSecret = this.settingsService
       ? await this.settingsService.get(

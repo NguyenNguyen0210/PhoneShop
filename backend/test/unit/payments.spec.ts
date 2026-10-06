@@ -385,6 +385,127 @@ describe('Payments Unit Tests', () => {
     });
   });
 
+  describe('VNPay Installment Prepay', () => {
+    const hashSecret = 'SANDBOX_SECRET_KEY_1234567890ABCDEF';
+    const mockConfig: any = {
+      get: (key: string, defaultValue?: string) => {
+        if (key === 'VNPAY_HASH_SECRET') return hashSecret;
+        return defaultValue;
+      },
+    };
+    const buildService = (mockPrisma: any) => {
+      const vietqrService = new VietqrService(mockConfig);
+      return new PaymentsService(
+        mockPrisma,
+        vietqrService,
+        { sendOrderConfirmation: jest.fn() } as any,
+        mockConfig,
+      );
+    };
+    const approvedOrder = () => ({
+      id: 'ord-inst-id',
+      orderNumber: 'ORD-INST',
+      userId: 'user-1',
+      totalAmount: 10000000,
+      status: OrderStatus.CONFIRMED,
+      payments: [{ id: 'pay-inst', method: 'INSTALLMENT', status: 'PENDING', amount: 10000000 }],
+      installmentApplication: { status: 'APPROVED', prepayAmount: 2000000 },
+    });
+
+    it('creates a prepay URL with suffixed ref and prepay amount for approved applications', async () => {
+      const mockPrisma: any = {
+        order: {
+          findUnique: jest.fn().mockImplementation(() => Promise.resolve(approvedOrder())),
+        },
+      };
+      const svc = buildService(mockPrisma);
+      const res = await svc.createPrepayPaymentUrl({ orderId: 'ord-inst-id' }, '127.0.0.1', 'user-1');
+      expect(res.amount).toBe(2000000);
+      expect(res.paymentUrl).toContain('vnp_TxnRef=ORD-INST-PREPAY');
+      expect(res.paymentUrl).toContain('vnp_Amount=200000000');
+    });
+
+    it('refuses a prepay URL while the application is still pending review', async () => {
+      const pending = {
+        ...approvedOrder(),
+        status: OrderStatus.PENDING,
+        installmentApplication: { status: 'PENDING', prepayAmount: 2000000 },
+      };
+      const mockPrisma: any = {
+        order: {
+          findUnique: jest.fn().mockImplementation(() => Promise.resolve(pending)),
+        },
+      };
+      const svc = buildService(mockPrisma);
+      await expect(
+        svc.createPrepayPaymentUrl({ orderId: 'ord-inst-id' }, '127.0.0.1', 'user-1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('settles prepay on valid return: own VNPAY row + shrinks INSTALLMENT balance', async () => {
+      const pendingRow = { id: 'pay-inst', amount: 10000000 };
+      const mockTx: any = {
+        payment: {
+          findFirst: jest
+            .fn()
+            .mockImplementationOnce(() => Promise.resolve(null))
+            .mockImplementationOnce(() => Promise.resolve(pendingRow)),
+          create: jest.fn().mockImplementation(() => Promise.resolve({ id: 'pay-vnpay' })),
+          update: jest.fn().mockImplementation(() => Promise.resolve({})),
+        },
+        paymentTransaction: { create: jest.fn().mockImplementation(() => Promise.resolve({})) },
+      };
+      const mockPrisma: any = {
+        order: {
+          findUnique: jest.fn().mockImplementation(() => Promise.resolve(approvedOrder())),
+        },
+        $transaction: jest.fn().mockImplementation((cb: any) => cb(mockTx)),
+      };
+      const svc = buildService(mockPrisma);
+
+      const params: Record<string, string> = {
+        vnp_Amount: '200000000',
+        vnp_Command: 'pay',
+        vnp_OrderInfo: 'Tra truoc don hang ORD-INST',
+        vnp_ResponseCode: '00',
+        vnp_TmnCode: 'SANDBOX1',
+        vnp_TxnRef: 'ORD-INST-PREPAY',
+        vnp_TransactionNo: '14109999',
+      };
+      const query = { ...params, vnp_SecureHash: hashVnpayParams(params, hashSecret) };
+
+      const result = await svc.handleVnpayReturn(query);
+
+      expect(result.success).toBe(true);
+      expect(result.orderNumber).toBe('ORD-INST');
+      expect(mockTx.payment.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ method: 'VNPAY', status: 'PAID', amount: 2000000 }),
+        }),
+      );
+      expect(mockTx.payment.update).toHaveBeenCalledWith({
+        where: { id: 'pay-inst' },
+        data: { amount: 8000000 },
+      });
+    });
+
+    it('does not settle prepay on forged signature', async () => {
+      const mockPrisma: any = {
+        order: { findUnique: jest.fn() },
+        $transaction: jest.fn(),
+      };
+      const svc = buildService(mockPrisma);
+      const result = await svc.handleVnpayReturn({
+        vnp_TxnRef: 'ORD-INST-PREPAY',
+        vnp_ResponseCode: '00',
+        vnp_Amount: '200000000',
+        vnp_SecureHash: 'forged',
+      });
+      expect(result.success).toBe(false);
+      expect(mockPrisma.order.findUnique).not.toHaveBeenCalled();
+    });
+  });
+
   describe('PaymentsController handleVnpayIpn Direct Response', () => {
     it('should bypass NestJS response interceptor by sending direct json via res.status(200).json', async () => {
       const mockPaymentsService: any = {
