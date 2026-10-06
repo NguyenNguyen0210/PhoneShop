@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Table, Input, Select, Space, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { SearchOutlined } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import type { Payment, PaymentMethod, PaymentStatus } from '../../../../types';
 import { PaymentMethodTag } from './PaymentMethodTag';
 import { PaymentStatusTag } from './PaymentStatusTag';
@@ -15,6 +15,11 @@ export interface PaymentsListTabProps {
 }
 
 export const PaymentsListTab: React.FC<PaymentsListTabProps> = ({ payments, loading }) => {
+  const location = useLocation();
+  // This table is mounted under both /admin/payments and /staff/payments.
+  // The old hardcoded "/admin/orders" kicked staff users out to the staff
+  // home via the admin-only route guard — and never opened the order anyway.
+  const ordersBase = location.pathname.startsWith('/staff') ? '/staff/orders' : '/admin/orders';
   const [keyword, setKeyword] = useState('');
   const [methodFilter, setMethodFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -65,7 +70,10 @@ export const PaymentsListTab: React.FC<PaymentsListTabProps> = ({ payments, load
       key: 'order',
       render: (_: any, record: Payment) => (
         <div>
-          <Link to="/admin/orders" style={{ fontWeight: 600 }}>
+          <Link
+            to={`${ordersBase}/${record.order?.id || record.orderId}`}
+            style={{ fontWeight: 600 }}
+          >
             #{record.order?.orderNumber || record.orderId.slice(0, 8)}
           </Link>
           <br />
