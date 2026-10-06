@@ -37,6 +37,8 @@ export const DEFAULT_DEFINITIONS: Record<
   EMAIL_USER: { group: 'email', isSecret: false },
   EMAIL_PASS: { group: 'email', isSecret: true },
   EMAIL_FROM: { group: 'email', isSecret: false, defaultVal: 'Phone Shop <no-reply@phoneshop.vn>' },
+  EMAIL_PROVIDER: { group: 'email', isSecret: false, defaultVal: 'brevo' },
+  BREVO_API_KEY: { group: 'email', isSecret: true },
 
   STORE_NAME: { group: 'general', isSecret: false, defaultVal: 'Phone Shop' },
   STORE_HOTLINE: { group: 'general', isSecret: false, defaultVal: '1900 6868' },

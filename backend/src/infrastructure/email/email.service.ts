@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import { BrevoService } from './brevo.service';
 import {
   OrderItemSummary,
   OrderCancelledOptions,
@@ -63,6 +64,7 @@ export class EmailService implements OnModuleInit {
   constructor(
     private readonly config: ConfigService,
     @Optional() private readonly prisma?: PrismaService,
+    @Optional() private readonly brevo?: BrevoService,
   ) {}
 
   private clean(val?: string | null): string {
@@ -161,6 +163,16 @@ export class EmailService implements OnModuleInit {
   }
 
   async send(options: SendEmailOptions): Promise<void> {
+    // Brevo API path (default). Raw SMTP remains available via opt-out.
+    const provider = this.clean(this.config.get<string>('EMAIL_PROVIDER', 'brevo')).toLowerCase();
+    if (provider === 'brevo') {
+      if (!this.brevo) {
+        throw new Error('EMAIL_PROVIDER=brevo but BrevoService is not available');
+      }
+      await this.brevo.send(options);
+      return;
+    }
+
     const { transporter, from, isMock } = await this.initTransporter();
 
     if (isMock || !transporter) {

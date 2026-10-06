@@ -145,4 +145,22 @@ describe('EmailService', () => {
       }),
     );
   });
+
+  it('routes send through Brevo when EMAIL_PROVIDER=brevo', async () => {
+    (prisma.systemSetting.findMany as any).mockResolvedValue([]);
+    (config.get as any).mockImplementation((key: string, defaultVal: any) => {
+      if (key === 'EMAIL_PROVIDER') return 'brevo';
+      return defaultVal;
+    });
+    const brevo = {
+      send: jest.fn<(...args: any[]) => Promise<any>>().mockResolvedValue({ mocked: false }),
+    };
+    const svc = new EmailService(config as any, prisma as any, brevo as any);
+
+    await svc.send({ to: 'buyer@example.com', subject: 'Hi', html: '<p>Hi</p>' });
+
+    expect(brevo.send).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'buyer@example.com', subject: 'Hi' }),
+    );
+  });
 });
