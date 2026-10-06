@@ -89,6 +89,24 @@ export const AdminOrdersPage: React.FC = () => {
   const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
   const [isShippingTransition, setIsShippingTransition] = useState(false);
 
+  // In-flight guard: the row Select stays interactive while the PUT is
+  // pending, so a second change event used to fire a duplicate transition —
+  // the first request won and the second failed with
+  // "Cannot transition from X to X" (both toasts showed at once).
+  const [updatingOrderIds, setUpdatingOrderIds] = useState<ReadonlySet<string>>(new Set());
+
+  const markUpdating = (orderId: string) => {
+    setUpdatingOrderIds((prev) => new Set(prev).add(orderId));
+  };
+
+  const clearUpdating = (orderId: string) => {
+    setUpdatingOrderIds((prev) => {
+      const next = new Set(prev);
+      next.delete(orderId);
+      return next;
+    });
+  };
+
   // Server-side pagination & filter states
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(10);
@@ -191,6 +209,7 @@ export const AdminOrdersPage: React.FC = () => {
     nextStatus: OrderStatus,
     record?: Order
   ) => {
+    if (updatingOrderIds.has(orderId)) return;
     if (nextStatus === 'SHIPPING') {
       const targetOrder = record || orders.find((o) => o.id === orderId) || selectedOrder;
       setShippingModalOrder(targetOrder || null);
@@ -222,6 +241,7 @@ export const AdminOrdersPage: React.FC = () => {
         okType: 'danger',
         cancelText: 'Quay lại',
         onOk: async () => {
+          markUpdating(orderId);
           try {
             const updated = await orderService.updateOrderStatus(orderId, 'cancel', {
               reason: cancelReason.trim() || 'Hủy bởi nhân viên vận hành',
@@ -237,6 +257,8 @@ export const AdminOrdersPage: React.FC = () => {
             void loadOrders();
           } catch (err: any) {
             message.error(err.response?.data?.message || err.message || 'Hủy đơn thất bại');
+          } finally {
+            clearUpdating(orderId);
           }
         },
       });
@@ -250,6 +272,7 @@ export const AdminOrdersPage: React.FC = () => {
     if (nextStatus === 'DELIVERED') action = 'deliver';
     if (nextStatus === 'COMPLETED') action = 'complete';
 
+    markUpdating(orderId);
     try {
       const updated = await orderService.updateOrderStatus(orderId, action);
       const resultingStatus = updated?.status || nextStatus;
@@ -263,6 +286,8 @@ export const AdminOrdersPage: React.FC = () => {
       void loadOrders();
     } catch (err: any) {
       message.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
+    } finally {
+      clearUpdating(orderId);
     }
   };
 
@@ -351,12 +376,14 @@ export const AdminOrdersPage: React.FC = () => {
       render: (_, record) => {
         const options = getTransitionOptions(record.status);
         const hasTransitions = options.length > 1;
+        const isUpdating = updatingOrderIds.has(record.id);
         return (
           <Select
             value={record.status}
             size="small"
             style={{ width: 170 }}
-            disabled={!hasTransitions}
+            disabled={!hasTransitions || isUpdating}
+            loading={isUpdating}
             onChange={(val) => handleUpdateStatus(record.id, val as OrderStatus, record)}
             options={options}
           />
