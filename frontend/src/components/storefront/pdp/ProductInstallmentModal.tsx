@@ -7,7 +7,7 @@ export interface ProductInstallmentModalProps {
   onClose: () => void;
   productName: string;
   price: number;
-  onProceedCheckout: () => void;
+  onProceedCheckout: (plan: { prepayPercent: number; termMonths: number }) => void;
 }
 
 const PREPAY_OPTIONS = [0, 20, 30, 50];
@@ -135,10 +135,10 @@ export const ProductInstallmentModal: React.FC<ProductInstallmentModalProps> = (
         {/* Action button */}
         <button
           type="button"
-          onClick={onProceedCheckout}
+          onClick={() => onProceedCheckout({ prepayPercent, termMonths })}
           className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl w-full transition-colors cursor-pointer text-sm sm:text-base shadow-sm"
         >
-          Tiến hành đăng ký & Giữ máy 15 phút
+          Tiến hành đăng ký & Giữ máy 24 giờ
         </button>
       </div>
     </Modal>

@@ -347,6 +347,29 @@ export const ProductDetailPage: React.FC = () => {
     navigate('/checkout');
   };
 
+  const handleBuyInstallment = (plan: { prepayPercent: number; termMonths: number }) => {
+    if (!product || !selectedVariant) return;
+    buyNow(
+      product,
+      selectedVariant,
+      1,
+      isFlashSaleActive ? Number(matchingFlashItem.flashPrice) : undefined,
+      isFlashSaleActive
+    );
+    // Land on checkout with the INSTALLMENT tab preselected and the
+    // calculator plan carried over — CheckoutPage consumes + clears this.
+    try {
+      sessionStorage.setItem(
+        'phoneshop_checkout_pref',
+        JSON.stringify({ paymentMethod: 'INSTALLMENT', installmentPlan: plan })
+      );
+    } catch {
+      // Storage unavailable — checkout still works, defaults to VIETQR.
+    }
+    setIsInstallmentModalOpen(false);
+    navigate('/checkout');
+  };
+
   const handleToggleWishlist = async () => {
     const token = localStorage.getItem('phoneshop_access_token');
     if (!token) {
@@ -999,7 +1022,7 @@ export const ProductDetailPage: React.FC = () => {
         onClose={() => setIsInstallmentModalOpen(false)}
         productName={`Điện thoại ${product.name} (${selectedVariant.color} - ${selectedVariant.storage})`}
         price={currentPrice}
-        onProceedCheckout={handleBuyNow}
+        onProceedCheckout={handleBuyInstallment}
       />
 
       {/* MODAL 2: FULL DETAILED OEM HARDWARE SPECS */}

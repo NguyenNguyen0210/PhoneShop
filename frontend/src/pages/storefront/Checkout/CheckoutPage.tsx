@@ -43,7 +43,23 @@ export const CheckoutPage: React.FC = () => {
   const [shippingPhone, setShippingPhone] = useState(user?.phone || '');
   const [shippingAddress, setShippingAddress] = useState('');
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('VIETQR');
+  // "Buy now" entry points (e.g. PDP installment modal) can stash a checkout
+  // preference here; consumed once below, then cleared.
+  const readCheckoutPref = <T,>(key: string): T | null => {
+    try {
+      const raw = sessionStorage.getItem('phoneshop_checkout_pref');
+      if (!raw) return null;
+      return (JSON.parse(raw) as any)?.[key] ?? null;
+    } catch {
+      return null;
+    }
+  };
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() => {
+    const pref = readCheckoutPref<PaymentMethod>('paymentMethod');
+    return pref === 'VIETQR' || pref === 'VNPAY' || pref === 'COD' || pref === 'INSTALLMENT'
+      ? pref
+      : 'VIETQR';
+  });
 
   // Address State
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
@@ -55,18 +71,31 @@ export const CheckoutPage: React.FC = () => {
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('STANDARD');
 
   // Installment State
-  const [installmentData, setInstallmentData] = useState<InstallmentFormData>({
-    provider: 'HOME_CREDIT',
-    termMonths: 6,
-    prepayPercent: 20,
-    fullName: user?.fullName || '',
-    citizenId: '',
-    birthDate: '',
-    phoneNumber: user?.phone || '',
-    currentAddress: '',
-    incomeRange: '10 - 20 triệu',
-    cccdFrontUrl: '',
-    cccdBackUrl: '',
+  const [installmentData, setInstallmentData] = useState<InstallmentFormData>(() => {
+    const plan = readCheckoutPref<{ prepayPercent?: unknown; termMonths?: unknown }>(
+      'installmentPlan'
+    );
+    const termMonths =
+      typeof plan?.termMonths === 'number' && [3, 6, 9, 12].includes(plan.termMonths)
+        ? plan.termMonths
+        : 6;
+    const prepayPercent =
+      typeof plan?.prepayPercent === 'number' && [0, 20, 30, 50].includes(plan.prepayPercent)
+        ? plan.prepayPercent
+        : 20;
+    return {
+      provider: 'HOME_CREDIT',
+      termMonths,
+      prepayPercent,
+      fullName: user?.fullName || '',
+      citizenId: '',
+      birthDate: '',
+      phoneNumber: user?.phone || '',
+      currentAddress: '',
+      incomeRange: '10 - 20 triệu',
+      cccdFrontUrl: '',
+      cccdBackUrl: '',
+    };
   });
   const [installmentErrors, setInstallmentErrors] = useState<Record<string, string>>({});
   // True while a CCCD image is still uploading — submitting then would either
@@ -130,6 +159,17 @@ export const CheckoutPage: React.FC = () => {
   }, [appliedVoucher, shippingFee, subtotal]);
 
   const totalAmountDue = Math.max(0, subtotal - discountAmount + shippingFee);
+
+  // One-shot buy-now preference (payment method + installment plan) — the
+  // state initializers above already consumed it, so clear it on mount and
+  // a later manual visit to /checkout starts with clean defaults.
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem('phoneshop_checkout_pref');
+    } catch {
+      // Storage unavailable — nothing to clear.
+    }
+  }, []);
 
   // Fetch saved addresses if user is logged in
   useEffect(() => {
