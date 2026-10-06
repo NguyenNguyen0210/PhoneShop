@@ -76,4 +76,31 @@ export const installmentService = {
     const response = await apiClient.patch(`/admin/installments/${id}/review`, data);
     return response.data?.data ?? response.data;
   },
+
+  async getAdminSchedule(id: string): Promise<any> {
+    const response = await apiClient.get(`/admin/installments/${id}/schedule`);
+    return response.data?.data ?? response.data;
+  },
+
+  async getScheduleByOrder(orderId: string): Promise<any> {
+    const response = await apiClient.get(`/installments/order/${orderId}/schedule`);
+    return response.data?.data ?? response.data;
+  },
+
+  async markTermPaid(termId: string, paidNote?: string): Promise<any> {
+    const response = await apiClient.patch(`/admin/installments/terms/${termId}/pay`, {
+      paidNote,
+    });
+    return response.data?.data ?? response.data;
+  },
+
+  async regenerateSchedule(id: string): Promise<any> {
+    const response = await apiClient.post(`/admin/installments/${id}/schedule/regenerate`);
+    return response.data?.data ?? response.data;
+  },
+
+  async remindApplication(id: string): Promise<any> {
+    const response = await apiClient.post(`/admin/installments/${id}/remind`);
+    return response.data?.data ?? response.data;
+  },
 };

@@ -231,6 +231,7 @@ model User {
   returns       Return[]
   installmentApplications InstallmentApplication[]
   reviewedInstallments    InstallmentApplication[] @relation("StaffReviewedInstallments")
+  markedInstallmentTerms  InstallmentPaymentTerm[] @relation("StaffMarkedInstallmentTerms")
 
   tickets                 Ticket[]                 @relation("UserTickets")
   assignedTickets         Ticket[]                 @relation("StaffAssignedTickets")
@@ -1087,11 +1088,43 @@ model InstallmentApplication {
   order           Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
   user            User                @relation(fields: [userId], references: [id], onDelete: Restrict)
   reviewer        User?               @relation("StaffReviewedInstallments", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  paymentTerms    InstallmentPaymentTerm[]
 
   @@index([userId])
   @@index([status])
   @@index([citizenId])
   @@map("installment_applications")
+}
+
+// Monthly repayment schedule of an APPROVED installment application.
+// Money itself moves through the finance company — rows here only record
+// what is due when and whether staff confirmed its collection. OVERDUE is
+// derived on read (PENDING + past dueDate), never stored, so no cron needed.
+enum InstallmentTermStatus {
+  PENDING
+  PAID
+}
+
+model InstallmentPaymentTerm {
+  id            String                @id @default(uuid()) @db.Uuid
+  applicationId String                @map("application_id") @db.Uuid
+  termNo        Int                   @map("term_no")
+  dueDate       DateTime              @map("due_date") @db.Date
+  amount        Decimal               @db.Decimal(15, 2)
+  status        InstallmentTermStatus @default(PENDING)
+  paidAt        DateTime?             @map("paid_at")
+  paidNote      String?               @map("paid_note") @db.VarChar(255)
+  markedBy      String?               @map("marked_by") @db.Uuid
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
+
+  application   InstallmentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  marker        User?                  @relation("StaffMarkedInstallmentTerms", fields: [markedBy], references: [id], onDelete: SetNull)
+
+  @@unique([applicationId, termNo])
+  @@index([applicationId])
+  @@index([status])
+  @@map("installment_payment_terms")
 }
 
 // ============================================================

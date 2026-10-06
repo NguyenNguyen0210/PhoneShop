@@ -29,7 +29,8 @@ import { paymentService } from '../../../services/paymentService';
 import { installmentService } from '../../../services/installmentService';
 import { reviewService } from '../../../services/reviewService';
 import { ReviewModal } from '../../../components/storefront/reviews';
-import type { Order, InstallmentApplication, InstallmentStatus, Review } from '../../../types';
+import type { Order, InstallmentApplication, InstallmentStatus, InstallmentPaymentTerm, Review } from '../../../types';
+import { isInstallmentTermOverdue } from '../../../types';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 import { notifyError } from '../../../utils/notify';
 import { OrderTrackingTimeline } from './components/OrderTrackingTimeline';
@@ -54,6 +55,9 @@ export const OrderDetailPage: React.FC = () => {
   // Online prepay (VNPay) for approved installment applications
   const [prepayLoading, setPrepayLoading] = useState(false);
   const [prepayError, setPrepayError] = useState<string | null>(null);
+
+  // Monthly repayment schedule (read-only for customers)
+  const [scheduleTerms, setScheduleTerms] = useState<InstallmentPaymentTerm[]>([]);
 
   // Review states for delivered orders
   const [reviewedProducts, setReviewedProducts] = useState<
@@ -108,6 +112,17 @@ export const OrderDetailPage: React.FC = () => {
             }
           } catch {
             // Not fatal if installment endpoint isn't ready or handled
+          }
+        }
+        // Monthly schedule for the customer view (best effort)
+        if (orderData?.installmentApplication || orderData?.paymentMethod === 'INSTALLMENT') {
+          try {
+            const schedule = await installmentService.getScheduleByOrder(orderData.id);
+            if (isMounted && Array.isArray(schedule?.terms)) {
+              setScheduleTerms(schedule.terms);
+            }
+          } catch {
+            // Schedule section simply hides when unavailable
           }
         }
       })
@@ -414,6 +429,53 @@ export const OrderDetailPage: React.FC = () => {
                 <span className="text-[10px] text-blue-700 font-semibold">Đã gồm lãi 0%</span>
               </div>
             </div>
+
+            {/* Monthly repayment schedule (read-only — money goes to the finance company) */}
+            {scheduleTerms.length > 0 && (
+              <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                    Lịch trả góp hằng tháng
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Đã thu {scheduleTerms.filter((t) => t.status === 'PAID').length}/
+                    {scheduleTerms.length} kỳ
+                  </span>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {scheduleTerms.map((t) => {
+                    const overdue = t.status === 'PENDING' && isInstallmentTermOverdue(t);
+                    return (
+                      <div key={t.id} className="px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
+                        <span className="font-bold text-slate-900">Kỳ {t.termNo}</span>
+                        <span className="text-slate-500">
+                          Hạn {t.dueDate ? new Date(t.dueDate).toLocaleDateString('vi-VN') : '—'}
+                        </span>
+                        <span className="font-mono font-bold text-slate-900 tabular-nums">
+                          {formatPrice(Number(t.amount) || 0)}
+                        </span>
+                        {t.status === 'PAID' ? (
+                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold rounded-md">
+                            Đã thu
+                          </span>
+                        ) : overdue ? (
+                          <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold rounded-md">
+                            Quá hạn
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold rounded-md">
+                            Chờ đến hạn
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="px-4 py-2 text-[11px] text-slate-400 bg-slate-50/60">
+                  Các kỳ góp thanh toán cho công ty tài chính. Liên hệ hotline 1800 6868 nếu cần hỗ trợ.
+                </p>
+              </div>
+            )}
 
             {/* Online prepay (VNPay) — approved applications, before shipment */}
             {(() => {

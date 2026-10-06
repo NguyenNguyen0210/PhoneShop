@@ -110,6 +110,7 @@ export class InstallmentsService {
     const app = await this.prisma.installmentApplication.findUnique({
       where: { id },
       include: {
+        paymentTerms: { orderBy: { termNo: 'asc' } },
         order: {
           include: {
             items: {
@@ -160,6 +161,7 @@ export class InstallmentsService {
     const app = await this.prisma.installmentApplication.findFirst({
       where,
       include: {
+        paymentTerms: { orderBy: { termNo: 'asc' } },
         order: {
           include: {
             items: {
@@ -207,6 +209,7 @@ export class InstallmentsService {
       where: { userId },
       orderBy: { createdAt: 'desc' },
       include: {
+        paymentTerms: { orderBy: { termNo: 'asc' } },
         order: {
           include: {
             items: {
@@ -337,6 +340,11 @@ export class InstallmentsService {
             'Order status changed concurrently; please refresh and retry',
           );
         }
+
+        // Build the monthly repayment schedule in the same transaction:
+        // calendar-month due dates from approval, last term absorbing
+        // rounding so the terms sum to exactly the loan amount.
+        await this.createScheduleRows(tx, id, app, now);
 
         const updatedApp = await tx.installmentApplication.findUnique({
           where: { id },
@@ -477,5 +485,257 @@ export class InstallmentsService {
     }
 
     return result;
+  }
+
+  // ── MONTHLY REPAYMENT SCHEDULE ────────────────────────────
+  // Money itself moves through the finance company — these rows only record
+  // what is due when and whether staff confirmed its collection. OVERDUE is
+  // derived on read (PENDING + past dueDate), never stored, so no cron job.
+
+  private addMonthsClamped(date: Date, months: number): Date {
+    const d = new Date(date);
+    const day = d.getDate();
+    d.setMonth(d.getMonth() + months);
+    if (d.getDate() < day) d.setDate(0);
+    return d;
+  }
+
+  private withOverdue<T extends { status: unknown; dueDate: Date | string }>(
+    term: T,
+  ): T & { isOverdue: boolean } {
+    const due = new Date(term.dueDate);
+    due.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return {
+      ...term,
+      isOverdue:
+        String(term.status) === 'PENDING' && due.getTime() < today.getTime(),
+    };
+  }
+
+  private async createScheduleRows(
+    tx: any,
+    applicationId: string,
+    app: { loanAmount: unknown; termMonths: unknown },
+    anchor: Date,
+  ): Promise<void> {
+    const loan = Math.round(Number(app.loanAmount));
+    const terms = Number(app.termMonths);
+    if (!Number.isFinite(loan) || loan <= 0 || !Number.isInteger(terms) || terms <= 0) {
+      this.logger.warn(
+        `Skipping schedule for application ${applicationId}: invalid loan/terms`,
+      );
+      return;
+    }
+    const monthly = Math.round(loan / terms);
+    for (let n = 1; n <= terms; n++) {
+      await tx.installmentPaymentTerm.create({
+        data: {
+          applicationId,
+          termNo: n,
+          dueDate: this.addMonthsClamped(anchor, n),
+          amount: n < terms ? monthly : loan - monthly * (terms - 1),
+        },
+      });
+    }
+  }
+
+  private shapeSchedule(app: any) {
+    const terms = ((app?.paymentTerms ?? []) as any[])
+      .slice()
+      .sort((a, b) => a.termNo - b.termNo)
+      .map((t) => this.withOverdue(t));
+    return {
+      id: app.id,
+      orderId: app.orderId,
+      orderNumber: app.order?.orderNumber,
+      orderStatus: app.order?.status,
+      provider: app.provider,
+      status: app.status,
+      termMonths: app.termMonths,
+      prepayAmount: Number(app.prepayAmount ?? 0),
+      loanAmount: Number(app.loanAmount ?? 0),
+      fullName: app.fullName,
+      phoneNumber: app.phoneNumber,
+      customerEmail: app.user?.email,
+      customerName:
+        [app.user?.firstName, app.user?.lastName].filter(Boolean).join(' ') ||
+        app.fullName,
+      terms,
+      paidTerms: terms.filter((t: any) => t.status === 'PAID').length,
+      overdueTerms: terms.filter((t: any) => t.isOverdue).length,
+    };
+  }
+
+  async getSchedule(
+    applicationId: string,
+    requester: { userId?: string; isStaff?: boolean },
+  ) {
+    const app = await this.prisma.installmentApplication.findUnique({
+      where: { id: applicationId },
+      include: {
+        paymentTerms: { orderBy: { termNo: 'asc' } },
+        order: { select: { orderNumber: true, status: true } },
+        user: { select: { email: true, firstName: true, lastName: true } },
+      },
+    });
+    if (!app) {
+      throw new NotFoundException(`Hồ sơ trả góp với ID ${applicationId} không tồn tại`);
+    }
+    if (!requester.isStaff && app.userId !== requester.userId) {
+      throw new NotFoundException(`Hồ sơ trả góp với ID ${applicationId} không tồn tại`);
+    }
+    return this.shapeSchedule(app);
+  }
+
+  async getScheduleByOrder(
+    orderId: string,
+    requester: { userId?: string; isStaff?: boolean },
+  ) {
+    const where: any = { orderId };
+    if (!requester.isStaff) where.userId = requester.userId;
+    const app = await this.prisma.installmentApplication.findFirst({
+      where,
+      include: {
+        paymentTerms: { orderBy: { termNo: 'asc' } },
+        order: { select: { orderNumber: true, status: true } },
+        user: { select: { email: true, firstName: true, lastName: true } },
+      },
+    });
+    if (!app) {
+      throw new NotFoundException('Đơn hàng này không có hồ sơ trả góp');
+    }
+    return this.shapeSchedule(app);
+  }
+
+  async markTermPaid(
+    termId: string,
+    staffId: string,
+    dto: { paidNote?: string },
+  ) {
+    const term = await this.prisma.installmentPaymentTerm.findUnique({
+      where: { id: termId },
+      include: { application: { select: { id: true, status: true, orderId: true } } },
+    });
+    if (!term) {
+      throw new NotFoundException(`Kỳ góp với ID ${termId} không tồn tại`);
+    }
+    if ((term.application as any)?.status !== InstallmentStatus.APPROVED) {
+      throw new BadRequestException('Chỉ ghi nhận kỳ góp của hồ sơ đã được phê duyệt');
+    }
+    // Idempotent: re-ticking an already-paid term is a no-op success.
+    if ((term as any).status === 'PAID') {
+      return this.withOverdue(term);
+    }
+
+    const claimed = await this.prisma.installmentPaymentTerm.updateMany({
+      where: { id: termId, status: 'PENDING' },
+      data: {
+        status: 'PAID',
+        paidAt: new Date(),
+        paidNote: dto.paidNote?.trim()?.slice(0, 255) || null,
+        markedBy: staffId,
+      },
+    });
+    if (claimed.count === 0) {
+      throw new ConflictException('Kỳ góp đã được xử lý đồng thời, vui lòng tải lại');
+    }
+
+    this.logger.log(`Installment term ${termId} marked PAID by staff ${staffId}`);
+    const updated = await this.prisma.installmentPaymentTerm.findUnique({
+      where: { id: termId },
+    });
+    return this.withOverdue(updated);
+  }
+
+  async regenerateSchedule(applicationId: string, staffId: string) {
+    const app = await this.prisma.installmentApplication.findUnique({
+      where: { id: applicationId },
+    });
+    if (!app) {
+      throw new NotFoundException(`Hồ sơ trả góp với ID ${applicationId} không tồn tại`);
+    }
+    if ((app as any).status !== InstallmentStatus.APPROVED) {
+      throw new BadRequestException('Chỉ tạo lịch trả cho hồ sơ đã được phê duyệt');
+    }
+    const existing = await this.prisma.installmentPaymentTerm.count({
+      where: { applicationId },
+    });
+    if (existing > 0) {
+      throw new BadRequestException('Hồ sơ này đã có lịch trả góp');
+    }
+    const anchor = (app as any).reviewedAt ? new Date((app as any).reviewedAt) : new Date();
+    await this.prisma.$transaction(async (tx) => {
+      await this.createScheduleRows(tx, applicationId, app as any, anchor);
+    });
+    this.logger.log(
+      `Installment schedule regenerated for application ${applicationId} by staff ${staffId}`,
+    );
+    return this.getSchedule(applicationId, { isStaff: true });
+  }
+
+  async remindApplication(applicationId: string, staffId: string) {
+    const schedule = await this.getSchedule(applicationId, { isStaff: true });
+    if (schedule.status !== InstallmentStatus.APPROVED) {
+      throw new BadRequestException('Chỉ nhắc nợ hồ sơ đã được phê duyệt');
+    }
+    const pending = (schedule.terms as any[]).filter((t) => t.status === 'PENDING');
+    if (pending.length === 0) {
+      throw new BadRequestException('Hồ sơ này không còn kỳ góp nào chưa thu');
+    }
+    const overdue = pending.filter((t) => t.isOverdue);
+    // Remind all overdue terms, or the single next upcoming one.
+    const targets = overdue.length > 0 ? overdue : [pending[0]];
+    if (!schedule.customerEmail) {
+      throw new BadRequestException('Hồ sơ này không có email khách hàng để gửi nhắc nợ');
+    }
+
+    const fmtDate = (d: Date | string) => new Date(d).toLocaleDateString('vi-VN');
+    const fmtMoney = (n: number) =>
+      new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
+    const rows = targets
+      .map(
+        (t) =>
+          `<tr><td style="padding:8px;border:1px solid #e2e8f0;">Kỳ ${t.termNo}/${schedule.termMonths}</td>` +
+          `<td style="padding:8px;border:1px solid #e2e8f0;">${fmtDate(t.dueDate)}</td>` +
+          `<td style="padding:8px;border:1px solid #e2e8f0;">${fmtMoney(Number(t.amount))}</td>` +
+          `<td style="padding:8px;border:1px solid #e2e8f0;">${t.isOverdue ? 'Quá hạn' : 'Sắp đến hạn'}</td></tr>`,
+      )
+      .join('');
+    const subject = overdue.length > 0
+      ? `[Phone Shop] Nhắc thanh toán ${overdue.length} kỳ góp quá hạn (đơn ${schedule.orderNumber})`
+      : `[Phone Shop] Nhắc lịch trả góp kỳ ${targets[0].termNo} (đơn ${schedule.orderNumber})`;
+
+    try {
+      await this.emailService.send({
+        to: schedule.customerEmail,
+        subject,
+        html:
+          `<p>Chào ${schedule.customerName || 'quý khách'},</p>` +
+          `<p>Phone Shop nhắc lịch trả góp 0% cho đơn hàng <strong>${schedule.orderNumber}</strong>. ` +
+          `Quý khách vui lòng thanh toán các kỳ sau cho công ty tài chính đúng hạn:</p>` +
+          `<table style="border-collapse:collapse;"><tr>` +
+          `<th style="padding:8px;border:1px solid #e2e8f0;">Kỳ</th>` +
+          `<th style="padding:8px;border:1px solid #e2e8f0;">Hạn trả</th>` +
+          `<th style="padding:8px;border:1px solid #e2e8f0;">Số tiền</th>` +
+          `<th style="padding:8px;border:1px solid #e2e8f0;">Trạng thái</th></tr>${rows}</table>` +
+          `<p>Mọi thắc mắc vui lòng liên hệ hotline <strong>1800 6868</strong>.</p>`,
+      });
+    } catch (emailErr) {
+      this.logger.warn(
+        `Failed to send installment reminder for application ${applicationId}: ${(emailErr as Error).message}`,
+      );
+      throw new BadRequestException('Không gửi được email nhắc nợ lúc này, vui lòng thử lại');
+    }
+
+    this.logger.log(
+      `Installment reminder sent for application ${applicationId} (terms ${targets.map((t) => t.termNo).join(',')}) by staff ${staffId}`,
+    );
+    return {
+      sentTo: schedule.customerEmail,
+      remindedTerms: targets.map((t) => t.termNo),
+      overdueCount: overdue.length,
+    };
   }
 }

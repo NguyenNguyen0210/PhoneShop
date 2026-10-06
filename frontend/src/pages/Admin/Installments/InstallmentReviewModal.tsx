@@ -23,6 +23,7 @@ import {
 } from '@ant-design/icons';
 import type { InstallmentApplication, InstallmentStatus } from '../../../types';
 import { installmentService } from '../../../services/installmentService';
+import { InstallmentScheduleCard } from './InstallmentScheduleCard';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -324,6 +325,11 @@ export const InstallmentReviewModal: React.FC<InstallmentReviewModalProps> = ({
               </div>
             )}
           </Card>
+        )}
+
+        {/* Monthly repayment schedule (approved applications) */}
+        {application.status === 'APPROVED' && (
+          <InstallmentScheduleCard applicationId={application.id} />
         )}
 
         {/* Previous Review Result if already processed */}

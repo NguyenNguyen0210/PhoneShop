@@ -291,7 +291,33 @@ export interface InstallmentApplication {
   order?: any;
   user?: any;
   reviewer?: any;
+  paymentTerms?: InstallmentPaymentTerm[];
 }
+
+export type InstallmentTermStatus = 'PENDING' | 'PAID';
+
+export interface InstallmentPaymentTerm {
+  id: string;
+  applicationId: string;
+  termNo: number;
+  dueDate: string;
+  amount: number;
+  status: InstallmentTermStatus;
+  paidAt?: string | null;
+  paidNote?: string | null;
+  markedBy?: string | null;
+  /** Derived on read: PENDING + past dueDate. Never stored. */
+  isOverdue?: boolean;
+}
+
+export const isInstallmentTermOverdue = (term: Pick<InstallmentPaymentTerm, 'status' | 'dueDate'>): boolean => {
+  if (term.status !== 'PENDING') return false;
+  const due = new Date(term.dueDate);
+  due.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return due.getTime() < today.getTime();
+};
 
 export interface InstallmentFormData {
   provider: InstallmentProvider;
