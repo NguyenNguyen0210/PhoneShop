@@ -10,9 +10,16 @@ const hasAccessToken = () =>
 interface CartState {
   items: CartItem[];
   selectedItemIds: string[];
-  isDrawerOpen: boolean;
 
   addItem: (
+    product: Product,
+    variant: ProductVariant,
+    quantity?: number,
+    priceOverride?: number,
+    isFlashSale?: boolean
+  ) => void;
+  /** Buy-now: add/merge the variant, select ONLY it for checkout, never open any popup. */
+  buyNow: (
     product: Product,
     variant: ProductVariant,
     quantity?: number,
@@ -22,8 +29,6 @@ interface CartState {
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
-  setDrawerOpen: (open: boolean) => void;
-  toggleDrawer: () => void;
   totalAmount: () => number;
   totalCount: () => number;
 
@@ -44,7 +49,6 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       selectedItemIds: [],
-      isDrawerOpen: false,
 
       addItem: (
         product: Product,
@@ -86,9 +90,63 @@ export const useCartStore = create<CartState>()(
           newItems = [...currentItems, newItem];
         }
 
-        set({ items: newItems, isDrawerOpen: true });
+        set({ items: newItems });
 
         // Optionally sync with backend if token exists
+        if (hasAccessToken()) {
+          cartService.addToCart(variant.id, quantity).catch(() => {});
+        }
+      },
+
+      buyNow: (
+        product: Product,
+        variant: ProductVariant,
+        quantity = 1,
+        priceOverride?: number,
+        isFlashSale?: boolean
+      ) => {
+        const currentItems = get().items;
+        const existing = currentItems.find((i) => i.variantId === variant.id);
+
+        const finalPrice = priceOverride !== undefined ? priceOverride : variant.price;
+        let targetId: string;
+        let newItems: CartItem[];
+        if (existing) {
+          targetId = existing.id;
+          newItems = currentItems.map((item) =>
+            item.id === existing.id
+              ? {
+                  ...item,
+                  quantity: item.quantity + quantity,
+                  unitPrice: finalPrice,
+                  price: finalPrice,
+                  isFlashSale: isFlashSale ?? item.isFlashSale,
+                  originalPrice: item.originalPrice ?? variant.price,
+                }
+              : item
+          );
+        } else {
+          targetId = `local-${variant.id}-${Date.now()}`;
+          newItems = [
+            ...currentItems,
+            {
+              id: targetId,
+              variantId: variant.id,
+              quantity,
+              unitPrice: finalPrice,
+              price: finalPrice,
+              product,
+              variant,
+              isFlashSale: !!isFlashSale,
+              originalPrice: variant.price,
+            },
+          ];
+        }
+
+        // Checkout only proceeds with selected items — select just this one
+        // so /checkout never bounces to /cart on an empty selection.
+        set({ items: newItems, selectedItemIds: [targetId] });
+
         if (hasAccessToken()) {
           cartService.addToCart(variant.id, quantity).catch(() => {});
         }
@@ -130,9 +188,6 @@ export const useCartStore = create<CartState>()(
           cartService.clearCart().catch(() => {});
         }
       },
-
-      setDrawerOpen: (open: boolean) => set({ isDrawerOpen: open }),
-      toggleDrawer: () => set((state) => ({ isDrawerOpen: !state.isDrawerOpen })),
 
       totalAmount: () => {
         return get().items.reduce(

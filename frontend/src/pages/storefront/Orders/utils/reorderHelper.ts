@@ -34,8 +34,6 @@ export function reorderOrderItems(order: Order): { addedCount: number; totalItem
     }
   }
 
-  useCartStore.getState().setDrawerOpen(true);
-
   return {
     addedCount,
     totalItems: items.length,

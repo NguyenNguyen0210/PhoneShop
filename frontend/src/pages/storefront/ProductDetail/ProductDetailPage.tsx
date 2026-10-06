@@ -42,7 +42,7 @@ export const ProductDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const navigationType = useNavigationType();
-  const { addItem } = useCartStore();
+  const { addItem, buyNow } = useCartStore();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
@@ -337,7 +337,7 @@ export const ProductDetailPage: React.FC = () => {
 
   const handleBuyNow = () => {
     if (!product || !selectedVariant) return;
-    addItem(
+    buyNow(
       product,
       selectedVariant,
       1,

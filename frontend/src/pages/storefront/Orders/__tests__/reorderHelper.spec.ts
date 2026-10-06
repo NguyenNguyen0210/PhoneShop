@@ -8,11 +8,10 @@ describe('reorderHelper - reorderOrderItems', () => {
     useCartStore.setState({
       items: [],
       selectedItemIds: [],
-      isDrawerOpen: false,
     });
   });
 
-  it('adds items with variants to the cart and opens the drawer', () => {
+  it('adds items with variants to the cart', () => {
     const mockOrder: Order = {
       id: 'order-1',
       orderNumber: 'ORD-001',
@@ -82,7 +81,6 @@ describe('reorderHelper - reorderOrderItems', () => {
     expect(cartState.items[0].quantity).toBe(2);
     expect(cartState.items[1].variantId).toBe('var-2');
     expect(cartState.items[1].quantity).toBe(1);
-    expect(cartState.isDrawerOpen).toBe(true);
   });
 
   it('skips items without a variant and calculates correct counts', () => {
@@ -136,7 +134,6 @@ describe('reorderHelper - reorderOrderItems', () => {
     expect(result.addedCount).toBe(1);
     expect(result.totalItems).toBe(2);
     expect(useCartStore.getState().items).toHaveLength(1);
-    expect(useCartStore.getState().isDrawerOpen).toBe(true);
   });
 
   it('handles empty items array gracefully', () => {

@@ -205,6 +205,7 @@ export const OrderDetailPage: React.FC = () => {
     const result = reorderOrderItems(order);
     setReorderSuccessMsg(`Đã thêm ${result.addedCount} sản phẩm vào giỏ hàng`);
     setTimeout(() => setReorderSuccessMsg(null), 4000);
+    navigate('/cart');
   };
 
   return (

@@ -2,7 +2,6 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Navbar } from '../components/common/Navbar';
 import { Footer } from '../components/common/Footer';
-import { CartDrawer } from '../components/storefront/CartDrawer';
 import { LiveSupportChatWidget } from '../components/storefront/LiveSupportChatWidget';
 import { AiChatWidget } from '../components/storefront/AiChatWidget';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -20,9 +19,6 @@ export const StorefrontLayout: React.FC = () => {
       <main className="flex-1 w-full">
         <Outlet />
       </main>
-
-      {/* Slide-over Cart Drawer (Customer only) */}
-      {!hideCustomerWidgets && <CartDrawer />}
 
       {/* AI Chat Widget (Gemini, above live chat) + Live Support Chat Widget (Customer only) */}
       {!hideCustomerWidgets && <AiChatWidget />}

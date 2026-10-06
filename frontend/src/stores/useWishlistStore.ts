@@ -145,16 +145,14 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
       itemIds: state.itemIds.filter((id) => id !== productId),
     }));
 
-    // Synchronize cart state with backend cart & open drawer
+    // Synchronize cart state with backend cart (toast feedback is shown by the caller)
     try {
       const backendCart = await cartService.getCart();
       if (backendCart && Array.isArray(backendCart.items)) {
-        useCartStore.setState({ items: backendCart.items, isDrawerOpen: true });
-      } else {
-        useCartStore.getState().setDrawerOpen(true);
+        useCartStore.setState({ items: backendCart.items });
       }
     } catch {
-      useCartStore.getState().setDrawerOpen(true);
+      // Keep local cart on network error
     }
 
     return true;
