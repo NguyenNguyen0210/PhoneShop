@@ -18,7 +18,7 @@ export const DEFAULT_DEFINITIONS: Record<
   VNPAY_TMN_CODE: { group: 'payment', isSecret: false, defaultVal: 'SANDBOX1' },
   VNPAY_HASH_SECRET: { group: 'payment', isSecret: true },
   VNPAY_URL: { group: 'payment', isSecret: false, defaultVal: 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html' },
-  VNPAY_RETURN_URL: { group: 'payment', isSecret: false, defaultVal: 'https://phoneshop-blond.vercel.app/order/vnpay-return' },
+  VNPAY_RETURN_URL: { group: 'payment', isSecret: false, defaultVal: 'http://localhost:5173/order/vnpay-return' },
   PAYMENT_VIETQR_ENABLED: { group: 'payment', isSecret: false, defaultVal: 'true' },
   VIETQR_BANK_ID: { group: 'payment', isSecret: false, defaultVal: '970422' },
   VIETQR_ACCOUNT_NO: { group: 'payment', isSecret: false, defaultVal: '0987654321' },
