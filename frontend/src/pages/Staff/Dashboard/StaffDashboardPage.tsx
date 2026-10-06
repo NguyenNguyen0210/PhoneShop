@@ -33,9 +33,13 @@ export const StaffDashboardPage: React.FC = () => {
     setLoading(true);
 
     // CRITICAL: ZERO calls to reportService! (Never call reportService to avoid 403 Forbidden).
+    // NOTE: the action-card counts below are derived client-side from this
+    // list, so it must NOT be a truncated page — backend defaults to
+    // limit=10, which silently dropped older PENDING/CONFIRMED orders and
+    // pinned the cards at 0. Fetch a wide window for counting.
     const [ordersRes, ticketsRes, returnsRes, installmentsRes, inventoryRes] =
       await Promise.allSettled([
-        orderService.getAllOrdersAdmin(),
+        orderService.getAllOrdersAdmin({ limit: 100 }),
         ticketService.getAdminTickets({ status: 'OPEN', limit: 10 }),
         returnService.getAdminReturns({ status: 'REQUESTED', limit: 10 }),
         installmentService.getInstallments({ status: 'PENDING', limit: 10 }),
