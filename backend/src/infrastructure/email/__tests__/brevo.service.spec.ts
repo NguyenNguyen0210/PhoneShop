@@ -94,4 +94,17 @@ describe('BrevoService', () => {
       service.send({ to: 'a@b.vn', subject: 'x', html: '<p>x</p>' }),
     ).rejects.toThrow(/Brevo/i);
   });
+
+  it('works when constructed without fetchFn (Nest DI path)', async () => {
+    (prisma.systemSetting.findMany as any).mockResolvedValue([]);
+    (config.get as any).mockReturnValue(undefined);
+
+    const service = new BrevoService(config as any, prisma as any);
+    const result = await service.send({
+      to: 'customer@example.com',
+      subject: 'Hello',
+      html: '<p>Hi</p>',
+    });
+    expect(result.mocked).toBe(true);
+  });
 });

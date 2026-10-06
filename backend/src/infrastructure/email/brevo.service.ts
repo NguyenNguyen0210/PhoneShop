@@ -29,7 +29,9 @@ export class BrevoService {
   constructor(
     private readonly config: ConfigService,
     @Optional() private readonly prisma?: PrismaService,
-    private readonly fetchFn: FetchFn = globalThis.fetch as unknown as FetchFn,
+    // @Optional: Nest DI injects undefined (no Function provider);
+    // tests / manual wiring can still pass a custom fetch.
+    @Optional() private readonly fetchFn?: FetchFn,
   ) {}
 
   private clean(val?: string | null): string {
@@ -93,7 +95,8 @@ export class BrevoService {
       .filter(Boolean)
       .map((email) => ({ email }));
 
-    const response = await this.fetchFn('https://api.brevo.com/v3/smtp/email', {
+    const fetchFn = this.fetchFn ?? (globalThis.fetch as unknown as FetchFn);
+    const response = await fetchFn('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
         accept: 'application/json',
