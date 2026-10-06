@@ -1008,6 +1008,14 @@ export class OrdersService {
     // concurrent transition (or the hold-expiry job) cannot be overwritten.
     const oldStatus = order.status;
 
+    // Idempotent retry: a duplicate PUT for the state the order is already in
+    // (double-click, 401-refresh replay) is a no-op success — otherwise the
+    // second request fails with "Cannot transition from X to X" even though
+    // the first one already did the job. No side effects run on this path.
+    if (oldStatus === newStatus) {
+      return order;
+    }
+
     const allowedTransitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
       [OrderStatus.PENDING]:    [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
       [OrderStatus.CONFIRMED]:  [OrderStatus.PROCESSING, OrderStatus.PACKED, OrderStatus.CANCELLED],

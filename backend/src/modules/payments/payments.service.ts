@@ -334,9 +334,18 @@ export class PaymentsService {
     const fallbackReturnUrl = frontendBase
       ? `${frontendBase}/order/vnpay-return`
       : 'http://localhost:5173/order/vnpay-return';
-    const returnUrl = this.settingsService
+    let returnUrl = this.settingsService
       ? await this.settingsService.get('VNPAY_RETURN_URL', fallbackReturnUrl)
       : this.configService.get<string>('VNPAY_RETURN_URL', fallbackReturnUrl);
+    // Self-heal legacy config: /payment/vnpay-return chưa từng tồn tại trong
+    // AppRoutes (chỉ có /order/vnpay-return và /vnpay-return) nên VNPay
+    // redirect về đó sẽ rơi vào catch-all Navigate to "/" (về trang chủ).
+    if (returnUrl && returnUrl.includes('/payment/vnpay-return')) {
+      this.logger.warn(
+        `Legacy VNPAY_RETURN_URL detected (${returnUrl}) — rewriting to /order/vnpay-return`,
+      );
+      returnUrl = returnUrl.replace('/payment/vnpay-return', '/order/vnpay-return');
+    }
 
     const now = new Date();
     const createDate =
