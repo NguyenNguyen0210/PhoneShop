@@ -76,7 +76,7 @@ export class CreateInstallmentApplicationDto {
 
   @ApiProperty({ example: '0987654321', description: '10-digit Vietnamese phone number' })
   @IsString()
-  @Matches(/^(0[3|5|7|8|9])[0-9]{8}$/, {
+  @Matches(/^(0[35789])[0-9]{8}$/, {
     message: 'phoneNumber must be a valid 10-digit Vietnamese phone number',
   })
   phoneNumber: string;

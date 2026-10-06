@@ -3,7 +3,7 @@ import { Logger, Optional } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../infrastructure/email/email.service';
-import { OrderStatus, ImeiStatus, InstallmentStatus } from '@prisma/client';
+import { OrderStatus, ImeiStatus, InstallmentStatus, PaymentStatus } from '@prisma/client';
 
 export interface ExpireOrderHoldJobData {
   orderId: string;
@@ -84,6 +84,12 @@ export class OrdersProcessor extends WorkerHost {
           },
         });
       }
+
+      // Close still-pending payments so the expired order keeps no live rows.
+      await tx.payment.updateMany({
+        where: { orderId, status: PaymentStatus.PENDING },
+        data: { status: PaymentStatus.CANCELLED },
+      });
 
       // H2: give the voucher use back together with the stock release
       if ((order as any).voucherCode) {

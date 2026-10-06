@@ -735,6 +735,12 @@ export class OrdersService {
         });
       }
 
+      // Close still-pending payments so the expired order keeps no live rows.
+      await tx.payment.updateMany({
+        where: { orderId, status: PaymentStatus.PENDING },
+        data: { status: PaymentStatus.CANCELLED },
+      });
+
       await this.rollbackVoucherUsage(tx, order);
 
       for (const item of order.items) {
@@ -1016,6 +1022,18 @@ export class OrdersService {
       return order;
     }
 
+    // Installment orders must go through the finance review flow: a direct
+    // PENDING → CONFIRMED would confirm stock for an unvetted application.
+    if (
+      newStatus === OrderStatus.CONFIRMED &&
+      (order as any).installmentApplication &&
+      (order as any).installmentApplication.status === InstallmentStatus.PENDING
+    ) {
+      throw new BadRequestException(
+        'Order has a pending installment application — approve or reject it via the installment review flow instead of confirming directly',
+      );
+    }
+
     const allowedTransitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
       [OrderStatus.PENDING]:    [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
       [OrderStatus.CONFIRMED]:  [OrderStatus.PROCESSING, OrderStatus.PACKED, OrderStatus.CANCELLED],
@@ -1085,6 +1103,12 @@ export class OrdersService {
             });
           }
         }
+        // Close still-pending payments so a cancelled order never keeps a
+        // live PENDING row (finance filter + orphan cleanup).
+        await tx.payment.updateMany({
+          where: { orderId: id, status: PaymentStatus.PENDING },
+          data: { status: PaymentStatus.CANCELLED },
+        });
         for (const item of order.items) {
           if (item.imeiDeviceId) {
             await tx.imeiDevice.updateMany({
@@ -1167,12 +1191,19 @@ export class OrdersService {
         // P3: cash is collected at the door — flip pending COD payments to
         // PAID on delivery so finance never shows delivered orders as unpaid.
         // (VietQR/bank-transfer rows stay manual: only a bank reference proves
-        // the money arrived.) Idempotent via the PENDING filter.
-        const codPending = await tx.payment.findMany({
-          where: { orderId: id, method: PaymentMethod.COD, status: PaymentStatus.PENDING },
-          select: { id: true, amount: true },
+        // the money arrived.) INSTALLMENT joins COD here: the prepay is taken
+        // at handover and the balance is covered by the finance company, so a
+        // delivered installment order must not linger as unpaid either.
+        // Idempotent via the PENDING filter.
+        const doorPending = await tx.payment.findMany({
+          where: {
+            orderId: id,
+            method: { in: [PaymentMethod.COD, PaymentMethod.INSTALLMENT] },
+            status: PaymentStatus.PENDING,
+          },
+          select: { id: true, amount: true, method: true },
         });
-        for (const cp of codPending) {
+        for (const cp of doorPending) {
           await tx.payment.update({
             where: { id: cp.id },
             data: { status: PaymentStatus.PAID, paidAt: now },
@@ -1184,7 +1215,10 @@ export class OrdersService {
               type: TransactionType.PAYMENT,
               status: TransactionStatus.SUCCESS,
               amount: cp.amount,
-              providerReference: 'CASH_ON_DELIVERY',
+              providerReference:
+                cp.method === PaymentMethod.INSTALLMENT
+                  ? 'INSTALLMENT_PREPAY_AT_DELIVERY'
+                  : 'CASH_ON_DELIVERY',
             },
           });
         }
@@ -1358,6 +1392,12 @@ export class OrdersService {
       if (guarded.count === 0) {
         throw new BadRequestException('Order cannot be cancelled in its current status');
       }
+
+      // Close still-pending payments so the cancelled order keeps no live rows.
+      await tx.payment.updateMany({
+        where: { orderId: id, status: PaymentStatus.PENDING },
+        data: { status: PaymentStatus.CANCELLED },
+      });
 
       if (tx.installmentApplication?.updateMany) {
         await tx.installmentApplication.updateMany({

@@ -46,6 +46,44 @@ export const AdminInstallmentsPage: React.FC = () => {
   const [providerFilter, setProviderFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Debounced search so each keystroke doesn't fire an API request.
+  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 350);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  // Server-side totals per status for the metric cards (page items alone
+  // would undercount as soon as the list paginates).
+  const [statusCounts, setStatusCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
+  useEffect(() => {
+    let ignore = false;
+    const scope = {
+      provider: providerFilter !== 'ALL' ? providerFilter : undefined,
+      search: debouncedSearch || undefined,
+    };
+    void Promise.all([
+      installmentService.getAdminInstallments({ ...scope, status: 'PENDING', limit: 1 }),
+      installmentService.getAdminInstallments({ ...scope, status: 'APPROVED', limit: 1 }),
+      installmentService.getAdminInstallments({ ...scope, status: 'REJECTED', limit: 1 }),
+    ])
+      .then(([p, a, r]) => {
+        if (!ignore) {
+          setStatusCounts({
+            pending: p?.total ?? 0,
+            approved: a?.total ?? 0,
+            rejected: r?.total ?? 0,
+          });
+        }
+      })
+      .catch(() => {
+        if (!ignore) setStatusCounts({ pending: 0, approved: 0, rejected: 0 });
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [providerFilter, debouncedSearch]);
+
   useEffect(() => {
     const statusParam = searchParams.get('status');
     if (statusParam) {
@@ -65,7 +103,7 @@ export const AdminInstallmentsPage: React.FC = () => {
         limit,
         status: statusTab !== 'ALL' ? statusTab : undefined,
         provider: providerFilter !== 'ALL' ? providerFilter : undefined,
-        search: searchQuery.trim() || undefined,
+        search: debouncedSearch || undefined,
       });
 
       if (res && Array.isArray(res.items)) {
@@ -81,59 +119,27 @@ export const AdminInstallmentsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, statusTab, providerFilter, searchQuery]);
+  }, [page, limit, statusTab, providerFilter, debouncedSearch]);
 
   useEffect(() => {
-    let ignore = false;
-    void installmentService
-      .getAdminInstallments({
-        page,
-        limit,
-        status: statusTab !== 'ALL' ? statusTab : undefined,
-        provider: providerFilter !== 'ALL' ? providerFilter : undefined,
-        search: searchQuery.trim() || undefined,
-      })
-      .then((res) => {
-        if (!ignore && res && Array.isArray(res.items)) {
-          setApplications(res.items);
-          setTotal(res.total);
-        } else if (!ignore) {
-          setApplications([]);
-          setTotal(0);
-        }
-      })
-      .catch(() => {
-        if (!ignore) {
-          setApplications([]);
-          setTotal(0);
-        }
-      })
-      .finally(() => {
-        if (!ignore) setLoading(false);
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [page, limit, statusTab, providerFilter, searchQuery]);
+    void fetchApplications();
+  }, [fetchApplications]);
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
   };
 
-  // Metrics
+  // Metrics — server totals (counting the current page would undercount
+  // as soon as the table paginates).
   const metrics = useMemo(() => {
     const totalApps = total || applications.length;
-    const pendingCount = applications.filter((a) => a.status === 'PENDING').length;
-    const approvedCount = applications.filter((a) => a.status === 'APPROVED').length;
-    const rejectedCount = applications.filter((a) => a.status === 'REJECTED').length;
     return {
       total: totalApps,
-      pending: pendingCount,
-      approved: approvedCount,
-      rejected: rejectedCount,
+      pending: statusCounts.pending,
+      approved: statusCounts.approved,
+      rejected: statusCounts.rejected,
     };
-  }, [applications, total]);
+  }, [applications, total, statusCounts]);
 
   const getStatusTag = (status: InstallmentStatus) => {
     switch (status) {

@@ -69,6 +69,9 @@ export const CheckoutPage: React.FC = () => {
     cccdBackUrl: '',
   });
   const [installmentErrors, setInstallmentErrors] = useState<Record<string, string>>({});
+  // True while a CCCD image is still uploading — submitting then would either
+  // fail validation spuriously or send an empty URL.
+  const [installmentUploading, setInstallmentUploading] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
@@ -200,6 +203,10 @@ export const CheckoutPage: React.FC = () => {
 
     // Validate installment fields if method is INSTALLMENT
     if (paymentMethod === 'INSTALLMENT') {
+      if (installmentUploading) {
+        notifyError('Ảnh CCCD đang tải lên, bạn chờ xong rồi đặt hàng nhé.');
+        return;
+      }
       const fieldErrors: Record<string, string> = {};
       if (!installmentData.fullName.trim() || installmentData.fullName.trim().length < 2) {
         fieldErrors.fullName = 'Vui lòng nhập họ và tên đầy đủ theo CCCD.';
@@ -223,7 +230,7 @@ export const CheckoutPage: React.FC = () => {
       }
       if (
         !installmentData.phoneNumber.trim() ||
-        !/^(0[3|5|7|8|9])[0-9]{8}$/.test(installmentData.phoneNumber.trim())
+        !/^(0[35789])[0-9]{8}$/.test(installmentData.phoneNumber.trim())
       ) {
         fieldErrors.phoneNumber = 'Vui lòng nhập số điện thoại di động Việt Nam (10 số).';
       }
@@ -763,6 +770,7 @@ export const CheckoutPage: React.FC = () => {
                           value={installmentData}
                           onChange={setInstallmentData}
                           errors={installmentErrors}
+                          onUploadingChange={setInstallmentUploading}
                         />
                       </div>
                     )}
@@ -773,7 +781,7 @@ export const CheckoutPage: React.FC = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || secondsRemaining <= 0}
+                disabled={loading || secondsRemaining <= 0 || (paymentMethod === 'INSTALLMENT' && installmentUploading)}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold text-sm rounded-2xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? (

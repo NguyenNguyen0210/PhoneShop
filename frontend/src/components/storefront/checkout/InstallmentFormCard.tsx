@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Building2,
   Calendar,
@@ -23,6 +23,8 @@ interface InstallmentFormCardProps {
   value: InstallmentFormData;
   onChange: (data: InstallmentFormData) => void;
   errors?: Record<string, string>;
+  /** Reports CCCD upload activity so the parent can block submit mid-upload. */
+  onUploadingChange?: (uploading: boolean) => void;
 }
 
 export const InstallmentFormCard: React.FC<InstallmentFormCardProps> = ({
@@ -30,12 +32,17 @@ export const InstallmentFormCard: React.FC<InstallmentFormCardProps> = ({
   value,
   onChange,
   errors = {},
+  onUploadingChange,
 }) => {
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
 
   const [uploadingFront, setUploadingFront] = useState(false);
   const [uploadingBack, setUploadingBack] = useState(false);
+
+  useEffect(() => {
+    onUploadingChange?.(uploadingFront || uploadingBack);
+  }, [uploadingFront, uploadingBack, onUploadingChange]);
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
@@ -83,8 +90,10 @@ export const InstallmentFormCard: React.FC<InstallmentFormCardProps> = ({
         const fbData = fallbackRes.data?.data ?? fallbackRes.data;
         return typeof fbData === 'string' ? fbData : fbData?.url || fbData?.path;
       } catch {
-        // Local preview fallback if backend storage is unavailable
-        return URL.createObjectURL(file);
+        // Never return a blob: preview URL — it passes the non-empty check
+        // but is garbage on the server, leaving staff with an unviewable
+        // CCCD. Throw so the field stays empty and validation blocks submit.
+        throw new Error('Không tải được ảnh lên máy chủ. Vui lòng kiểm tra mạng và thử lại.');
       }
     }
   };

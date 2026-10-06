@@ -17,6 +17,7 @@ import {
   ImeiStatus,
   InstallmentStatus,
   OrderStatus,
+  PaymentStatus,
   Prisma,
 } from '@prisma/client';
 
@@ -378,6 +379,13 @@ export class InstallmentsService {
             'Order is no longer PENDING and cannot be cancelled by rejection',
           );
         }
+
+        // Close the checkout-created PENDING payment so the cancelled order
+        // keeps no live payment rows.
+        await tx.payment.updateMany({
+          where: { orderId: app.orderId, status: PaymentStatus.PENDING },
+          data: { status: PaymentStatus.CANCELLED },
+        });
 
         // Rollback voucher usage if any
         if (app.order.voucherCode) {
