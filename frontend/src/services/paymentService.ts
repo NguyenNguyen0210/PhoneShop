@@ -89,16 +89,24 @@ export const paymentService = {
   },
 
   // Admin methods
+  // Backend returns a paginated { data: [...], total, ... } payload (wrapped
+  // once more by the global ResponseInterceptor) — unwrap both levels.
+  // Previously this only read `.items`, so the list was always [] and the
+  // staff payments page showed all-zero stats with an empty table.
   async getAllPaymentsAdmin(): Promise<Payment[]> {
     const response = await apiClient.get('/payments');
-    const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : data?.items ?? [];
+    const body = response.data?.data ?? response.data;
+    if (Array.isArray(body)) return body;
+    if (Array.isArray(body?.data)) return body.data;
+    return body?.items ?? [];
   },
 
   async getTransactionHistoryAdmin(): Promise<PaymentTransaction[]> {
     const response = await apiClient.get('/payments/transactions');
-    const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : data?.items ?? [];
+    const body = response.data?.data ?? response.data;
+    if (Array.isArray(body)) return body;
+    if (Array.isArray(body?.data)) return body.data;
+    return body?.items ?? [];
   },
 
   async confirmPaymentAdmin(paymentId: string, providerRef: string): Promise<Payment> {

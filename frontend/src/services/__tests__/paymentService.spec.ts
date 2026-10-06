@@ -39,6 +39,40 @@ describe('paymentService - Admin methods', () => {
     expect(result).toEqual(mockTransactions);
   });
 
+  it('getAllPaymentsAdmin unwraps the real paginated { data: [...] } payload', async () => {
+    const mockPayments = [
+      { id: 'pay-1', orderId: 'ord-1', method: 'VNPAY', status: 'PAID', amount: 20000000 },
+    ];
+    vi.mocked(apiClient.get).mockResolvedValueOnce({
+      data: {
+        success: true,
+        statusCode: 200,
+        message: 'Success',
+        data: { data: mockPayments, total: 1, page: 1, limit: 20, totalPages: 1 },
+      },
+    });
+
+    const result = await paymentService.getAllPaymentsAdmin();
+    expect(result).toEqual(mockPayments);
+  });
+
+  it('getTransactionHistoryAdmin unwraps the real paginated { data: [...] } payload', async () => {
+    const mockTransactions = [
+      { id: 'txn-1', transactionCode: 'TXN-1001', type: 'PAYMENT', status: 'SUCCESS', amount: 15000000 },
+    ];
+    vi.mocked(apiClient.get).mockResolvedValueOnce({
+      data: {
+        success: true,
+        statusCode: 200,
+        message: 'Success',
+        data: { data: mockTransactions, total: 1, page: 1, limit: 20, totalPages: 1 },
+      },
+    });
+
+    const result = await paymentService.getTransactionHistoryAdmin();
+    expect(result).toEqual(mockTransactions);
+  });
+
   it('confirmPaymentAdmin calls PUT /payments/:id/confirm with providerRef', async () => {
     const mockResponse = { id: 'pay-1', status: 'PAID' };
     vi.mocked(apiClient.put).mockResolvedValueOnce({ data: { data: mockResponse } });
