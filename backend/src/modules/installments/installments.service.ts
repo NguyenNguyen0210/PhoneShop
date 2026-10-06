@@ -344,7 +344,14 @@ export class InstallmentsService {
         // Build the monthly repayment schedule in the same transaction:
         // calendar-month due dates from approval, last term absorbing
         // rounding so the terms sum to exactly the loan amount.
-        await this.createScheduleRows(tx, id, app, now);
+        // Never let a schedule failure block the approval itself.
+        try {
+          await this.createScheduleRows(tx, id, app, now);
+        } catch (scheduleErr) {
+          this.logger.warn(
+            `Schedule generation deferred for application ${id}: ${(scheduleErr as Error).message}`,
+          );
+        }
 
         const updatedApp = await tx.installmentApplication.findUnique({
           where: { id },
@@ -520,6 +527,15 @@ export class InstallmentsService {
     app: { loanAmount: unknown; termMonths: unknown },
     anchor: Date,
   ): Promise<void> {
+    // Resilient: if the terms table/client predates this feature (setup
+    // script not run yet), skip instead of breaking the approval — staff
+    // can generate the schedule later via the regenerate endpoint.
+    if (!tx.installmentPaymentTerm?.create) {
+      this.logger.warn(
+        `Skipping schedule for application ${applicationId}: installment_payment_terms unavailable`,
+      );
+      return;
+    }
     const loan = Math.round(Number(app.loanAmount));
     const terms = Number(app.termMonths);
     if (!Number.isFinite(loan) || loan <= 0 || !Number.isInteger(terms) || terms <= 0) {
