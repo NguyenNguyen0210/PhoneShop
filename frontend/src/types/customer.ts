@@ -1,3 +1,5 @@
+export type LoyaltyTier = 'STANDARD' | 'SILVER' | 'GOLD' | 'VIP';
+
 export interface CustomerSummary {
   id: string;
   email: string;
@@ -9,6 +11,17 @@ export interface CustomerSummary {
   createdAt: string;
   lastLoginAt: string | null;
   roles?: Array<{ role: { name: string } }>;
+  totalSpent?: number;
+  orderCount?: number;
+  lastOrderDate?: string | null;
+  loyaltyTier?: LoyaltyTier;
+}
+
+export interface CustomerStats {
+  total: number;
+  active: number;
+  inactive: number;
+  banned: number;
 }
 
 export interface Customer360Metrics {

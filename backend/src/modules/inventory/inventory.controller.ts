@@ -30,8 +30,20 @@ export class InventoryController {
   @Get()
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'View all inventory (STAFF/MANAGER/ADMIN)' })
-  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
-    return this.inventoryService.findAll(page, limit);
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('lowStockOnly') lowStockOnly?: string,
+  ) {
+    return this.inventoryService.findAll(page, limit, search, lowStockOnly);
+  }
+
+  @Post('sync-missing')
+  @Roles(Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Backfill inventory rows for variants missing them (MANAGER/ADMIN)' })
+  syncMissing() {
+    return this.inventoryService.ensureMissingInventories();
   }
 
   @Get('ledger')

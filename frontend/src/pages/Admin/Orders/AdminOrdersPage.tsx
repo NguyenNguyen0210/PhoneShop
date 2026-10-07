@@ -14,8 +14,10 @@ import {
   Divider,
   Tabs,
   Input,
+  Dropdown,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import type { MenuProps } from 'antd';
 import {
   EyeOutlined,
   CheckCircleOutlined,
@@ -25,6 +27,7 @@ import {
   SearchOutlined,
   InboxOutlined,
   CopyOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import { orderService } from '../../../services/orderService';
 import type { Order, OrderStatus } from '../../../types';
@@ -66,9 +69,46 @@ const getTransitionOptions = (currentStatus: OrderStatus) => {
     },
     ...allowed.map((st) => ({
       value: st,
-      label: `➡️ Chuyển sang: ${ORDER_STATUS_LABELS[st] || st}`,
+      label: `Chuyển sang: ${ORDER_STATUS_LABELS[st] || st}`,
     })),
   ];
+};
+
+// Tên hiển thị thân thiện cho phương thức thanh toán (ẩn mã enum backend)
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  COD: 'COD',
+  VIETQR: 'VietQR',
+  VNPAY: 'VNPay',
+  MOMO: 'MoMo',
+  ZALOPAY: 'ZaloPay',
+  BANK_TRANSFER: 'Chuyển khoản',
+  CREDIT_CARD: 'Thẻ tín dụng',
+  DEBIT_CARD: 'Thẻ ghi nợ',
+  INSTALLMENT: 'Trả góp 0%',
+};
+
+const formatPaymentMethod = (method?: string): string =>
+  (method && PAYMENT_METHOD_LABELS[method]) || method || '—';
+
+// Mã đơn rút gọn để đọc/tìm nhanh: ORD-1791257122910-8AE6DB → #ORD-8AE6DB
+// (tooltip giữ mã đầy đủ, tìm kiếm backend vẫn dùng mã đầy đủ)
+const formatShortOrderNumber = (orderNumber?: string): string => {
+  if (!orderNumber) return '';
+  const suffix = (orderNumber.split('-').pop() || orderNumber).replace(/[^A-Za-z0-9]/g, '');
+  return `#ORD-${suffix.slice(-6).toUpperCase()}`;
+};
+
+const formatOrderDate = (dateStr?: string): string => {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    return `${d.toLocaleDateString('vi-VN')} ${d.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`;
+  } catch {
+    return '';
+  }
 };
 
 export const AdminOrdersPage: React.FC = () => {
@@ -298,21 +338,65 @@ export const AdminOrdersPage: React.FC = () => {
   const getStatusTag = (status: OrderStatus) => {
     switch (status) {
       case 'CONFIRMED':
-        return <Tag color="blue" icon={<CheckCircleOutlined />}>ĐÃ XÁC NHẬN</Tag>;
+        return <Tag color="blue" icon={<CheckCircleOutlined />}>Đã xác nhận</Tag>;
       case 'PROCESSING':
-        return <Tag color="cyan" icon={<SyncOutlined spin />}>ĐANG CHUẨN BỊ</Tag>;
+        return <Tag color="cyan" icon={<SyncOutlined spin />}>Đang chuẩn bị</Tag>;
       case 'PACKED':
-        return <Tag color="purple" icon={<InboxOutlined />}>ĐÃ ĐÓNG GÓI</Tag>;
+        return <Tag color="purple" icon={<InboxOutlined />}>Đã đóng gói</Tag>;
       case 'SHIPPING':
-        return <Tag color="orange" icon={<CarOutlined />}>ĐANG GIAO HÀNG</Tag>;
+        return <Tag color="orange" icon={<CarOutlined />}>Đang giao hàng</Tag>;
       case 'DELIVERED':
       case 'COMPLETED':
-        return <Tag color="green">HOÀN TẤT</Tag>;
+        return <Tag color="green">Hoàn tất</Tag>;
       case 'CANCELLED':
-        return <Tag color="red">ĐÃ HỦY (NHẢ IMEI)</Tag>;
+        return <Tag color="red">Đã hủy</Tag>;
+      case 'RETURNED':
+        return <Tag color="volcano">Đổi trả</Tag>;
       default:
-        return <Tag color="gold">CHỜ XỬ LÝ (PENDING)</Tag>;
+        return <Tag color="gold">Chờ xử lý</Tag>;
     }
+  };
+
+  // Màu pill cho badge trạng thái tương tác (đồng bộ với Tag tĩnh)
+  const STATUS_PILL_CLASSES: Record<OrderStatus, string> = {
+    PENDING: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
+    CONFIRMED: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
+    PROCESSING: 'bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100',
+    PACKED: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
+    SHIPPING: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100',
+    DELIVERED: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100',
+    COMPLETED: 'bg-green-50 text-green-700 border-green-200',
+    CANCELLED: 'bg-red-50 text-red-700 border-red-200',
+    RETURNED: 'bg-orange-50 text-orange-700 border-orange-200',
+  };
+
+  // 1 cột trạng thái duy nhất: trạng thái cuối (COMPLETED/CANCELLED/RETURNED)
+  // hiện badge tĩnh; đơn đang xử lý hiện badge bấm được mở menu bước tiếp theo.
+  const renderOrderStatusCell = (record: Order) => {
+    const allowed = ALLOWED_ORDER_TRANSITIONS[record.status] || [];
+    const isUpdating = updatingOrderIds.has(record.id);
+    if (allowed.length === 0) {
+      return getStatusTag(record.status);
+    }
+    const menuItems: MenuProps['items'] = allowed.map((st) => ({
+      key: st,
+      danger: st === 'CANCELLED',
+      label: st === 'CANCELLED' ? 'Hủy đơn hàng' : `Chuyển sang: ${ORDER_STATUS_LABELS[st] || st}`,
+      onClick: () => handleUpdateStatus(record.id, st, record),
+    }));
+    return (
+      <Dropdown menu={{ items: menuItems }} trigger={['click']} disabled={isUpdating}>
+        <button
+          type="button"
+          title="Bấm để chuyển bước tiếp theo"
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition cursor-pointer whitespace-nowrap ${STATUS_PILL_CLASSES[record.status] || STATUS_PILL_CLASSES.PENDING}`}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-current" />
+          {ORDER_STATUS_LABELS[record.status] || record.status}
+          <DownOutlined style={{ fontSize: 10 }} />
+        </button>
+      </Dropdown>
+    );
   };
 
   const getPaymentStatusTag = (status: string) => {
@@ -331,7 +415,27 @@ export const AdminOrdersPage: React.FC = () => {
       title: 'Mã đơn hàng',
       dataIndex: 'orderNumber',
       key: 'orderNumber',
-      render: (num: string) => <Text strong style={{ fontFamily: 'monospace' }}>{num}</Text>,
+      render: (num: string, record) => (
+        <div>
+          <button
+            type="button"
+            title={num}
+            onClick={() => {
+              setSelectedOrder(record);
+              setIsDetailModalOpen(true);
+            }}
+            className="font-bold text-blue-600 hover:underline cursor-pointer"
+            style={{ fontFamily: 'monospace' }}
+          >
+            {formatShortOrderNumber(num)}
+          </button>
+          {record.createdAt && (
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+              {formatOrderDate(record.createdAt)}
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       title: 'Khách hàng',
@@ -349,7 +453,7 @@ export const AdminOrdersPage: React.FC = () => {
       key: 'payment',
       render: (_, record) => (
         <Space direction="vertical" size={2}>
-          <Tag color="geekblue">{record.paymentMethod}</Tag>
+          <Tag color="geekblue">{formatPaymentMethod(record.paymentMethod)}</Tag>
           {getPaymentStatusTag(record.paymentStatus)}
         </Space>
       ),
@@ -359,7 +463,7 @@ export const AdminOrdersPage: React.FC = () => {
       dataIndex: 'totalAmount',
       key: 'totalAmount',
       render: (val: number) => (
-        <Text strong style={{ color: '#dc2626' }}>
+        <Text strong style={{ color: '#dc2626', whiteSpace: 'nowrap' }}>
           {formatPrice(val)}
         </Text>
       ),
@@ -368,27 +472,7 @@ export const AdminOrdersPage: React.FC = () => {
       title: 'Trạng thái đơn hàng',
       dataIndex: 'status',
       key: 'status',
-      render: (s: OrderStatus) => getStatusTag(s),
-    },
-    {
-      title: 'Chuyển trạng thái',
-      key: 'changeStatus',
-      render: (_, record) => {
-        const options = getTransitionOptions(record.status);
-        const hasTransitions = options.length > 1;
-        const isUpdating = updatingOrderIds.has(record.id);
-        return (
-          <Select
-            value={record.status}
-            size="small"
-            style={{ width: 170 }}
-            disabled={!hasTransitions || isUpdating}
-            loading={isUpdating}
-            onChange={(val) => handleUpdateStatus(record.id, val as OrderStatus, record)}
-            options={options}
-          />
-        );
-      },
+      render: (_: OrderStatus, record) => renderOrderStatusCell(record),
     },
     {
       title: 'Vận chuyển',
@@ -397,7 +481,11 @@ export const AdminOrdersPage: React.FC = () => {
         if (record.shipping?.trackingNumber) {
           return (
             <Space direction="vertical" size={2}>
-              <Tag color="cyan" icon={<CarOutlined />} style={{ fontFamily: 'monospace' }}>
+              <Tag
+                color="cyan"
+                icon={<CarOutlined />}
+                style={{ fontFamily: 'monospace', textTransform: 'uppercase' }}
+              >
                 {record.shipping.trackingNumber}
               </Tag>
               <Text type="secondary" style={{ fontSize: 11 }}>
@@ -437,13 +525,14 @@ export const AdminOrdersPage: React.FC = () => {
           <Button
             size="small"
             icon={<CarOutlined />}
+            title="Điều phối vận chuyển: gán đơn vị & mã vận đơn"
             onClick={() => {
               setShippingModalOrder(record);
               setIsShippingTransition(false);
               setIsShippingModalOpen(true);
             }}
           >
-            Vận chuyển
+            Điều phối
           </Button>
         </Space>
       ),
@@ -461,6 +550,71 @@ export const AdminOrdersPage: React.FC = () => {
     { key: 'COMPLETED', label: 'Hoàn tất' },
     { key: 'CANCELLED', label: 'Đã hủy' },
   ];
+
+  // Bộ đếm công việc trên từng tab (limit=1 nên payload nhẹ, chỉ lấy total)
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchCounts = async () => {
+      try {
+        const entries = await Promise.all(
+          statusTabs
+            .filter((t) => t.key !== 'ALL')
+            .map(async (t) => {
+              try {
+                const res = await orderService.getAllOrdersAdmin({
+                  limit: 1,
+                  status: t.key,
+                  search: searchKeyword.trim() || undefined,
+                });
+                return [t.key, res.total ?? 0] as const;
+              } catch {
+                return [t.key, 0] as const;
+              }
+            })
+        );
+        if (!cancelled) {
+          const map: Record<string, number> = {};
+          entries.forEach(([k, v]) => {
+            map[k] = v;
+          });
+          setStatusCounts(map);
+        }
+      } catch {
+        // Bỏ qua lỗi đếm — bảng chính vẫn hiển thị bình thường
+      }
+    };
+    void fetchCounts();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchKeyword, total]);
+
+  const statusTabItems = statusTabs.map((t) => {
+    if (t.key === 'ALL') {
+      return { key: t.key, label: `${t.label} (${total})` };
+    }
+    const count = statusCounts[t.key];
+    return {
+      key: t.key,
+      label: (
+        <span className="inline-flex items-center gap-1.5">
+          {t.label}
+          <span
+            className={`px-1.5 py-px text-[11px] font-bold rounded-full ${
+              count && count > 0
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-slate-100 text-slate-400'
+            }`}
+          >
+            {count ?? '…'}
+          </span>
+        </span>
+      ),
+    };
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -490,7 +644,7 @@ export const AdminOrdersPage: React.FC = () => {
             setStatusFilter(key);
             setPage(1);
           }}
-          items={statusTabs}
+          items={statusTabItems}
         />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
           <Input
@@ -551,6 +705,7 @@ export const AdminOrdersPage: React.FC = () => {
           <Button
             key="dispatch"
             icon={<CarOutlined />}
+            title="Điều phối vận chuyển: gán đơn vị & mã vận đơn"
             onClick={() => {
               if (selectedOrder) {
                 setShippingModalOrder(selectedOrder);
@@ -559,7 +714,7 @@ export const AdminOrdersPage: React.FC = () => {
               }
             }}
           >
-            Vận chuyển
+            Điều phối
           </Button>,
           <Button key="close" onClick={handleCloseDetailModal}>
             Đóng
@@ -580,7 +735,7 @@ export const AdminOrdersPage: React.FC = () => {
                 {selectedOrder.shippingAddress}
               </Descriptions.Item>
               <Descriptions.Item label="Phương thức thanh toán">
-                <Tag color="geekblue">{selectedOrder.paymentMethod}</Tag>
+                <Tag color="geekblue">{formatPaymentMethod(selectedOrder.paymentMethod)}</Tag>
                 {getPaymentStatusTag(selectedOrder.paymentStatus)}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái đơn hàng">

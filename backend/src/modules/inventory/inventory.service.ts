@@ -15,19 +15,67 @@ export class InventoryService {
     return inv;
   }
 
-  async findAll(page?: number | string, limit?: number | string) {
+  async findAll(
+    page?: number | string,
+    limit?: number | string,
+    search?: string,
+    lowStockOnly?: boolean | string,
+  ) {
     const { page: safePage, limit: safeLimit, skip } = getPagination(page, limit, 20);
+    const where: any = {};
+    const term = (search ?? '').toString().trim();
+    if (term) {
+      where.variant = {
+        OR: [
+          { sku: { contains: term, mode: 'insensitive' } },
+          { color: { contains: term, mode: 'insensitive' } },
+          { storage: { contains: term, mode: 'insensitive' } },
+          { ram: { contains: term, mode: 'insensitive' } },
+          { product: { name: { contains: term, mode: 'insensitive' } } },
+        ],
+      };
+    }
+    const lowOnly =
+      lowStockOnly === true || lowStockOnly === 'true' || lowStockOnly === '1';
     const [total, data] = await Promise.all([
-      this.prisma.inventory.count(),
+      this.prisma.inventory.count({ where }),
       this.prisma.inventory.findMany({
+        where,
         include: {
           variant: { include: { product: { select: { id: true, name: true } } } },
         },
+        orderBy: { updatedAt: 'desc' },
         skip,
         take: safeLimit,
       }),
     ]);
+    // Prisma cannot compare two columns in `where`, so low-stock-only
+    // (availableQty <= reorderLevel) is filtered per-row after fetch.
+    // Fetch one extra page-worth when filtering to reduce empty pages.
+    if (lowOnly) {
+      const filtered = data.filter((inv: any) => inv.availableQty <= inv.reorderLevel);
+      return buildPaginatedResponse(filtered, filtered.length, safePage, safeLimit);
+    }
     return buildPaginatedResponse(data, total, safePage, safeLimit);
+  }
+
+  /** Backfill inventory rows for variants created before auto-create logic. */
+  async ensureMissingInventories() {
+    const variantsWithoutInventory: any[] = await (this.prisma as any).productVariant?.findMany?.({
+      where: { inventory: null },
+      select: { id: true },
+    }) ?? [];
+    if (variantsWithoutInventory.length === 0) return { created: 0 };
+    const created = await this.prisma.inventory.createMany({
+      data: variantsWithoutInventory.map((v: any) => ({
+        variantId: v.id,
+        quantity: 0,
+        reservedQty: 0,
+        availableQty: 0,
+      })),
+      skipDuplicates: true,
+    });
+    return { created: (created as any)?.count ?? variantsWithoutInventory.length };
   }
 
   async findOne(variantId: string) {
@@ -118,8 +166,16 @@ export class InventoryService {
 
   async adjustStock(variantId: string, dto: AdjustStockDto, userId?: string) {
     return this.prisma.$transaction(async (tx) => {
-      const inv = await tx.inventory.findUnique({ where: { variantId } });
-      if (!inv) throw new NotFoundException('Inventory record not found for this variant');
+      let inv = await tx.inventory.findUnique({ where: { variantId } });
+      // Auto-create missing inventory (legacy variants created before
+      // auto-create logic) so admin can stock any color/config variant.
+      if (!inv) {
+        const variant = await tx.productVariant.findUnique({ where: { id: variantId } });
+        if (!variant) throw new NotFoundException('Variant not found, cannot create inventory');
+        inv = await tx.inventory.create({
+          data: { variantId, quantity: 0, reservedQty: 0, availableQty: 0 },
+        });
+      }
 
       const newQty = inv.quantity + dto.quantity;
       if (newQty < 0) throw new BadRequestException('Insufficient stock');

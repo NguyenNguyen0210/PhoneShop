@@ -45,6 +45,15 @@ export class CategoriesController {
     return this.categoriesService.getTree(false);
   }
 
+  @Put('admin/reorder')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update sort order of categories (MANAGER/ADMIN)' })
+  reorder(@Body() body: { items: { id: string; sortOrder: number }[] }) {
+    return this.categoriesService.reorder(body?.items || []);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get category detail (Public)' })
   findOne(@Param('id') id: string) {

@@ -63,7 +63,17 @@ export const FlashSaleSection: React.FC<FlashSaleSectionProps> = ({ campaign }) 
   })();
 
   // Slider 1 hàng: hiển thị toàn bộ items, lướt ngang thay vì chia lưới
-  const visibleItems = campaign.items || [];
+  // Lọc bỏ item hết hàng thật (availableQty=0) dù quota flash còn — tránh phi logic như PDP
+  const visibleItems = (campaign.items || []).filter((item) => {
+    const quotaLeft = Number(item.stockLimit) - Number(item.soldCount);
+    if (quotaLeft <= 0) return false;
+    const inv = (item as any)?.variant?.inventory;
+    if (inv && (inv.availableQty !== undefined || inv.quantity !== undefined)) {
+      const avail = Number(inv.availableQty ?? inv.quantity ?? 0);
+      if (avail <= 0) return false;
+    }
+    return true;
+  });
 
   const trackRef = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);

@@ -184,7 +184,7 @@ export const AdminLayout: React.FC = () => {
   // Dynamic breadcrumb labels
   const getBreadcrumbTitle = () => {
     if (location.pathname === '/admin/products') return 'Quản lý Sản phẩm & Biến thể';
-    if (location.pathname === '/admin/categories') return 'Quản lý Danh mục Smartphone';
+    if (location.pathname === '/admin/categories') return 'Quản lý Cây Danh Mục Sản Phẩm';
     if (location.pathname === '/admin/brands') return 'Quản lý Thương hiệu Smartphone';
     if (location.pathname === '/admin/suppliers') return 'Quản lý Nhà cung cấp';
     if (location.pathname === '/admin/imei') return 'Quản trị Kho Thiết bị & Quản lý IMEI';

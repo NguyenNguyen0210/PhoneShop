@@ -39,6 +39,8 @@ async function cleanTransactionsAndCustomers() {
 
   // Reverse foreign-key dependency order
   await prisma.auditLog.deleteMany({});
+  await prisma.ticketMessage.deleteMany({});
+  await prisma.ticket.deleteMany({});
   await prisma.idempotencyRecord.deleteMany({});
   await prisma.notification.deleteMany({});
   await prisma.warranty.deleteMany({});

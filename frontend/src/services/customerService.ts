@@ -35,8 +35,8 @@ export const customerService = {
     return res.data?.data ?? res.data;
   },
 
-  banUser: async (id: string) => {
-    const res = await apiClient.put(`/users/${id}/ban`);
+  banUser: async (id: string, reason?: string) => {
+    const res = await apiClient.put(`/users/${id}/ban`, { reason });
     return res.data?.data ?? res.data;
   },
 };

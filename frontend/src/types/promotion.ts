@@ -85,6 +85,7 @@ export interface FlashSaleItem {
     };
     inventory?: {
       quantity: number;
+      availableQty?: number;
     };
   };
 }

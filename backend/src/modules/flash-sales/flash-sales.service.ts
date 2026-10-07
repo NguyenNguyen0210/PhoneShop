@@ -24,7 +24,7 @@ export class FlashSalesService {
                   select: { id: true, name: true, slug: true, thumbnailUrl: true },
                 },
                 inventory: {
-                  select: { quantity: true },
+                  select: { quantity: true, availableQty: true },
                 },
               },
             },
@@ -59,9 +59,17 @@ export class FlashSalesService {
           select: { items: true },
         },
         items: {
-          select: {
-            stockLimit: true,
-            soldCount: true,
+          include: {
+            variant: {
+              include: {
+                product: {
+                  select: { id: true, name: true, slug: true, thumbnailUrl: true },
+                },
+                inventory: {
+                  select: { quantity: true, availableQty: true },
+                },
+              },
+            },
           },
         },
       },

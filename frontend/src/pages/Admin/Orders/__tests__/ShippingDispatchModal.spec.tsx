@@ -215,7 +215,7 @@ describe('ShippingDispatchModal', () => {
     const viettelTag = screen.getByText('Viettel Post');
     fireEvent.click(viettelTag);
 
-    const trackingInput = screen.getByPlaceholderText(/Mã vận đơn|GHN123456789/i);
+    const trackingInput = screen.getByPlaceholderText(/GHN-8492019/i);
     fireEvent.change(trackingInput, { target: { value: 'VT123456' } });
 
     const saveBtn = screen.getByRole('button', { name: /Lưu thông tin|Khởi tạo/i });

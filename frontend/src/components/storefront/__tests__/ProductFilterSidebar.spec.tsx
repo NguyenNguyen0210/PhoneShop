@@ -61,9 +61,15 @@ describe('ProductFilterSidebar', () => {
         onPriceRangeChange={onPriceRangeChange}
       />
     );
-    const quickPriceBtn = screen.getByText('< 5 triệu');
+    const quickPriceBtn = screen.getByText('Dưới 5 triệu');
     fireEvent.click(quickPriceBtn);
     expect(onPriceRangeChange).toHaveBeenCalledWith([0, 5000000]);
+  });
+
+  it('renders min/max price inputs synced with priceRange', () => {
+    render(<ProductFilterSidebar {...defaultProps} />);
+    expect(screen.getByText('Từ')).toBeDefined();
+    expect(screen.getByText('Đến')).toBeDefined();
   });
 
   it('triggers onToggleRam and onToggleStorage when clicked', () => {
@@ -95,6 +101,7 @@ describe('ProductFilterSidebar', () => {
         onToggleBatteryRange={onToggleBatteryRange}
       />
     );
+    fireEvent.click(screen.getByRole('button', { name: /Màn hình & Pin/i }));
     const screenBtn = screen.getByText('6.1" - 6.7"');
     fireEvent.click(screenBtn);
     expect(onToggleScreenRange).toHaveBeenCalledWith('6.1" - 6.7"');
@@ -114,6 +121,7 @@ describe('ProductFilterSidebar', () => {
         onToggleChipset={onToggleChipset}
       />
     );
+    fireEvent.click(screen.getByRole('button', { name: /Hệ điều hành & Chipset/i }));
     const osBtn = screen.getByText('iOS');
     fireEvent.click(osBtn);
     expect(onToggleOs).toHaveBeenCalledWith('iOS');

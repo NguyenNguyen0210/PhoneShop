@@ -53,6 +53,15 @@ export class ReviewsController {
     return this.reviewsService.findAllAdmin(productId, status, pageNum, limitNum);
   }
 
+  @Get('admin/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get review moderation stats (STAFF/MANAGER/ADMIN)' })
+  getModerationStats() {
+    return this.reviewsService.getModerationStats();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get review detail (Public)' })
   findOne(@Param('id') id: string) {

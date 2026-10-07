@@ -127,6 +127,19 @@ export class CategoriesService {
     });
   }
 
+  async reorder(items: { id: string; sortOrder: number }[]) {
+    if (!items || items.length === 0) return { success: true };
+    await this.prisma.$transaction(
+      items.map((item) =>
+        this.prisma.category.update({
+          where: { id: item.id },
+          data: { sortOrder: item.sortOrder },
+        }),
+      ),
+    );
+    return { success: true };
+  }
+
   async changeStatus(id: string, isActive: boolean) {
     await this.findOne(id);
     return this.prisma.category.update({

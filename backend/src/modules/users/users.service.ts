@@ -132,16 +132,86 @@ export class UsersService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { roles: { include: { role: true } } },
+        include: {
+          roles: { include: { role: true } },
+          orders: {
+            select: {
+              status: true,
+              totalAmount: true,
+              createdAt: true,
+              payments: { select: { status: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+          },
+        },
       }),
     ]);
 
-    const sanitizedUsers = users.map((u) => {
-      delete (u as any).passwordHash;
-      return u;
+    const stats: { total: number; active: number; inactive: number; banned: number } = {
+      total,
+      active: 0,
+      inactive: 0,
+      banned: 0,
+    };
+
+    if (typeof (this.prisma.user as any).groupBy === 'function') {
+      try {
+        const grouped = await (this.prisma.user as any).groupBy({
+          by: ['status'],
+          _count: { id: true },
+        });
+        let totalCount = 0;
+        for (const g of grouped) {
+          const count = g._count.id;
+          totalCount += count;
+          if (g.status === 'ACTIVE') stats.active = count;
+          else if (g.status === 'INACTIVE') stats.inactive = count;
+          else if (g.status === 'BANNED') stats.banned = count;
+        }
+        stats.total = totalCount || total;
+      } catch {
+        // fallback
+      }
+    }
+
+    const sanitizedUsers = users.map((u: any) => {
+      delete u.passwordHash;
+
+      const userOrders = u.orders || [];
+      const paidOrCompletedOrders = userOrders.filter((o: any) => {
+        const isPaid = o.paymentStatus === 'PAID' || o.payments?.some((p: any) => p.status === 'PAID');
+        return isPaid || o.status === 'COMPLETED';
+      });
+
+      const totalSpent = paidOrCompletedOrders.reduce(
+        (sum: number, o: any) => sum + Number(o.totalAmount || 0),
+        0,
+      );
+
+      const orderCount = userOrders.length;
+      const lastOrderDate = userOrders.length > 0 ? userOrders[0].createdAt : null;
+
+      let loyaltyTier: 'VIP' | 'GOLD' | 'SILVER' | 'STANDARD' = 'STANDARD';
+      if (totalSpent >= 50000000) {
+        loyaltyTier = 'VIP';
+      } else if (totalSpent >= 20000000) {
+        loyaltyTier = 'GOLD';
+      } else if (totalSpent >= 10000000) {
+        loyaltyTier = 'SILVER';
+      }
+
+      delete u.orders;
+
+      return {
+        ...u,
+        totalSpent,
+        orderCount,
+        lastOrderDate,
+        loyaltyTier,
+      };
     });
 
-    return buildPaginatedResponse(sanitizedUsers, total, page, limit);
+    return buildPaginatedResponse(sanitizedUsers, total, page, limit, stats);
   }
 
   async findOne(id: string, currentUser?: any) {
@@ -208,6 +278,7 @@ export class UsersService {
         where: { userId: id },
         orderBy: { createdAt: 'desc' },
         include: {
+          imeiDevice: true,
           orderItem: {
             select: {
               productName: true,
@@ -287,6 +358,12 @@ export class UsersService {
         })) || [],
     }));
 
+    const mappedWarranties = warranties.map((w: any) => ({
+      ...w,
+      imei: w.imeiDevice?.imei || (w as any).imei || null,
+      deviceSerial: w.imeiDevice?.serialNumber || null,
+    }));
+
     const mappedInstallments = installments.map((i: any) => ({
       ...i,
       monthlyPayment: i.monthlyPayment ?? i.monthlyAmount,
@@ -307,7 +384,7 @@ export class UsersService {
       metrics,
       addresses: user.addresses || [],
       recentOrders,
-      warranties,
+      warranties: mappedWarranties,
       installments: mappedInstallments,
       tickets,
     };
@@ -436,7 +513,12 @@ export class UsersService {
     return user;
   }
 
-  async changeStatus(id: string, status: 'ACTIVE' | 'INACTIVE' | 'BANNED', currentUser?: any) {
+  async changeStatus(
+    id: string,
+    status: 'ACTIVE' | 'INACTIVE' | 'BANNED',
+    currentUser?: any,
+    reason?: string,
+  ) {
     if (currentUser && currentUser.id === id && status !== 'ACTIVE') {
       throw new BadRequestException('Không thể tự khóa tài khoản của chính mình');
     }
@@ -460,13 +542,14 @@ export class UsersService {
           entity: 'User',
           entityId: id,
           userId: currentUser?.id,
-          newData: { status },
+          newData: { status, ...(reason ? { reason } : {}) },
         },
       });
     } catch (err) {
       console.error('Audit log failed:', err);
     }
 
+    delete (user as any).passwordHash;
     return user;
   }
 }

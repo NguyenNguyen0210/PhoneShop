@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Table,
   Button,
@@ -58,10 +59,29 @@ export const AdminProductsPage: React.FC = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-  // Filtering
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('ALL');
   const [activeQuickTab, setActiveQuickTab] = useState<QuickFilterTab>('ALL');
+
+  useEffect(() => {
+    const brandParam = searchParams.get('brand') || searchParams.get('brandId');
+    if (brandParam && brands.length > 0) {
+      const match = brands.find(
+        (b) =>
+          b.slug?.toLowerCase() === brandParam.toLowerCase() ||
+          b.id === brandParam ||
+          b.name?.toLowerCase() === brandParam.toLowerCase(),
+      );
+      if (match) {
+        setSelectedBrand(match.id);
+      }
+    }
+    const searchParam = searchParams.get('search');
+    if (searchParam) {
+      setSearchQuery(searchParam);
+    }
+  }, [searchParams, brands]);
 
   // Pagination
   const [pageSize, setPageSize] = useState(8);

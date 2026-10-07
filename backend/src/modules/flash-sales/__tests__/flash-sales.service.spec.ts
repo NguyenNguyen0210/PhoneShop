@@ -16,10 +16,15 @@ describe('FlashSalesService', () => {
         update: jest.fn(),
         delete: jest.fn(),
       },
+      flashSaleItem: {
+        findFirst: jest.fn(),
+      },
       productVariant: {
         findUnique: jest.fn(),
       },
     };
+
+    (prisma.flashSaleItem.findFirst as any).mockResolvedValue(null);
 
     service = new FlashSalesService(prisma as any);
   });
@@ -63,7 +68,7 @@ describe('FlashSalesService', () => {
         id: 'var-1',
         sku: 'IP15-BLK',
         price: 19000000,
-        inventory: { quantity: 10 },
+        inventory: { quantity: 10, availableQty: 10 },
       });
 
       await expect(service.create(dto as any)).rejects.toThrow(BadRequestException);
@@ -82,7 +87,7 @@ describe('FlashSalesService', () => {
         id: 'var-1',
         sku: 'IP15-BLK',
         price: 19000000,
-        inventory: { quantity: 10 },
+        inventory: { quantity: 10, availableQty: 10 },
       });
 
       await expect(service.create(dto as any)).rejects.toThrow(BadRequestException);
@@ -102,7 +107,7 @@ describe('FlashSalesService', () => {
         id: 'var-1',
         sku: 'IP15-BLK',
         price: 19000000,
-        inventory: { quantity: 10 },
+        inventory: { quantity: 10, availableQty: 10 },
       });
 
       const createdCampaign = { id: 'camp-1', ...dto };

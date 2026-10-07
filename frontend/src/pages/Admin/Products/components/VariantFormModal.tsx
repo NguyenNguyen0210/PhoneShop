@@ -96,11 +96,35 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({
     setSubmitting(true);
     try {
       if (variant?.id) {
-        await productService.updateVariant(productId, variant.id, values);
+        const { initialQuantity, ...updatePayload } = values;
+        await productService.updateVariant(productId, variant.id, updatePayload);
         message.success('Cập nhật biến thể thành công!');
       } else {
-        await productService.addVariant(productId, values);
-        message.success('Thêm biến thể mới thành công!');
+        const { initialQuantity, ...createPayload } = values;
+        const created: any = await productService.addVariant(productId, {
+          ...createPayload,
+          // Backend tự tạo inventory + movement INITIAL_SETUP nếu > 0
+          ...(initialQuantity > 0 ? { initialQuantity: Number(initialQuantity) } : {}),
+        });
+        // Fallback cho backend cũ chưa hỗ trợ initialQuantity:
+        // tự adjustStock sau khi tạo biến thể.
+        if (initialQuantity > 0 && created?.id && !('initialQuantity' in (created || {}))) {
+          try {
+            const { inventoryService } = await import('../../../../services/inventoryService');
+            await inventoryService.adjustStock(created.id, {
+              quantity: Number(initialQuantity),
+              note: 'Tồn kho ban đầu khi tạo biến thể (màu/cấu hình mới)',
+            });
+          } catch (stockErr: any) {
+            // Biến thể đã tạo, chỉ báo tồn kho cần vào Kho nhập bổ sung
+            console.warn('Initial stock adjust failed, please add via Inventory:', stockErr);
+          }
+        }
+        message.success(
+          initialQuantity > 0
+            ? `Thêm biến thể mới + nhập ${initialQuantity} máy thành công!`
+            : 'Thêm biến thể mới thành công!'
+        );
       }
       onSuccess();
       onClose();
@@ -210,6 +234,17 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({
             </Form.Item>
           </Col>
         </Row>
+
+        {!variant && (
+          <Form.Item
+            name="initialQuantity"
+            label="Số lượng nhập kho ban đầu (đúng màu + cấu hình này)"
+            extra="Để 0 nếu chỉ tạo biến thể, nhập số lượng cụ thể sau ở Quản lý Kho."
+            initialValue={0}
+          >
+            <InputNumber min={0} style={{ width: '100%' }} placeholder="VD: 10 máy" />
+          </Form.Item>
+        )}
 
         <Form.Item name="imageUrl" label="Ảnh biến thể theo màu">
           <ImageUploadDragger folder={'variants' as any} />

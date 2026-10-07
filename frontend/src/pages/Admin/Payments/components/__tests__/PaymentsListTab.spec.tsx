@@ -93,6 +93,65 @@ describe('PaymentsListTab', () => {
     expect(screen.queryByText('#ORD-101')).not.toBeInTheDocument();
     expect(screen.getByText('#ORD-102')).toBeInTheDocument();
   });
+
+  it('renders gateway reference, real customer info, and actions column', () => {
+    render(
+      <BrowserRouter>
+        <PaymentsListTab payments={mockPayments} loading={false} />
+      </BrowserRouter>
+    );
+
+    // Ref No
+    expect(screen.getAllByText(/Ref:/).length).toBeGreaterThan(0);
+
+    // Excel Export button
+    expect(screen.getByRole('button', { name: /Xuất báo cáo Excel/i })).toBeInTheDocument();
+
+    // Action buttons
+    const viewButtons = screen.getAllByRole('button', { name: /Xem chi tiết bút toán/i });
+    expect(viewButtons.length).toBeGreaterThan(0);
+
+    // Click view breakdown modal
+    fireEvent.click(viewButtons[0]);
+    expect(screen.getByText('Chi tiết Bút toán & Đối soát Giao dịch')).toBeInTheDocument();
+  });
+
+  it('detects split payment when multiple payments share same order', () => {
+    const splitPayments: Payment[] = [
+      {
+        id: 'p-split-1',
+        orderId: 'o-split',
+        method: 'VNPAY',
+        status: 'PAID',
+        amount: 4776000,
+        createdAt: '2026-10-06T10:30:00Z',
+        paidAt: '2026-10-06T10:30:54Z',
+        updatedAt: '',
+        order: { id: 'o-split', orderNumber: 'ORD-8AE6DB', userId: 'u-1', user: { id: 'u-1', fullName: 'Nguyễn Khánh Vy', phone: '0868 039 811', email: 'khanhvy@test.com' } },
+      },
+      {
+        id: 'p-split-2',
+        orderId: 'o-split',
+        method: 'INSTALLMENT',
+        status: 'PENDING',
+        amount: 19104000,
+        createdAt: '2026-10-06T10:25:00Z',
+        updatedAt: '',
+        order: { id: 'o-split', orderNumber: 'ORD-8AE6DB', userId: 'u-1', user: { id: 'u-1', fullName: 'Nguyễn Khánh Vy', phone: '0868 039 811', email: 'khanhvy@test.com' } },
+      },
+    ];
+
+    render(
+      <BrowserRouter>
+        <PaymentsListTab payments={splitPayments} loading={false} />
+      </BrowserRouter>
+    );
+
+    expect(screen.getAllByText(/Split Payment/).length).toBe(2);
+    expect(screen.getByText(/Tiền trả trước/)).toBeInTheDocument();
+    expect(screen.getByText(/Khoản vay trả góp/)).toBeInTheDocument();
+    expect(screen.getAllByText('Nguyễn Khánh Vy').length).toBeGreaterThan(0);
+  });
 });
 
 describe('TransactionsLogTab', () => {

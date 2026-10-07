@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RagService } from '../rag/rag.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
@@ -35,7 +36,17 @@ const reviewsWithRepliesInclude = {
 
 @Injectable()
 export class ProductsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(ProductsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    @Optional() private ragService?: RagService,
+  ) {}
+
+  private reindexAsync(id: string) {
+    if (!this.ragService) return;
+    this.ragService.indexProduct(id).catch((err) => this.logger.warn(`RAG reindex failed: ${err?.message || err}`));
+  }
 
   // ── PRODUCTS ──────────────────────────────────────────
 
@@ -53,10 +64,12 @@ export class ProductsService {
     });
     if (existing) throw new ConflictException('Product slug already exists');
 
-    return this.prisma.product.create({
+    const created = await this.prisma.product.create({
       data: { ...dto, slug },
       include: { brand: true, category: true, variants: true },
     });
+    this.reindexAsync(created.id);
+    return created;
   }
 
   private formatProduct(product: any) {
@@ -480,11 +493,13 @@ export class ProductsService {
       });
       if (existing) throw new ConflictException('Product slug already in use');
     }
-    return this.prisma.product.update({
+    const updated = await this.prisma.product.update({
       where: { id: product.id },
       data: dto,
       include: { brand: true, category: true, variants: true },
     });
+    this.reindexAsync(updated.id);
+    return updated;
   }
 
   async remove(id: string) {
@@ -506,14 +521,41 @@ export class ProductsService {
     });
     if (existing) throw new ConflictException('SKU already exists');
 
+    const { initialQuantity, ...variantData } = dto as CreateVariantDto & { initialQuantity?: number };
+    const initialQty = Math.floor(Number(initialQuantity ?? 0)) || 0;
+    if (initialQty < 0) throw new BadRequestException('initialQuantity must be >= 0');
+
     const variant = await this.prisma.productVariant.create({
-      data: { ...dto, productId },
+      data: { ...variantData, productId } as any,
     });
 
-    // Auto-create inventory record
-    await this.prisma.inventory.create({
-      data: { variantId: variant.id, quantity: 0, reservedQty: 0, availableQty: 0 },
+    // Auto-create inventory record (idempotent for retries)
+    await this.prisma.inventory.upsert({
+      where: { variantId: variant.id },
+      create: {
+        variantId: variant.id,
+        quantity: initialQty,
+        reservedQty: 0,
+        availableQty: initialQty,
+      },
+      update: {},
     });
+
+    if (initialQty > 0) {
+      await this.prisma.stockMovement.create({
+        data: {
+          variantId: variant.id,
+          type: 'INITIAL_SETUP' as any,
+          quantity: initialQty,
+          balanceBefore: 0,
+          balanceAfter: initialQty,
+          unitPrice: (variant as any).costPrice ?? (variant as any).price ?? 0,
+          totalAmount: initialQty * Number((variant as any).costPrice ?? (variant as any).price ?? 0),
+          referenceType: 'INITIAL_SETUP',
+          note: 'Tồn kho ban đầu khi tạo biến thể (màu/cấu hình mới)',
+        },
+      });
+    }
 
     return variant;
   }

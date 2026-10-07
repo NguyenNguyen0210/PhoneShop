@@ -30,6 +30,23 @@ import { VoucherUsageDrawer } from './VoucherUsageDrawer';
 
 const { Text } = Typography;
 
+const getVoucherScope = (record: Voucher): string => {
+  const code = (record.code || '').toUpperCase();
+  const desc = (record.description || '').toLowerCase();
+  const name = (record.name || '').toLowerCase();
+
+  if (code.includes('APP') || desc.includes('app') || name.includes('app')) {
+    return 'Kênh: Mobile App';
+  }
+  if (code.includes('FLAGSHIP') || desc.includes('flagship') || name.includes('flagship')) {
+    return 'Danh mục: Flagship';
+  }
+  if (code.includes('VIP') || desc.includes('vip') || name.includes('vip')) {
+    return 'Khách hàng VIP';
+  }
+  return 'Toàn sàn';
+};
+
 export interface VoucherTabProps {
   onDataChanged?: () => void;
 }
@@ -169,29 +186,49 @@ export const VoucherTab: React.FC<VoucherTabProps> = ({ onDataChanged }) => {
     {
       title: 'Mã & Tên voucher',
       key: 'code',
-      render: (_, record) => (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Space>
-            <Text strong copyable={false} style={{ color: '#2563eb', fontSize: 15 }}>
-              {record.code}
-            </Text>
-            <Tooltip title="Sao chép mã">
-              <Button
-                type="text"
-                size="small"
-                icon={<CopyOutlined style={{ fontSize: 13 }} />}
-                onClick={() => handleCopyCode(record.code)}
-              />
-            </Tooltip>
-          </Space>
-          <Text style={{ fontSize: 13 }}>{record.name}</Text>
-          {record.description && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {record.description}
-            </Text>
-          )}
-        </div>
-      ),
+      render: (_, record) => {
+        const scope = getVoucherScope(record);
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span
+                style={{
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  color: '#2563eb',
+                  fontSize: 14,
+                  letterSpacing: '0.02em',
+                }}
+              >
+                {record.code}
+              </span>
+              <Tooltip title="Sao chép mã voucher">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<CopyOutlined style={{ fontSize: 13, color: '#94a3b8' }} />}
+                  onClick={() => handleCopyCode(record.code)}
+                  style={{ width: 22, height: 22, padding: 0 }}
+                />
+              </Tooltip>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+              {record.name}
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>
+              <span>Phạm vi: {scope}</span>
+              {record.minOrderValue ? (
+                <span> • Đơn từ {Number(record.minOrderValue).toLocaleString('vi-VN')}₫</span>
+              ) : null}
+            </div>
+            {record.description && (
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                {record.description}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: 'Mức giảm',
@@ -200,12 +237,23 @@ export const VoucherTab: React.FC<VoucherTabProps> = ({ onDataChanged }) => {
         if (record.type === VoucherType.PERCENTAGE) {
           return (
             <div>
-              <Tag color="green" style={{ fontSize: 13, padding: '2px 8px' }}>
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  backgroundColor: '#f0fdf4',
+                  color: '#15803d',
+                  border: '1px solid #bbf7d0',
+                }}
+              >
                 Giảm {record.value}%
-              </Tag>
+              </span>
               {record.maxDiscountAmount && (
-                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                  Tối đa: {record.maxDiscountAmount.toLocaleString('vi-VN')} ₫
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
+                  Tối đa: {Number(record.maxDiscountAmount).toLocaleString('vi-VN')} ₫
                 </div>
               )}
             </div>
@@ -213,17 +261,37 @@ export const VoucherTab: React.FC<VoucherTabProps> = ({ onDataChanged }) => {
         }
         if (record.type === VoucherType.FIXED_AMOUNT) {
           return (
-            <Tag color="purple" style={{ fontSize: 13, padding: '2px 8px' }}>
+            <span
+              style={{
+                display: 'inline-block',
+                padding: '3px 8px',
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 700,
+                backgroundColor: '#faf5ff',
+                color: '#7e22ce',
+                border: '1px solid #e9d5ff',
+              }}
+            >
               Giảm {Number(record.value).toLocaleString('vi-VN')} ₫
-            </Tag>
+            </span>
           );
         }
         return (
-          <Tag color="orange" style={{ fontSize: 13, padding: '2px 8px' }}>
-            {record.value > 0
-              ? `Hỗ trợ ship ${Number(record.value).toLocaleString('vi-VN')} ₫`
-              : 'Miễn phí ship 100%'}
-          </Tag>
+          <span
+            style={{
+              display: 'inline-block',
+              padding: '3px 8px',
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 700,
+              backgroundColor: '#fffbeb',
+              color: '#b45309',
+              border: '1px solid #fde68a',
+            }}
+          >
+            🚚 {Number(record.value) > 0 ? `Hỗ trợ ship ${Number(record.value).toLocaleString('vi-VN')} ₫` : 'Miễn phí ship 100%'}
+          </span>
         );
       },
     },
@@ -231,41 +299,122 @@ export const VoucherTab: React.FC<VoucherTabProps> = ({ onDataChanged }) => {
       title: 'Đơn tối thiểu',
       dataIndex: 'minOrderValue',
       key: 'minOrderValue',
-      render: (val) =>
-        val ? (
-          <Text>{Number(val).toLocaleString('vi-VN')} ₫</Text>
-        ) : (
-          <Text type="secondary">0 ₫</Text>
-        ),
+      render: (val) => (
+        <span style={{ fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap' }}>
+          {val ? `${Number(val).toLocaleString('vi-VN')} ₫` : '0 ₫'}
+        </span>
+      ),
     },
     {
       title: 'Tiến độ sử dụng',
       key: 'usage',
-      width: 170,
+      width: 180,
       render: (_, record) => {
         const hasLimit = record.usageLimit != null && record.usageLimit > 0;
-        const percent = hasLimit
-          ? Math.min(100, Math.round(((record.usageCount || 0) / record.usageLimit!) * 100))
-          : 0;
+        if (!hasLimit) {
+          return (
+            <div style={{ minWidth: 140 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>
+                {(record.usageCount || 0).toLocaleString('vi-VN')} / ∞
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>Không giới hạn</div>
+            </div>
+          );
+        }
+
+        const count = record.usageCount || 0;
+        const limit = record.usageLimit!;
+        const rawPct = (count / limit) * 100;
+        const pctFormatted = rawPct % 1 === 0 ? rawPct.toFixed(0) : rawPct.toFixed(1);
+        const clampedPct = Math.min(100, Math.max(0, rawPct));
+
+        let barBg = '#3b82f6'; // < 70% blue
+        let isNearExhausted = false;
+        const isExhausted = count >= limit;
+
+        if (rawPct >= 90) {
+          barBg = '#ef4444'; // > 90% red
+          isNearExhausted = true;
+        } else if (rawPct >= 70) {
+          barBg = '#f59e0b'; // 70-90% amber
+        }
 
         return (
-          <div style={{ minWidth: 130 }}>
-            {hasLimit ? (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                  <span>{record.usageCount || 0}</span>
-                  <span style={{ color: '#64748b' }}>/ {record.usageLimit}</span>
-                </div>
-                <Progress
-                  percent={percent}
-                  size="small"
-                  status={percent >= 100 ? 'exception' : 'active'}
-                  showInfo={false}
-                />
-              </>
-            ) : (
-              <Text>{record.usageCount || 0} / ∞</Text>
-            )}
+          <div style={{ minWidth: 150 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: 12,
+                marginBottom: 5,
+              }}
+            >
+              <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                {count.toLocaleString('vi-VN')} / {limit.toLocaleString('vi-VN')}
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: isNearExhausted ? '#dc2626' : '#64748b',
+                  fontWeight: isNearExhausted ? 600 : 400,
+                }}
+              >
+                {pctFormatted}%
+              </span>
+            </div>
+            <div
+              style={{
+                width: '100%',
+                height: 7,
+                backgroundColor: '#f1f5f9',
+                borderRadius: 9999,
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: `${clampedPct}%`,
+                  height: '100%',
+                  backgroundColor: barBg,
+                  borderRadius: 9999,
+                  transition: 'width 0.3s ease',
+                }}
+              />
+            </div>
+            {isExhausted ? (
+              <span
+                style={{
+                  display: 'inline-block',
+                  marginTop: 4,
+                  padding: '1px 6px',
+                  borderRadius: 4,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  backgroundColor: '#fef2f2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca',
+                }}
+              >
+                Hết lượt
+              </span>
+            ) : isNearExhausted ? (
+              <span
+                style={{
+                  display: 'inline-block',
+                  marginTop: 4,
+                  padding: '1px 6px',
+                  borderRadius: 4,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  backgroundColor: '#fffbeb',
+                  color: '#b45309',
+                  border: '1px solid #fde68a',
+                }}
+              >
+                Sắp hết lượt
+              </span>
+            ) : null}
           </div>
         );
       },
@@ -281,14 +430,114 @@ export const VoucherTab: React.FC<VoucherTabProps> = ({ onDataChanged }) => {
         const isUpcoming = new Date(record.startAt) > now;
 
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Text style={{ fontSize: 12 }}>{start} - {end}</Text>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontSize: 12, color: '#334155' }}>
+              {start} – {end}
+            </span>
             {isExpired ? (
-              <Tag color="default">Đã hết hạn</Tag>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  width: 'fit-content',
+                  padding: '2px 8px',
+                  borderRadius: 9999,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  backgroundColor: '#f3f4f6',
+                  color: '#4b5563',
+                  border: '1px solid #e5e7eb',
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: '#9ca3af',
+                  }}
+                />
+                Đã hết hạn
+              </span>
             ) : isUpcoming ? (
-              <Tag color="blue">Sắp diễn ra</Tag>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  width: 'fit-content',
+                  padding: '2px 8px',
+                  borderRadius: 9999,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  backgroundColor: '#eff6ff',
+                  color: '#1d4ed8',
+                  border: '1px solid #bfdbfe',
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: '#3b82f6',
+                  }}
+                />
+                Sắp diễn ra
+              </span>
+            ) : !record.isActive ? (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  width: 'fit-content',
+                  padding: '2px 8px',
+                  borderRadius: 9999,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  backgroundColor: '#fffbeb',
+                  color: '#b45309',
+                  border: '1px solid #fde68a',
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: '#f59e0b',
+                  }}
+                />
+                Tạm dừng
+              </span>
             ) : (
-              <Tag color="success">Đang hiệu lực</Tag>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  width: 'fit-content',
+                  padding: '2px 8px',
+                  borderRadius: 9999,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  backgroundColor: '#ecfdf5',
+                  color: '#047857',
+                  border: '1px solid #a7f3d0',
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: '#10b981',
+                  }}
+                />
+                Đang diễn ra
+              </span>
             )}
           </div>
         );
@@ -298,46 +547,77 @@ export const VoucherTab: React.FC<VoucherTabProps> = ({ onDataChanged }) => {
       title: 'Kích hoạt',
       key: 'isActive',
       align: 'center',
-      render: (_, record) => (
-        <Popconfirm
-          title={record.isActive ? 'Tạm dừng mã giảm giá?' : 'Kích hoạt mã giảm giá?'}
-          description={`Bạn có chắc muốn ${record.isActive ? 'tạm dừng' : 'kích hoạt'} voucher "${record.code}"?`}
-          onConfirm={() => handleToggleStatus(record)}
-          okText="Đồng ý"
-          cancelText="Hủy"
-        >
-          <span style={{ display: 'inline-block' }}>
-            <Switch
-              checked={record.isActive}
-              loading={togglingId === record.id}
-            />
-          </span>
-        </Popconfirm>
-      ),
+      render: (_, record) => {
+        const isExpired = new Date(record.endAt) < new Date();
+
+        if (isExpired) {
+          return (
+            <Tooltip title="Voucher đã hết hạn sử dụng (tự động khóa)">
+              <span style={{ display: 'inline-block', cursor: 'not-allowed' }}>
+                <Switch checked={false} disabled size="small" />
+              </span>
+            </Tooltip>
+          );
+        }
+
+        return (
+          <Popconfirm
+            title={record.isActive ? 'Tạm dừng mã giảm giá?' : 'Kích hoạt mã giảm giá?'}
+            description={`Bạn có chắc muốn ${record.isActive ? 'tạm dừng' : 'kích hoạt'} voucher "${record.code}"?`}
+            onConfirm={() => handleToggleStatus(record)}
+            okText="Đồng ý"
+            cancelText="Hủy"
+          >
+            <span style={{ display: 'inline-block' }}>
+              <Switch
+                checked={record.isActive}
+                loading={togglingId === record.id}
+                size="small"
+              />
+            </span>
+          </Popconfirm>
+        );
+      },
     },
     {
       title: 'Thao tác',
       key: 'actions',
       align: 'right',
       render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="Xem lịch sử sử dụng">
+        <Space size={2}>
+          <Tooltip title="Lịch sử dùng mã">
             <Button
               type="text"
-              icon={<HistoryOutlined />}
+              size="small"
+              aria-label="Lịch sử"
+              icon={<HistoryOutlined style={{ fontSize: 15, color: '#64748b' }} />}
               onClick={() => handleOpenUsageDrawer(record)}
-            >
-              Lịch sử
-            </Button>
+              style={{
+                borderRadius: 6,
+                width: 30,
+                height: 30,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            />
           </Tooltip>
-          <Tooltip title="Chỉnh sửa voucher">
+          <Tooltip title="Chỉnh sửa thông tin mã">
             <Button
               type="text"
-              icon={<EditOutlined />}
+              size="small"
+              aria-label="Sửa"
+              icon={<EditOutlined style={{ fontSize: 15, color: '#2563eb' }} />}
               onClick={() => handleOpenEditModal(record)}
-            >
-              Sửa
-            </Button>
+              style={{
+                borderRadius: 6,
+                width: 30,
+                height: 30,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            />
           </Tooltip>
           <Popconfirm
             title="Xóa mã giảm giá?"
@@ -347,9 +627,23 @@ export const VoucherTab: React.FC<VoucherTabProps> = ({ onDataChanged }) => {
             cancelText="Hủy"
             okButtonProps={{ danger: true }}
           >
-            <Button type="text" danger icon={<DeleteOutlined />}>
-              Xóa
-            </Button>
+            <Tooltip title="Xóa voucher">
+              <Button
+                type="text"
+                danger
+                size="small"
+                aria-label="Xóa"
+                icon={<DeleteOutlined style={{ fontSize: 15 }} />}
+                style={{
+                  borderRadius: 6,
+                  width: 30,
+                  height: 30,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
@@ -407,7 +701,7 @@ export const VoucherTab: React.FC<VoucherTabProps> = ({ onDataChanged }) => {
         </Space>
 
         <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenCreateModal}>
-          + Tạo mã giảm giá mới
+          Tạo mã voucher
         </Button>
       </div>
 

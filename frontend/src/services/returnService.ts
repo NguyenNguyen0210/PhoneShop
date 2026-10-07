@@ -124,6 +124,8 @@ export const returnService = {
   async getRefundHistory(): Promise<RefundItem[]> {
     const response = await apiClient.get('/returns/refunds/history');
     const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : data?.items ?? [];
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.data)) return data.data;
+    return data?.items ?? [];
   },
 };

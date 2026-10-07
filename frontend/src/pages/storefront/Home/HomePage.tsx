@@ -567,13 +567,13 @@ export const HomePage: React.FC = () => {
             <button
               type="button"
               onClick={() => handleSelectBrand('all')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-2 ${
+              className={`h-11 min-w-[112px] px-4 rounded-xl text-[13px] transition-all cursor-pointer shrink-0 flex items-center justify-center gap-2 border ${
                 selectedBrand === 'all'
-                  ? 'bg-slate-900 text-white shadow-md'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                  ? 'border-blue-600 bg-blue-50 text-blue-600 font-semibold shadow-xs'
+                  : 'bg-white border-slate-200 text-slate-700 font-medium hover:border-blue-300 hover:bg-blue-50/50'
               }`}
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
+              <LayoutGrid className="w-4 h-4" />
               <span>Tất cả</span>
             </button>
 
@@ -585,10 +585,10 @@ export const HomePage: React.FC = () => {
                   key={b.id || b.slug}
                   type="button"
                   onClick={() => handleSelectBrand(b.name)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                  className={`h-11 min-w-[112px] px-4 rounded-xl text-[13px] transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 border ${
                     isSelected
-                      ? 'bg-slate-900 text-white shadow-md'
-                      : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                      ? 'border-blue-600 bg-blue-50 text-blue-600 font-semibold shadow-xs'
+                      : 'bg-white border-slate-200 text-slate-700 font-medium hover:border-blue-300 hover:bg-blue-50/50'
                   }`}
                 >
                   <BrandLogo
@@ -651,8 +651,8 @@ export const HomePage: React.FC = () => {
             />
 
             {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Array.from({ length: 6 }).map((_, i) => (
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+                {Array.from({ length: 8 }).map((_, i) => (
                   <div
                     key={i}
                     className="bg-white rounded-2xl border border-slate-200/80 p-4 h-80 animate-pulse flex flex-col justify-between"
@@ -692,7 +692,7 @@ export const HomePage: React.FC = () => {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
                   {paginatedProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}

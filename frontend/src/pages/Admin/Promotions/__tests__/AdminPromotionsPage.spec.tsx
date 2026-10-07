@@ -162,6 +162,7 @@ describe('AdminPromotionsPage', () => {
     ]);
 
     vi.mocked(flashSaleService.getAdminCampaigns).mockResolvedValue(mockCampaigns);
+    vi.mocked(flashSaleService.getCampaignDetail).mockResolvedValue(mockCampaigns[0] as any);
   });
 
   it('renders KPI summary cards and promotion tabs', async () => {
@@ -185,7 +186,7 @@ describe('AdminPromotionsPage', () => {
     });
   });
 
-  it('opens VoucherFormModal when clicking "+ Tạo mã giảm giá mới"', async () => {
+  it('opens VoucherFormModal when clicking "Tạo mã voucher"', async () => {
     render(
       <BrowserRouter>
         <AdminPromotionsPage />
@@ -193,10 +194,10 @@ describe('AdminPromotionsPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('+ Tạo mã giảm giá mới')).toBeDefined();
+      expect(screen.getByText('Tạo mã voucher')).toBeDefined();
     });
 
-    fireEvent.click(screen.getByText('+ Tạo mã giảm giá mới'));
+    fireEvent.click(screen.getByText('Tạo mã voucher'));
 
     await waitFor(() => {
       expect(screen.getByText('Tạo mã giảm giá mới')).toBeDefined();
@@ -215,7 +216,7 @@ describe('AdminPromotionsPage', () => {
       expect(screen.getByText('PANDA50K')).toBeDefined();
     });
 
-    const historyButtons = screen.getAllByText('Lịch sử');
+    const historyButtons = screen.getAllByLabelText('Lịch sử');
     fireEvent.click(historyButtons[0]);
 
     await waitFor(() => {
@@ -238,12 +239,12 @@ describe('AdminPromotionsPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Flash Sale Cuối Tuần')).toBeDefined();
-      expect(screen.getByText('+ Tạo chiến dịch Flash Sale')).toBeDefined();
+      expect(screen.getByText('Tạo chiến dịch Flash Sale')).toBeDefined();
       expect(screen.getByText('Chi tiết')).toBeDefined();
     });
   });
 
-  it('opens FlashSaleFormModal when clicking "+ Tạo chiến dịch Flash Sale"', async () => {
+  it('opens FlashSaleFormModal when clicking "Tạo chiến dịch Flash Sale"', async () => {
     render(
       <BrowserRouter>
         <AdminPromotionsPage />
@@ -254,10 +255,10 @@ describe('AdminPromotionsPage', () => {
     fireEvent.click(flashSaleTab);
 
     await waitFor(() => {
-      expect(screen.getByText('+ Tạo chiến dịch Flash Sale')).toBeDefined();
+      expect(screen.getByText('Tạo chiến dịch Flash Sale')).toBeDefined();
     });
 
-    fireEvent.click(screen.getByText('+ Tạo chiến dịch Flash Sale'));
+    fireEvent.click(screen.getByText('Tạo chiến dịch Flash Sale'));
 
     await waitFor(() => {
       expect(screen.getByText('Tạo chiến dịch Flash Sale mới')).toBeDefined();
@@ -284,6 +285,10 @@ describe('AdminPromotionsPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/Chi tiết chiến dịch: Flash Sale Cuối Tuần/i)).toBeDefined();
       expect(screen.getByText('iPhone 15 128GB')).toBeDefined();
+      expect(screen.getByText(/IP15-128/)).toBeDefined();
+      expect(screen.getByText(/15\.000\.000/)).toBeDefined();
     });
+
+    expect(screen.queryByText(/NaN/)).toBeNull();
   });
 });

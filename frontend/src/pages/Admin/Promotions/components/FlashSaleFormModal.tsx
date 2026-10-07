@@ -128,8 +128,8 @@ export const FlashSaleFormModal: React.FC<FlashSaleFormModalProps> = ({
       setItemFlashPrice(suggestedPrice);
 
       const available =
-        variant.inventory?.quantity ??
         variant.inventory?.availableQty ??
+        variant.inventory?.quantity ??
         10;
       setItemStockLimit(Math.min(available, 10));
     } else {
@@ -141,8 +141,8 @@ export const FlashSaleFormModal: React.FC<FlashSaleFormModalProps> = ({
   const getVariantAvailableStock = (variant: ProductVariant | null): number => {
     if (!variant) return 0;
     return (
-      variant.inventory?.quantity ??
       variant.inventory?.availableQty ??
+      variant.inventory?.quantity ??
       0
     );
   };
@@ -392,7 +392,7 @@ export const FlashSaleFormModal: React.FC<FlashSaleFormModalProps> = ({
                   options={(selectedProduct?.variants || []).map((v) => {
                     const labelParts = [v.sku, v.color, v.storage].filter(Boolean).join(' - ');
                     const stock =
-                      v.inventory?.quantity ?? v.inventory?.availableQty ?? 0;
+                      v.inventory?.availableQty ?? v.inventory?.quantity ?? 0;
                     return {
                       value: v.id,
                       label: `${labelParts} (${Number(v.price).toLocaleString('vi-VN')} ₫ | Kho: ${stock})`,

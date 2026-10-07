@@ -6,6 +6,7 @@ vi.mock('../apiClient', () => ({
   apiClient: {
     get: vi.fn(),
     put: vi.fn(),
+    post: vi.fn(),
   },
 }));
 
@@ -14,13 +15,24 @@ describe('inventoryService', () => {
     vi.clearAllMocks();
   });
 
-  it('getInventoryList calls GET /inventory', async () => {
+  it('getInventoryList calls GET /inventory with default limit 100 to see all variants', async () => {
     const mockData = [{ id: 'inv-1', variantId: 'var-1', quantity: 10, availableQty: 8, reservedQty: 2, reorderLevel: 5 }];
     vi.mocked(apiClient.get).mockResolvedValueOnce({ data: mockData });
 
     const result = await inventoryService.getInventoryList();
-    expect(apiClient.get).toHaveBeenCalledWith('/inventory');
+    expect(apiClient.get).toHaveBeenCalledWith('/inventory', {
+      params: { limit: 100 },
+    });
     expect(result).toEqual(mockData);
+  });
+
+  it('getInventoryList forwards search params for variant picker', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: [] });
+
+    await inventoryService.getInventoryList({ search: 'iPhone', limit: 50 });
+    expect(apiClient.get).toHaveBeenCalledWith('/inventory', {
+      params: { limit: 50, search: 'iPhone' },
+    });
   });
 
   it('getLowStockAlerts calls GET /inventory/low-stock with threshold when provided', async () => {
@@ -53,5 +65,13 @@ describe('inventoryService', () => {
 
     await inventoryService.setReorderLevel('v1', payload);
     expect(apiClient.put).toHaveBeenCalledWith('/inventory/v1/reorder-level', payload);
+  });
+
+  it('syncMissingInventories calls POST /inventory/sync-missing', async () => {
+    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { created: 3 } });
+
+    const result = await inventoryService.syncMissingInventories();
+    expect(apiClient.post).toHaveBeenCalledWith('/inventory/sync-missing');
+    expect(result).toEqual({ created: 3 });
   });
 });

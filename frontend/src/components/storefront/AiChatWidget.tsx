@@ -8,6 +8,7 @@ import {
   type ChatbotProduct,
 } from '../../services/chatbotService';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useCartStore } from '../../stores/useCartStore';
 
 interface UiMessage {
   role: 'user' | 'assistant';
@@ -16,6 +17,17 @@ interface UiMessage {
   sources?: string[];
   escalate?: boolean;
 }
+
+const CONV_KEY = 'phoneshop_chat_conv';
+
+const getConversationId = (): string => {
+  let id = localStorage.getItem(CONV_KEY);
+  if (!id) {
+    id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem(CONV_KEY, id);
+  }
+  return id;
+};
 
 const DEFAULT_SUGGESTIONS = [
   '⚡ Flash sale nào đang chạy?',
@@ -32,6 +44,8 @@ export const AiChatWidget: React.FC = () => {
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
+  // Khóa đồng bộ chống double-submit (state async, 2 click nhanh đều lọt guard).
+  const sendingRef = useRef(false);
   const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -46,7 +60,8 @@ export const AiChatWidget: React.FC = () => {
 
   const send = async (text?: string) => {
     const content = (text ?? input).trim();
-    if (!content || isSending) return;
+    if (!content || isSending || sendingRef.current) return;
+    sendingRef.current = true;
     const nextHistory: ChatHistoryItem[] = [
       ...messages.slice(-6).map((m) => ({ role: m.role, content: m.content })),
       { role: 'user' as const, content },
@@ -54,18 +69,84 @@ export const AiChatWidget: React.FC = () => {
     setMessages((prev) => [...prev, { role: 'user', content }]);
     setInput('');
     setIsSending(true);
+    const convId = getConversationId();
+    const appendAssistant = () =>
+      setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+    const removeEmptyAssistant = () =>
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === 'assistant' && !last.content && !(last.products?.length || last.sources?.length)) {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
+    const handleStreamEvent = (got: { tokens: boolean; done: boolean }) => (e: StreamChatEvent) => {
+      if (e.type === 'token' && e.text) {
+        got.tokens = true;
+        const chunk = e.text;
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role === 'assistant') next[next.length - 1] = { ...last, content: last.content + chunk };
+          return next;
+        });
+      } else if (e.type === 'products') {
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role === 'assistant') {
+            next[next.length - 1] = { ...last, products: e.products, sources: e.sources, escalate: e.escalate };
+          }
+          return next;
+        });
+      } else if (e.type === 'done') {
+        got.done = true;
+      }
+    };
+    // Stream thử tối đa 2 lần (gateway local chập chờn); có chữ dở thì giữ.
+    const tryStream = async (): Promise<'done' | 'partial' | 'failed'> => {
+      if (typeof chatbotService.askStream !== 'function') return 'failed';
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const got = { tokens: false, done: false };
+        appendAssistant();
+        try {
+          await chatbotService.askStream(content, convId, handleStreamEvent(got));
+        } catch {
+          // Rớt stream: gỡ placeholder, thử lại 1 lần nếu chưa có chữ nào.
+        }
+        if (got.done) return 'done';
+        removeEmptyAssistant();
+        if (got.tokens) return 'partial';
+      }
+      return 'failed';
+    };
     try {
-      const res = await chatbotService.ask(content, nextHistory);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: res.reply,
-          products: res.products,
-          sources: res.sources,
-          escalate: res.escalate,
-        },
-      ]);
+      const streamResult = await tryStream();
+      if (streamResult === 'failed') {
+        // REST fallback: dính 429 (hỏi dồn) thì chờ 3s thử lại 1 lần rồi mới báo bận.
+        let res;
+        try {
+          res = await chatbotService.ask(content, nextHistory, convId);
+        } catch (err: any) {
+          if (err?.response?.status !== 429) throw err;
+          await new Promise((r) => setTimeout(r, 3000));
+          res = await chatbotService.ask(content, nextHistory, convId);
+        }
+        if (res.conversationId) localStorage.setItem(CONV_KEY, res.conversationId);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: res.reply,
+            products: res.products,
+            sources: res.sources,
+            escalate: res.escalate,
+          },
+        ]);
+      }
+      // AI có thể đã thêm/xem giỏ hộ user → refresh giỏ local (badge, trang giỏ)
+      // để khỏi phải logout/login lại mới thấy.
+      useCartStore.getState().syncWithBackend().catch(() => {});
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -76,6 +157,7 @@ export const AiChatWidget: React.FC = () => {
         },
       ]);
     } finally {
+      sendingRef.current = false;
       setIsSending(false);
     }
   };

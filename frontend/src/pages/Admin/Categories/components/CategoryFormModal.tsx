@@ -136,7 +136,7 @@ export const CategoryFormModal: React.FC<CategoryFormModalProps> = ({
           ? `Chỉnh sửa danh mục: ${editingCategory?.name}`
           : parentCategoryForNewChild
           ? `Thêm danh mục con cho "${parentCategoryForNewChild.name}"`
-          : 'Thêm danh mục Smartphone mới'
+          : 'Thêm danh mục sản phẩm mới'
       }
       open={open}
       onCancel={onCancel}

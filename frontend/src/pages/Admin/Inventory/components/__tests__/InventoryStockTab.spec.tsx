@@ -34,6 +34,21 @@ vi.mock('../../../../../services/inventoryService', () => ({
     adjustStock: vi.fn(),
     setReorderLevel: vi.fn(),
     getVariantLedger: vi.fn(),
+    syncMissingInventories: vi.fn(),
+    getInventoryList: vi.fn().mockResolvedValue([]),
+  },
+}));
+
+vi.mock('../../../../../services/productService', () => ({
+  productService: {
+    getAllProductsAdmin: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+    getProducts: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+  },
+}));
+
+vi.mock('../../../../../services/supplierService', () => ({
+  supplierService: {
+    getSuppliers: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -112,5 +127,30 @@ describe('InventoryStockTab', () => {
         expect.objectContaining({ page: 1, limit: 10 })
       );
     });
+  });
+
+  it('shows Nhap kho picker so admin can stock exact color/config variant', async () => {
+    const { container } = render(
+      <InventoryStockTab
+        items={mockItems}
+        loading={false}
+        onRefresh={vi.fn()}
+        filterLowStockOnly={false}
+        onToggleLowStockFilter={vi.fn()}
+      />
+    );
+
+    // Nút nhập kho đúng loại phải luôn hiển thị
+    expect(screen.getByText(/Nhập kho \(chọn màu \+ cấu hình\)/i)).toBeDefined();
+    expect(screen.getByText(/Đồng bộ kho thiếu/i)).toBeDefined();
+
+    fireEvent.click(screen.getByText(/Nhập kho \(chọn màu \+ cấu hình\)/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Nhập kho theo biến thể/i)).toBeDefined();
+      expect(screen.getByText(/Điện thoại \(Sản phẩm X\)/i)).toBeDefined();
+      expect(screen.getByText(/Màu \+ Cấu hình \(Biến thể Y-Z\)/i)).toBeDefined();
+    });
+    expect(container).toBeDefined();
   });
 });

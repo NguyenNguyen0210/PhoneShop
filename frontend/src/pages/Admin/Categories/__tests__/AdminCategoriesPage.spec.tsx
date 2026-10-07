@@ -36,6 +36,7 @@ vi.mock('../../../../services/categoryService', () => ({
     activateCategory: vi.fn(),
     deactivateCategory: vi.fn(),
     deleteCategory: vi.fn(),
+    reorderCategories: vi.fn(),
   },
 }));
 
@@ -45,7 +46,7 @@ const mockTreeData = [
     name: 'Điện thoại iOS',
     slug: 'dien-thoai-ios',
     isActive: true,
-    sortOrder: 1,
+    sortOrder: 0,
     imageUrl: 'https://example.com/ios.png',
     _count: { products: 15, children: 1 },
     children: [
@@ -55,7 +56,7 @@ const mockTreeData = [
         slug: 'iphone-16-series',
         parentId: 'cat-1',
         isActive: true,
-        sortOrder: 1,
+        sortOrder: 0,
         imageUrl: null,
         _count: { products: 6, children: 0 },
         children: [],
@@ -67,14 +68,14 @@ const mockTreeData = [
     name: 'Điện thoại Android',
     slug: 'dien-thoai-android',
     isActive: false,
-    sortOrder: 2,
+    sortOrder: 1,
     imageUrl: null,
     _count: { products: 10, children: 0 },
     children: [],
   },
 ];
 
-describe('AdminCategoriesPage', () => {
+describe('AdminCategoriesPage — UX, Rollup, & Tree View', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -83,12 +84,12 @@ describe('AdminCategoriesPage', () => {
     cleanup();
   });
 
-  it('renders category tree table and stat cards correctly', async () => {
+  it('renders category tree table, stat cards, and rollup product counts', async () => {
     (categoryService.getAdminCategoryTree as any).mockResolvedValue(mockTreeData);
 
     render(<AdminCategoriesPage />);
 
-    expect(screen.getByText('Quản lý Danh mục Smartphone')).toBeTruthy();
+    expect(screen.getByText('Quản lý Cây Danh Mục Sản Phẩm')).toBeTruthy();
 
     await waitFor(() => {
       expect(screen.getByText('Điện thoại iOS')).toBeTruthy();
@@ -99,11 +100,18 @@ describe('AdminCategoriesPage', () => {
     expect(screen.getByText('Tổng số danh mục')).toBeTruthy();
     expect(screen.getByText('Đang kích hoạt')).toBeTruthy();
     expect(screen.getByText('Tạm ẩn')).toBeTruthy();
-    expect(screen.getByText('Tổng Smartphone')).toBeTruthy();
+    expect(screen.getByText('Tổng sản phẩm')).toBeTruthy();
     expect(screen.getByText('31 máy')).toBeTruthy();
+
+    // Check Rollup for parent 'Điện thoại iOS' (15 direct + 6 child = 21 rollup)
+    expect(screen.getByText('21 máy')).toBeTruthy();
+    expect(screen.getByText('(15 trực tiếp, 6 con)')).toBeTruthy();
+
+    // Check branch connector
+    expect(screen.getByText('└──')).toBeTruthy();
   });
 
-  it('opens create modal when clicking "+ Thêm danh mục mới"', async () => {
+  it('opens create modal when clicking "Thêm danh mục mới"', async () => {
     (categoryService.getAdminCategoryTree as any).mockResolvedValue(mockTreeData);
 
     render(<AdminCategoriesPage />);
@@ -112,13 +120,13 @@ describe('AdminCategoriesPage', () => {
       expect(screen.getByText('Điện thoại iOS')).toBeTruthy();
     });
 
-    const createBtn = screen.getByRole('button', { name: /\+ Thêm danh mục mới/i });
+    const createBtn = screen.getByRole('button', { name: /Thêm danh mục mới/i });
     fireEvent.click(createBtn);
 
-    expect(screen.getByText('Thêm danh mục Smartphone mới')).toBeTruthy();
+    expect(screen.getByText('Thêm danh mục sản phẩm mới')).toBeTruthy();
   });
 
-  it('opens add child modal when clicking "+ Con"', async () => {
+  it('opens add child modal when clicking "Thêm mục con" icon button', async () => {
     (categoryService.getAdminCategoryTree as any).mockResolvedValue(mockTreeData);
 
     render(<AdminCategoriesPage />);
@@ -127,13 +135,13 @@ describe('AdminCategoriesPage', () => {
       expect(screen.getByText('Điện thoại iOS')).toBeTruthy();
     });
 
-    const addChildBtns = screen.getAllByRole('button', { name: /\+ Con/i });
+    const addChildBtns = screen.getAllByRole('button', { name: /Thêm mục con/i });
     fireEvent.click(addChildBtns[0]);
 
     expect(screen.getByText('Thêm danh mục con cho "Điện thoại iOS"')).toBeTruthy();
   });
 
-  it('opens edit modal when clicking "Sửa"', async () => {
+  it('opens edit modal when clicking "Sửa" icon button', async () => {
     (categoryService.getAdminCategoryTree as any).mockResolvedValue(mockTreeData);
 
     render(<AdminCategoriesPage />);
@@ -164,6 +172,24 @@ describe('AdminCategoriesPage', () => {
 
     await waitFor(() => {
       expect(categoryService.deactivateCategory).toHaveBeenCalledWith('cat-1');
+    });
+  });
+
+  it('calls reorderCategories when clicking up/down arrow buttons', async () => {
+    (categoryService.getAdminCategoryTree as any).mockResolvedValue(mockTreeData);
+    (categoryService.reorderCategories as any).mockResolvedValue(undefined);
+
+    render(<AdminCategoriesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Điện thoại iOS')).toBeTruthy();
+    });
+
+    const downBtns = screen.getAllByTitle('Chuyển xuống dưới');
+    fireEvent.click(downBtns[0]);
+
+    await waitFor(() => {
+      expect(categoryService.reorderCategories).toHaveBeenCalled();
     });
   });
 });

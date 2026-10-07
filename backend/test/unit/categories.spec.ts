@@ -117,6 +117,22 @@ describe('CategoriesService', () => {
       );
     });
   });
+
+  describe('reorder', () => {
+    it('should run a transaction to update sortOrder for all items', async () => {
+      (prisma as any).$transaction = jest.fn().mockImplementation(() => Promise.resolve([]));
+      (prisma.category as any).update = jest.fn().mockReturnValue({});
+
+      const items = [
+        { id: 'cat-1', sortOrder: 0 },
+        { id: 'cat-2', sortOrder: 1 },
+      ];
+
+      const res = await service.reorder(items);
+      expect((prisma as any).$transaction).toHaveBeenCalled();
+      expect(res).toEqual({ success: true });
+    });
+  });
 });
 
 describe('CategoriesController', () => {
@@ -126,6 +142,7 @@ describe('CategoriesController', () => {
   beforeEach(() => {
     mockService = {
       changeStatus: jest.fn(),
+      reorder: jest.fn().mockImplementation(() => Promise.resolve({ success: true })),
     };
     controller = new CategoriesController(mockService);
   });
@@ -142,5 +159,12 @@ describe('CategoriesController', () => {
     const result = await controller.deactivate('cat-1');
     expect(mockService.changeStatus).toHaveBeenCalledWith('cat-1', false);
     expect(result).toEqual({ id: 'cat-1', isActive: false });
+  });
+
+  it('reorder should delegate to service.reorder(items)', async () => {
+    const items = [{ id: 'cat-1', sortOrder: 1 }, { id: 'cat-2', sortOrder: 0 }];
+    const result = await controller.reorder({ items });
+    expect(mockService.reorder).toHaveBeenCalledWith(items);
+    expect(result).toEqual({ success: true });
   });
 });

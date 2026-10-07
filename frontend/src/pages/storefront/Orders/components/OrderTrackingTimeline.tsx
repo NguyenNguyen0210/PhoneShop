@@ -80,12 +80,16 @@ const getActiveStepIndex = (order: Order): number => {
     }
   }
 
-  // Fallback to order.status
+  // Fallback to order.status (only when no usable shipping.status exists).
+  // NOTE: CONFIRMED/PROCESSING means "received, not packed yet" — showing the
+  // "packed" step as current would fabricate progress just like the old
+  // activity-log bug. PACKED must highlight the packed step, not "placed".
   switch (order.status) {
     case 'PENDING':
-      return 0;
     case 'CONFIRMED':
     case 'PROCESSING':
+      return 0;
+    case 'PACKED':
       return 1;
     case 'SHIPPING':
       return 3;
@@ -158,16 +162,19 @@ const buildActivityLog = (order: Order): ActivityLogItem[] => {
     });
   }
 
-  // 4. Packed & Tracking assigned: shipping.createdAt
-  if (shipping?.createdAt) {
+  // 4. Packed & Tracking assigned: staff actually packed the order
+  // (order.packedAt). NEVER derive this from shipping.createdAt — the shipping
+  // row is created at checkout with status PENDING, so that fabricated a
+  // "packed" milestone (with checkout time) on fresh, unconfirmed orders.
+  if (order.packedAt) {
     activities.push({
       id: 'packed',
       title: 'Đã đóng gói & Tạo mã vận đơn',
-      description: shipping.trackingNumber
+      description: shipping?.trackingNumber
         ? `Đã tạo mã vận đơn ${shipping.trackingNumber}. Kiện hàng đã đóng gói sẵn sàng.`
         : 'Kiện hàng đã đóng gói hoàn tất và sẵn sàng giao cho đơn vị vận chuyển.',
-      timestamp: shipping.createdAt,
-      timeFormatted: formatDateTimeVN(shipping.createdAt),
+      timestamp: order.packedAt,
+      timeFormatted: formatDateTimeVN(order.packedAt),
     });
   }
 

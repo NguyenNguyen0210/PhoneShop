@@ -373,4 +373,28 @@ export class TicketsService {
       include: { assignedTo: { select: { id: true, firstName: true, lastName: true } } },
     });
   }
+
+  async getSummaryAnalytics() {
+    const [openCount, inProgressCount, resolvedCount, closedCount, urgentCount] =
+      await Promise.all([
+        this.prisma.ticket.count({ where: { status: TicketStatus.OPEN } }),
+        this.prisma.ticket.count({ where: { status: TicketStatus.IN_PROGRESS } }),
+        this.prisma.ticket.count({ where: { status: TicketStatus.RESOLVED } }),
+        this.prisma.ticket.count({ where: { status: TicketStatus.CLOSED } }),
+        this.prisma.ticket.count({
+          where: {
+            priority: TicketPriority.URGENT,
+            status: { not: TicketStatus.CLOSED },
+          },
+        }),
+      ]);
+
+    return {
+      open: openCount,
+      inProgress: inProgressCount,
+      resolved: resolvedCount + closedCount,
+      urgent: urgentCount,
+      total: openCount + inProgressCount + resolvedCount + closedCount,
+    };
+  }
 }

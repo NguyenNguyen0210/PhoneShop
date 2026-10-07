@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Table, Input, Button, Space, Tag, Typography, Tooltip, Empty } from 'antd';
+import { Table, Input, Button, Space, Tag, Typography, Tooltip, Empty, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   SearchOutlined,
@@ -8,10 +8,14 @@ import {
   SettingOutlined,
   WarningOutlined,
   HistoryOutlined,
+  PlusOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import type { InventoryRecord } from '../../../../types';
 import { useAuthStore } from '../../../../stores/useAuthStore';
+import { inventoryService } from '../../../../services/inventoryService';
 import { StockAdjustmentModal } from './StockAdjustmentModal';
+import { StockInboundModal } from './StockInboundModal';
 import { ReorderLevelModal } from './ReorderLevelModal';
 import { ProductStockLedgerDrawer } from './ProductStockLedgerDrawer';
 
@@ -45,6 +49,21 @@ export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
   const [adjustItem, setAdjustItem] = useState<InventoryRecord | null>(null);
   const [reorderItem, setReorderItem] = useState<InventoryRecord | null>(null);
   const [selectedLedgerVariant, setSelectedLedgerVariant] = useState<InventoryRecord | null>(null);
+  const [inboundOpen, setInboundOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncMissing = async () => {
+    try {
+      setSyncing(true);
+      const res = await inventoryService.syncMissingInventories();
+      message.success(`Đã đồng bộ kho, tạo mới ${res?.created ?? 0} bản ghi còn thiếu`);
+      onRefresh();
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || 'Đồng bộ kho thất bại');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -215,9 +234,21 @@ export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
             {filterLowStockOnly ? 'Đang lọc: Sắp hết hàng' : 'Lọc hàng sắp hết'}
           </Button>
         </Space>
-        <Button icon={<ReloadOutlined />} onClick={onRefresh} loading={loading}>
-          Làm mới
-        </Button>
+        <Space>
+          {isManagerOrAdmin && (
+            <Tooltip title="Tạo bản ghi kho còn thiếu cho biến thể cũ (màu/cấu hình chưa hiện trong kho)">
+              <Button icon={<SyncOutlined />} onClick={handleSyncMissing} loading={syncing}>
+                Đồng bộ kho thiếu
+              </Button>
+            </Tooltip>
+          )}
+          <Button icon={<ReloadOutlined />} onClick={onRefresh} loading={loading}>
+            Làm mới
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setInboundOpen(true)}>
+            Nhập kho (chọn màu + cấu hình)
+          </Button>
+        </Space>
       </div>
 
       <Table
@@ -243,6 +274,12 @@ export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
         open={!!adjustItem}
         item={adjustItem}
         onClose={() => setAdjustItem(null)}
+        onSuccess={onRefresh}
+      />
+
+      <StockInboundModal
+        open={inboundOpen}
+        onClose={() => setInboundOpen(false)}
         onSuccess={onRefresh}
       />
 

@@ -90,6 +90,11 @@ export const reviewService = {
     return payload?.data ?? payload;
   },
 
+  async getAdminStats(): Promise<{ total: number; pending: number; approved: number; rejected: number }> {
+    const response = await apiClient.get('/reviews/admin/stats');
+    return (response.data as any)?.data ?? response.data;
+  },
+
   async approveReview(id: string): Promise<Review> {
     const response = await apiClient.put<Review>(`/reviews/${id}/approve`);
     return (response.data as unknown as { data?: Review })?.data ?? response.data;

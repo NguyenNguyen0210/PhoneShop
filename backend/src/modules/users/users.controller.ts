@@ -94,7 +94,14 @@ export class UsersController {
   @Put(':id/ban')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Ban user (ADMIN)' })
-  banUser(@Param('id') id: string, @CurrentUser() user: any) {
+  banUser(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() body?: { reason?: string },
+  ) {
+    if (body?.reason) {
+      return this.usersService.changeStatus(id, 'BANNED', user, body.reason);
+    }
     return this.usersService.changeStatus(id, 'BANNED', user);
   }
 }

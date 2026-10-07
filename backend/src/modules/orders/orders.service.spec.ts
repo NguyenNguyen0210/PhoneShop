@@ -1,6 +1,6 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { OrdersService } from './orders.service';
-import { OrderStatus, StockMovementType } from '@prisma/client';
+import { OrderStatus, ShippingStatus, StockMovementType } from '@prisma/client';
 
 describe('OrdersService - Fulfillment Stock Movements & Ledger Sync', () => {
   let ordersService: OrdersService;
@@ -77,9 +77,9 @@ describe('OrdersService - Fulfillment Stock Movements & Ledger Sync', () => {
 
     await ordersService.transitionStatus('ord-123', OrderStatus.DELIVERED);
 
-    // Verify physical stock decrement
-    expect(mockTx.inventory.update).toHaveBeenCalledWith({
-      where: { variantId: 'var-101' },
+    // Verify physical stock decrement (guarded: only consumes reserved stock)
+    expect(mockTx.inventory.updateMany).toHaveBeenCalledWith({
+      where: { variantId: 'var-101', reservedQty: { gte: 2 } },
       data: {
         quantity: { decrement: 2 },
         reservedQty: { decrement: 2 },
@@ -125,5 +125,21 @@ describe('OrdersService - Fulfillment Stock Movements & Ledger Sync', () => {
 
     expect(mockTx.inventory.update).not.toHaveBeenCalled();
     expect(mockTx.stockMovement.create).not.toHaveBeenCalled();
+  });
+
+  it('advances a non-terminal shipping row to DELIVERED when the order is delivered', async () => {
+    mockTx.shipping.updateMany = (jest.fn() as any).mockResolvedValue({ count: 1 });
+
+    await ordersService.transitionStatus('ord-123', OrderStatus.DELIVERED);
+
+    expect(mockTx.shipping.updateMany).toHaveBeenCalledWith({
+      where: {
+        orderId: 'ord-123',
+        status: {
+          notIn: [ShippingStatus.DELIVERED, ShippingStatus.FAILED, ShippingStatus.RETURNED],
+        },
+      },
+      data: { status: ShippingStatus.DELIVERED, deliveredAt: expect.any(Date) },
+    });
   });
 });

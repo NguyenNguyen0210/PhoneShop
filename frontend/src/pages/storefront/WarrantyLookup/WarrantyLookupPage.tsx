@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Search,
   CheckCircle2,
@@ -10,18 +11,34 @@ import {
   ShieldCheck,
   AlertTriangle,
   Award,
+  X,
+  Phone,
+  Settings,
+  Package,
+  PhoneCall,
 } from 'lucide-react';
 import { warrantyService, type WarrantyLookupResult } from '../../../services/warrantyService';
 import { imeiService } from '../../../services/imeiService';
 import { notifyError } from '../../../utils/notify';
 
+type LookupTab = 'imei' | 'phone';
+
+const sanitizeCodeInput = (raw: string): string =>
+  (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+const isValidVnPhone = (raw: string): boolean =>
+  /^(0|\+84)(3|5|7|8|9)\d{8}$/.test((raw || '').replace(/[\s.]/g, ''));
+
 export const WarrantyLookupPage: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<LookupTab>('imei');
   const [query, setQuery] = useState('');
+  const [phone, setPhone] = useState('');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<WarrantyLookupResult | null>(null);
 
   // Real-time Luhn calculation
-  const cleanInput = query.trim();
+  const cleanInput = sanitizeCodeInput(query);
   const is15Digits = /^\d{15}$/.test(cleanInput);
   const isLuhnValid = is15Digits ? imeiService.validateLuhn(cleanInput) : null;
 
@@ -29,9 +46,9 @@ export const WarrantyLookupPage: React.FC = () => {
     e.preventDefault();
     setResult(null);
 
-    const clean = query.trim();
+    const clean = sanitizeCodeInput(query);
     if (!clean) {
-      notifyError('Bạn nhập mã số trên máy hoặc vỏ hộp giúp shop nhé.');
+      notifyError('Bạn nhập mã IMEI hoặc số Serial giúp shop nhé (ví dụ: 860123058912345).');
       return;
     }
 
@@ -51,6 +68,22 @@ export const WarrantyLookupPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePhoneLookup = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = phone.replace(/[\s.]/g, '');
+    if (!clean) {
+      setPhoneError('Bạn nhập số điện thoại mua hàng giúp shop nhé.');
+      return;
+    }
+    if (!isValidVnPhone(clean)) {
+      setPhoneError('Số điện thoại chưa đúng (10 số, bắt đầu bằng 03/05/07/08/09).');
+      return;
+    }
+    setPhoneError(null);
+    // Chưa có API xác thực OTP qua SMS/Zalo — giữ số lại và hướng dẫn bước tiếp theo.
+    setPhone(clean);
   };
 
   const formatDate = (dateStr: string) => {
@@ -98,65 +131,178 @@ export const WarrantyLookupPage: React.FC = () => {
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>Tra cứu nhanh, chính xác</span>
             </span>
-            <span className="hidden sm:inline text-slate-400">Chỉ cần mã trên máy hoặc vỏ hộp</span>
+            <span className="hidden sm:inline text-slate-400">Miễn phí, không cần đăng nhập</span>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleLookup} className="flex flex-col sm:row gap-3">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Nhập mã số trên máy hoặc vỏ hộp..."
-                className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-2xl text-xs sm:text-sm font-mono text-slate-900 placeholder-slate-400 focus:outline-hidden transition"
-              />
-              <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-            </div>
+          {/* Tabs chọn phương thức tra cứu */}
+          <div className="flex gap-6 text-sm font-semibold border-b border-slate-100" role="tablist">
             <button
-              type="submit"
-              disabled={loading}
-              className="py-3.5 px-8 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'imei'}
+              onClick={() => setActiveTab('imei')}
+              className={`pb-3 border-b-2 -mb-px transition-colors cursor-pointer ${
+                activeTab === 'imei'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-400 hover:text-slate-700'
+              }`}
             >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Đang tra cứu...</span>
-                </>
-              ) : (
-                <span>Tra cứu ngay</span>
-              )}
+              Tra cứu theo mã IMEI / Serial
             </button>
-          </form>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'phone'}
+              onClick={() => setActiveTab('phone')}
+              className={`pb-3 border-b-2 -mb-px transition-colors cursor-pointer ${
+                activeTab === 'phone'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              Tra cứu theo Số điện thoại
+            </button>
+          </div>
 
-          {/* Real-time Validation Status Badge */}
-          {is15Digits && (
-            <div className="animate-in fade-in duration-200">
-              {isLuhnValid ? (
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Định dạng 15 số hợp lệ</span>
+          {activeTab === 'imei' ? (
+            <>
+              {/* Form */}
+              <form onSubmit={handleLookup} className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="warranty-code-input"
+                    className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2"
+                  >
+                    Mã số IMEI hoặc Số Sê-ri (Serial Number)
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="warranty-code-input"
+                      type="text"
+                      value={query}
+                      onChange={(e) => setQuery(sanitizeCodeInput(e.target.value))}
+                      placeholder="Nhập 15 số IMEI hoặc số Serial (Ví dụ: 860123058912345)..."
+                      maxLength={30}
+                      autoComplete="off"
+                      spellCheck={false}
+                      className="w-full pl-11 pr-10 py-3.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-2xl text-xs sm:text-sm font-mono text-slate-900 placeholder-slate-400 placeholder:font-sans focus:outline-hidden transition uppercase"
+                    />
+                    <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    {query && (
+                      <button
+                        type="button"
+                        onClick={() => setQuery('')}
+                        aria-label="Xóa nội dung đã nhập"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
-                  <AlertTriangle className="w-4 h-4 text-amber-600" />
-                  <span>Số này chưa đúng, bạn kiểm tra lại giúp shop nhé (mã gồm 15 số)</span>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3.5 px-8 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Đang tra cứu...</span>
+                    </>
+                  ) : (
+                    <span>Kiểm tra bảo hành ngay</span>
+                  )}
+                </button>
+              </form>
+
+              {/* Real-time Validation Status Badge */}
+              {is15Digits && (
+                <div className="animate-in fade-in duration-200">
+                  {isLuhnValid ? (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Định dạng 15 số hợp lệ</span>
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+                      <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      <span>Số này chưa đúng, bạn kiểm tra lại giúp shop nhé (mã gồm 15 số)</span>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
+            </>
+          ) : (
+            <>
+              {/* Form tra cứu theo SĐT */}
+              <form onSubmit={handlePhoneLookup} className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="warranty-phone-input"
+                    className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2"
+                  >
+                    Số điện thoại mua hàng
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="warranty-phone-input"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => {
+                        setPhone(e.target.value.replace(/[^0-9+\s.]/g, ''));
+                        if (phoneError) setPhoneError(null);
+                      }}
+                      placeholder="Nhập số điện thoại lúc mua máy (Ví dụ: 0901234567)..."
+                      autoComplete="tel"
+                      className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-2xl text-xs sm:text-sm font-mono text-slate-900 placeholder-slate-400 placeholder:font-sans focus:outline-hidden transition"
+                    />
+                    <Phone className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                  {phoneError ? (
+                    <p className="mt-2 text-xs text-rose-600 font-medium">{phoneError}</p>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-500">
+                      Dành cho trường hợp máy hỏng, mất nguồn hoặc đã vứt vỏ hộp nên không lấy được IMEI.
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-3.5 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                >
+                  <span>Tiếp tục tra cứu</span>
+                </button>
+              </form>
 
-          {/* Quick tip */}
-          <div className="flex items-center gap-2 pt-2 text-xs text-slate-500 border-t border-slate-100">
-            <Info className="w-4 h-4 text-blue-600 shrink-0" />
-            <span>
-              Mẹo: Mở bàn phím cuộc gọi trên điện thoại và bấm{' '}
-              <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700 font-mono font-bold">
-                *#06#
-              </code>{' '}
-              để xem nhanh mã IMEI 15 số của thiết bị.
-            </span>
-          </div>
+              {/* Thông báo sau khi nhập SĐT hợp lệ — OTP SMS/Zalo chưa có API nên hướng luồng thật */}
+              {phone && !phoneError && (
+                <div className="p-4 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2.5 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 text-sm font-bold text-blue-800">
+                    <Info className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>Xác thực OTP cho số {phone} sắp ra mắt</span>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Hiện shop chưa hỗ trợ gửi mã OTP qua SMS/Zalo để liệt kê máy theo SĐT. Bạn có thể{' '}
+                    <Link to="/login" className="font-bold text-blue-700 hover:underline">
+                      đăng nhập
+                    </Link>{' '}
+                    để xem toàn bộ bảo hành của mình, hoặc gọi hotline kỹ thuật{' '}
+                    <a href="tel:18006869" className="font-bold text-blue-700 hover:underline">
+                      1800 6869
+                    </a>{' '}
+                    (miễn cước, 8:00 - 21:00) để được kiểm tra giúp.
+                  </p>
+                  <Link
+                    to="/login"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors"
+                  >
+                    Đăng nhập để xem bảo hành của tôi
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Hardware Activation Certificate Card */}
@@ -286,35 +432,74 @@ export const WarrantyLookupPage: React.FC = () => {
         )}
 
         {/* Guide: How to find IMEI */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 space-y-4 shadow-xs">
-          <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
-            <Info className="w-4 h-4 text-blue-600" />
-            <span>Cách lấy mã IMEI trên điện thoại của bạn:</span>
-          </div>
+        <div className="bg-slate-50/70 border border-slate-200/60 rounded-3xl p-6 sm:p-7 space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            Hướng dẫn tìm mã IMEI / Serial trên thiết bị:
+          </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-slate-600">
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
-              <span className="font-bold text-slate-900 block">Cách 1: Bấm phím gọi</span>
-              <p className="text-slate-500">
-                Mở bàn phím gọi điện thoại và bấm cú pháp{' '}
-                <code className="bg-slate-200/80 border border-slate-300 font-mono px-1.5 py-0.5 rounded text-blue-700 font-bold">
+            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-2xs">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-2">
+                <Phone className="w-5 h-5" />
+              </div>
+              <span className="font-bold text-slate-900 text-sm block">Bấm phím gọi</span>
+              <p className="text-slate-500 mt-1">
+                Mở bàn phím cuộc gọi và bấm cú pháp{' '}
+                <code className="text-blue-600 font-bold bg-blue-50 px-1.5 py-0.5 rounded font-mono">
                   *#06#
                 </code>{' '}
                 để hiển thị mã IMEI ngay.
               </p>
             </div>
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
-              <span className="font-bold text-slate-900 block">Cách 2: Vào Cài đặt máy</span>
-              <p className="text-slate-500">
-                Vào Cài đặt &gt; Cài đặt chung &gt; Giới thiệu (iOS) hoặc Cài đặt &gt; Thông tin điện thoại (Android).
+            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-2xs">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-2">
+                <Settings className="w-5 h-5" />
+              </div>
+              <span className="font-bold text-slate-900 text-sm block">Trong Cài đặt</span>
+              <p className="text-slate-500 mt-1">
+                Vào <strong>Cài đặt</strong> ➔ <strong>Giới thiệu</strong> (iOS) hoặc{' '}
+                <strong>Cài đặt</strong> ➔ <strong>Thông tin điện thoại</strong> (Android).
               </p>
             </div>
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
-              <span className="font-bold text-slate-900 block">Cách 3: Xem trên vỏ hộp</span>
-              <p className="text-slate-500">
-                Kiểm tra tem mã vạch ở mặt sau của hộp đựng điện thoại hoặc tem niêm phong IMEI của Phone Shop.
+            <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-2xs">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-2">
+                <Package className="w-5 h-5" />
+              </div>
+              <span className="font-bold text-slate-900 text-sm block">Trên vỏ hộp máy</span>
+              <p className="text-slate-500 mt-1">
+                Kiểm tra tem mã vạch in ở mặt sau hoặc cạnh đáy vỏ hộp đựng thiết bị.
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Service banner: hotline + my warranties */}
+        <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 rounded-3xl p-6 sm:p-7 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
+              <PhoneCall className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-widest text-blue-100">
+                Hỗ trợ khẩn cấp khi máy gặp sự cố
+              </div>
+              <a
+                href="tel:18006869"
+                className="text-2xl sm:text-3xl font-black tracking-tight hover:underline"
+              >
+                1800 6869
+              </a>
+              <p className="text-xs text-blue-100 mt-0.5">
+                Miễn cước • Khiếu nại & bảo hành • 8:00 - 21:00 hằng ngày
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/profile"
+            className="inline-flex items-center justify-center gap-1.5 px-5 py-3 bg-white text-blue-700 text-xs sm:text-sm font-bold rounded-2xl hover:bg-blue-50 transition-colors shrink-0"
+          >
+            <span>Xem bảo hành của tôi</span>
+            <span aria-hidden="true">→</span>
+          </Link>
         </div>
       </div>
     </div>

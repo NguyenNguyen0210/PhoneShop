@@ -49,6 +49,11 @@ export const ticketService = {
     return res.data?.data ?? res.data;
   },
 
+  getAdminTicketAnalytics: async () => {
+    const res = await apiClient.get('/admin/tickets/analytics');
+    return res.data?.data ?? res.data;
+  },
+
   getAdminTicketDetail: async (id: string) => {
     const res = await apiClient.get(`/admin/tickets/${id}`);
     return res.data?.data ?? res.data;

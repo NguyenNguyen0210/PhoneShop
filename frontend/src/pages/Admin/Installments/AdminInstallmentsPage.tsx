@@ -19,11 +19,13 @@ import type { ColumnsType } from 'antd/es/table';
 import {
   SearchOutlined,
   EyeOutlined,
+  EyeInvisibleOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   ReloadOutlined,
   CreditCardOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { installmentService } from '../../../services/installmentService';
 import type { InstallmentApplication, InstallmentStatus } from '../../../types';
@@ -54,8 +56,9 @@ export const AdminInstallmentsPage: React.FC = () => {
   }, [searchQuery]);
 
   // Server-side totals per status for the metric cards (page items alone
-  // would undercount as soon as the list paginates).
-  const [statusCounts, setStatusCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
+  // would undercount as soon as the list paginates). CANCELLED included —
+  // otherwise total ≠ pending+approved+rejected (data discrepancy).
+  const [statusCounts, setStatusCounts] = useState({ pending: 0, approved: 0, rejected: 0, cancelled: 0 });
   useEffect(() => {
     let ignore = false;
     const scope = {
@@ -66,18 +69,20 @@ export const AdminInstallmentsPage: React.FC = () => {
       installmentService.getAdminInstallments({ ...scope, status: 'PENDING', limit: 1 }),
       installmentService.getAdminInstallments({ ...scope, status: 'APPROVED', limit: 1 }),
       installmentService.getAdminInstallments({ ...scope, status: 'REJECTED', limit: 1 }),
+      installmentService.getAdminInstallments({ ...scope, status: 'CANCELLED', limit: 1 }),
     ])
-      .then(([p, a, r]) => {
+      .then(([p, a, r, c]) => {
         if (!ignore) {
           setStatusCounts({
             pending: p?.total ?? 0,
             approved: a?.total ?? 0,
             rejected: r?.total ?? 0,
+            cancelled: c?.total ?? 0,
           });
         }
       })
       .catch(() => {
-        if (!ignore) setStatusCounts({ pending: 0, approved: 0, rejected: 0 });
+        if (!ignore) setStatusCounts({ pending: 0, approved: 0, rejected: 0, cancelled: 0 });
       });
     return () => {
       ignore = true;
@@ -130,16 +135,40 @@ export const AdminInstallmentsPage: React.FC = () => {
   };
 
   // Metrics — server totals (counting the current page would undercount
-  // as soon as the table paginates).
+  // as soon as the table paginates). total = sum of 4 statuses so cards
+  // always reconcile with the table.
   const metrics = useMemo(() => {
-    const totalApps = total || applications.length;
+    const decided = statusCounts.approved + statusCounts.rejected;
     return {
-      total: totalApps,
+      total: statusCounts.pending + statusCounts.approved + statusCounts.rejected + statusCounts.cancelled,
       pending: statusCounts.pending,
       approved: statusCounts.approved,
       rejected: statusCounts.rejected,
+      cancelled: statusCounts.cancelled,
+      approvalRate: decided > 0 ? Math.round((statusCounts.approved / decided) * 1000) / 10 : 0,
+      approvalBase: decided,
     };
-  }, [applications, total, statusCounts]);
+  }, [statusCounts]);
+
+  // Che CCCD trên danh sách: 074286001088 → 0742 •••• 1088
+  const maskCitizenId = (id?: string): string => {
+    const clean = (id || '').replace(/\D/g, '');
+    if (clean.length < 8) return '••••';
+    return `${clean.slice(0, 4)} •••• ${clean.slice(-4)}`;
+  };
+
+  // Thiết bị đăng ký mua từ order đi kèm hồ sơ (backend đã include items→variant→product)
+  const getApplicationDevice = (record: InstallmentApplication) => {
+    const item = record.order?.items?.[0];
+    if (!item) return null;
+    const variant = item.variant || {};
+    return {
+      name: variant?.product?.name || item.productName || 'Thiết bị di động',
+      spec: [variant.storage, variant.color].filter(Boolean).join(' • '),
+      price: Number(variant.price ?? item.unitPrice ?? 0),
+      image: variant.imageUrl || variant?.product?.thumbnailUrl || null,
+    };
+  };
 
   const getStatusTag = (status: InstallmentStatus) => {
     switch (status) {
@@ -201,6 +230,37 @@ export const AdminInstallmentsPage: React.FC = () => {
       },
     },
     {
+      title: 'Sản phẩm & Giá niêm yết',
+      key: 'device',
+      render: (_, record) => {
+        const device = getApplicationDevice(record);
+        if (!device) return <Text type="secondary">—</Text>;
+        return (
+          <Space align="start" size={8}>
+            {device.image ? (
+              <img
+                src={device.image}
+                alt={device.name}
+                style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0' }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            ) : null}
+            <Space direction="vertical" size={1}>
+              <Text strong style={{ fontSize: 12, lineHeight: 1.3 }}>
+                {device.name}
+                {device.spec ? ` (${device.spec})` : ''}
+              </Text>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                Giá máy: {device.price > 0 ? formatPrice(device.price) : 'Liên hệ'}
+              </Text>
+            </Space>
+          </Space>
+        );
+      },
+    },
+    {
       title: 'Khách hàng',
       key: 'customer',
       render: (_, record) => (
@@ -218,8 +278,12 @@ export const AdminInstallmentsPage: React.FC = () => {
       render: (_, record) => (
         <Space direction="vertical" size={2}>
           <Text style={{ fontFamily: 'monospace', fontSize: 12 }}>{record.phoneNumber}</Text>
-          <Text copyable code style={{ fontSize: 11 }}>
-            {record.citizenId}
+          <Text
+            code
+            title="Đã che số giữa để bảo mật — bấm xem chi tiết để hiện đầy đủ"
+            style={{ fontSize: 11 }}
+          >
+            {maskCitizenId(record.citizenId)}
           </Text>
         </Space>
       ),
@@ -230,9 +294,14 @@ export const AdminInstallmentsPage: React.FC = () => {
       render: (_, record) => {
         const isHome = record.provider === 'HOME_CREDIT';
         return (
-          <Tag color={isHome ? 'red' : 'green'} style={{ fontWeight: 600 }}>
-            {isHome ? 'Home Credit (0%)' : 'FE Credit (0%)'}
-          </Tag>
+          <Space direction="vertical" size={2}>
+            <Text strong style={{ fontSize: 12, color: isHome ? '#dc2626' : '#16a34a', letterSpacing: '0.02em' }}>
+              {isHome ? 'HOME CREDIT' : 'FE CREDIT'}
+            </Text>
+            <Tag color={isHome ? 'red' : 'green'} style={{ fontSize: 10, margin: 0 }}>
+              Gói 0% lãi suất
+            </Tag>
+          </Space>
         );
       },
     },
@@ -270,20 +339,33 @@ export const AdminInstallmentsPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'actions',
-      render: (_, record) => (
-        <Button
-          type="primary"
-          size="small"
-          icon={<EyeOutlined />}
-          style={{ background: '#2563eb', borderRadius: 6 }}
-          onClick={() => {
-            setSelectedApp(record);
-            setIsReviewModalOpen(true);
-          }}
-        >
-          {record.status === 'PENDING' ? 'Xem & Thẩm định' : 'Xem chi tiết'}
-        </Button>
-      ),
+      render: (_, record) =>
+        record.status === 'PENDING' ? (
+          <Button
+            type="primary"
+            size="small"
+            icon={<ThunderboltOutlined />}
+            style={{ background: '#2563eb', borderRadius: 6, fontWeight: 600 }}
+            onClick={() => {
+              setSelectedApp(record);
+              setIsReviewModalOpen(true);
+            }}
+          >
+            Thẩm định ngay
+          </Button>
+        ) : (
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            style={{ borderRadius: 6 }}
+            onClick={() => {
+              setSelectedApp(record);
+              setIsReviewModalOpen(true);
+            }}
+          >
+            Xem chi tiết
+          </Button>
+        ),
     },
   ];
 
@@ -312,61 +394,57 @@ export const AdminInstallmentsPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* Metrics Row */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={12} sm={6}>
-          <Card size="small" style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
-            <Statistic
-              title="Tổng hồ sơ"
-              value={metrics.total}
-              valueStyle={{ fontWeight: 800, color: '#0f172a' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card
-            size="small"
-            style={{ borderRadius: 12, border: '1px solid #fef08a', background: '#fefce8' }}
-          >
-            <Statistic
-              title="Chờ thẩm định"
-              value={metrics.pending}
-              valueStyle={{ fontWeight: 800, color: '#ca8a04' }}
-              prefix={<ClockCircleOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card
-            size="small"
-            style={{ borderRadius: 12, border: '1px solid #bbf7d0', background: '#f0fdf4' }}
-          >
-            <Statistic
-              title="Đã phê duyệt"
-              value={metrics.approved}
-              valueStyle={{ fontWeight: 800, color: '#16a34a' }}
-              prefix={<CheckCircleOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card
-            size="small"
-            style={{ borderRadius: 12, border: '1px solid #fecdd3', background: '#fff1f2' }}
-          >
-            <Statistic
-              title="Đã từ chối"
-              value={metrics.rejected}
-              valueStyle={{ fontWeight: 800, color: '#e11d48' }}
-              prefix={<CloseCircleOutlined />}
-            />
-          </Card>
-        </Col>
-      </Row>
+      {/* Metrics Row — nền trắng đồng nhất, màu chỉ ở icon & con số */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4" style={{ marginBottom: 16 }}>
+        <Card size="small" style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
+          <Statistic
+            title="Tổng hồ sơ"
+            value={metrics.total}
+            valueStyle={{ fontWeight: 800, color: '#0f172a' }}
+            prefix={<CreditCardOutlined style={{ color: '#2563eb' }} />}
+          />
+        </Card>
+        <Card size="small" style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
+          <Statistic
+            title="Chờ thẩm định"
+            value={metrics.pending}
+            valueStyle={{ fontWeight: 800, color: '#ca8a04' }}
+            prefix={<ClockCircleOutlined style={{ color: '#ca8a04' }} />}
+          />
+        </Card>
+        <Card size="small" style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
+          <Statistic
+            title="Đã phê duyệt"
+            value={metrics.approved}
+            valueStyle={{ fontWeight: 800, color: '#16a34a' }}
+            prefix={<CheckCircleOutlined style={{ color: '#16a34a' }} />}
+          />
+        </Card>
+        <Card size="small" style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
+          <Statistic
+            title="Đã từ chối"
+            value={metrics.rejected}
+            valueStyle={{ fontWeight: 800, color: '#e11d48' }}
+            prefix={<CloseCircleOutlined style={{ color: '#e11d48' }} />}
+          />
+        </Card>
+        <Card size="small" style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
+          <Statistic
+            title="Tỷ lệ duyệt"
+            value={metrics.approvalRate}
+            suffix="%"
+            precision={1}
+            valueStyle={{ fontWeight: 800, color: '#2563eb' }}
+          />
+          <Text type="secondary" style={{ fontSize: 11 }}>
+            {metrics.approved}/{metrics.approvalBase} hồ sơ đã quyết
+          </Text>
+        </Card>
+      </div>
 
       {/* Filters & Content Card */}
       <Card style={{ borderRadius: 12, border: '1px solid #e2e8f0' }}>
-        {/* Status Tabs */}
+        {/* Status Tabs — đếm đủ 4 trạng thái để khớp thẻ KPI */}
         <Tabs
           activeKey={statusTab}
           onChange={(k) => {
@@ -374,20 +452,43 @@ export const AdminInstallmentsPage: React.FC = () => {
             setPage(1);
           }}
           items={[
-            { key: 'ALL', label: 'Tất cả hồ sơ' },
+            { key: 'ALL', label: `Tất cả hồ sơ (${metrics.total})` },
             {
               key: 'PENDING',
               label: (
                 <span>
                   Chờ thẩm định{' '}
-                  {metrics.pending > 0 && (
-                    <Badge count={metrics.pending} overflowCount={99} style={{ backgroundColor: '#eab308' }} />
-                  )}
+                  <Badge count={metrics.pending} overflowCount={99} style={{ backgroundColor: '#eab308' }} />
                 </span>
               ),
             },
-            { key: 'APPROVED', label: 'Đã phê duyệt' },
-            { key: 'REJECTED', label: 'Đã từ chối' },
+            {
+              key: 'APPROVED',
+              label: (
+                <span>
+                  Đã phê duyệt{' '}
+                  <Badge count={metrics.approved} overflowCount={99} style={{ backgroundColor: '#16a34a' }} />
+                </span>
+              ),
+            },
+            {
+              key: 'REJECTED',
+              label: (
+                <span>
+                  Đã từ chối{' '}
+                  <Badge count={metrics.rejected} overflowCount={99} style={{ backgroundColor: '#e11d48' }} />
+                </span>
+              ),
+            },
+            {
+              key: 'CANCELLED',
+              label: (
+                <span>
+                  Đã hủy{' '}
+                  <Badge count={metrics.cancelled} overflowCount={99} style={{ backgroundColor: '#94a3b8' }} />
+                </span>
+              ),
+            },
           ]}
         />
 

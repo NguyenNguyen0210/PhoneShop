@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Tabs, Typography, Button, message, Badge } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import { Tabs, Typography, Button, message, Badge, Space } from 'antd';
+import { ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { paymentService } from '../../../services/paymentService';
 import { returnService } from '../../../services/returnService';
@@ -11,6 +11,7 @@ import { PaymentsListTab } from './components/PaymentsListTab';
 import { ReconciliationTab } from './components/ReconciliationTab';
 import { RefundsLedgerTab } from './components/RefundsLedgerTab';
 import { TransactionsLogTab } from './components/TransactionsLogTab';
+import { exportPaymentsToExcel } from './utils/exportPaymentsExcel';
 
 const { Title, Text } = Typography;
 
@@ -36,9 +37,18 @@ export const AdminPaymentsPage: React.FC = () => {
     setLoading(true);
     try {
       const [payRes, txnRes, refRes] = await Promise.all([
-        paymentService.getAllPaymentsAdmin().catch(() => []),
-        paymentService.getTransactionHistoryAdmin().catch(() => []),
-        returnService.getRefundHistory().catch(() => []),
+        paymentService.getAllPaymentsAdmin().catch((err) => {
+          console.error('Failed to load payments:', err);
+          return [];
+        }),
+        paymentService.getTransactionHistoryAdmin().catch((err) => {
+          console.error('Failed to load transactions:', err);
+          return [];
+        }),
+        returnService.getRefundHistory().catch((err) => {
+          console.error('Failed to load refund history:', err);
+          return [];
+        }),
       ]);
       setPayments(Array.isArray(payRes) ? payRes : []);
       setTransactions(Array.isArray(txnRes) ? txnRes : []);
@@ -120,9 +130,18 @@ export const AdminPaymentsPage: React.FC = () => {
             Theo dõi giao dịch đa kênh, đối soát chuyển khoản ngân hàng và kiểm soát lệnh hoàn tiền
           </Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>
-          Làm mới dữ liệu
-        </Button>
+        <Space>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={() => exportPaymentsToExcel(payments)}
+            disabled={payments.length === 0}
+          >
+            Xuất báo cáo Excel
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>
+            Làm mới dữ liệu
+          </Button>
+        </Space>
       </div>
 
       <PaymentStatsCards payments={payments} refunds={refunds} loading={loading} />

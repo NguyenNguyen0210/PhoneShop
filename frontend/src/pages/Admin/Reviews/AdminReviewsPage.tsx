@@ -57,14 +57,30 @@ export const AdminReviewsPage: React.FC = () => {
     typeof state.isAdmin === 'function' ? state.isAdmin() : state.user?.role === 'ADMIN',
   );
 
+  const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 });
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const s = await reviewService.getAdminStats();
+      if (s && typeof s.total === 'number') {
+        setStats(s);
+      }
+    } catch {
+      // fallback to client-side count
+    }
+  }, []);
+
   const fetchReviews = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await reviewService.getAdminReviews({
-        page,
-        limit,
-        status: statusTab !== 'ALL' ? statusTab : undefined,
-      });
+      const [res] = await Promise.all([
+        reviewService.getAdminReviews({
+          page,
+          limit,
+          status: statusTab !== 'ALL' ? statusTab : undefined,
+        }),
+        fetchStats(),
+      ]);
 
       if (res && Array.isArray(res.data)) {
         setReviews(res.data);
@@ -80,7 +96,7 @@ export const AdminReviewsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, statusTab]);
+  }, [page, limit, statusTab, fetchStats]);
 
   useEffect(() => {
     fetchReviews();
@@ -119,12 +135,13 @@ export const AdminReviewsPage: React.FC = () => {
   }, [reviews, starFilter, searchQuery]);
 
   // Statistics
-  const stats = useMemo(() => {
+  const displayStats = useMemo(() => {
+    if (stats.total > 0) return stats;
     const pending = reviews.filter((r) => r.status === 'PENDING').length;
     const approved = reviews.filter((r) => r.status === 'APPROVED').length;
     const rejected = reviews.filter((r) => r.status === 'REJECTED').length;
-    return { total: reviews.length, pending, approved, rejected };
-  }, [reviews]);
+    return { total: total || reviews.length, pending, approved, rejected };
+  }, [stats, reviews, total]);
 
   // Actions
   const handleApprove = async (review: Review) => {
@@ -407,7 +424,7 @@ export const AdminReviewsPage: React.FC = () => {
       <Row gutter={[16, 16]}>
         <Col xs={12} sm={6}>
           <Card size="small" variant="borderless" style={{ background: '#fafafa' }}>
-            <Statistic title="Tổng đánh giá" value={stats.total} prefix={<CommentOutlined />} />
+            <Statistic title="Tổng đánh giá" value={displayStats.total} prefix={<CommentOutlined />} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
@@ -418,7 +435,7 @@ export const AdminReviewsPage: React.FC = () => {
           >
             <Statistic
               title="Chờ duyệt"
-              value={stats.pending}
+              value={displayStats.pending}
               styles={{ content: { color: '#fa8c16' } }}
             />
           </Card>
@@ -431,7 +448,7 @@ export const AdminReviewsPage: React.FC = () => {
           >
             <Statistic
               title="Đã duyệt"
-              value={stats.approved}
+              value={displayStats.approved}
               styles={{ content: { color: '#52c41a' } }}
             />
           </Card>
@@ -444,7 +461,7 @@ export const AdminReviewsPage: React.FC = () => {
           >
             <Statistic
               title="Đã từ chối"
-              value={stats.rejected}
+              value={displayStats.rejected}
               styles={{ content: { color: '#ff4d4f' } }}
             />
           </Card>
@@ -465,7 +482,7 @@ export const AdminReviewsPage: React.FC = () => {
               key: 'PENDING',
               label: (
                 <span>
-                  Chờ duyệt {stats.pending > 0 && <Tag color="warning">{stats.pending}</Tag>}
+                  Chờ duyệt {displayStats.pending > 0 && <Tag color="warning">{displayStats.pending}</Tag>}
                 </span>
               ),
             },

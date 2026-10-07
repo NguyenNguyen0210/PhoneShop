@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import {
   Modal,
@@ -17,6 +17,7 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   EyeOutlined,
+  EyeInvisibleOutlined,
   IdcardOutlined,
   UserOutlined,
   ShoppingOutlined,
@@ -45,9 +46,21 @@ export const InstallmentReviewModal: React.FC<InstallmentReviewModalProps> = ({
   const [actionType, setActionType] = useState<'APPROVE' | 'REJECT' | null>(null);
   const [staffNotes, setStaffNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  // CCCD che mặc định, chỉ hiện đầy đủ khi nhân viên bấm mắt
+  const [showFullCccd, setShowFullCccd] = useState(false);
   const location = useLocation();
 
+  useEffect(() => {
+    setShowFullCccd(false);
+  }, [application?.id]);
+
   if (!application) return null;
+
+  const maskCitizenId = (id?: string): string => {
+    const clean = (id || '').replace(/\D/g, '');
+    if (clean.length < 8) return '••••';
+    return `${clean.slice(0, 4)} •••• ${clean.slice(-4)}`;
+  };
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
@@ -184,9 +197,18 @@ export const InstallmentReviewModal: React.FC<InstallmentReviewModalProps> = ({
               <Text strong>{application.fullName}</Text>
             </Descriptions.Item>
             <Descriptions.Item label="Số CCCD gắn chip">
-              <Text code style={{ fontSize: 13, fontWeight: 700, color: '#1e40af' }}>
-                {application.citizenId}
-              </Text>
+              <Space size={6}>
+                <Text code style={{ fontSize: 13, fontWeight: 700, color: '#1e40af' }}>
+                  {showFullCccd ? application.citizenId : maskCitizenId(application.citizenId)}
+                </Text>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={showFullCccd ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                  title={showFullCccd ? 'Ẩn số CCCD' : 'Hiện đầy đủ số CCCD'}
+                  onClick={() => setShowFullCccd((v) => !v)}
+                />
+              </Space>
             </Descriptions.Item>
             <Descriptions.Item label="Ngày sinh">
               {application.birthDate ? new Date(application.birthDate).toLocaleDateString('vi-VN') : '—'}

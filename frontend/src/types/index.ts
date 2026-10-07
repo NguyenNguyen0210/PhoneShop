@@ -144,6 +144,7 @@ export interface CreateVariantDto {
   costPrice?: number;
   imageUrl?: string;
   isActive?: boolean;
+  initialQuantity?: number;
 }
 
 export interface ProductHardwareSpecs {

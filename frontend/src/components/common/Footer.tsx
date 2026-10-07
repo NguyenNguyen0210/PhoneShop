@@ -1,211 +1,289 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Truck,
-  RotateCcw,
-  Headphones,
   ShieldCheck,
-  CreditCard,
-  QrCode,
+  PhoneCall,
+  MapPin,
+  Mail,
+  Phone,
   Lock,
+  BadgeCheck,
+  Banknote,
 } from 'lucide-react';
+
+const BRANDS = [
+  { name: 'Apple', cls: 'font-bold text-[19px] tracking-tighter', glyph: '\uF8FF Apple' },
+  { name: 'SAMSUNG', cls: 'font-extrabold text-[17px] tracking-[0.18em]', glyph: 'SAMSUNG', color: '#1428A0' },
+  { name: 'Xiaomi', cls: 'font-bold text-[19px] tracking-tight', glyph: 'Xiaomi', color: '#FF6900' },
+  { name: 'oppo', cls: 'font-bold text-[19px] tracking-wider lowercase', glyph: 'oppo', color: '#00825D' },
+  { name: 'SONY', cls: 'font-extrabold text-[17px] tracking-[0.28em]', glyph: 'SONY', color: '#111111' },
+];
+
+const PAYMENTS = [
+  {
+    label: 'VietQR',
+    cls: 'text-emerald-700 bg-emerald-50/70 border-emerald-100',
+    logo: (
+      <svg viewBox="0 0 16 16" className="w-4 h-4 shrink-0" aria-hidden="true">
+        <rect x="1" y="1" width="6" height="6" rx="1" fill="#047857" />
+        <rect x="3" y="3" width="2" height="2" fill="#fff" />
+        <rect x="9" y="1" width="6" height="6" rx="1" fill="#047857" />
+        <rect x="11" y="3" width="2" height="2" fill="#fff" />
+        <rect x="1" y="9" width="6" height="6" rx="1" fill="#047857" />
+        <rect x="3" y="11" width="2" height="2" fill="#fff" />
+        <rect x="9" y="9" width="2" height="2" fill="#047857" />
+        <rect x="12" y="12" width="3" height="3" fill="#047857" />
+      </svg>
+    ),
+  },
+  {
+    label: 'VNPAY',
+    cls: 'text-blue-700 bg-blue-50/80 border-blue-100',
+    logo: (
+      <span className="w-4 h-4 rounded-[4px] bg-[#005BAA] text-white text-[10px] font-black italic flex items-center justify-center shrink-0">
+        V
+      </span>
+    ),
+  },
+  {
+    label: 'Visa',
+    cls: 'text-[#1A1F71] bg-white border-slate-200 italic font-black',
+    logo: (
+      <span className="text-[11px] font-black italic tracking-tight text-[#1A1F71] shrink-0 leading-none">
+        VISA
+      </span>
+    ),
+  },
+  {
+    label: 'Mastercard',
+    cls: 'text-slate-700 bg-white border-slate-200',
+    logo: (
+      <svg viewBox="0 0 24 16" className="w-5 h-4 shrink-0" aria-hidden="true">
+        <circle cx="9" cy="8" r="6" fill="#EB001B" />
+        <circle cx="15" cy="8" r="6" fill="#F79E1B" fillOpacity="0.9" />
+      </svg>
+    ),
+  },
+  {
+    label: 'JCB',
+    cls: 'text-slate-700 bg-white border-slate-200',
+    logo: (
+      <span className="w-5 h-4 rounded-[3px] overflow-hidden flex shrink-0" aria-hidden="true">
+        <span className="flex-1 bg-[#0B4EA2]" />
+        <span className="flex-1 bg-[#009A44]" />
+        <span className="flex-1 bg-[#ED1C24]" />
+      </span>
+    ),
+  },
+  {
+    label: 'MoMo',
+    cls: 'text-pink-700 bg-pink-50/70 border-pink-100',
+    logo: (
+      <span className="w-4 h-4 rounded-[4px] bg-[#A50064] text-white text-[10px] font-black flex items-center justify-center shrink-0">
+        M
+      </span>
+    ),
+  },
+  {
+    label: 'ZaloPay',
+    cls: 'text-blue-700 bg-[#E8F3FF]/70 border-blue-100',
+    logo: (
+      <span className="w-4 h-4 rounded-[4px] bg-[#0068FF] text-white text-[10px] font-black flex items-center justify-center shrink-0">
+        Z
+      </span>
+    ),
+  },
+  {
+    label: 'COD',
+    cls: 'text-slate-700 bg-white border-slate-200',
+    logo: <Banknote className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />,
+  },
+];
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="bg-slate-50 border-t border-slate-200 text-slate-600 text-xs">
-      {/* ─────────────────────────────────────────────────────────────
-          1. VALUE PROPOSITION BADGES (CAM KẾT DỊCH VỤ TOÀN HỆ THỐNG)
-          ───────────────────────────────────────────────────────────── */}
-      <section className="border-b border-slate-200/80 py-8 sm:py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 hover:border-slate-300 shadow-2xs hover:shadow-xs transition flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                <Truck className="w-6 h-6 stroke-[1.75]" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">Giao hàng hoả tốc 2h</h4>
-                <p className="text-xs text-slate-500 mt-0.5">Miễn phí toàn quốc cho smartphone</p>
-              </div>
-            </div>
-
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 hover:border-slate-300 shadow-2xs hover:shadow-xs transition flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-6 h-6 stroke-[1.75]" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">100% Nguyên seal chính hãng</h4>
-                <p className="text-xs text-slate-500 mt-0.5">Đầy đủ hóa đơn VAT & máy nguyên seal</p>
-              </div>
-            </div>
-
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 hover:border-slate-300 shadow-2xs hover:shadow-xs transition flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-                <RotateCcw className="w-6 h-6 stroke-[1.75]" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">1 đổi 1 trong 30 ngày</h4>
-                <p className="text-xs text-slate-500 mt-0.5">Đổi mới nếu phát sinh lỗi phần cứng</p>
-              </div>
-            </div>
-
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 hover:border-slate-300 shadow-2xs hover:shadow-xs transition flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                <Headphones className="w-6 h-6 stroke-[1.75]" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">Tư vấn miễn phí, tận tâm</h4>
-                <p className="text-xs text-slate-500 mt-0.5">Hotline 1900 6868 miễn cước gọi</p>
-              </div>
-            </div>
+    <footer className="bg-white text-sm text-gray-600">
+      {/* viền gradient thương hiệu trên cùng */}
+      <div className="h-[3px] w-full bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-6">
+        {/* ── 2. DẢI ĐỐI TÁC THƯƠNG HIỆU ── */}
+        <div className="py-6 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-8">
+          <span className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-400 shrink-0">
+            <BadgeCheck className="w-4 h-4 text-blue-600" />
+            Thương hiệu phân phối chính hãng
+          </span>
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent hidden lg:block" />
+          <div className="flex items-center gap-x-9 gap-y-3 flex-wrap">
+            {BRANDS.map((brand) => (
+              <span
+                key={brand.name}
+                title={brand.name}
+                style={{ color: (brand as { color?: string }).color ?? '#111111' }}
+                className={`${brand.cls} select-none cursor-default opacity-80 transition-all duration-300 hover:opacity-100 hover:-translate-y-px`}
+              >
+                {brand.glyph}
+              </span>
+            ))}
           </div>
         </div>
-      </section>
 
-      {/* ─────────────────────────────────────────────────────────────
-          2. AUTHORIZED BRAND PARTNERS (CHỈ THƯƠNG HIỆU PHÂN PHỐI)
-          ───────────────────────────────────────────────────────────── */}
-      <section className="border-b border-slate-200/80 py-3.5 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-4">
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        {/* ── 3. KHỐI 4 CỘT CHÍNH ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-x-8 gap-y-9 py-10">
+          {/* Cột 1: Thương hiệu + Hotline */}
+          <div className="sm:col-span-2 md:col-span-4 space-y-4">
+            <span className="text-[26px] font-black tracking-tight text-blue-700">
+              Phone<span className="text-slate-900">Shop</span>
+              <span className="text-blue-600">.</span>
             </span>
-            <span className="text-xs uppercase tracking-wider text-slate-900 font-bold whitespace-nowrap">
-              Phân phối chính hãng:
+            <p className="text-[13px] leading-[1.75] text-slate-500 max-w-[36ch]">
+              Hệ thống bán lẻ thiết bị di động chính hãng hàng đầu. Cam kết 100% máy nguyên seal, bảo hành điện tử
+              chính ngạch.
+            </p>
+            <div className="space-y-2 pt-1">
+              <div className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-400">
+                Tổng đài miễn cước
+              </div>
+              {[
+                { icon: PhoneCall, label: 'Tư vấn mua hàng', num: '1800 6868', time: '8:00 - 21:30' },
+                { icon: ShieldCheck, label: 'Khiếu nại, bảo hành', num: '1800 6869', time: '8:00 - 21:00' },
+              ].map(({ icon: Icon, label, num, time }) => (
+                <div
+                  key={num}
+                  className="flex items-center gap-3 rounded-xl bg-slate-50/80 border border-slate-200/60 px-3 py-2 hover:border-blue-200 hover:bg-blue-50/40 transition"
+                >
+                  <span className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-blue-600 flex items-center justify-center shrink-0">
+                    <Icon className="w-4 h-4" />
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    {label}:{' '}
+                    <strong className="text-blue-700 text-[15px] font-extrabold tracking-tight tabular-nums">
+                      {num}
+                    </strong>{' '}
+                    <span className="text-slate-400">({time})</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Cột 2 */}
+          <div className="md:col-span-3 space-y-3">
+            <h4 className="text-xs font-extrabold uppercase tracking-[0.12em] text-slate-900">
+              Hỗ trợ khách hàng
+              <span className="block w-7 h-[2.5px] bg-blue-600 rounded-full mt-2" />
+            </h4>
+            <ul className="space-y-[9px] text-[13px]">
+              {[
+                { to: '/warranty-lookup', label: 'Tra cứu thông tin bảo hành', internal: true },
+                { label: 'Chính sách đổi trả 30 ngày' },
+                { label: 'Chính sách giao hàng & đồng kiểm' },
+                { label: 'Hướng dẫn mua trả góp 0%' },
+              ].map((l) => (
+                <li key={l.label}>
+                  {l.internal ? (
+                    <Link
+                      to={l.to!}
+                      className="text-slate-600 hover:text-blue-700 hover:pl-1 transition-all duration-200"
+                    >
+                      {l.label}
+                    </Link>
+                  ) : (
+                    <a
+                      href="#"
+                      className="text-slate-600 hover:text-blue-700 hover:pl-1 transition-all duration-200"
+                    >
+                      {l.label}
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Cột 3 */}
+          <div className="md:col-span-2 space-y-3">
+            <h4 className="text-xs font-extrabold uppercase tracking-[0.12em] text-slate-900">
+              Về PhoneShop
+              <span className="block w-7 h-[2.5px] bg-blue-600 rounded-full mt-2" />
+            </h4>
+            <ul className="space-y-[9px] text-[13px]">
+              {['Giới thiệu hệ thống', 'Hệ thống chuỗi cửa hàng', 'Tuyển dụng nhân tài', 'Liên hệ hợp tác B2B'].map(
+                (label) => (
+                  <li key={label}>
+                    <a href="#" className="text-slate-600 hover:text-blue-700 hover:pl-1 transition-all duration-200">
+                      {label}
+                    </a>
+                  </li>
+                ),
+              )}
+            </ul>
+          </div>
+
+          {/* Cột 4 */}
+          <div className="md:col-span-3 space-y-5">
+            <div>
+              <h4 className="text-xs font-extrabold uppercase tracking-[0.12em] text-slate-900">
+                Phương thức thanh toán
+                <span className="block w-7 h-[2.5px] bg-blue-600 rounded-full mt-2" />
+              </h4>
+              <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                {PAYMENTS.map((m) => (
+                  <span
+                    key={m.label}
+                    className={`h-7 inline-flex items-center gap-1.5 px-2.5 rounded-lg border text-[11px] font-bold leading-none shadow-[0_1px_2px_rgba(15,23,42,0.06)] transition hover:-translate-y-px hover:shadow-sm ${m.cls}`}
+                  >
+                    {m.logo}
+                    {m.label}
+                  </span>
+                ))}
+              </div>
+              <p className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-2.5">
+                <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                Thanh toán an toàn &amp; bảo mật SSL.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-extrabold uppercase tracking-[0.12em] text-slate-900 mb-2.5">
+                Chứng nhận website
+              </h4>
+              <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-700 to-blue-600 text-white text-[10.5px] font-extrabold tracking-wide px-3 py-[7px] rounded-lg shadow-[0_6px_16px_-8px_rgba(37,99,235,0.7)]">
+                <ShieldCheck className="w-3.5 h-3.5" />✓ ĐÃ THÔNG BÁO BỘ CÔNG THƯƠNG
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 4. DÒNG PHÁP LÝ & BẢN QUYỀN ── */}
+        <div className="rounded-2xl bg-slate-50/80 border border-slate-200/60 px-5 py-4 text-[11.5px] leading-relaxed text-slate-500 space-y-1.5">
+          <p className="font-extrabold text-slate-700 text-xs">Công ty Cổ phần Bán lẻ Kỹ thuật số PhoneShop</p>
+          <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+            <span>GPĐKKD số: 0312345678 do Sở KH&amp;ĐT TP.HCM cấp ngày 10/10/2024.</span>
+            <span className="hidden sm:inline text-slate-300">•</span>
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-slate-400" />
+              Tòa nhà PhoneShop, 123 Võ Văn Ngân, TP. Thủ Đức, TP.HCM.
             </span>
-          </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none w-full lg:w-auto justify-start lg:justify-end py-0.5">
-            <div className="px-3 py-1 rounded-full bg-slate-50 border border-slate-200/90 text-slate-700 flex items-center gap-1.5 shadow-2xs shrink-0 whitespace-nowrap text-xs font-medium hover:bg-white hover:border-slate-300 transition">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-900 shrink-0"></span>
-              <span>Apple Authorised Reseller</span>
-            </div>
-            <div className="px-3 py-1 rounded-full bg-slate-50 border border-slate-200/90 text-slate-700 flex items-center gap-1.5 shadow-2xs shrink-0 whitespace-nowrap text-xs font-medium hover:bg-white hover:border-slate-300 transition">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0"></span>
-              <span>Samsung Flagship Partner</span>
-            </div>
-            <div className="px-3 py-1 rounded-full bg-slate-50 border border-slate-200/90 text-slate-700 flex items-center gap-1.5 shadow-2xs shrink-0 whitespace-nowrap text-xs font-medium hover:bg-white hover:border-slate-300 transition">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
-              <span>Xiaomi Official Store</span>
-            </div>
-            <div className="px-3 py-1 rounded-full bg-slate-50 border border-slate-200/90 text-slate-700 flex items-center gap-1.5 shadow-2xs shrink-0 whitespace-nowrap text-xs font-medium hover:bg-white hover:border-slate-300 transition">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0"></span>
-              <span>OPPO Authorized Dealer</span>
-            </div>
-            <div className="px-3 py-1 rounded-full bg-slate-50 border border-slate-200/90 text-slate-700 flex items-center gap-1.5 shadow-2xs shrink-0 whitespace-nowrap text-xs font-medium hover:bg-white hover:border-slate-300 transition">
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-600 shrink-0"></span>
-              <span>Sony Mobile Vietnam</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────────
-          3. MAIN FOOTER LINKS & PAYMENT METHODS
-          ───────────────────────────────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 md:grid-cols-4 gap-8">
-        <div>
-          <div className="flex items-center gap-2.5 mb-4">
-            <img
-              src="/logo-horizontal.png"
-              alt="PhoneShop"
-              className="h-8 w-auto object-contain"
-            />
-          </div>
-          <p className="text-slate-600 leading-relaxed mb-4 text-xs">
-            Hệ thống bán lẻ thiết bị di động thông minh hàng đầu Việt Nam. Cam kết 100% sản phẩm chính hãng, máy nguyên seal và bảo hành đầy đủ.
           </p>
-          <p className="text-slate-500 text-[11px] font-mono">
-            © 2026 Phone Shop. All rights reserved.
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span className="inline-flex items-center gap-1.5">
+              <Phone className="w-3.5 h-3.5 text-slate-400" /> 1900 6868
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5 text-slate-400" /> cskh@phoneshop.vn
+            </span>
           </p>
         </div>
 
-        <div>
-          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4">
-            Hỗ trợ khách hàng
-          </h4>
-          <ul className="space-y-2.5">
-            <li>
-              <Link to="/warranty-lookup" className="hover:text-blue-600 transition flex items-center gap-1.5 text-slate-600">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Tra cứu bảo hành</span>
-              </Link>
-            </li>
-            <li>
-              <a href="#policy" className="hover:text-blue-600 text-slate-600 transition">
-                Chính sách đổi trả 30 ngày
-              </a>
-            </li>
-            <li>
-              <a href="#shipping" className="hover:text-blue-600 text-slate-600 transition">
-                Chính sách giao hàng & đồng kiểm
-              </a>
-            </li>
-            <li>
-              <a href="#installment" className="hover:text-blue-600 text-slate-600 transition">
-                Hướng dẫn mua hàng trả góp 0%
-              </a>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4">
-            Về PhoneShop
-          </h4>
-          <ul className="space-y-2.5">
-            <li>
-              <a href="#about" className="hover:text-blue-600 text-slate-600 transition">
-                Giới thiệu hệ thống
-              </a>
-            </li>
-            <li>
-              <a href="#stores" className="hover:text-blue-600 text-slate-600 transition">
-                Hệ thống 120 cửa hàng toàn quốc
-              </a>
-            </li>
-            <li>
-              <a href="#careers" className="hover:text-blue-600 text-slate-600 transition">
-                Tuyển dụng nhân sự
-              </a>
-            </li>
-            <li>
-              <a href="#contact" className="hover:text-blue-600 text-slate-600 transition">
-                Liên hệ hợp tác kinh doanh
-              </a>
-            </li>
-          </ul>
-        </div>
-
-        {/* Payment Gateways & Secure Checkout */}
-        <div>
-          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4">
-            Phương thức thanh toán
-          </h4>
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            <div className="px-2.5 py-2 bg-white border border-slate-200/90 rounded-xl text-slate-800 text-[11px] font-medium flex items-center gap-2 shadow-2xs hover:border-slate-300 transition">
-              <QrCode className="w-4 h-4 text-blue-600 shrink-0" />
-              <span>VietQR</span>
-            </div>
-            <div className="px-2.5 py-2 bg-white border border-slate-200/90 rounded-xl text-slate-800 text-[11px] font-medium flex items-center gap-2 shadow-2xs hover:border-slate-300 transition">
-              <CreditCard className="w-4 h-4 text-sky-600 shrink-0" />
-              <span>Cổng VNPay</span>
-            </div>
-            <div className="px-2.5 py-2 bg-white border border-slate-200/90 rounded-xl text-slate-800 text-[11px] font-medium flex items-center gap-2 shadow-2xs hover:border-slate-300 transition">
-              <CreditCard className="w-4 h-4 text-indigo-600 shrink-0" />
-              <span>Visa / Master</span>
-            </div>
-            <div className="px-2.5 py-2 bg-white border border-slate-200/90 rounded-xl text-slate-800 text-[11px] font-medium flex items-center gap-2 shadow-2xs hover:border-slate-300 transition">
-              <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Tiền mặt (COD)</span>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-2 pt-3 border-t border-slate-200/80 text-slate-500 text-[11px] leading-relaxed">
-            <Lock className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-            <span>Thanh toán an toàn và được bảo mật.</span>
+        <div className="pt-5 flex flex-col md:flex-row justify-between items-center gap-2 text-[11.5px] text-slate-400">
+          <div>© 2026 PhoneShop. GPĐKKD số 0312345678 do Sở KH&amp;ĐT TP.HCM cấp.</div>
+          <div className="flex gap-5">
+            <a href="#terms" className="hover:text-blue-700 hover:underline underline-offset-4 transition">
+              Điều khoản sử dụng
+            </a>
+            <a href="#privacy" className="hover:text-blue-700 hover:underline underline-offset-4 transition">
+              Chính sách bảo mật
+            </a>
           </div>
         </div>
       </div>

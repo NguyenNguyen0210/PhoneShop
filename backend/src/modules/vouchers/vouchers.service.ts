@@ -93,7 +93,10 @@ export class VouchersService {
   }
 
   async changeStatus(id: string, isActive: boolean) {
-    await this.findOne(id);
+    const voucher = await this.findOne(id);
+    if (isActive && new Date(voucher.endAt) < new Date()) {
+      throw new BadRequestException('Không thể kích hoạt voucher đã hết hạn sử dụng');
+    }
     return this.prisma.voucher.update({ where: { id }, data: { isActive } });
   }
 

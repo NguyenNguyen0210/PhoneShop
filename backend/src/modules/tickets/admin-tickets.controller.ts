@@ -24,6 +24,12 @@ export class AdminTicketsController {
     return this.ticketsService.findAllAdmin(query);
   }
 
+  @Get('analytics')
+  @ApiOperation({ summary: 'Get summary KPIs and analytics for support tickets' })
+  getAnalytics() {
+    return this.ticketsService.getSummaryAnalytics();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get full ticket details including internal notes' })
   findOne(@Param('id') id: string) {

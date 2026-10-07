@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Row, Col, Statistic, Tabs, Typography, Breadcrumb } from 'antd';
+import { Card, Row, Col, Statistic, Tabs, Typography } from 'antd';
 import {
   TagOutlined,
   ThunderboltOutlined,
   CheckCircleOutlined,
   DollarCircleOutlined,
 } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
 import { promotionService } from '../../../services/promotionService';
 import { flashSaleService } from '../../../services/flashSaleService';
 import type { PromotionSummary } from '../../../types';
@@ -59,15 +58,6 @@ export const AdminPromotionsPage: React.FC = () => {
 
   return (
     <div style={{ padding: '0 8px' }}>
-      {/* Breadcrumb */}
-      <Breadcrumb
-        style={{ marginBottom: 16 }}
-        items={[
-          { title: <Link to="/admin">Trang quản trị</Link> },
-          { title: 'Khuyến mãi & Flash Sale' },
-        ]}
-      />
-
       {/* Page Title */}
       <div style={{ marginBottom: 20 }}>
         <Title level={3} style={{ margin: 0 }}>

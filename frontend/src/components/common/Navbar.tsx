@@ -393,7 +393,7 @@ export const Navbar: React.FC = () => {
                             </div>
                             {activeOrdersCount > 0 ? (
                               <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                                {activeOrdersCount} Đang giao
+                                {activeOrdersCount} Đang xử lý
                               </span>
                             ) : (
                               <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-blue-600 transition-colors" />

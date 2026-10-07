@@ -1222,4 +1222,51 @@ model SystemSetting {
   @@map("system_settings")
 }
 
+// ============================================================
+// AI RAG (pgvector document chunks)
+// NOTE: cột "embedding" vector(768) quản lý bằng migration SQL thô
+// (Prisma chưa hỗ trợ kiểu vector). Xem migrations manual.
+// ============================================================
+
+model DocumentChunk {
+  id        String   @id @default(uuid()) @db.Uuid
+  docType   String   @map("doc_type") @db.VarChar(20)
+  docId     String   @map("doc_id") @db.VarChar(280)
+  content   String   @db.Text
+  metadata  Json     @default("{}")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([docType, docId])
+  @@map("document_chunks")
+}
+
+// ============================================================
+// AI CONVERSATION MEMORY (stateless API qua conversationId)
+// ============================================================
+
+model AiConversation {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  sessionKey String   @map("session_key") @db.VarChar(100)
+  summary    String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  messages   AiMessage[]
+
+  @@index([sessionKey])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  role           String   @db.VarChar(20)
+  content        String   @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("ai_messages")
+}
+
 

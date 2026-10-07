@@ -15,9 +15,9 @@ const PROMOTIONS = [
 export const ProductPromotionBox: React.FC<ProductPromotionBoxProps> = ({ className = '' }) => {
   return (
     <div
-      className={`bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 mt-4 text-xs sm:text-sm shadow-xs ${className}`.trim()}
+      className={`bg-red-50/70 border border-red-200/70 rounded-2xl p-4 sm:p-5 mt-4 text-xs sm:text-sm shadow-xs ${className}`.trim()}
     >
-      <div className="font-extrabold tracking-tight text-xs sm:text-sm flex items-center gap-2 pb-2.5 border-b border-slate-100">
+      <div className="font-extrabold tracking-tight text-xs sm:text-sm flex items-center gap-2 pb-2.5 border-b border-red-200/60">
         <div className="w-6 h-6 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-700 shrink-0">
           <Gift className="w-3.5 h-3.5" aria-hidden="true" />
         </div>

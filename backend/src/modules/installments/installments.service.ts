@@ -662,6 +662,9 @@ export class InstallmentsService {
     const updated = await this.prisma.installmentPaymentTerm.findUnique({
       where: { id: termId },
     });
+    if (!updated) {
+      throw new ConflictException('Kỳ góp đã được xử lý đồng thời, vui lòng tải lại');
+    }
     return this.withOverdue(updated);
   }
 
@@ -724,7 +727,11 @@ export class InstallmentsService {
       : `[Phone Shop] Nhắc lịch trả góp kỳ ${targets[0].termNo} (đơn ${schedule.orderNumber})`;
 
     try {
-      await this.emailService.send({
+      const emailService = this.emailService;
+      if (!emailService) {
+        throw new BadRequestException('Dịch vụ email chưa được cấu hình, không thể gửi nhắc nợ');
+      }
+      await emailService.send({
         to: schedule.customerEmail,
         subject,
         html:

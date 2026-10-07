@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { AdminProductsPage } from '../AdminProductsPage';
 import { productService } from '../../../../services/productService';
 
@@ -68,7 +69,11 @@ describe('AdminProductsPage Integration', () => {
       status: 'ACTIVE',
     });
 
-    render(<AdminProductsPage />);
+    render(
+      <MemoryRouter>
+        <AdminProductsPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Samsung Galaxy S24 Ultra')).toBeDefined();

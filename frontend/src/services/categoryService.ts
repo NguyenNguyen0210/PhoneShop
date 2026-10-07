@@ -43,4 +43,8 @@ export const categoryService = {
   async deleteCategory(id: string): Promise<void> {
     await apiClient.delete(`/categories/${id}`);
   },
+
+  async reorderCategories(items: { id: string; sortOrder: number }[]): Promise<void> {
+    await apiClient.put('/categories/admin/reorder', { items });
+  },
 };

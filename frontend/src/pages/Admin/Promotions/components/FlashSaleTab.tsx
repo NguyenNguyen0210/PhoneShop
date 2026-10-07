@@ -41,6 +41,7 @@ export const FlashSaleTab: React.FC<FlashSaleTabProps> = ({ onDataChanged }) => 
   const [selectedCampaignForDetail, setSelectedCampaignForDetail] =
     useState<FlashSaleCampaign | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchCampaigns = useCallback(async () => {
     setLoading(true);
@@ -83,9 +84,20 @@ export const FlashSaleTab: React.FC<FlashSaleTabProps> = ({ onDataChanged }) => 
     }
   };
 
-  const handleOpenDetail = (campaign: FlashSaleCampaign) => {
+  // Modal chi tiết phải fetch bản đầy đủ (findOne có include variant):
+  // endpoint list admin chỉ trả stockLimit/soldCount nên variant/price = undefined → NaN.
+  const handleOpenDetail = async (campaign: FlashSaleCampaign) => {
     setSelectedCampaignForDetail(campaign);
     setDetailModalOpen(true);
+    setDetailLoading(true);
+    try {
+      const full = await flashSaleService.getCampaignDetail(campaign.id);
+      if (full) setSelectedCampaignForDetail(full);
+    } catch {
+      message.error('Không thể tải chi tiết chiến dịch');
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const getCampaignStatus = (campaign: FlashSaleCampaign): 'ACTIVE' | 'UPCOMING' | 'ENDED' => {
@@ -247,21 +259,45 @@ export const FlashSaleTab: React.FC<FlashSaleTabProps> = ({ onDataChanged }) => 
     },
   ];
 
-  // Columns for detail modal table
+  // Columns for detail modal table (chống NaN khi thiếu variant, kèm ảnh thumbnail)
   const detailItemColumns: ColumnsType<FlashSaleItem> = [
     {
       title: 'Sản phẩm & Biến thể',
       key: 'variant',
       render: (_, item) => {
-        const prodName = item.variant?.product?.name || item.variant?.name || 'Sản phẩm';
+        const prodName = item.variant?.product?.name || item.variant?.name || '—';
         const variantDetails = [item.variant?.color, item.variant?.storage].filter(Boolean).join(' - ');
+        const imgUrl = item.variant?.imageUrl || item.variant?.product?.thumbnailUrl;
         return (
-          <div>
-            <Text strong>{prodName}</Text>
-            <div style={{ fontSize: 12, color: '#64748b' }}>
-              {variantDetails} (SKU: {item.variant?.sku || 'N/A'})
+          <Space align="start" size={10}>
+            {imgUrl ? (
+              <img
+                src={imgUrl}
+                alt={prodName}
+                style={{
+                  width: 44,
+                  height: 44,
+                  objectFit: 'contain',
+                  borderRadius: 6,
+                  border: '1px solid #e2e8f0',
+                  background: '#f8fafc',
+                  flexShrink: 0,
+                }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            ) : null}
+            <div>
+              <Text strong style={{ fontSize: 13, lineHeight: 1.3 }}>{prodName}</Text>
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                {variantDetails ? `${variantDetails} ` : ''}
+                <span style={{ fontFamily: 'monospace', color: '#475569' }}>
+                  (SKU: {item.variant?.sku || '—'})
+                </span>
+              </div>
             </div>
-          </div>
+          </Space>
         );
       },
     },
@@ -269,26 +305,29 @@ export const FlashSaleTab: React.FC<FlashSaleTabProps> = ({ onDataChanged }) => 
       title: 'Giá gốc',
       key: 'origPrice',
       render: (_, item) => {
-        const origPrice = item.variant?.price || 0;
-        return <Text delete>{Number(origPrice).toLocaleString('vi-VN')} ₫</Text>;
+        const origPrice = Number(item.variant?.price) || 0;
+        if (!origPrice) return <Text type="secondary">—</Text>;
+        return <Text delete>{origPrice.toLocaleString('vi-VN')} ₫</Text>;
       },
     },
     {
       title: 'Giá Flash Sale',
       key: 'flashPrice',
       render: (_, item) => {
-        const origPrice = item.variant?.price || 0;
+        const flashPrice = Number(item.flashPrice) || 0;
+        if (!flashPrice) return <Text type="secondary">—</Text>;
+        const origPrice = Number(item.variant?.price) || 0;
         const discountPercent =
-          origPrice > item.flashPrice
-            ? Math.round(((origPrice - item.flashPrice) / origPrice) * 100)
+          origPrice > flashPrice
+            ? Math.round(((origPrice - flashPrice) / origPrice) * 100)
             : 0;
 
         return (
-          <Space>
-            <Text strong style={{ color: '#dc2626' }}>
-              {Number(item.flashPrice).toLocaleString('vi-VN')} ₫
+          <Space direction="vertical" size={1}>
+            <Text strong style={{ color: '#dc2626', fontSize: 13 }}>
+              {flashPrice.toLocaleString('vi-VN')} ₫
             </Text>
-            {discountPercent > 0 && <Tag color="red">-{discountPercent}%</Tag>}
+            {discountPercent > 0 && <Tag color="red" style={{ fontSize: 10, margin: 0 }}>-{discountPercent}%</Tag>}
           </Space>
         );
       },
@@ -305,7 +344,7 @@ export const FlashSaleTab: React.FC<FlashSaleTabProps> = ({ onDataChanged }) => 
         return (
           <div style={{ minWidth: 120 }}>
             <div style={{ fontSize: 12, marginBottom: 2 }}>
-              <Text strong>{item.soldCount || 0}</Text> / {item.stockLimit}
+              <Text strong>{item.soldCount || 0}</Text> / {item.stockLimit} suất
             </div>
             <Progress
               percent={percent}
@@ -355,7 +394,7 @@ export const FlashSaleTab: React.FC<FlashSaleTabProps> = ({ onDataChanged }) => 
           onClick={() => setCreateModalOpen(true)}
           style={{ background: '#e11d48', borderColor: '#e11d48' }}
         >
-          + Tạo chiến dịch Flash Sale
+          Tạo chiến dịch Flash Sale
         </Button>
       </div>
 
@@ -403,7 +442,7 @@ export const FlashSaleTab: React.FC<FlashSaleTabProps> = ({ onDataChanged }) => 
             Đóng
           </Button>,
         ]}
-        width={750}
+        width={800}
         destroyOnHidden
       >
         {selectedCampaignForDetail && (
@@ -427,6 +466,7 @@ export const FlashSaleTab: React.FC<FlashSaleTabProps> = ({ onDataChanged }) => 
               rowKey="id"
               pagination={false}
               size="small"
+              loading={detailLoading}
               locale={{ emptyText: 'Không có sản phẩm nào trong chiến dịch này' }}
             />
           </div>

@@ -67,4 +67,11 @@ export class CreateVariantDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ description: 'Số lượng tồn kho ban đầu khi tạo biến thể (màu/cấu hình mới)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  initialQuantity?: number;
 }

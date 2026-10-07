@@ -114,6 +114,16 @@ export class ReviewsService {
     });
   }
 
+  async getModerationStats() {
+    const [total, pending, approved, rejected] = await Promise.all([
+      this.prisma.review.count(),
+      this.prisma.review.count({ where: { status: ReviewStatus.PENDING } }),
+      this.prisma.review.count({ where: { status: ReviewStatus.APPROVED } }),
+      this.prisma.review.count({ where: { status: ReviewStatus.REJECTED } }),
+    ]);
+    return { total, pending, approved, rejected };
+  }
+
   async findAllAdmin(productId?: string, status?: ReviewStatus, page = 1, limit = 20) {
     const where: any = {};
     if (productId) where.productId = productId;

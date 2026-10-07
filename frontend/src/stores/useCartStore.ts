@@ -7,6 +7,29 @@ const hasAccessToken = () =>
   typeof localStorage !== 'undefined' &&
   Boolean(localStorage.getItem('phoneshop_access_token'));
 
+// Local items chỉ được đẩy lên backend ĐÚNG 1 lần (lúc login hoặc khi offline
+// thêm rồi có mạng lại). Đẩy lại toàn bộ mỗi lần sync sẽ cộng dồn số lượng
+// vì API add là cộng thêm, không phải set. Pending list theo variantId.
+const PENDING_KEY = 'phoneshop_cart_pending';
+
+const readPending = (): string[] => {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter((v) => typeof v === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
+const markPending = (variantId: string) => {
+  if (typeof localStorage === 'undefined' || !variantId) return;
+  const pending = readPending();
+  if (!pending.includes(variantId)) {
+    localStorage.setItem(PENDING_KEY, JSON.stringify([...pending, variantId]));
+  }
+};
+
 interface CartState {
   items: CartItem[];
   selectedItemIds: string[];
@@ -92,9 +115,11 @@ export const useCartStore = create<CartState>()(
 
         set({ items: newItems });
 
-        // Optionally sync with backend if token exists
+        // Đẩy ngay khi có mạng; thất bại/offline thì đánh dấu pending để sync đẩy 1 lần.
         if (hasAccessToken()) {
-          cartService.addToCart(variant.id, quantity).catch(() => {});
+          cartService.addToCart(variant.id, quantity).catch(() => markPending(variant.id));
+        } else {
+          markPending(variant.id);
         }
       },
 
@@ -148,7 +173,9 @@ export const useCartStore = create<CartState>()(
         set({ items: newItems, selectedItemIds: [targetId] });
 
         if (hasAccessToken()) {
-          cartService.addToCart(variant.id, quantity).catch(() => {});
+          cartService.addToCart(variant.id, quantity).catch(() => markPending(variant.id));
+        } else {
+          markPending(variant.id);
         }
       },
 
@@ -257,12 +284,20 @@ export const useCartStore = create<CartState>()(
           return;
         }
         try {
-          const localItems = get().items;
-          for (const item of localItems) {
-            await cartService.addToCart(item.variantId, item.quantity).catch(() => {});
+          // Chỉ đẩy những variant còn pending, mỗi variant đúng 1 lần.
+          const failed: string[] = [];
+          for (const variantId of readPending()) {
+            const item = get().items.find((i) => i.variantId === variantId);
+            if (!item) continue;
+            try {
+              await cartService.addToCart(variantId, item.quantity);
+            } catch {
+              failed.push(variantId);
+            }
           }
+          localStorage.setItem(PENDING_KEY, JSON.stringify(failed));
           const backendCart = await cartService.getCart();
-          if (backendCart && Array.isArray(backendCart.items) && backendCart.items.length > 0) {
+          if (backendCart && Array.isArray(backendCart.items)) {
             const mappedItems: CartItem[] = backendCart.items.map((bItem: any) => ({
               id: bItem.id,
               variantId: bItem.variantId,

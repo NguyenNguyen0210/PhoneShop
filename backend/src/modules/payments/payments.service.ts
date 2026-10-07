@@ -1337,7 +1337,29 @@ export class PaymentsService {
       this.prisma.payment.count(),
       this.prisma.payment.findMany({
         include: {
-          order: { select: { id: true, orderNumber: true, userId: true } },
+          order: {
+            select: {
+              id: true,
+              orderNumber: true,
+              userId: true,
+              totalAmount: true,
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  phone: true,
+                  email: true,
+                },
+              },
+              address: {
+                select: {
+                  recipientName: true,
+                  phone: true,
+                },
+              },
+            },
+          },
           transactions: true,
         },
         orderBy: { createdAt: 'desc' },
@@ -1356,7 +1378,29 @@ export class PaymentsService {
         include: {
           payment: {
             include: {
-              order: { select: { id: true, orderNumber: true, userId: true } },
+              order: {
+                select: {
+                  id: true,
+                  orderNumber: true,
+                  userId: true,
+                  totalAmount: true,
+                  user: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                      phone: true,
+                      email: true,
+                    },
+                  },
+                  address: {
+                    select: {
+                      recipientName: true,
+                      phone: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },

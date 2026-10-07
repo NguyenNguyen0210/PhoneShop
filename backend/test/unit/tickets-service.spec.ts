@@ -298,7 +298,11 @@ describe('TicketsService', () => {
   describe('assignTicket', () => {
     it('should assign ticket to a staff member', async () => {
       prisma.ticket.findUnique.mockResolvedValue({ id: 'tk-1' });
-      prisma.user.findUnique.mockResolvedValue({ id: 'staff-1', firstName: 'Staff' });
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'staff-1',
+        firstName: 'Staff',
+        roles: [{ role: { name: 'STAFF' } }],
+      });
       prisma.ticket.update.mockResolvedValue({ id: 'tk-1', assignedToId: 'staff-1' });
 
       const assigned = await service.assignTicket('tk-1', 'staff-1');
@@ -318,6 +322,25 @@ describe('TicketsService', () => {
       await expect(service.assignTicket('tk-1', 'nonexistent-staff')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('getSummaryAnalytics', () => {
+    it('should aggregate ticket counts by status and urgent priority', async () => {
+      prisma.ticket.count
+        .mockResolvedValueOnce(3) // OPEN
+        .mockResolvedValueOnce(4) // IN_PROGRESS
+        .mockResolvedValueOnce(3) // RESOLVED
+        .mockResolvedValueOnce(3) // CLOSED
+        .mockResolvedValueOnce(2); // URGENT
+
+      const stats = await service.getSummaryAnalytics();
+
+      expect(stats.open).toBe(3);
+      expect(stats.inProgress).toBe(4);
+      expect(stats.resolved).toBe(6);
+      expect(stats.urgent).toBe(2);
+      expect(stats.total).toBe(13);
     });
   });
 });

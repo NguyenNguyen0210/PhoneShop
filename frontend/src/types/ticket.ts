@@ -58,3 +58,11 @@ export interface Ticket {
   lastRepliedAt?: string | null;
   resolvedAt?: string | null;
 }
+
+export interface TicketAnalytics {
+  open: number;
+  inProgress: number;
+  resolved: number;
+  urgent: number;
+  total: number;
+}

@@ -29,14 +29,28 @@ export const inventoryService = {
       : data?.items ?? [];
   },
 
-  getInventoryList: async (): Promise<InventoryRecord[]> => {
-    const response = await apiClient.get('/inventory');
+  getInventoryList: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    lowStockOnly?: boolean;
+  }): Promise<InventoryRecord[]> => {
+    const response = await apiClient.get('/inventory', {
+      // Lấy đủ lớn để picker Nhập kho thấy được biến thể X-Y-Z
+      // (backend paginate tối đa 100).
+      params: { limit: 100, ...params },
+    });
     const data = response.data?.data ?? response.data;
     return Array.isArray(data)
       ? data
       : Array.isArray(data?.data)
       ? data.data
       : data?.items ?? [];
+  },
+
+  syncMissingInventories: async (): Promise<{ created: number }> => {
+    const response = await apiClient.post('/inventory/sync-missing');
+    return response.data?.data ?? response.data;
   },
 
   getLowStockAlerts: async (threshold?: number): Promise<InventoryRecord[]> => {

@@ -745,12 +745,12 @@ export const CUSTOMER_SEED_DATA: CustomerSeedData[] = [
     email: 'vy.nguyenkhanh98@gmail.com',
     phone: '0901234540',
     homeAddress: {
-      addressLine1: '25 Duy Tân',
-      ward: 'Dịch Vọng Hậu',
-      district: 'Quận Cầu Giấy',
-      city: 'Hà Nội',
-      province: 'Hà Nội',
-      postalCode: '100000',
+      addressLine1: '123 Võ Văn Ngân',
+      ward: 'Phường Linh Chiểu',
+      district: 'TP. Thủ Đức',
+      city: 'TP. Hồ Chí Minh',
+      province: 'TP. Hồ Chí Minh',
+      postalCode: '700000',
     },
   },
 ];

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AdminBrandsPage } from '../AdminBrandsPage';
 import { brandService } from '../../../../services/brandService';
@@ -92,7 +93,11 @@ describe('AdminBrandsPage', () => {
   });
 
   it('renders KPI stats, toolbar and brand table with loaded data', async () => {
-    render(<AdminBrandsPage />);
+    render(
+      <MemoryRouter>
+        <AdminBrandsPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText('Quản lý Thương hiệu')).toBeDefined();
 
@@ -104,11 +109,28 @@ describe('AdminBrandsPage', () => {
 
     // Check KPI counts: total 3, active 2, inactive 1, products 15
     expect(screen.getByText('Tổng thương hiệu')).toBeDefined();
-    expect(screen.getByText('15 SP')).toBeDefined();
+    expect(screen.getByText(/15 sản phẩm/)).toBeDefined();
+  });
+
+  it('renders authorization tier and origin metadata', async () => {
+    render(
+      <MemoryRouter>
+        <AdminBrandsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/AAR \(Đại lý ủy quyền\)/)).toBeDefined();
+      expect(screen.getByText(/Flagship Partner/)).toBeDefined();
+    });
   });
 
   it('filters brands based on search input', async () => {
-    render(<AdminBrandsPage />);
+    render(
+      <MemoryRouter>
+        <AdminBrandsPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Apple')).toBeDefined();
@@ -123,7 +145,11 @@ describe('AdminBrandsPage', () => {
   });
 
   it('opens BrandFormModal when clicking Thêm Thương hiệu button', async () => {
-    render(<AdminBrandsPage />);
+    render(
+      <MemoryRouter>
+        <AdminBrandsPage />
+      </MemoryRouter>,
+    );
 
     const addButton = screen.getByRole('button', { name: /Thêm Thương hiệu/i });
     fireEvent.click(addButton);
@@ -134,7 +160,11 @@ describe('AdminBrandsPage', () => {
   });
 
   it('disables delete button for brands that have associated products', async () => {
-    render(<AdminBrandsPage />);
+    render(
+      <MemoryRouter>
+        <AdminBrandsPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Apple')).toBeDefined();
@@ -149,7 +179,11 @@ describe('AdminBrandsPage', () => {
   it('toggles brand active status when switch is clicked', async () => {
     (brandService.deactivate as any).mockResolvedValue({ id: 'b-apple', isActive: false });
 
-    render(<AdminBrandsPage />);
+    render(
+      <MemoryRouter>
+        <AdminBrandsPage />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Apple')).toBeDefined();

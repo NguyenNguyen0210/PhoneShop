@@ -1257,6 +1257,28 @@ export class OrdersService {
         }
       }
 
+      // M-shipclose: entering DELIVERED (or COMPLETED from it) closes the
+      // carrier loop too. The shipping row is created at checkout as PENDING,
+      // so without this it stays READY_TO_SHIP/IN_TRANSIT forever and the
+      // storefront stepper/activity log keep showing "packed/shipping" as
+      // current on delivered orders. Terminal carrier states
+      // (already DELIVERED/FAILED/RETURNED) always win and are never
+      // overwritten. updateMany is a no-op for orders without a shipping row.
+      if (
+        (newStatus === OrderStatus.DELIVERED || newStatus === OrderStatus.COMPLETED) &&
+        tx.shipping?.updateMany
+      ) {
+        await tx.shipping.updateMany({
+          where: {
+            orderId: id,
+            status: {
+              notIn: [ShippingStatus.DELIVERED, ShippingStatus.FAILED, ShippingStatus.RETURNED],
+            },
+          },
+          data: { status: ShippingStatus.DELIVERED, deliveredAt: now },
+        });
+      }
+
       if (newStatus === OrderStatus.SHIPPING && tx.shipping) {
         const shippingUpdateData: any = {
           status: ShippingStatus.READY_TO_SHIP,

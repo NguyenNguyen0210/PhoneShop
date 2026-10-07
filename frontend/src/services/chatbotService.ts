@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+import { apiClient, ensureFreshAccessToken, getApiBaseUrl, getStoredAccessToken } from './apiClient';
 
 export interface ChatbotVariant {
   name: string;
@@ -63,6 +63,7 @@ export interface ChatbotAskResponse {
   products: ChatbotProduct[];
   sources: string[];
   escalate: boolean;
+  conversationId?: string | null;
 }
 
 export interface ChatHistoryItem {
@@ -70,9 +71,22 @@ export interface ChatHistoryItem {
   content: string;
 }
 
+export interface StreamChatEvent {
+  type: 'token' | 'products' | 'done';
+  text?: string;
+  products?: ChatbotProduct[];
+  sources?: string[];
+  escalate?: boolean;
+}
+
 export const chatbotService = {
-  ask: async (message: string, history: ChatHistoryItem[] = []): Promise<ChatbotAskResponse> => {
-    const res = await apiClient.post('/chatbot/ask', { message, history });
+  ask: async (
+    message: string,
+    history: ChatHistoryItem[] = [],
+    conversationId?: string | null,
+  ): Promise<ChatbotAskResponse> => {
+    await ensureFreshAccessToken();
+    const res = await apiClient.post('/chatbot/ask', { message, history, conversationId });
     return res.data?.data ?? res.data;
   },
 
@@ -80,5 +94,40 @@ export const chatbotService = {
     const res = await apiClient.get('/chatbot/suggestions');
     const data = res.data?.data ?? res.data;
     return data?.suggestions ?? [];
+  },
+
+  // Streaming SSE: gọi token từng chunk, fallback về ask() khi lỗi.
+  askStream: async (
+    message: string,
+    conversationId: string | null | undefined,
+    onEvent: (e: StreamChatEvent) => void,
+  ): Promise<void> => {
+    await ensureFreshAccessToken();
+    const params = new URLSearchParams({ message });
+    if (conversationId) params.set('conversationId', conversationId);
+    const res = await fetch(`${getApiBaseUrl().replace(/\/$/, '')}/chatbot/stream?${params.toString()}`, {
+      headers: {
+        Accept: 'text/event-stream',
+        ...(getStoredAccessToken() ? { Authorization: `Bearer ${getStoredAccessToken()}` } : {}),
+      },
+    });
+    if (!res.ok || !res.body) throw new Error(`Stream HTTP ${res.status}`);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() || '';
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t.startsWith('data:')) continue;
+        const payload = t.slice(5).trim();
+        if (!payload) continue;
+        onEvent(JSON.parse(payload) as StreamChatEvent);
+      }
+    }
   },
 };

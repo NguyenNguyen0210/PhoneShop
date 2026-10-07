@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Slider } from 'antd';
 import { Filter, RotateCcw, Check, Star, ChevronDown } from 'lucide-react';
 import type { Brand } from '../../types';
@@ -39,11 +39,20 @@ export interface ProductFilterSidebarProps {
 }
 
 const QUICK_PRICES = [
-  { label: '< 5 triệu', min: 0, max: 5000000 },
+  { label: 'Dưới 5 triệu', min: 0, max: 5000000 },
   { label: '5 - 10 triệu', min: 5000000, max: 10000000 },
-  { label: '10 - 20 triệu', min: 10000000, max: 20000000 },
-  { label: '> 20 triệu', min: 20000000, max: 50000000 },
+  { label: '10 - 15 triệu', min: 10000000, max: 15000000 },
+  { label: 'Trên 15 triệu', min: 15000000, max: 50000000 },
 ];
+
+const PRICE_MIN = 0;
+const PRICE_MAX = 50000000;
+
+const parsePriceInput = (raw: string): number | null => {
+  const digits = (raw || '').replace(/[^0-9]/g, '');
+  if (!digits) return null;
+  return Number(digits);
+};
 
 const RAM_OPTIONS = ['4GB', '6GB', '8GB', '12GB', '16GB'];
 const STORAGE_OPTIONS = ['64GB', '128GB', '256GB', '512GB', '1TB'];
@@ -157,11 +166,22 @@ export const ProductFilterSidebar: React.FC<ProductFilterSidebarProps> = ({
     price: true,
     brands: true,
     specs: true,
-    screenBattery: true,
-    osChipset: true,
+    screenBattery: false,
+    osChipset: false,
     colors: true,
     rating: true,
   });
+
+  // Ô nhập Từ/Đến đồng bộ theo priceRange (cho phép gõ tự do, commit lúc blur/Enter)
+  const [minDraft, setMinDraft] = useState<string>(String(priceRange[0]));
+  const [maxDraft, setMaxDraft] = useState<string>(String(priceRange[1]));
+
+  useEffect(() => {
+    setMinDraft(String(priceRange[0]));
+  }, [priceRange[0]]);
+  useEffect(() => {
+    setMaxDraft(String(priceRange[1]));
+  }, [priceRange[1]]);
 
   const toggleSection = (key: string) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -233,8 +253,8 @@ export const ProductFilterSidebar: React.FC<ProductFilterSidebarProps> = ({
 
           <Slider
             range
-            min={0}
-            max={50000000}
+            min={PRICE_MIN}
+            max={PRICE_MAX}
             step={500000}
             value={priceRange}
             onChange={(val) => onPriceRangeChange(val as [number, number])}
@@ -242,6 +262,63 @@ export const ProductFilterSidebar: React.FC<ProductFilterSidebarProps> = ({
               formatter: (val) => `${(val ?? 0).toLocaleString('vi-VN')}₫`,
             }}
           />
+
+          {/* Ô nhập Từ - Đến */}
+          <div className="flex items-center gap-2">
+            <label className="flex-1 min-w-0">
+              <span className="block text-[11px] font-medium text-slate-500 mb-1">Từ</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={Number(minDraft || 0).toLocaleString('vi-VN')}
+                onChange={(e) => {
+                  const v = parsePriceInput(e.target.value);
+                  setMinDraft(v === null ? '' : String(v));
+                }}
+                onBlur={() => {
+                  const v = parsePriceInput(minDraft);
+                  const nextMin = Math.max(
+                    PRICE_MIN,
+                    Math.min(v ?? priceRange[0], priceRange[1], PRICE_MAX)
+                  );
+                  setMinDraft(String(nextMin));
+                  if (nextMin !== priceRange[0]) onPriceRangeChange([nextMin, priceRange[1]]);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                }}
+                placeholder="0đ"
+                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+              />
+            </label>
+            <span className="text-slate-400 text-xs mt-5">-</span>
+            <label className="flex-1 min-w-0">
+              <span className="block text-[11px] font-medium text-slate-500 mb-1">Đến</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={Number(maxDraft || 0).toLocaleString('vi-VN')}
+                onChange={(e) => {
+                  const v = parsePriceInput(e.target.value);
+                  setMaxDraft(v === null ? '' : String(v));
+                }}
+                onBlur={() => {
+                  const v = parsePriceInput(maxDraft);
+                  const nextMax = Math.min(
+                    PRICE_MAX,
+                    Math.max(v ?? priceRange[1], priceRange[0], PRICE_MIN)
+                  );
+                  setMaxDraft(String(nextMax));
+                  if (nextMax !== priceRange[1]) onPriceRangeChange([priceRange[0], nextMax]);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                }}
+                placeholder="20.000.000đ"
+                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+              />
+            </label>
+          </div>
 
           {/* Quick Price Buttons */}
           <div className="grid grid-cols-2 gap-1.5 pt-1">
@@ -367,22 +444,26 @@ export const ProductFilterSidebar: React.FC<ProductFilterSidebarProps> = ({
             <h5 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
               Dung lượng RAM
             </h5>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="space-y-1.5">
               {RAM_OPTIONS.map((opt) => {
-                const active = selectedRams.includes(opt);
+                const checked = selectedRams.includes(opt);
                 return (
-                  <button
+                  <label
                     key={opt}
-                    type="button"
                     onClick={() => onToggleRam(opt)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                      active
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
-                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
-                    }`}
+                    className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer hover:text-blue-600 select-none transition-colors"
                   >
-                    {opt}
-                  </button>
+                    <div
+                      className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                        checked
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'border-slate-300 bg-white'
+                      }`}
+                    >
+                      {checked && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                    <span className="font-medium">{opt}</span>
+                  </label>
                 );
               })}
             </div>
@@ -392,22 +473,26 @@ export const ProductFilterSidebar: React.FC<ProductFilterSidebarProps> = ({
             <h5 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
               Bộ nhớ trong (ROM)
             </h5>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="space-y-1.5">
               {STORAGE_OPTIONS.map((opt) => {
-                const active = selectedStorages.includes(opt);
+                const checked = selectedStorages.includes(opt);
                 return (
-                  <button
+                  <label
                     key={opt}
-                    type="button"
                     onClick={() => onToggleStorage(opt)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                      active
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
-                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
-                    }`}
+                    className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer hover:text-blue-600 select-none transition-colors"
                   >
-                    {opt}
-                  </button>
+                    <div
+                      className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                        checked
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'border-slate-300 bg-white'
+                      }`}
+                    >
+                      {checked && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                    <span className="font-medium">{opt}</span>
+                  </label>
                 );
               })}
             </div>

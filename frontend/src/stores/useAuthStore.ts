@@ -22,6 +22,7 @@ interface AuthState {
   logout: () => Promise<void>;
   fetchProfile: () => Promise<void>;
   updateUser: (partial: Partial<User>) => void;
+  syncFromStorage: () => void;
   isAdmin: () => boolean;
   isStaffOrAdmin: () => boolean;
 }
@@ -182,6 +183,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  // Re-sync store from localStorage (multi-tab login/logout or external change).
+  // The header shows store.user while API calls use the stored token — without
+  // this, tab A can display account A while requests act as account B.
+  syncFromStorage: () => {
+    const user = getStoredUser();
+    const accessToken = localStorage.getItem('phoneshop_access_token');
+    const refreshToken = localStorage.getItem('phoneshop_refresh_token');
+    const cur = get();
+    const sameUser =
+      (cur.user as any)?.id ?? (cur.user as any)?.email ?? null;
+    const nextUser =
+      (user as any)?.id ?? (user as any)?.email ?? null;
+    if (cur.accessToken === accessToken && sameUser === nextUser) return;
+    set({ user, accessToken, refreshToken });
+  },
+
   isAdmin: () => {
     const user = get().user;
     if (!user) return false;
@@ -204,5 +221,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 if (typeof window !== 'undefined') {
   window.addEventListener('auth:logout', () => {
     useAuthStore.getState().logout();
+  });
+
+  // Another tab logged in/out → same keys change → re-sync this tab.
+  window.addEventListener('storage', (e) => {
+    if (
+      e.key === 'phoneshop_user' ||
+      e.key === 'phoneshop_access_token' ||
+      e.key === 'phoneshop_refresh_token'
+    ) {
+      useAuthStore.getState().syncFromStorage();
+    }
+  });
+
+  // Returning to this tab → pick up any auth change (same-tab edge cases).
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      useAuthStore.getState().syncFromStorage();
+    }
   });
 }

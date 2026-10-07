@@ -38,12 +38,12 @@ export const BRAND_SEEDS = [
 // Categories (parent + 5 children). Old slugs (dien-thoai...) are preserved.
 // ---------------------------------------------------------------------------
 export const CATEGORY_SEEDS = [
-  { name: 'Smartphone', slug: 'smartphone', description: 'Điện thoại thông minh', parent: null, sortOrder: 0 },
-  { name: 'Flagship', slug: 'flagship', description: 'Flagship cao cấp', parent: 'smartphone', sortOrder: 1 },
-  { name: 'Mid-range', slug: 'mid-range', description: 'Tầm trung 8-16 triệu', parent: 'smartphone', sortOrder: 2 },
-  { name: 'Budget', slug: 'budget', description: 'Giá rẻ dưới 7 triệu', parent: 'smartphone', sortOrder: 3 },
-  { name: 'Gaming Phone', slug: 'gaming-phone', description: 'Gaming phone pin trâu, tản nhiệt', parent: 'smartphone', sortOrder: 4 },
-  { name: 'Foldable Phone', slug: 'foldable-phone', description: 'Điện thoại gập', parent: 'smartphone', sortOrder: 5 },
+  { name: 'Điện thoại (Smartphone)', slug: 'smartphone', description: 'Điện thoại di động thông minh chính hãng đầy đủ phân khúc', parent: null, sortOrder: 0 },
+  { name: 'Điện thoại Flagship', slug: 'flagship', description: 'Dòng điện thoại cao cấp hàng đầu', parent: 'smartphone', sortOrder: 0 },
+  { name: 'Điện thoại Tầm trung', slug: 'mid-range', description: 'Phân khúc 8 - 16 triệu cân bằng hiệu năng & giá bán', parent: 'smartphone', sortOrder: 1 },
+  { name: 'Điện thoại Giá rẻ - Phổ thông', slug: 'budget', description: 'Phổ thông & giá rẻ dưới 7 triệu', parent: 'smartphone', sortOrder: 2 },
+  { name: 'Điện thoại Chuyên game', slug: 'gaming-phone', description: 'Cấu hình khủng, tản nhiệt và tần số quét cao', parent: 'smartphone', sortOrder: 3 },
+  { name: 'Điện thoại Màn hình gập', slug: 'foldable-phone', description: 'Thiết kế gập vỏ sò & gập cánh sách thời thượng', parent: 'smartphone', sortOrder: 4 },
 ];
 
 type VariantSeed = {

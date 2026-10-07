@@ -25,6 +25,7 @@ describe('OrderTrackingTimeline 2-Layer', () => {
     paymentStatus: 'PAID',
     items: [],
     createdAt: '2026-10-03T08:00:00Z',
+    packedAt: '2026-10-03T10:00:00Z',
     shipping: {
       id: 'ship-1',
       orderId: 'ord-1',
@@ -224,5 +225,47 @@ describe('OrderTrackingTimeline 2-Layer', () => {
     };
     render(<OrderTrackingTimeline order={orderWithReturn} />);
     expect(screen.getByText(/Đơn hàng đang có yêu cầu đổi trả \(RET-0001\)/i)).toBeDefined();
+  });
+
+  it('does NOT fabricate a packed milestone for a fresh PENDING order with a placeholder shipping row', () => {
+    // Checkout creates the shipping row immediately (status PENDING), so
+    // shipping.createdAt exists from birth — it must not render as "packed".
+    const freshOrder: Order = {
+      ...baseOrder,
+      status: 'PENDING',
+      packedAt: undefined,
+      shipping: {
+        id: 'ship-1',
+        orderId: 'ord-1',
+        providerName: 'Giao hàng Tiêu chuẩn',
+        status: 'PENDING',
+        shippingFee: 30000,
+        estimatedDeliveryDate: '2026-10-06T00:00:00Z',
+        createdAt: '2026-10-03T08:00:00Z',
+      } as Order['shipping'],
+    };
+    render(<OrderTrackingTimeline order={freshOrder} />);
+    expect(screen.queryByText(/Đã đóng gói & Tạo mã vận đơn/i)).toBeNull();
+    expect(screen.getByText('Đơn hàng đã đặt')).toBeDefined();
+  });
+
+  it('shows the packed milestone at the real pack time once staff packed the order', () => {
+    const packedOrder: Order = {
+      ...baseOrder,
+      status: 'PACKED',
+      packedAt: '2026-10-03T10:00:00Z',
+    };
+    render(<OrderTrackingTimeline order={packedOrder} />);
+    expect(screen.getByText(/Đã đóng gói & Tạo mã vận đơn/i)).toBeDefined();
+  });
+
+  it('highlights the packed step (not the placed step) for PACKED orders without shipping info', () => {
+    render(
+      <OrderTrackingTimeline
+        order={{ ...baseOrder, shipping: undefined, status: 'PACKED', packedAt: '2026-10-03T10:00:00Z' }}
+      />
+    );
+    expect(screen.getByTestId('step-icon-READY_TO_SHIP').className).toContain('ring-4');
+    expect(screen.getByTestId('step-icon-PENDING').className).not.toContain('ring-4');
   });
 });

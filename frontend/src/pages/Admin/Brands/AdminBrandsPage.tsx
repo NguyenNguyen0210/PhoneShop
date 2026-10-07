@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Table,
   Button,
@@ -10,7 +11,6 @@ import {
   message,
   Typography,
   Card,
-  Avatar,
   Popconfirm,
   Tooltip,
   Empty,
@@ -24,19 +24,201 @@ import {
   ReloadOutlined,
   ExportOutlined,
   TagsOutlined,
+  StarFilled,
+  StarOutlined,
 } from '@ant-design/icons';
 import { brandService } from '../../../services/brandService';
 import { BrandStatsCards } from './components/BrandStatsCards';
 import { BrandFormModal } from './components/BrandFormModal';
 import type { Brand, CreateBrandInput, UpdateBrandInput } from '../../../types';
 
-const { Title, Text, Link } = Typography;
+const { Title, Text } = Typography;
+
+interface BrandMetadata {
+  tier: string;
+  origin: string;
+  flag: string;
+  badgeStyle: { bg: string; text: string; border: string };
+  defaultOrder: number;
+  featured: boolean;
+}
+
+const BRAND_METADATA: Record<string, BrandMetadata> = {
+  apple: {
+    tier: 'AAR (Đại lý ủy quyền)',
+    origin: 'Mỹ',
+    flag: '🇺🇸',
+    badgeStyle: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+    defaultOrder: 1,
+    featured: true,
+  },
+  samsung: {
+    tier: 'Flagship Partner',
+    origin: 'Hàn Quốc',
+    flag: '🇰🇷',
+    badgeStyle: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
+    defaultOrder: 2,
+    featured: true,
+  },
+  xiaomi: {
+    tier: 'Đối tác chiến lược',
+    origin: 'Trung Quốc',
+    flag: '🇨🇳',
+    badgeStyle: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+    defaultOrder: 3,
+    featured: true,
+  },
+  oppo: {
+    tier: 'Phân phối chính hãng',
+    origin: 'Trung Quốc',
+    flag: '🇨🇳',
+    badgeStyle: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+    defaultOrder: 4,
+    featured: true,
+  },
+  vivo: {
+    tier: 'Phân phối chính hãng',
+    origin: 'Trung Quốc',
+    flag: '🇨🇳',
+    badgeStyle: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
+    defaultOrder: 5,
+    featured: true,
+  },
+  realme: {
+    tier: 'Phân phối chính hãng',
+    origin: 'Trung Quốc',
+    flag: '🇨🇳',
+    badgeStyle: { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200' },
+    defaultOrder: 6,
+    featured: true,
+  },
+  honor: {
+    tier: 'Phân phối chính hãng',
+    origin: 'Trung Quốc',
+    flag: '🇨🇳',
+    badgeStyle: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200' },
+    defaultOrder: 7,
+    featured: true,
+  },
+  oneplus: {
+    tier: 'Nhập khẩu chính hãng',
+    origin: 'Trung Quốc',
+    flag: '🇨🇳',
+    badgeStyle: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+    defaultOrder: 8,
+    featured: true,
+  },
+  asus: {
+    tier: 'Đối tác chiến lược (ROG)',
+    origin: 'Đài Loan',
+    flag: '🇹🇼',
+    badgeStyle: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+    defaultOrder: 9,
+    featured: false,
+  },
+  google: {
+    tier: 'Nhập khẩu chính hãng',
+    origin: 'Mỹ',
+    flag: '🇺🇸',
+    badgeStyle: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+    defaultOrder: 10,
+    featured: false,
+  },
+  sony: {
+    tier: 'Phân phối chính hãng',
+    origin: 'Nhật Bản',
+    flag: '🇯🇵',
+    badgeStyle: { bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-300' },
+    defaultOrder: 11,
+    featured: false,
+  },
+  nothing: {
+    tier: 'Độc quyền phân phối',
+    origin: 'Anh Quốc',
+    flag: '🇬🇧',
+    badgeStyle: { bg: 'bg-neutral-100', text: 'text-neutral-800', border: 'border-neutral-300' },
+    defaultOrder: 12,
+    featured: false,
+  },
+  motorola: {
+    tier: 'Phân phối chính hãng',
+    origin: 'Mỹ',
+    flag: '🇺🇸',
+    badgeStyle: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+    defaultOrder: 13,
+    featured: false,
+  },
+};
+
+const KNOWN_LOCAL_SVG = new Set([
+  'apple',
+  'asus',
+  'google',
+  'honor',
+  'motorola',
+  'nothing',
+  'oneplus',
+  'oppo',
+  'realme',
+  'samsung',
+  'sony',
+  'vivo',
+  'xiaomi',
+]);
+
+const getBrandMeta = (slug?: string, name?: string): BrandMetadata => {
+  const key = (slug || name || '').toLowerCase();
+  if (BRAND_METADATA[key]) return BRAND_METADATA[key];
+  for (const [k, v] of Object.entries(BRAND_METADATA)) {
+    if (key.includes(k)) return v;
+  }
+  return {
+    tier: 'Đại lý phân phối',
+    origin: 'Chính hãng',
+    flag: '🌐',
+    badgeStyle: { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200' },
+    defaultOrder: 99,
+    featured: false,
+  };
+};
 
 export const AdminBrandsPage: React.FC = () => {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [toggleLoadingId, setToggleLoadingId] = useState<string | null>(null);
+
+  // Featured toggle map (synced with localStorage)
+  const [featuredMap, setFeaturedMap] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('admin_featured_brands');
+      if (saved) return JSON.parse(saved);
+    } catch (_) {}
+    return {
+      apple: true,
+      samsung: true,
+      xiaomi: true,
+      oppo: true,
+      vivo: true,
+      realme: true,
+      honor: true,
+      oneplus: true,
+    };
+  });
+
+  const toggleFeatured = (brand: Brand) => {
+    const slug = (brand.slug || brand.name).toLowerCase();
+    setFeaturedMap((prev) => {
+      const next = { ...prev, [slug]: !prev[slug] };
+      try {
+        localStorage.setItem('admin_featured_brands', JSON.stringify(next));
+      } catch (_) {}
+      message.info(
+        `Đã ${next[slug] ? 'đưa' : 'bỏ'} "${brand.name}" ${next[slug] ? 'vào' : 'khỏi'} danh sách nổi bật Trang chủ`,
+      );
+      return next;
+    });
+  };
 
   // Filters & search
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -165,27 +347,52 @@ export const AdminBrandsPage: React.FC = () => {
 
   const columns: ColumnsType<Brand> = [
     {
+      title: 'Thứ tự',
+      key: 'order',
+      width: 70,
+      align: 'center',
+      render: (_, record: Brand, index: number) => {
+        const meta = getBrandMeta(record.slug, record.name);
+        const orderNum = meta.defaultOrder !== 99 ? meta.defaultOrder : index + 1;
+        return <span className="font-mono text-xs font-bold text-slate-400">#{orderNum}</span>;
+      },
+    },
+    {
       title: 'Logo',
       dataIndex: 'logoUrl',
       key: 'logoUrl',
-      width: 70,
+      width: 80,
       align: 'center',
       render: (logoUrl: string | undefined, record: Brand) => {
-        const url = logoUrl || record.logo;
-        if (url) {
-          return (
-            <Avatar
-              shape="square"
-              size={42}
-              src={url}
-              className="border border-slate-200 bg-white object-contain p-1"
-            />
-          );
-        }
+        const slug = (record.slug || record.name).toLowerCase();
+        const hasLocal = KNOWN_LOCAL_SVG.has(slug);
+        const primarySrc = hasLocal
+          ? `/brands/${slug}.svg`
+          : logoUrl || record.logo || `/brands/${slug}.svg`;
+
         return (
-          <Avatar shape="square" size={42} className="bg-blue-100 text-blue-600 font-bold border border-blue-200">
-            {record.name.substring(0, 2).toUpperCase()}
-          </Avatar>
+          <div className="w-12 h-9 bg-slate-50 border border-slate-200/70 rounded-lg p-1.5 flex items-center justify-center shrink-0 mx-auto">
+            <img
+              src={primarySrc}
+              alt={record.name}
+              className="max-h-full max-w-full object-contain"
+              loading="lazy"
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (logoUrl && target.src !== logoUrl) {
+                  target.src = logoUrl;
+                } else if (!target.src.endsWith(`/brands/${slug}.svg`)) {
+                  target.src = `/brands/${slug}.svg`;
+                } else {
+                  target.onerror = null;
+                  target.style.display = 'none';
+                  if (target.parentElement) {
+                    target.parentElement.innerHTML = `<span class="text-xs font-bold text-slate-400">${record.name.slice(0, 2).toUpperCase()}</span>`;
+                  }
+                }
+              }}
+            />
+          </div>
         );
       },
     },
@@ -195,22 +402,42 @@ export const AdminBrandsPage: React.FC = () => {
       key: 'name',
       render: (name: string, record: Brand) => (
         <div>
-          <div className="font-semibold text-slate-800 text-sm">{name}</div>
-          <div className="text-xs text-slate-400 font-mono mt-0.5">{record.slug}</div>
+          <div className="font-bold text-slate-900 leading-tight">{name}</div>
+          <span className="text-xs font-mono text-slate-400">/{record.slug}</span>
         </div>
       ),
     },
     {
-      title: 'Website',
-      dataIndex: 'websiteUrl',
-      key: 'websiteUrl',
-      width: 180,
-      render: (url?: string) => {
-        if (!url) return <span className="text-slate-300">—</span>;
+      title: 'Cấp độ đối tác & Xuất xứ',
+      key: 'partnership',
+      width: 220,
+      render: (_, record: Brand) => {
+        const meta = getBrandMeta(record.slug, record.name);
         return (
-          <Link href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs">
-            Trang chủ <ExportOutlined />
-          </Link>
+          <div className="flex flex-col gap-1 items-start">
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border ${meta.badgeStyle.bg} ${meta.badgeStyle.text} ${meta.badgeStyle.border}`}
+            >
+              <span>{meta.tier}</span>
+              <span>{meta.flag}</span>
+            </span>
+            <div className="flex items-center gap-2 text-[11px] text-slate-400">
+              <span>
+                Xuất xứ: <strong className="font-medium text-slate-600">{meta.origin}</strong>
+              </span>
+              {record.websiteUrl && (
+                <a
+                  href={record.websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline inline-flex items-center gap-0.5 font-medium"
+                  title={`Mở website chính thức: ${record.websiteUrl}`}
+                >
+                  Web ↗
+                </a>
+              )}
+            </div>
+          </div>
         );
       },
     },
@@ -218,38 +445,86 @@ export const AdminBrandsPage: React.FC = () => {
       title: 'Sản phẩm',
       dataIndex: '_count',
       key: 'productsCount',
+      width: 140,
+      align: 'center',
+      render: (count?: { products: number }, record?: Brand) => {
+        const num = count?.products || 0;
+        const brandTarget = record?.slug || record?.id;
+        if (num === 0) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-400">
+              0 sản phẩm
+            </span>
+          );
+        }
+        return (
+          <Link
+            to={`/admin/products?brand=${brandTarget}`}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-blue-100 hover:text-blue-700 transition"
+            title={`Lọc tất cả sản phẩm của ${record?.name || ''}`}
+          >
+            <span>{num} sản phẩm</span>
+            <span className="text-[11px]">↗</span>
+          </Link>
+        );
+      },
+    },
+    {
+      title: 'Trang chủ',
+      key: 'featured',
       width: 110,
       align: 'center',
-      render: (count?: { products: number }) => {
-        const num = count?.products || 0;
-        return <Tag color={num > 0 ? 'blue' : 'default'}>{num} SP</Tag>;
+      render: (_, record: Brand) => {
+        const slug = (record.slug || record.name).toLowerCase();
+        const isFeatured = featuredMap[slug] ?? getBrandMeta(slug, record.name).featured;
+        return (
+          <Tooltip
+            title={
+              isFeatured
+                ? 'Đang hiển thị tại thanh thương hiệu trang chủ (Click để gỡ)'
+                : 'Chưa ghim trang chủ (Click để ghim)'
+            }
+          >
+            <button
+              type="button"
+              onClick={() => toggleFeatured(record)}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold cursor-pointer transition ${
+                isFeatured
+                  ? 'text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200'
+                  : 'text-slate-400 bg-slate-50 hover:bg-slate-100 hover:text-slate-600 border border-dashed border-slate-200'
+              }`}
+            >
+              <span>{isFeatured ? '★ Nổi bật' : '☆ Thường'}</span>
+            </button>
+          </Tooltip>
+        );
       },
     },
     {
       title: 'Trạng thái',
       dataIndex: 'isActive',
       key: 'isActive',
-      width: 130,
+      width: 100,
       align: 'center',
       render: (isActive: boolean, record: Brand) => (
-        <Switch
-          checked={isActive}
-          loading={toggleLoadingId === record.id}
-          onChange={() => void handleToggleStatus(record)}
-          checkedChildren="Bật"
-          unCheckedChildren="Tắt"
-        />
+        <Tooltip title={isActive ? 'Đang hoạt động' : 'Ngừng kinh doanh'}>
+          <Switch
+            checked={isActive}
+            loading={toggleLoadingId === record.id}
+            onChange={() => void handleToggleStatus(record)}
+          />
+        </Tooltip>
       ),
     },
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 140,
+      width: 100,
       align: 'right',
       render: (_, record: Brand) => {
         const hasProducts = (record._count?.products || 0) > 0;
         return (
-          <Space size="small">
+          <div className="inline-flex items-center gap-1 justify-end">
             <Tooltip title="Chỉnh sửa thông tin">
               <Button
                 type="text"
@@ -257,12 +532,21 @@ export const AdminBrandsPage: React.FC = () => {
                 onClick={() => handleOpenEditModal(record)}
                 size="small"
                 aria-label="Chỉnh sửa"
+                className="hover:bg-blue-50 text-blue-600 rounded-lg p-1.5 transition"
               />
             </Tooltip>
 
             {hasProducts ? (
               <Tooltip title={`Không thể xóa: Có ${record._count?.products} sản phẩm liên kết`}>
-                <Button type="text" danger icon={<DeleteOutlined />} disabled size="small" aria-label="Xóa thương hiệu" />
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  disabled
+                  size="small"
+                  aria-label="Xóa thương hiệu"
+                  className="rounded-lg p-1.5 opacity-40 cursor-not-allowed"
+                />
               </Tooltip>
             ) : (
               <Popconfirm
@@ -274,11 +558,18 @@ export const AdminBrandsPage: React.FC = () => {
                 okButtonProps={{ danger: true, loading: actionLoading }}
               >
                 <Tooltip title="Xóa thương hiệu">
-                  <Button type="text" danger icon={<DeleteOutlined />} size="small" aria-label="Xóa thương hiệu" />
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    size="small"
+                    aria-label="Xóa thương hiệu"
+                    className="hover:bg-red-50 text-red-500 rounded-lg p-1.5 transition"
+                  />
                 </Tooltip>
               </Popconfirm>
             )}
-          </Space>
+          </div>
         );
       },
     },

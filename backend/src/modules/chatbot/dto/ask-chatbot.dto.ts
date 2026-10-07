@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
@@ -38,4 +39,11 @@ export class AskChatbotDto {
   @ValidateNested({ each: true })
   @Type(() => ChatHistoryItemDto)
   history?: ChatHistoryItemDto[];
+
+  @ApiPropertyOptional({
+    description: 'ID hội thoại do client giữ trong localStorage (server lưu memory theo id này)',
+  })
+  @IsOptional()
+  @IsUUID()
+  conversationId?: string;
 }

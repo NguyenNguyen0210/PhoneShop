@@ -33,6 +33,7 @@ vi.mock('react-router-dom', async () => {
     ...actual,
     useParams: () => ({ id: 'ticket-123' }),
     useNavigate: () => vi.fn(),
+    useLocation: () => ({ pathname: '/admin/tickets/ticket-123' }),
   };
 });
 

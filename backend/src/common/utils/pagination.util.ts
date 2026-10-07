@@ -10,6 +10,12 @@ export interface PaginatedResult<T> {
   page: number;
   limit: number;
   totalPages: number;
+  stats?: {
+    total: number;
+    active: number;
+    inactive: number;
+    banned: number;
+  };
 }
 
 const MAX_LIMIT = 100;
@@ -37,6 +43,22 @@ export function buildPaginatedResponse<T>(
   total: number,
   page: number,
   limit: number,
+  stats?: {
+    total: number;
+    active: number;
+    inactive: number;
+    banned: number;
+  },
 ): PaginatedResult<T> {
-  return { data, total, page, limit, totalPages: Math.ceil(total / limit) || 1 };
+  const result: PaginatedResult<T> = {
+    data,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit) || 1,
+  };
+  if (stats) {
+    result.stats = stats;
+  }
+  return result;
 }

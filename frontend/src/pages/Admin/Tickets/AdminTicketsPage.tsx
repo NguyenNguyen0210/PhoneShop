@@ -28,7 +28,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ticketService } from '../../../services/ticketService';
-import type { Ticket, TicketCategory, TicketPriority, TicketStatus } from '../../../types/ticket';
+import type { Ticket, TicketCategory, TicketPriority, TicketStatus, TicketAnalytics } from '../../../types/ticket';
 
 const { Title, Text } = Typography;
 
@@ -49,6 +49,7 @@ export const AdminTicketsPage: React.FC = () => {
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(10);
   const [total, setTotal] = useState<number>(0);
+  const [analytics, setAnalytics] = useState<TicketAnalytics | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'ALL'>(urlStatus);
   const [categoryFilter, setCategoryFilter] = useState<TicketCategory | 'ALL'>(urlCategory);
@@ -85,24 +86,39 @@ export const AdminTicketsPage: React.FC = () => {
           search: searchKeyword.trim() || undefined,
         };
 
-        const res = await ticketService.getAdminTickets(params);
-        const rawData = res?.data ?? res;
-        const list: Ticket[] = Array.isArray(rawData?.data)
-          ? rawData.data
-          : Array.isArray(rawData)
-          ? rawData
-          : Array.isArray(res?.items)
-          ? res.items
-          : [];
-        const totalCount =
-          typeof rawData?.total === 'number'
-            ? rawData.total
-            : typeof res?.total === 'number'
-            ? res.total
-            : list.length;
+        const [res, statsRes] = await Promise.allSettled([
+          ticketService.getAdminTickets(params),
+          ticketService.getAdminTicketAnalytics(),
+        ]);
 
-        setTickets(list);
-        setTotal(totalCount);
+        if (res.status === 'fulfilled') {
+          const rawData = res.value?.data ?? res.value;
+          const list: Ticket[] = Array.isArray(rawData?.data)
+            ? rawData.data
+            : Array.isArray(rawData)
+            ? rawData
+            : Array.isArray(res.value?.items)
+            ? res.value.items
+            : [];
+          const totalCount =
+            typeof rawData?.total === 'number'
+              ? rawData.total
+              : typeof res.value?.total === 'number'
+              ? res.value.total
+              : list.length;
+
+          setTickets(list);
+          setTotal(totalCount);
+        } else {
+          throw res.reason;
+        }
+
+        if (statsRes.status === 'fulfilled') {
+          const rawStats = statsRes.value?.data ?? statsRes.value;
+          if (rawStats && typeof rawStats === 'object') {
+            setAnalytics(rawStats);
+          }
+        }
       } catch (err: any) {
         if (!silent) {
           message.error(err.response?.data?.message || 'Không thể tải danh sách vé hỗ trợ');
@@ -354,7 +370,7 @@ export const AdminTicketsPage: React.FC = () => {
           <Card bordered={false} style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <Statistic
               title="Chờ tiếp nhận"
-              value={tickets.filter((t) => t.status === 'OPEN').length}
+              value={analytics?.open ?? tickets.filter((t) => t.status === 'OPEN').length}
               valueStyle={{ color: '#faad14' }}
               prefix={<ClockCircleOutlined />}
             />
@@ -364,7 +380,7 @@ export const AdminTicketsPage: React.FC = () => {
           <Card bordered={false} style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <Statistic
               title="Đang giải quyết"
-              value={tickets.filter((t) => t.status === 'IN_PROGRESS').length}
+              value={analytics?.inProgress ?? tickets.filter((t) => t.status === 'IN_PROGRESS').length}
               valueStyle={{ color: '#1890ff' }}
               prefix={<SyncOutlined />}
             />
@@ -374,7 +390,7 @@ export const AdminTicketsPage: React.FC = () => {
           <Card bordered={false} style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <Statistic
               title="Đã xử lý xong"
-              value={tickets.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length}
+              value={analytics?.resolved ?? tickets.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length}
               valueStyle={{ color: '#52c41a' }}
               prefix={<CheckCircleOutlined />}
             />
@@ -384,7 +400,7 @@ export const AdminTicketsPage: React.FC = () => {
           <Card bordered={false} style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <Statistic
               title="Cần xử lý gấp"
-              value={tickets.filter((t) => t.priority === 'URGENT' && t.status !== 'CLOSED').length}
+              value={analytics?.urgent ?? tickets.filter((t) => t.priority === 'URGENT' && t.status !== 'CLOSED').length}
               valueStyle={{ color: '#ff4d4f' }}
               prefix={<ExclamationCircleOutlined />}
             />

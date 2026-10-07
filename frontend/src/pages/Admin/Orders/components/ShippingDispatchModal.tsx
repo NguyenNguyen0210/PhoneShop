@@ -167,7 +167,9 @@ const ShippingDispatchModalContent: React.FC<{
     const values = await form.validateFields();
     return {
       providerName: values.providerName.trim(),
-      trackingNumber: values.trackingNumber ? values.trackingNumber.trim() : undefined,
+      trackingNumber: values.trackingNumber
+        ? values.trackingNumber.trim().toUpperCase()
+        : undefined,
       estimatedDeliveryDate: values.estimatedDeliveryDate
         ? values.estimatedDeliveryDate.toISOString()
         : undefined,
@@ -380,10 +382,16 @@ const ShippingDispatchModalContent: React.FC<{
           <Form.Item
             name="trackingNumber"
             label="Mã vận đơn (Tracking Number)"
-            normalize={(v) => (v ? v.trim() : '')}
+            normalize={(v) => (v ? v.trim().toUpperCase() : '')}
+            rules={[
+              {
+                pattern: /^[A-Z0-9-]{6,30}$/,
+                message: 'Mã vận đơn 6-30 ký tự: chữ in hoa, số, dấu gạch ngang (VD: GHN-8492019)',
+              },
+            ]}
           >
             <Input
-              placeholder="VD: GHN123456789"
+              placeholder="VD: GHN-8492019"
               style={{ fontFamily: 'monospace', letterSpacing: '0.5px' }}
             />
           </Form.Item>

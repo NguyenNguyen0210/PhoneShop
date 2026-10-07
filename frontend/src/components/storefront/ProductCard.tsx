@@ -55,12 +55,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     return name;
   };
 
-  // Quick specs summary (storage + chipset/specs)
-  const storage = primaryVariant?.storage || '256GB';
+  // Quick specs summary (chipset + RAM + storage)
+  const storage = primaryVariant?.storage || '';
+  const ram = (primaryVariant as any)?.ram || '';
   const chipset =
     product.specs?.['Chipset']?.split('(')?.[0]?.trim() ||
     product.specs?.['Màn hình']?.split('(')?.[0]?.trim() ||
-    'Chính hãng';
+    '';
+  const specLine = [chipset, ram ? `RAM ${ram}` : '', storage].filter(Boolean).join(' • ') || 'Chính hãng';
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -99,23 +101,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   return (
     <div className="group relative flex flex-col justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-slate-300">
       <div>
-        {/* Top Badges: Brand & Discount */}
+        {/* 0. Brand line */}
         <div className="flex items-center justify-between gap-2">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
             {product.brand?.name || 'Chính hãng'}
           </span>
-          {discountPercent ? (
-            <span className="rounded-md bg-red-50 px-2 py-0.5 text-xs font-bold text-red-600">
-              -{discountPercent}%
-            </span>
-          ) : (
+          {!discountPercent && (
             <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
               Trả góp 0%
             </span>
           )}
         </div>
 
-        {/* Product Image (Consistent 1:1 Aspect Ratio) */}
+        {/* 1. Hình ảnh + badge giảm giá góc trên */}
         <div className="relative my-3">
           <Link
             to={`/products/${product.id}`}
@@ -131,6 +129,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               }}
             />
           </Link>
+          {discountPercent && (
+            <span className="absolute top-2 left-2 z-10 rounded-full bg-red-600 px-2.5 py-1 text-xs font-black text-white shadow-md">
+              -{discountPercent}%
+            </span>
+          )}
           <button
             type="button"
             onClick={handleToggleWishlist}
@@ -148,33 +151,41 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </button>
         </div>
 
-        {/* Compact Tech Specs Pill */}
-        <div className="flex flex-wrap items-center gap-1.5 mb-2">
-          <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-mono font-medium text-slate-600">
-            {storage}
-          </span>
-          <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 truncate max-w-[130px]">
-            {chipset}
-          </span>
-        </div>
-
-        {/* Product Title (Clean, Scannable Title Case) */}
+        {/* 2. Tên máy */}
         <Link to={`/products/${product.id}`} className="block">
-          <h3 className="text-sm sm:text-base font-semibold text-slate-900 transition-colors group-hover:text-blue-600 line-clamp-1 leading-snug">
+          <h3 className="text-sm sm:text-[15px] font-bold text-slate-900 transition-colors group-hover:text-blue-600 line-clamp-2 leading-snug min-h-[2.6em]">
             {formatProductName(product.name)}
           </h3>
         </Link>
 
-        {/* Rating and Color Swatches */}
-        <div className="flex items-center justify-between mt-2 pt-1">
-          {/* Star Rating — M18: null rating renders as "Mới" instead of fake 5.0 */}
+        {/* 3. Cấu hình tóm tắt dưới tên */}
+        <p className="mt-1 text-xs text-slate-500 truncate" title={specLine}>
+          {specLine}
+        </p>
+      </div>
+
+      {/* 4-5. Giá + Đánh giá */}
+      <div className="mt-2.5 pt-2.5 border-t border-slate-100 space-y-1.5">
+        {/* 4. Khối giá: giá hiện tại trên, giá cũ dưới */}
+        <div className="flex flex-col gap-0.5">
+          <span className="text-base sm:text-lg font-extrabold text-red-600 tabular-nums tracking-tight">
+            {formatPrice(price)}
+          </span>
+          {compareAtPrice && compareAtPrice > price && (
+            <span className="text-xs text-slate-400 line-through tabular-nums">
+              {formatPrice(compareAtPrice)}
+            </span>
+          )}
+        </div>
+
+        {/* 5. Đánh giá sao + màu sắc */}
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 text-[11px] text-amber-500 font-semibold">
             <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
             <span>{product.rating ? Number(product.rating).toFixed(1) : 'Mới'}</span>
             <span className="text-slate-400 font-normal">({product.reviewCount ?? 0})</span>
           </div>
 
-          {/* Authentic Real Device Color preview dots */}
           {(() => {
             const distinctColors = getDistinctColors(product.variants);
             if (distinctColors.length === 0) return null;
@@ -202,21 +213,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               </div>
             );
           })()}
-        </div>
-      </div>
-
-      {/* Pricing & Full-Width Action Button */}
-      <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
-        {/* Pricing */}
-        <div className="flex items-baseline gap-2">
-          <span className="text-base sm:text-lg font-bold font-mono text-slate-950 tabular-nums tracking-tight">
-            {formatPrice(price)}
-          </span>
-          {compareAtPrice && compareAtPrice > price && (
-            <span className="text-xs font-mono text-slate-400 line-through tabular-nums">
-              {formatPrice(compareAtPrice)}
-            </span>
-          )}
         </div>
 
         {/* Full-Width Quick Add CTA */}
