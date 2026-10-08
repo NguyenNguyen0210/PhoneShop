@@ -42,6 +42,7 @@ export const CheckoutPage: React.FC = () => {
   const [customerName, setCustomerName] = useState(user?.fullName || '');
   const [shippingPhone, setShippingPhone] = useState(user?.phone || '');
   const [shippingAddress, setShippingAddress] = useState('');
+  const [manualCity, setManualCity] = useState('');
   const [notes, setNotes] = useState('');
   // "Buy now" entry points (e.g. PDP installment modal) can stash a checkout
   // preference here; consumed once below, then cleared.
@@ -235,6 +236,10 @@ export const CheckoutPage: React.FC = () => {
       notifyError('Vui lòng nhập địa chỉ nhận hàng chi tiết.');
       return;
     }
+    if ((useManualAddress || !selectedAddress) && !manualCity.trim()) {
+      notifyError('Vui lòng nhập tỉnh/thành phố nhận hàng.');
+      return;
+    }
 
     if (secondsRemaining <= 0) {
       notifyError('Đơn này đã hết thời gian giữ. Bạn quay lại giỏ hàng để đặt lại giúp shop nhé.');
@@ -298,6 +303,7 @@ export const CheckoutPage: React.FC = () => {
         customerName,
         shippingPhone,
         shippingAddress,
+        city: manualCity.trim() || undefined,
         notes,
         paymentMethod,
         installmentData: paymentMethod === 'INSTALLMENT' ? installmentData : undefined,
@@ -612,6 +618,20 @@ export const CheckoutPage: React.FC = () => {
                         value={shippingAddress}
                         onChange={(e) => setShippingAddress(e.target.value)}
                         placeholder="Số nhà, tên đường, Phường/Xã, Quận/Huyện, Tỉnh/TP"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-xl text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-hidden transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                        Tỉnh / Thành phố *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={manualCity}
+                        onChange={(e) => setManualCity(e.target.value)}
+                        placeholder="VD: Hà Nội, Đà Nẵng, Cần Thơ..."
                         className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded-xl text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-hidden transition"
                       />
                     </div>

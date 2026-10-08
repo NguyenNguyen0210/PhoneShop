@@ -55,6 +55,8 @@ export interface CheckoutPayload {
   customerName: string;
   shippingPhone: string;
   shippingAddress: string;
+  /** Manual-entry city — used only when auto-creating the address (no addressId). Never defaulted. */
+  city?: string;
   notes?: string;
   paymentMethod?: PaymentMethod | string;
   installmentData?: InstallmentFormData | any;
@@ -81,12 +83,16 @@ export const orderService = {
     let addressId = payload.addressId;
 
     if (!addressId) {
+      const manualCity = (payload.city || '').trim();
+      if (!manualCity) {
+        throw new Error('Vui lòng nhập tỉnh/thành phố nhận hàng.');
+      }
       try {
         const addressRes = await apiClient.post('/addresses', {
           recipientName: payload.customerName,
           phone: payload.shippingPhone,
           addressLine1: payload.shippingAddress,
-          city: 'Hồ Chí Minh',
+          city: manualCity,
           country: 'Vietnam',
           isDefault: true,
         });
