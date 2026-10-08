@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { orderService, type CheckoutPayload } from '../orderService';
 import { apiClient } from '../apiClient';
@@ -87,6 +88,7 @@ describe('orderService', () => {
         customerName: 'Nguyen Van A',
         shippingPhone: '0901234567',
         shippingAddress: '789 Dien Bien Phu',
+        city: 'Hà Nội',
         shippingMethod: 'ECONOMY',
       };
 
@@ -96,7 +98,7 @@ describe('orderService', () => {
         recipientName: 'Nguyen Van A',
         phone: '0901234567',
         addressLine1: '789 Dien Bien Phu',
-        city: 'Hồ Chí Minh',
+        city: 'Hà Nội',
         country: 'Vietnam',
         isDefault: true,
       });
@@ -112,6 +114,20 @@ describe('orderService', () => {
       });
 
       expect(result.id).toBe('ord-456');
+    });
+
+    it('should refuse to fabricate a city when none is provided', async () => {
+      const payload: CheckoutPayload = {
+        customerName: 'Nguyen Van A',
+        shippingPhone: '0901234567',
+        shippingAddress: '789 Dien Bien Phu',
+        shippingMethod: 'ECONOMY',
+      };
+
+      await expect(orderService.checkout(payload)).rejects.toThrow(
+        'Vui lòng nhập tỉnh/thành phố nhận hàng.',
+      );
+      expect(apiClient.post).not.toHaveBeenCalled();
     });
   });
 });

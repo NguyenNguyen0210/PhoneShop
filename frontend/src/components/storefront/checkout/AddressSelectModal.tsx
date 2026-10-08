@@ -36,7 +36,7 @@ export const AddressSelectModal: React.FC<AddressSelectModalProps> = ({
   // Form field state
   const [recipientName, setRecipientName] = useState('');
   const [phone, setPhone] = useState('');
-  const [city, setCity] = useState('Hồ Chí Minh');
+  const [city, setCity] = useState('');
   const [district, setDistrict] = useState('');
   const [ward, setWard] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
@@ -47,7 +47,7 @@ export const AddressSelectModal: React.FC<AddressSelectModalProps> = ({
   const resetForm = useCallback(() => {
     setRecipientName('');
     setPhone('');
-    setCity('Hồ Chí Minh');
+    setCity('');
     setDistrict('');
     setWard('');
     setAddressLine1('');
