@@ -12,6 +12,7 @@ import { EmailService } from '../../infrastructure/email/email.service';
 import { CreateReturnDto, AdminNoteDto, CreateRefundDto } from './dto/return.dto';
 import { ReturnStatus, RefundStatus, OrderStatus, ImeiStatus, StockMovementType, PaymentStatus, Prisma } from '@prisma/client';
 import { rollbackFlashSoldCount } from '../orders/flash-sale-rollback.util';
+import { WarrantyService } from '../warranty/warranty.service';
 import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
 import { randomBytes } from 'crypto';
 
@@ -22,6 +23,7 @@ export class ReturnsService {
   constructor(
     private prisma: PrismaService,
     @Optional() private readonly emailService?: EmailService,
+    @Optional() private readonly warrantyService?: WarrantyService,
   ) {}
 
   private generateReturnNumber(): string {
@@ -346,6 +348,8 @@ export class ReturnsService {
           }),
           ret.order.createdAt,
         );
+        // The handsets are resold as new — their old ACTIVE coverage dies here.
+        await this.warrantyService?.voidWarrantiesForOrder(tx, ret.orderId);
         const res = await tx.return.updateMany({ where: { id, status: oldStatus }, data });
         if (res.count === 0) throw guardError();
         return tx.return.findUnique({ where: { id } });
@@ -443,10 +447,21 @@ export class ReturnsService {
       throw new BadRequestException('Refund is not in PENDING status');
     }
 
-    return this.prisma.refund.update({
+    const updated = await this.prisma.refund.update({
       where: { id: refundId },
       data: { status: RefundStatus.PROCESSING },
     });
+    // Money is moving now — kill the sale's ACTIVE coverage with it.
+    if (refund.returnId) {
+      const ret = await this.prisma.return.findUnique({
+        where: { id: refund.returnId },
+        select: { orderId: true },
+      });
+      if (ret) {
+        await this.warrantyService?.voidWarrantiesForOrder(this.prisma, ret.orderId);
+      }
+    }
+    return updated;
   }
 
   async completeRefund(refundId: string) {

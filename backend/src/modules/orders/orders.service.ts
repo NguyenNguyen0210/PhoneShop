@@ -12,6 +12,7 @@ import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../infrastructure/email/email.service';
 import { rollbackFlashSoldCount } from './flash-sale-rollback.util';
+import { WarrantyService } from '../warranty/warranty.service';
 import { CreateOrderDto, CancelOrderDto } from './dto/order.dto';
 import {
   OrderStatus,
@@ -65,6 +66,7 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     @InjectQueue('order-queue') private readonly orderQueue: Queue,
     @Optional() private readonly emailService?: EmailService,
+    @Optional() private readonly warrantyService?: WarrantyService,
   ) {}
 
   private generateOrderNumber(): string {
@@ -762,6 +764,8 @@ export class OrdersService {
 
       // Give back the flash-sale slots this order claimed (no-op when none).
       await rollbackFlashSoldCount(tx, order.items, order.createdAt);
+      // The sale is dead — void its ACTIVE warranties with the same stroke.
+      await this.warrantyService?.voidWarrantiesForOrder(tx, orderId);
     });
 
     if (cancelled) {
@@ -1130,6 +1134,8 @@ export class OrdersService {
         }
         // Give back the flash-sale slots this order claimed (no-op when none).
         await rollbackFlashSoldCount(tx, order.items, order.createdAt);
+        // The sale is dead — void its ACTIVE warranties with the same stroke.
+        await this.warrantyService?.voidWarrantiesForOrder(tx, id);
       }
 
       // When transitioning order to DELIVERED or COMPLETED: update all assigned IMEIs to SOLD and set soldAt: new Date()
@@ -1457,6 +1463,8 @@ export class OrdersService {
       }
       // Give back the flash-sale slots this order claimed (no-op when none).
       await rollbackFlashSoldCount(tx, items, order.createdAt);
+      // The sale is dead — void its ACTIVE warranties with the same stroke.
+      await this.warrantyService?.voidWarrantiesForOrder(tx, id);
     });
 
     const updated = await this.prisma.order.findUnique({ where: { id } });

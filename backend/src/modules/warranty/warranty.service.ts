@@ -180,6 +180,16 @@ export class WarrantyService {
     });
   }
 
+  // Bulk-void ACTIVE warranties when the sale dies (cancel/refund/return).
+  // Runs inside the caller's transaction (tx) so coverage and money move
+  // together. CLAIMED rows (handset under repair) are intentionally kept.
+  async voidWarrantiesForOrder(tx: any, orderId: string): Promise<void> {
+    await tx.warranty.updateMany({
+      where: { orderItem: { orderId }, status: WarrantyStatus.ACTIVE },
+      data: { status: WarrantyStatus.VOIDED },
+    });
+  }
+
   async getUserWarranties(userId: string) {
     return this.prisma.warranty.findMany({
       where: { userId },
