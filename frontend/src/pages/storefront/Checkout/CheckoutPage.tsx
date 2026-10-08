@@ -916,6 +916,7 @@ export const CheckoutPage: React.FC = () => {
               <div className="pt-4 border-t border-slate-200">
                 <CheckoutCouponSection
                   subtotal={subtotal}
+                  selectedItemIds={checkoutItems.map((i) => i.variantId || i.id)}
                   appliedVoucher={appliedVoucher}
                   onApplyVoucher={(v, disc) => {
                     setAppliedVoucher(v);

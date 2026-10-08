@@ -147,7 +147,7 @@ export const CartPage: React.FC = () => {
 
     setVoucherLoading(true);
     try {
-      const res = await voucherService.validateVoucher(code, subtotal);
+      const res = await voucherService.validateVoucher(code, subtotal, selectedItemIds);
       if (res && res.valid && res.voucher) {
         const voucherData = {
           code: res.voucher.code,

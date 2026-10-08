@@ -108,6 +108,10 @@ export class VouchersService {
     // authenticated users the quote is built from their real cart at current
     // catalog prices (same source as checkout); anonymous callers keep the
     // estimate-only path via dto.orderTotal.
+    // Parity with checkout: when selectedItemIds are given, quote ONLY those
+    // items (checkout charges selected items only), at flash-aware prices
+    // (checkout charges the flash price when a campaign matches).
+    const now = new Date();
     let orderTotal = dto.orderTotal;
     if (userId) {
       const cart = await this.prisma.cart.findUnique({
@@ -115,14 +119,27 @@ export class VouchersService {
         include: { items: { include: { variant: { select: { price: true } } } } },
       });
       if (cart) {
-        orderTotal = cart.items.reduce(
-          (acc, item) => acc + Number(item.variant?.price ?? item.unitPrice) * item.quantity,
-          0,
-        );
+        let cartItems = cart.items;
+        if (dto.selectedItemIds?.length) {
+          const sel = new Set(dto.selectedItemIds);
+          cartItems = cartItems.filter((i) => sel.has(i.id) || sel.has(i.variantId));
+        }
+        orderTotal = 0;
+        for (const item of cartItems) {
+          let unit = Number(item.variant?.price ?? item.unitPrice);
+          const flash = await this.prisma.flashSaleItem.findFirst({
+            where: {
+              variantId: item.variantId,
+              campaign: { isActive: true, startAt: { lte: now }, endAt: { gte: now } },
+            },
+            orderBy: { id: 'asc' }, // same pick order as checkout
+          });
+          if (flash) unit = Number(flash.flashPrice);
+          orderTotal += unit * item.quantity;
+        }
       }
     }
 
-    const now = new Date();
     if (!voucher.isActive) throw new BadRequestException('Mã voucher đang tạm khóa');
     if (voucher.startAt > now) throw new BadRequestException('Mã voucher chưa đến thời gian áp dụng');
     if (voucher.endAt < now) throw new BadRequestException('Mã voucher đã hết hạn sử dụng');
