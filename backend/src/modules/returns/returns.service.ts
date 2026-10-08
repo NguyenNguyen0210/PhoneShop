@@ -10,7 +10,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../infrastructure/email/email.service';
 import { CreateReturnDto, AdminNoteDto, CreateRefundDto } from './dto/return.dto';
-import { ReturnStatus, RefundStatus, OrderStatus, ImeiStatus, StockMovementType, PaymentStatus } from '@prisma/client';
+import { ReturnStatus, RefundStatus, OrderStatus, ImeiStatus, StockMovementType, PaymentStatus, Prisma } from '@prisma/client';
 import { rollbackFlashSoldCount } from '../orders/flash-sale-rollback.util';
 import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
 import { randomBytes } from 'crypto';
@@ -101,6 +101,12 @@ export class ReturnsService {
     // Re-check + create atomically so two concurrent requests cannot both
     // pass the remaining-quantity check and over-return the same line.
     return this.prisma.$transaction(async (tx) => {
+      // Serialize concurrent duplicate submissions on the same order lines:
+      // the second transaction blocks here until the first commits, then its
+      // freshPrior re-check (or the unique constraint below) rejects it.
+      await tx.$queryRaw`
+        SELECT id FROM order_items WHERE id IN (${Prisma.join(orderItemIds)}) FOR UPDATE
+      `;
       const freshPrior = await tx.returnItem.findMany({
         where: {
           orderItemId: { in: orderItemIds },
@@ -121,24 +127,33 @@ export class ReturnsService {
           );
         }
       }
-      return tx.return.create({
-        data: {
-          orderId: dto.orderId,
-          userId,
-          returnNumber: this.generateReturnNumber(),
-          reason: dto.reason,
-          customerNote: dto.customerNote,
-          items: {
-            create: dto.items.map((item) => ({
-              orderItemId: item.orderItemId,
-              quantity: item.quantity,
-              reason: item.reason,
-              condition: item.condition,
-            })),
+      try {
+        return await tx.return.create({
+          data: {
+            orderId: dto.orderId,
+            userId,
+            returnNumber: this.generateReturnNumber(),
+            reason: dto.reason,
+            customerNote: dto.customerNote,
+            items: {
+              create: dto.items.map((item) => ({
+                orderItemId: item.orderItemId,
+                quantity: item.quantity,
+                reason: item.reason,
+                condition: item.condition,
+              })),
+            },
           },
-        },
-        include: { items: true, order: true },
-      });
+          include: { items: true, order: true },
+        });
+      } catch (err: any) {
+        // Backstop: @@unique([returnId, orderItemId]) fired despite the lock
+        // (e.g. lock timeout fallback) — report 409, never 500.
+        if (err?.code === 'P2002') {
+          throw new ConflictException('Sản phẩm này đã được yêu cầu trả trong đơn này');
+        }
+        throw err;
+      }
     });
   }
 
