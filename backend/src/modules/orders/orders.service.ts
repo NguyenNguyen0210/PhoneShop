@@ -11,6 +11,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../infrastructure/email/email.service';
+import { rollbackFlashSoldCount } from './flash-sale-rollback.util';
 import { CreateOrderDto, CancelOrderDto } from './dto/order.dto';
 import {
   OrderStatus,
@@ -758,6 +759,9 @@ export class OrdersService {
           },
         });
       }
+
+      // Give back the flash-sale slots this order claimed (no-op when none).
+      await rollbackFlashSoldCount(tx, order.items, order.createdAt);
     });
 
     if (cancelled) {
@@ -1124,6 +1128,8 @@ export class OrdersService {
             },
           });
         }
+        // Give back the flash-sale slots this order claimed (no-op when none).
+        await rollbackFlashSoldCount(tx, order.items, order.createdAt);
       }
 
       // When transitioning order to DELIVERED or COMPLETED: update all assigned IMEIs to SOLD and set soldAt: new Date()
@@ -1449,6 +1455,8 @@ export class OrdersService {
           },
         });
       }
+      // Give back the flash-sale slots this order claimed (no-op when none).
+      await rollbackFlashSoldCount(tx, items, order.createdAt);
     });
 
     const updated = await this.prisma.order.findUnique({ where: { id } });

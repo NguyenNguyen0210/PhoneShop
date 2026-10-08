@@ -11,6 +11,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../infrastructure/email/email.service';
 import { CreateReturnDto, AdminNoteDto, CreateRefundDto } from './dto/return.dto';
 import { ReturnStatus, RefundStatus, OrderStatus, ImeiStatus, StockMovementType, PaymentStatus } from '@prisma/client';
+import { rollbackFlashSoldCount } from '../orders/flash-sale-rollback.util';
 import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
 import { randomBytes } from 'crypto';
 
@@ -320,6 +321,16 @@ export class ReturnsService {
             }
           }
         }
+        // The returned handsets go back on sale — give their flash-sale slots
+        // back too (no-op when the order never claimed any).
+        await rollbackFlashSoldCount(
+          tx,
+          items.flatMap((ri) => {
+            const oi = byId.get(ri.orderItemId);
+            return oi ? [{ variantId: oi.variantId, quantity: ri.quantity }] : [];
+          }),
+          ret.order.createdAt,
+        );
         const res = await tx.return.updateMany({ where: { id, status: oldStatus }, data });
         if (res.count === 0) throw guardError();
         return tx.return.findUnique({ where: { id } });
