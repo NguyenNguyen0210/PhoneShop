@@ -377,7 +377,8 @@ export const ProductDetailPage: React.FC = () => {
       selectedVariant,
       1,
       flashUnitPrice ?? undefined,
-      isFlashSaleActive
+      isFlashSaleActive,
+      isFlashSaleActive ? effectiveFlashQuotaLeft : undefined
     );
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1500);
@@ -394,7 +395,8 @@ export const ProductDetailPage: React.FC = () => {
       selectedVariant,
       1,
       flashUnitPrice ?? undefined,
-      isFlashSaleActive
+      isFlashSaleActive,
+      isFlashSaleActive ? effectiveFlashQuotaLeft : undefined
     );
     navigate('/checkout');
   };
@@ -410,7 +412,8 @@ export const ProductDetailPage: React.FC = () => {
       selectedVariant,
       1,
       flashUnitPrice ?? undefined,
-      isFlashSaleActive
+      isFlashSaleActive,
+      isFlashSaleActive ? effectiveFlashQuotaLeft : undefined
     );
     // Land on checkout with the INSTALLMENT tab preselected and the
     // calculator plan carried over — CheckoutPage consumes + clears this.
