@@ -67,6 +67,13 @@ export class ImeiController {
     return this.imeiService.import(dto);
   }
 
+  @Post(':variantId/sync-inventory')
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Rebuild inventory counters from IMEI rows (STAFF/MANAGER/ADMIN)' })
+  syncInventory(@Param('variantId') variantId: string) {
+    return this.imeiService.syncInventoryFromImei(variantId);
+  }
+
   @Put(':id/reserve')
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Reserve IMEI device (STAFF/MANAGER/ADMIN)' })

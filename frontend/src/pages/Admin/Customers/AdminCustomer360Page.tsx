@@ -10,7 +10,6 @@ import {
   Avatar,
   Typography,
   Button,
-  Descriptions,
   Spin,
   Empty,
   Badge,
@@ -38,8 +37,6 @@ import {
   CalendarOutlined,
   CopyOutlined,
   FileTextOutlined,
-  LockOutlined,
-  UnlockOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -533,7 +530,7 @@ export const AdminCustomer360Page: React.FC = () => {
               </div>
             </div>
 
-            <Divider orientation="left" style={{ margin: '16px 0 12px 0', fontSize: 13 }}>
+            <Divider titlePlacement="start" style={{ margin: '16px 0 12px 0', fontSize: 13 }}>
               Địa chỉ nhận hàng mặc định
             </Divider>
 

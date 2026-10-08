@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { CartItem, Product, ProductVariant } from '../types';
 import { cartService } from '../services/cartService';
+import { notifyWarning } from '../utils/notify';
 
 const hasAccessToken = () =>
   typeof localStorage !== 'undefined' &&
@@ -39,7 +40,8 @@ interface CartState {
     variant: ProductVariant,
     quantity?: number,
     priceOverride?: number,
-    isFlashSale?: boolean
+    isFlashSale?: boolean,
+    flashQuotaLeft?: number
   ) => void;
   /** Buy-now: add/merge the variant, select ONLY it for checkout, never open any popup. */
   buyNow: (
@@ -47,7 +49,8 @@ interface CartState {
     variant: ProductVariant,
     quantity?: number,
     priceOverride?: number,
-    isFlashSale?: boolean
+    isFlashSale?: boolean,
+    flashQuotaLeft?: number
   ) => void;
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
@@ -78,10 +81,28 @@ export const useCartStore = create<CartState>()(
         variant: ProductVariant,
         quantity = 1,
         priceOverride?: number,
-        isFlashSale?: boolean
+        isFlashSale?: boolean,
+        flashQuotaLeft?: number
       ) => {
         const currentItems = get().items;
         const existingIndex = currentItems.findIndex((i) => i.variantId === variant.id);
+        const existingQty = existingIndex > -1 ? currentItems[existingIndex].quantity : 0;
+
+        // Never let the merged cart exceed the live flash quota — checkout
+        // rejects the whole order otherwise. Clamp + warn instead.
+        let qty = quantity;
+        if (isFlashSale && flashQuotaLeft !== undefined) {
+          const allowed = Math.max(0, flashQuotaLeft - existingQty);
+          if (allowed < qty) {
+            notifyWarning(
+              `Chỉ còn ${flashQuotaLeft} suất flash sale cho phiên bản này` +
+                (existingQty > 0 ? ` (giỏ đã có ${existingQty})` : '') +
+                '.'
+            );
+          }
+          qty = Math.min(qty, allowed);
+          if (qty <= 0) return;
+        }
 
         const finalPrice = priceOverride !== undefined ? priceOverride : variant.price;
         let newItems: CartItem[];
@@ -90,7 +111,7 @@ export const useCartStore = create<CartState>()(
             idx === existingIndex
               ? {
                   ...item,
-                  quantity: item.quantity + quantity,
+                  quantity: item.quantity + qty,
                   unitPrice: finalPrice,
                   price: finalPrice,
                   isFlashSale: isFlashSale ?? item.isFlashSale,
@@ -102,7 +123,7 @@ export const useCartStore = create<CartState>()(
           const newItem: CartItem = {
             id: `local-${variant.id}-${Date.now()}`,
             variantId: variant.id,
-            quantity,
+            quantity: qty,
             unitPrice: finalPrice,
             price: finalPrice,
             product,
@@ -117,7 +138,7 @@ export const useCartStore = create<CartState>()(
 
         // Đẩy ngay khi có mạng; thất bại/offline thì đánh dấu pending để sync đẩy 1 lần.
         if (hasAccessToken()) {
-          cartService.addToCart(variant.id, quantity).catch(() => markPending(variant.id));
+          cartService.addToCart(variant.id, qty).catch(() => markPending(variant.id));
         } else {
           markPending(variant.id);
         }
@@ -128,10 +149,26 @@ export const useCartStore = create<CartState>()(
         variant: ProductVariant,
         quantity = 1,
         priceOverride?: number,
-        isFlashSale?: boolean
+        isFlashSale?: boolean,
+        flashQuotaLeft?: number
       ) => {
         const currentItems = get().items;
         const existing = currentItems.find((i) => i.variantId === variant.id);
+        const existingQty = existing ? existing.quantity : 0;
+
+        let qty = quantity;
+        if (isFlashSale && flashQuotaLeft !== undefined) {
+          const allowed = Math.max(0, flashQuotaLeft - existingQty);
+          if (allowed < qty) {
+            notifyWarning(
+              `Chỉ còn ${flashQuotaLeft} suất flash sale cho phiên bản này` +
+                (existingQty > 0 ? ` (giỏ đã có ${existingQty})` : '') +
+                '.'
+            );
+          }
+          qty = Math.min(qty, allowed);
+          if (qty <= 0) return;
+        }
 
         const finalPrice = priceOverride !== undefined ? priceOverride : variant.price;
         let targetId: string;
@@ -142,7 +179,7 @@ export const useCartStore = create<CartState>()(
             item.id === existing.id
               ? {
                   ...item,
-                  quantity: item.quantity + quantity,
+                  quantity: item.quantity + qty,
                   unitPrice: finalPrice,
                   price: finalPrice,
                   isFlashSale: isFlashSale ?? item.isFlashSale,
@@ -157,7 +194,7 @@ export const useCartStore = create<CartState>()(
             {
               id: targetId,
               variantId: variant.id,
-              quantity,
+              quantity: qty,
               unitPrice: finalPrice,
               price: finalPrice,
               product,
@@ -173,7 +210,7 @@ export const useCartStore = create<CartState>()(
         set({ items: newItems, selectedItemIds: [targetId] });
 
         if (hasAccessToken()) {
-          cartService.addToCart(variant.id, quantity).catch(() => markPending(variant.id));
+          cartService.addToCart(variant.id, qty).catch(() => markPending(variant.id));
         } else {
           markPending(variant.id);
         }

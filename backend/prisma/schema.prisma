@@ -848,6 +848,7 @@ model ReturnItem {
 
   return Return @relation(fields: [returnId], references: [id], onDelete: Cascade)
 
+  @@unique([returnId, orderItemId])
   @@index([returnId])
   @@index([orderItemId])
   @@map("return_items")

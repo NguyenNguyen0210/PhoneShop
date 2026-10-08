@@ -10,7 +10,9 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../infrastructure/email/email.service';
 import { CreateReturnDto, AdminNoteDto, CreateRefundDto } from './dto/return.dto';
-import { ReturnStatus, RefundStatus, OrderStatus, ImeiStatus, StockMovementType, PaymentStatus } from '@prisma/client';
+import { ReturnStatus, RefundStatus, OrderStatus, ImeiStatus, StockMovementType, PaymentStatus, Prisma } from '@prisma/client';
+import { rollbackFlashSoldCount } from '../orders/flash-sale-rollback.util';
+import { WarrantyService } from '../warranty/warranty.service';
 import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
 import { randomBytes } from 'crypto';
 
@@ -21,6 +23,7 @@ export class ReturnsService {
   constructor(
     private prisma: PrismaService,
     @Optional() private readonly emailService?: EmailService,
+    @Optional() private readonly warrantyService?: WarrantyService,
   ) {}
 
   private generateReturnNumber(): string {
@@ -100,6 +103,16 @@ export class ReturnsService {
     // Re-check + create atomically so two concurrent requests cannot both
     // pass the remaining-quantity check and over-return the same line.
     return this.prisma.$transaction(async (tx) => {
+      // Serialize concurrent duplicate submissions on the same order lines:
+      // the second transaction blocks here until the first commits, then its
+      // freshPrior re-check (or the unique constraint below) rejects it.
+      // (typeof guard: partial mock tx objects in older specs carry no
+      // $queryRaw — ?. cannot be used on a tagged template, TS1358.)
+      if (typeof tx.$queryRaw === 'function') {
+        await tx.$queryRaw`
+          SELECT id FROM order_items WHERE id IN (${Prisma.join(orderItemIds)}) FOR UPDATE
+        `;
+      }
       const freshPrior = await tx.returnItem.findMany({
         where: {
           orderItemId: { in: orderItemIds },
@@ -120,24 +133,33 @@ export class ReturnsService {
           );
         }
       }
-      return tx.return.create({
-        data: {
-          orderId: dto.orderId,
-          userId,
-          returnNumber: this.generateReturnNumber(),
-          reason: dto.reason,
-          customerNote: dto.customerNote,
-          items: {
-            create: dto.items.map((item) => ({
-              orderItemId: item.orderItemId,
-              quantity: item.quantity,
-              reason: item.reason,
-              condition: item.condition,
-            })),
+      try {
+        return await tx.return.create({
+          data: {
+            orderId: dto.orderId,
+            userId,
+            returnNumber: this.generateReturnNumber(),
+            reason: dto.reason,
+            customerNote: dto.customerNote,
+            items: {
+              create: dto.items.map((item) => ({
+                orderItemId: item.orderItemId,
+                quantity: item.quantity,
+                reason: item.reason,
+                condition: item.condition,
+              })),
+            },
           },
-        },
-        include: { items: true, order: true },
-      });
+          include: { items: true, order: true },
+        });
+      } catch (err: any) {
+        // Backstop: @@unique([returnId, orderItemId]) fired despite the lock
+        // (e.g. lock timeout fallback) — report 409, never 500.
+        if (err?.code === 'P2002') {
+          throw new ConflictException('Sản phẩm này đã được yêu cầu trả trong đơn này');
+        }
+        throw err;
+      }
     });
   }
 
@@ -320,6 +342,20 @@ export class ReturnsService {
             }
           }
         }
+        // The returned handsets go back on sale — give their flash-sale slots
+        // back too (no-op when the order never claimed any).
+        // (ret.order is always loaded in prod via findOne's include; the
+        // fallback only serves older partial mocks.)
+        await rollbackFlashSoldCount(
+          tx,
+          items.flatMap((ri) => {
+            const oi = byId.get(ri.orderItemId);
+            return oi ? [{ variantId: oi.variantId, quantity: ri.quantity }] : [];
+          }),
+          ret.order?.createdAt ?? new Date(),
+        );
+        // The handsets are resold as new — their old ACTIVE coverage dies here.
+        await this.warrantyService?.voidWarrantiesForOrder(tx, ret.orderId);
         const res = await tx.return.updateMany({ where: { id, status: oldStatus }, data });
         if (res.count === 0) throw guardError();
         return tx.return.findUnique({ where: { id } });
@@ -417,10 +453,21 @@ export class ReturnsService {
       throw new BadRequestException('Refund is not in PENDING status');
     }
 
-    return this.prisma.refund.update({
+    const updated = await this.prisma.refund.update({
       where: { id: refundId },
       data: { status: RefundStatus.PROCESSING },
     });
+    // Money is moving now — kill the sale's ACTIVE coverage with it.
+    if (refund.returnId) {
+      const ret = await this.prisma.return.findUnique({
+        where: { id: refund.returnId },
+        select: { orderId: true },
+      });
+      if (ret) {
+        await this.warrantyService?.voidWarrantiesForOrder(this.prisma, ret.orderId);
+      }
+    }
+    return updated;
   }
 
   async completeRefund(refundId: string) {

@@ -127,7 +127,7 @@ describe('PaymentsListTab', () => {
         createdAt: '2026-10-06T10:30:00Z',
         paidAt: '2026-10-06T10:30:54Z',
         updatedAt: '',
-        order: { id: 'o-split', orderNumber: 'ORD-8AE6DB', userId: 'u-1', user: { id: 'u-1', fullName: 'Nguyễn Khánh Vy', phone: '0868 039 811', email: 'khanhvy@test.com' } },
+        order: { id: 'o-split', orderNumber: 'ORD-8AE6DB', userId: 'u-1', user: { id: 'u-1', firstName: 'Nguyễn Khánh Vy', email: 'khanhvy@test.com' } },
       },
       {
         id: 'p-split-2',
@@ -137,7 +137,7 @@ describe('PaymentsListTab', () => {
         amount: 19104000,
         createdAt: '2026-10-06T10:25:00Z',
         updatedAt: '',
-        order: { id: 'o-split', orderNumber: 'ORD-8AE6DB', userId: 'u-1', user: { id: 'u-1', fullName: 'Nguyễn Khánh Vy', phone: '0868 039 811', email: 'khanhvy@test.com' } },
+        order: { id: 'o-split', orderNumber: 'ORD-8AE6DB', userId: 'u-1', user: { id: 'u-1', firstName: 'Nguyễn Khánh Vy', email: 'khanhvy@test.com' } },
       },
     ];
 

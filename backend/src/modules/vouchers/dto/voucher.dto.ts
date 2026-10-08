@@ -86,6 +86,11 @@ export class ValidateVoucherDto {
   @Min(0)
   orderTotal: number;
 
+  @ApiPropertyOptional({ type: [String], description: 'Cart item ids being checked out; when set, the quote is built from these items only' })
+  @IsOptional()
+  @IsString({ each: true })
+  selectedItemIds?: string[];
+
   @ApiPropertyOptional({ enum: ShippingMethod, description: 'Used to compute the real shipping fee a FREESHIP voucher discounts' })
   @IsOptional()
   @IsEnum(ShippingMethod)

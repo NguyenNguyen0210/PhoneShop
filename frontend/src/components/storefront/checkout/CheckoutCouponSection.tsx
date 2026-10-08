@@ -5,6 +5,8 @@ import { notifyError } from '../../../utils/notify';
 
 export interface CheckoutCouponSectionProps {
   subtotal: number;
+  /** Backend cart item ids (or variant ids) being checked out — sent so the quote matches checkout. */
+  selectedItemIds?: string[];
   appliedVoucher: VoucherInfo | any | null;
   onApplyVoucher: (voucher: VoucherInfo, discount: number) => void;
   onRemoveVoucher: () => void;
@@ -12,6 +14,7 @@ export interface CheckoutCouponSectionProps {
 
 export const CheckoutCouponSection: React.FC<CheckoutCouponSectionProps> = ({
   subtotal,
+  selectedItemIds,
   appliedVoucher,
   onApplyVoucher,
   onRemoveVoucher,
@@ -72,7 +75,7 @@ export const CheckoutCouponSection: React.FC<CheckoutCouponSectionProps> = ({
 
     setLoading(true);
     try {
-      const res = await voucherService.validateVoucher(code, subtotal);
+      const res = await voucherService.validateVoucher(code, subtotal, selectedItemIds);
       if (res && res.valid && res.voucher) {
         onApplyVoucher(res.voucher, res.discount);
         setInputCode('');

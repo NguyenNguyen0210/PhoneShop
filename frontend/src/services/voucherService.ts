@@ -27,10 +27,11 @@ export const voucherService = {
     return Array.isArray(data) ? data : data?.items ?? [];
   },
 
-  async validateVoucher(code: string, orderTotal: number): Promise<VoucherValidationResult> {
+  async validateVoucher(code: string, orderTotal: number, selectedItemIds?: string[]): Promise<VoucherValidationResult> {
     const res = await apiClient.post('/vouchers/validate', {
       code: code.trim().toUpperCase(),
       orderTotal,
+      selectedItemIds: selectedItemIds && selectedItemIds.length > 0 ? selectedItemIds : undefined,
     });
     return res.data?.data ?? res.data;
   },

@@ -1,11 +1,8 @@
 import React from 'react';
-import { Modal, Descriptions, Button, Divider, Space, Typography, Tag, message } from 'antd';
+import { Modal, Descriptions, Button, Divider, message } from 'antd';
 import {
   PrinterOutlined,
   CopyOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  CloseCircleOutlined,
   BankOutlined,
   FileTextOutlined,
 } from '@ant-design/icons';
@@ -18,8 +15,6 @@ import {
 } from '../utils/paymentAccountingHelpers';
 import { PaymentMethodTag } from './PaymentMethodTag';
 import { PaymentStatusTag } from './PaymentStatusTag';
-
-const { Text, Title } = Typography;
 
 export interface PaymentBreakdownModalProps {
   open: boolean;

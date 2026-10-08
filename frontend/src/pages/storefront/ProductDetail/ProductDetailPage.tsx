@@ -357,9 +357,11 @@ export const ProductDetailPage: React.FC = () => {
     return `${hh}:${mm}:${ss}`;
   })();
 
-  const currentPrice = isFlashSaleActive
-    ? Number(matchingFlashItem.flashPrice)
-    : Number(selectedVariant.price);
+  const flashUnitPrice =
+    isFlashSaleActive && matchingFlashItem
+      ? Number(matchingFlashItem.flashPrice)
+      : null;
+  const currentPrice = flashUnitPrice ?? Number(selectedVariant.price);
 
   const originalPrice = isFlashSaleActive
     ? Number(selectedVariant.price)
@@ -374,8 +376,9 @@ export const ProductDetailPage: React.FC = () => {
       product,
       selectedVariant,
       1,
-      isFlashSaleActive ? Number(matchingFlashItem.flashPrice) : undefined,
-      isFlashSaleActive
+      flashUnitPrice ?? undefined,
+      isFlashSaleActive,
+      isFlashSaleActive ? effectiveFlashQuotaLeft : undefined
     );
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1500);
@@ -391,8 +394,9 @@ export const ProductDetailPage: React.FC = () => {
       product,
       selectedVariant,
       1,
-      isFlashSaleActive ? Number(matchingFlashItem.flashPrice) : undefined,
-      isFlashSaleActive
+      flashUnitPrice ?? undefined,
+      isFlashSaleActive,
+      isFlashSaleActive ? effectiveFlashQuotaLeft : undefined
     );
     navigate('/checkout');
   };
@@ -407,8 +411,9 @@ export const ProductDetailPage: React.FC = () => {
       product,
       selectedVariant,
       1,
-      isFlashSaleActive ? Number(matchingFlashItem.flashPrice) : undefined,
-      isFlashSaleActive
+      flashUnitPrice ?? undefined,
+      isFlashSaleActive,
+      isFlashSaleActive ? effectiveFlashQuotaLeft : undefined
     );
     // Land on checkout with the INSTALLMENT tab preselected and the
     // calculator plan carried over — CheckoutPage consumes + clears this.
@@ -474,7 +479,7 @@ export const ProductDetailPage: React.FC = () => {
 
   const discountPercent = isFlashSaleActive
     ? Math.round(
-        ((Number(selectedVariant.price) - Number(matchingFlashItem.flashPrice)) / Number(selectedVariant.price)) *
+        ((Number(selectedVariant.price) - (flashUnitPrice ?? Number(selectedVariant.price))) / Number(selectedVariant.price)) *
           100
       )
     : selectedVariant.compareAtPrice &&
@@ -717,7 +722,7 @@ export const ProductDetailPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span
                     className="text-xs font-bold text-amber-200 bg-black/25 px-2.5 py-1 rounded-lg"
-                    title={`Đã bán ${matchingFlashItem.soldCount}/${matchingFlashItem.stockLimit} suất • Kho còn ${inventoryAvailable} máy`}
+                    title={`Đã bán ${matchingFlashItem?.soldCount ?? 0}/${matchingFlashItem?.stockLimit ?? 0} suất • Kho còn ${inventoryAvailable} máy`}
                   >
                     🔥 Còn lại {effectiveFlashQuotaLeft} suất Flash Sale
                     {inventoryAvailable < flashQuotaLeft && <> (kho còn {inventoryAvailable} máy)</>}
@@ -753,7 +758,7 @@ export const ProductDetailPage: React.FC = () => {
                 <span>(Đã bao gồm VAT & Miễn phí vận chuyển toàn quốc)</span>
                 {isFlashSaleActive && (
                   <span className="text-rose-600 font-bold text-[11px] font-mono">
-                    Đã bán: {matchingFlashItem.soldCount}/{matchingFlashItem.stockLimit} suất
+                    Đã bán: {matchingFlashItem?.soldCount ?? 0}/{matchingFlashItem?.stockLimit ?? 0} suất
                   </span>
                 )}
               </div>
