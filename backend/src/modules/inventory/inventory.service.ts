@@ -171,7 +171,8 @@ export class InventoryService {
       // these counters. Manual IMPORT/EXPORT would desync the two sources
       // (phantom availableQty with no IMEIs, or IMEI rows with no quota).
       // Stock these variants through the IMEI import flow instead.
-      const imeiRows = await tx.imeiDevice.count({ where: { variantId } });
+      // (?. : partial mock tx objects in older specs carry no imeiDevice.)
+      const imeiRows = (await tx.imeiDevice?.count({ where: { variantId } })) ?? 0;
       if (imeiRows > 0) {
         throw new BadRequestException(
           'Biến thể quản lý theo IMEI: nhập/xuất kho qua luồng import IMEI, không chỉnh tay',

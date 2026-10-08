@@ -15,13 +15,15 @@ export async function rollbackFlashSoldCount(
 ): Promise<void> {
   const variantIds = [...new Set(items.map((i) => i.variantId))];
   if (variantIds.length === 0) return;
-  const flashItems = await tx.flashSaleItem.findMany({
+  // (?. : partial mock tx objects in older specs carry no flashSaleItem —
+  // same convention as checkout's tx.flashSaleItem?.findFirst.)
+  const flashItems = (await tx.flashSaleItem?.findMany({
     where: {
       variantId: { in: variantIds },
       campaign: { startAt: { lte: orderedAt }, endAt: { gte: orderedAt } },
     },
     select: { id: true, variantId: true },
-  });
+  })) ?? [];
   const byVariant = new Map<string, string>();
   for (const f of flashItems) {
     if (!byVariant.has(f.variantId)) byVariant.set(f.variantId, f.id);

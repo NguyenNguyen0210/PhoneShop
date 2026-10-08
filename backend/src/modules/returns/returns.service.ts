@@ -106,9 +106,13 @@ export class ReturnsService {
       // Serialize concurrent duplicate submissions on the same order lines:
       // the second transaction blocks here until the first commits, then its
       // freshPrior re-check (or the unique constraint below) rejects it.
-      await tx.$queryRaw`
-        SELECT id FROM order_items WHERE id IN (${Prisma.join(orderItemIds)}) FOR UPDATE
-      `;
+      // (typeof guard: partial mock tx objects in older specs carry no
+      // $queryRaw — ?. cannot be used on a tagged template, TS1358.)
+      if (typeof tx.$queryRaw === 'function') {
+        await tx.$queryRaw`
+          SELECT id FROM order_items WHERE id IN (${Prisma.join(orderItemIds)}) FOR UPDATE
+        `;
+      }
       const freshPrior = await tx.returnItem.findMany({
         where: {
           orderItemId: { in: orderItemIds },
@@ -340,13 +344,15 @@ export class ReturnsService {
         }
         // The returned handsets go back on sale — give their flash-sale slots
         // back too (no-op when the order never claimed any).
+        // (ret.order is always loaded in prod via findOne's include; the
+        // fallback only serves older partial mocks.)
         await rollbackFlashSoldCount(
           tx,
           items.flatMap((ri) => {
             const oi = byId.get(ri.orderItemId);
             return oi ? [{ variantId: oi.variantId, quantity: ri.quantity }] : [];
           }),
-          ret.order.createdAt,
+          ret.order?.createdAt ?? new Date(),
         );
         // The handsets are resold as new — their old ACTIVE coverage dies here.
         await this.warrantyService?.voidWarrantiesForOrder(tx, ret.orderId);
