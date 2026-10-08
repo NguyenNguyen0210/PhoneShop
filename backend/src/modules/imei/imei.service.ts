@@ -379,4 +379,24 @@ export class ImeiService {
   async release(id: string) {
     return this.transitionTo(id, ImeiStatus.AVAILABLE);
   }
+
+  // Rebuild a variant's inventory counters from its IMEI rows (the source of
+  // truth checkout enforces). quantity = handsets physically on hand;
+  // SOLD/RETURNED/WARRANTY rows are owned by the sales/return flows and are
+  // deliberately not inferred here.
+  async syncInventoryFromImei(variantId: string) {
+    const [available, reserved, blocked] = await Promise.all(
+      ([ImeiStatus.AVAILABLE, ImeiStatus.RESERVED, ImeiStatus.BLOCKED] as const).map(
+        (status) => this.prisma.imeiDevice.count({ where: { variantId, status } }),
+      ),
+    );
+    return this.prisma.inventory.update({
+      where: { variantId },
+      data: {
+        quantity: available + reserved + blocked,
+        availableQty: available,
+        reservedQty: reserved,
+      },
+    });
+  }
 }

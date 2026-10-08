@@ -166,6 +166,18 @@ export class InventoryService {
 
   async adjustStock(variantId: string, dto: AdjustStockDto, userId?: string) {
     return this.prisma.$transaction(async (tx) => {
+      // IMEI-tracked variants (any imei_devices rows) derive their sellable
+      // stock from those rows — checkout requires AVAILABLE IMEI rows, not
+      // these counters. Manual IMPORT/EXPORT would desync the two sources
+      // (phantom availableQty with no IMEIs, or IMEI rows with no quota).
+      // Stock these variants through the IMEI import flow instead.
+      const imeiRows = await tx.imeiDevice.count({ where: { variantId } });
+      if (imeiRows > 0) {
+        throw new BadRequestException(
+          'Biến thể quản lý theo IMEI: nhập/xuất kho qua luồng import IMEI, không chỉnh tay',
+        );
+      }
+
       let inv = await tx.inventory.findUnique({ where: { variantId } });
       // Auto-create missing inventory (legacy variants created before
       // auto-create logic) so admin can stock any color/config variant.
