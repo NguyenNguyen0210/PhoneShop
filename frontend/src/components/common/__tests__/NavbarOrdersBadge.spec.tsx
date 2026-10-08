@@ -4,7 +4,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { Navbar } from '../Navbar';
 import { orderService } from '../../../services/orderService';
-import { voucherService } from '../../../services/voucherService';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import type { User } from '../../../types';
 

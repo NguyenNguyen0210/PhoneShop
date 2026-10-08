@@ -3,8 +3,6 @@ import { Link } from 'react-router-dom';
 import {
   Table,
   Button,
-  Tag,
-  Space,
   Input,
   Select,
   Switch,
@@ -22,10 +20,7 @@ import {
   DeleteOutlined,
   SearchOutlined,
   ReloadOutlined,
-  ExportOutlined,
   TagsOutlined,
-  StarFilled,
-  StarOutlined,
 } from '@ant-design/icons';
 import { brandService } from '../../../services/brandService';
 import { BrandStatsCards } from './components/BrandStatsCards';

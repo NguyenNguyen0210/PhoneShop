@@ -6,7 +6,6 @@ import {
   DownloadOutlined,
   EyeOutlined,
   FileTextOutlined,
-  PrinterOutlined,
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import type { Payment, PaymentMethod, PaymentStatus } from '../../../../types';

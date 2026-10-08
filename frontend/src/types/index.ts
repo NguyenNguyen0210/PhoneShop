@@ -258,7 +258,7 @@ export type OrderStatus =
   | 'CANCELLED'
   | 'RETURNED';
 
-export type PaymentMethod = 'COD' | 'VIETQR' | 'VNPAY' | 'INSTALLMENT';
+export type PaymentMethod = 'COD' | 'VIETQR' | 'VNPAY' | 'INSTALLMENT' | 'BANK_TRANSFER';
 export type ShippingMethod = 'ECONOMY' | 'STANDARD' | 'EXPRESS_2H';
 
 export type InstallmentProvider = 'HOME_CREDIT' | 'FE_CREDIT';
@@ -358,6 +358,7 @@ export interface Payment {
   method: PaymentMethod;
   status: PaymentStatus;
   amount: number;
+  providerOrderId?: string | null;
   paidAt?: string | null;
   createdAt: string;
   updatedAt: string;

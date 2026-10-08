@@ -6,6 +6,7 @@ import {
   getFlashSaleInfo,
   type ChatHistoryItem,
   type ChatbotProduct,
+  type StreamChatEvent,
 } from '../../services/chatbotService';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useCartStore } from '../../stores/useCartStore';

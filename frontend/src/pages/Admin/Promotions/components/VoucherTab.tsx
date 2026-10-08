@@ -4,13 +4,10 @@ import {
   Button,
   Input,
   Select,
-  Tag,
   Space,
-  Progress,
   Switch,
   Popconfirm,
   Tooltip,
-  Typography,
   message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -27,8 +24,6 @@ import { promotionService } from '../../../../services/promotionService';
 import { VoucherType, type Voucher } from '../../../../types';
 import { VoucherFormModal } from './VoucherFormModal';
 import { VoucherUsageDrawer } from './VoucherUsageDrawer';
-
-const { Text } = Typography;
 
 const getVoucherScope = (record: Voucher): string => {
   const code = (record.code || '').toUpperCase();

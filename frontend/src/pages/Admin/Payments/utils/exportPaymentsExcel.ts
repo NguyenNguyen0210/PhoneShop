@@ -6,8 +6,6 @@ import {
   detectSplitPayment,
 } from './paymentAccountingHelpers';
 
-const formatVND = (num: number) => num.toLocaleString('vi-VN');
-
 export const exportPaymentsToExcel = (
   payments: Payment[],
   filename = 'Bao_cao_dong_tien_PhoneShop',
