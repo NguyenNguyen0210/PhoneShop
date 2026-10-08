@@ -6,17 +6,6 @@ export interface CustomerInfo {
   email: string;
 }
 
-const DETERMINISTIC_CUSTOMERS = [
-  { name: 'Nguyễn Khánh Vy', phone: '0868 039 811', email: 'khanhvy.nguyen@gmail.com' },
-  { name: 'Lê Quốc Bảo', phone: '0903 123 456', email: 'bao.lequoc95@gmail.com' },
-  { name: 'Trần Minh Quân', phone: '0978 456 789', email: 'quan.tran98@gmail.com' },
-  { name: 'Phạm Thu Trang', phone: '0912 345 678', email: 'thutrang.pham@gmail.com' },
-  { name: 'Hoàng Anh Tuấn', phone: '0989 654 321', email: 'tuan.hoanganh@gmail.com' },
-  { name: 'Đặng Ngọc Mai', phone: '0934 567 890', email: 'mai.dangngoc@gmail.com' },
-  { name: 'Vũ Đức Thịnh', phone: '0909 876 543', email: 'thinh.vuduc@gmail.com' },
-  { name: 'Bùi Phương Linh', phone: '0945 678 901', email: 'phuonglinh.bui@gmail.com' },
-];
-
 export const getCustomerInfo = (record: Payment): CustomerInfo => {
   const user = (record.order as any)?.user;
   const address = (record.order as any)?.address;
@@ -38,20 +27,12 @@ export const getCustomerInfo = (record: Payment): CustomerInfo => {
     };
   }
 
-  // 2. Deterministic hash based on orderNumber / orderId
-  const seed = (record.order?.orderNumber || record.orderId || record.id || '').replace(/[^a-zA-Z0-9]/g, '');
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash << 5) - hash + seed.charCodeAt(i);
-    hash |= 0;
-  }
-  const index = Math.abs(hash) % DETERMINISTIC_CUSTOMERS.length;
-  const fallback = DETERMINISTIC_CUSTOMERS[index];
-
+  // No real data — never fabricate a customer. Show an explicit unknown
+  // placeholder so staff cannot mistake it for real PII.
   return {
-    name: realName || fallback.name,
-    phone: realPhone || fallback.phone,
-    email: realEmail || fallback.email,
+    name: realName || 'Không xác định',
+    phone: realPhone || '—',
+    email: realEmail || '',
   };
 };
 
