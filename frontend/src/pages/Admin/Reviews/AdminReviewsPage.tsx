@@ -301,9 +301,9 @@ export const AdminReviewsPage: React.FC = () => {
       key: 'status',
       width: 140,
       render: (_, r) => {
+        // Nhị phân hiển thị: APPROVED = Hiện, còn lại (REJECTED/PENDING cũ) = Ẩn
         if (r.status === 'APPROVED') return <Tag color="success">Hiện</Tag>;
-        if (r.status === 'REJECTED') return <Tag color="error">Ẩn</Tag>;
-        return <Tag color="warning">Chờ duyệt</Tag>;
+        return <Tag color="error">Ẩn</Tag>;
       },
     },
     {
@@ -409,10 +409,10 @@ export const AdminReviewsPage: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <Title level={4} style={{ margin: 0 }}>
-            Quản lý Đánh giá & Kiểm duyệt
+            Quản lý Đánh giá & Hiển thị
           </Title>
           <Text type="secondary" style={{ fontSize: 13 }}>
-            Kiểm duyệt đánh giá của khách hàng, phản hồi CSKH và ẩn các nội dung vi phạm
+            Quản lý hiển thị đánh giá của khách hàng, phản hồi CSKH và ẩn các nội dung vi phạm
           </Text>
         </div>
         <Button icon={<ReloadOutlined />} onClick={fetchReviews} loading={loading}>
@@ -422,25 +422,12 @@ export const AdminReviewsPage: React.FC = () => {
 
       {/* Summary Cards */}
       <Row gutter={[16, 16]}>
-        <Col xs={12} sm={6}>
+        <Col xs={12} sm={8}>
           <Card size="small" variant="borderless" style={{ background: '#fafafa' }}>
             <Statistic title="Tổng đánh giá" value={displayStats.total} prefix={<CommentOutlined />} />
           </Card>
         </Col>
-        <Col xs={12} sm={6}>
-          <Card
-            size="small"
-            variant="borderless"
-            style={{ background: '#fffbe6', border: '1px solid #ffe58f' }}
-          >
-            <Statistic
-              title="Chờ duyệt"
-              value={displayStats.pending}
-              styles={{ content: { color: '#fa8c16' } }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
+        <Col xs={12} sm={8}>
           <Card
             size="small"
             variant="borderless"
@@ -453,7 +440,7 @@ export const AdminReviewsPage: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col xs={12} sm={6}>
+        <Col xs={12} sm={8}>
           <Card
             size="small"
             variant="borderless"
@@ -478,14 +465,6 @@ export const AdminReviewsPage: React.FC = () => {
           }}
           items={[
             { key: 'ALL', label: 'Tất cả đánh giá' },
-            {
-              key: 'PENDING',
-              label: (
-                <span>
-                  Chờ duyệt {displayStats.pending > 0 && <Tag color="warning">{displayStats.pending}</Tag>}
-                </span>
-              ),
-            },
             { key: 'APPROVED', label: 'Hiện' },
             { key: 'REJECTED', label: 'Ẩn' },
           ]}

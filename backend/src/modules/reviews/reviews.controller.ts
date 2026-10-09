@@ -17,7 +17,7 @@ export class ReviewsController {
   // ── PUBLIC ────────────────────────────────────────────
 
   @Get()
-  @ApiOperation({ summary: 'Get approved reviews (Public)' })
+  @ApiOperation({ summary: 'Get visible reviews (Public)' })
   @ApiQuery({ name: 'productId', required: false })
   findAll(@Query('productId') productId?: string) {
     return this.reviewsService.findAll(productId);
@@ -37,7 +37,7 @@ export class ReviewsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all reviews for moderation (STAFF/MANAGER/ADMIN)' })
+  @ApiOperation({ summary: 'Get all reviews for visibility management (STAFF/MANAGER/ADMIN)' })
   @ApiQuery({ name: 'productId', required: false })
   @ApiQuery({ name: 'status', required: false, enum: ReviewStatus })
   @ApiQuery({ name: 'page', required: false, type: Number })
@@ -57,7 +57,7 @@ export class ReviewsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get review moderation stats (STAFF/MANAGER/ADMIN)' })
+  @ApiOperation({ summary: 'Get review visibility stats (STAFF/MANAGER/ADMIN)' })
   getModerationStats() {
     return this.reviewsService.getModerationStats();
   }
@@ -108,7 +108,7 @@ export class ReviewsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Approve review (STAFF/MANAGER/ADMIN)' })
+  @ApiOperation({ summary: 'Show review / Hiện đánh giá (STAFF/MANAGER/ADMIN)' })
   approve(@Param('id') id: string, @CurrentUser() user: any) {
     return this.reviewsService.approve(id, user?.id);
   }
@@ -117,7 +117,7 @@ export class ReviewsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Reject review (STAFF/MANAGER/ADMIN)' })
+  @ApiOperation({ summary: 'Hide review / Ẩn đánh giá (STAFF/MANAGER/ADMIN)' })
   reject(@Param('id') id: string, @CurrentUser() user: any) {
     return this.reviewsService.reject(id, user?.id);
   }

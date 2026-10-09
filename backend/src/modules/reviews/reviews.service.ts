@@ -89,7 +89,7 @@ export class ReviewsService {
     const where: any = {};
     if (productId) where.productId = productId;
     if (status)    where.status    = status;
-    else           where.status    = ReviewStatus.APPROVED; // Default: show approved only
+    else           where.status    = ReviewStatus.APPROVED; // Default: show visible only
 
     return this.prisma.review.findMany({
       where,
@@ -165,9 +165,9 @@ export class ReviewsService {
       },
     });
     if (!review) throw new NotFoundException('Review not found');
-    // AUDIT: public detail endpoint must not leak PENDING/REJECTED reviews —
+    // AUDIT: public detail endpoint must not leak hidden reviews —
     // callers serving unauthenticated traffic pass requireApproved=true so
-    // non-approved reviews 404 exactly like missing ones (no oracle).
+    // non-visible reviews 404 exactly like missing ones (no oracle).
     if (requireApproved && review.status !== ReviewStatus.APPROVED) {
       throw new NotFoundException('Review not found');
     }
@@ -204,7 +204,7 @@ export class ReviewsService {
     const review = await this.findOne(id);
     // Separation of duties: staff cannot approve their own review.
     if (actorId && review.userId === actorId) {
-      throw new ForbiddenException('You cannot approve your own review');
+      throw new ForbiddenException('You cannot show your own review');
     }
     return this.prisma.review.update({ where: { id }, data: { status: ReviewStatus.APPROVED } });
   }
@@ -212,7 +212,7 @@ export class ReviewsService {
   async reject(id: string, actorId?: string) {
     const review = await this.findOne(id);
     if (actorId && review.userId === actorId) {
-      throw new ForbiddenException('You cannot reject your own review');
+      throw new ForbiddenException('You cannot hide your own review');
     }
     return this.prisma.review.update({ where: { id }, data: { status: ReviewStatus.REJECTED } });
   }

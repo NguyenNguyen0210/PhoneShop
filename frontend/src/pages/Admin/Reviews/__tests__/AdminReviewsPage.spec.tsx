@@ -90,7 +90,7 @@ describe('AdminReviewsPage', () => {
 
     render(<AdminReviewsPage />);
 
-    expect(screen.getByText('Quản lý Đánh giá & Kiểm duyệt')).toBeTruthy();
+    expect(screen.getByText('Quản lý Đánh giá & Hiển thị')).toBeTruthy();
 
     await waitFor(() => {
       expect(screen.getByText('iPhone 15 Pro Max')).toBeTruthy();
