@@ -156,6 +156,35 @@ export class PaymentsService {
     };
   }
 
+  async reportTransfer(orderId: string, userId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { payments: true },
+    });
+    if (!order || order.userId !== userId) throw new NotFoundException('Order not found');
+    const pending = order.payments.find(
+      (p) => p.method === PaymentMethod.BANK_TRANSFER && p.status === PaymentStatus.PENDING,
+    );
+    if (!pending) throw new BadRequestException('Đơn này không có khoản VietQR nào đang chờ đối soát');
+    const recent = await this.prisma.paymentTransaction.findFirst({
+      where: { paymentId: pending.id, providerReference: 'CUSTOMER_REPORTED' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (recent && Date.now() - new Date(recent.createdAt).getTime() < 15 * 60 * 1000)
+      return recent;
+    return this.prisma.paymentTransaction.create({
+      data: {
+        paymentId: pending.id,
+        transactionCode: `RPT-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`,
+        type: TransactionType.PAYMENT,
+        status: TransactionStatus.PENDING,
+        amount: pending.amount,
+        providerReference: 'CUSTOMER_REPORTED',
+        responseData: { reportedAt: new Date().toISOString(), channel: 'storefront' },
+      },
+    });
+  }
+
   // ============================================================
   // VNPAY INTEGRATION
   // ============================================================

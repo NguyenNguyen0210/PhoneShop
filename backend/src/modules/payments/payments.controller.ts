@@ -46,6 +46,15 @@ export class PaymentsController {
     return this.paymentsService.generateVietQr(orderId, userId);
   }
 
+  @Post('vietqr/:orderId/report-transfer')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.USER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Customer reports bank transfer done (USER)' })
+  reportTransfer(@Param('orderId') orderId: string, @CurrentUser() user: any) {
+    return this.paymentsService.reportTransfer(orderId, user.id);
+  }
+
   // ── VNPAY GATEWAY ──────────────────────────────────────
 
   @Post('vnpay/create-url')
