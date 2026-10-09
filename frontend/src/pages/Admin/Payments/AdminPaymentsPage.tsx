@@ -65,7 +65,9 @@ export const AdminPaymentsPage: React.FC = () => {
   }, [loadData]);
 
   const pendingReconcileCount = payments.filter(
-    (p) => p.status === 'PENDING' && (p.method === 'VIETQR' || p.method === 'VNPAY')
+    (p) =>
+      p.status === 'PENDING' &&
+      (p.method === 'VIETQR' || p.method === 'BANK_TRANSFER' || p.method === 'VNPAY')
   ).length;
 
   const tabItems = [

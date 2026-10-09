@@ -27,7 +27,9 @@ export const ReconciliationTab: React.FC<ReconciliationTabProps> = ({
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   const pendingReconcileList = payments.filter(
-    (p) => p.status === 'PENDING' && (p.method === 'VIETQR' || p.method === 'VNPAY')
+    (p) =>
+      p.status === 'PENDING' &&
+      (p.method === 'VIETQR' || p.method === 'BANK_TRANSFER' || p.method === 'VNPAY')
   );
 
   const getReportInfo = (p: Payment): string | null => {
