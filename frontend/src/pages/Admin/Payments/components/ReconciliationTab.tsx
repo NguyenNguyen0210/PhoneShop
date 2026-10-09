@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Table, Button, Space, Typography, Popconfirm, Alert, message, Tooltip } from 'antd';
+import { Table, Button, Space, Typography, Popconfirm, Alert, message, Tooltip, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { CheckOutlined, CloseOutlined, ReloadOutlined } from '@ant-design/icons';
 import { paymentService } from '../../../../services/paymentService';
@@ -29,6 +29,20 @@ export const ReconciliationTab: React.FC<ReconciliationTabProps> = ({
   const pendingReconcileList = payments.filter(
     (p) => p.status === 'PENDING' && (p.method === 'VIETQR' || p.method === 'VNPAY')
   );
+
+  const getReportInfo = (p: Payment): string | null => {
+    const reps = (p.transactions || [])
+      .filter((t: any) => t?.providerReference === 'CUSTOMER_REPORTED')
+      .sort((a: any, b: any) => +new Date(b.createdAt) - +new Date(a.createdAt));
+    return reps.length > 0 ? reps[0].createdAt : null;
+  };
+  const pendingSorted = [...pendingReconcileList].sort((a, b) => {
+    const ra = getReportInfo(a);
+    const rb = getReportInfo(b);
+    if (ra && !rb) return -1;
+    if (!ra && rb) return 1;
+    return 0;
+  });
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
@@ -120,6 +134,19 @@ export const ReconciliationTab: React.FC<ReconciliationTabProps> = ({
       ),
     },
     {
+      title: 'Khách báo CK',
+      key: 'reported',
+      width: 170,
+      render: (_: any, record: Payment) => {
+        const at = getReportInfo(record);
+        return at ? (
+          <Tag color="green">Đã báo CK • {formatDate(at)}</Tag>
+        ) : (
+          <Text type="secondary" style={{ fontSize: 12 }}>Chưa báo</Text>
+        );
+      },
+    },
+    {
       title: 'Thao tác đối soát',
       key: 'action',
       width: 220,
@@ -184,7 +211,7 @@ export const ReconciliationTab: React.FC<ReconciliationTabProps> = ({
       />
 
       <Table
-        dataSource={pendingReconcileList}
+        dataSource={pendingSorted}
         columns={columns}
         rowKey="id"
         loading={loading}
