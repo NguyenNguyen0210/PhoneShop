@@ -1,8 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import {
-  ShieldCheck,
-  PhoneCall,
   MapPin,
   Mail,
   Phone,
@@ -127,10 +124,10 @@ export const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* ── 3. KHỐI 4 CỘT CHÍNH ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-x-8 gap-y-9 py-10">
-          {/* Cột 1: Thương hiệu + Hotline */}
-          <div className="sm:col-span-2 md:col-span-4 space-y-4">
+        {/* ── 3. KHỐI 2 CỘT CHÍNH ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-9 py-10">
+          {/* Cột 1: Thương hiệu */}
+          <div className="space-y-4">
             <span className="text-[26px] font-black tracking-tight text-blue-700">
               Phone<span className="text-slate-900">Shop</span>
               <span className="text-blue-600">.</span>
@@ -139,88 +136,8 @@ export const Footer: React.FC = () => {
               Hệ thống bán lẻ thiết bị di động chính hãng hàng đầu. Cam kết 100% máy nguyên seal, bảo hành điện tử
               chính ngạch.
             </p>
-            <div className="space-y-2 pt-1">
-              <div className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-400">
-                Tổng đài miễn cước
-              </div>
-              {[
-                { icon: PhoneCall, label: 'Tư vấn mua hàng', num: '1800 6868', time: '8:00 - 21:30' },
-                { icon: ShieldCheck, label: 'Khiếu nại, bảo hành', num: '1800 6869', time: '8:00 - 21:00' },
-              ].map(({ icon: Icon, label, num, time }) => (
-                <div
-                  key={num}
-                  className="flex items-center gap-3 rounded-xl bg-slate-50/80 border border-slate-200/60 px-3 py-2 hover:border-blue-200 hover:bg-blue-50/40 transition"
-                >
-                  <span className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-blue-600 flex items-center justify-center shrink-0">
-                    <Icon className="w-4 h-4" />
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    {label}:{' '}
-                    <strong className="text-blue-700 text-[15px] font-extrabold tracking-tight tabular-nums">
-                      {num}
-                    </strong>{' '}
-                    <span className="text-slate-400">({time})</span>
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
-
-          {/* Cột 2 */}
-          <div className="md:col-span-3 space-y-3">
-            <h4 className="text-xs font-extrabold uppercase tracking-[0.12em] text-slate-900">
-              Hỗ trợ khách hàng
-              <span className="block w-7 h-[2.5px] bg-blue-600 rounded-full mt-2" />
-            </h4>
-            <ul className="space-y-[9px] text-[13px]">
-              {[
-                { to: '/warranty-lookup', label: 'Tra cứu thông tin bảo hành', internal: true },
-                { label: 'Chính sách đổi trả 30 ngày' },
-                { label: 'Chính sách giao hàng & đồng kiểm' },
-                { label: 'Hướng dẫn mua trả góp 0%' },
-              ].map((l) => (
-                <li key={l.label}>
-                  {l.internal ? (
-                    <Link
-                      to={l.to!}
-                      className="text-slate-600 hover:text-blue-700 hover:pl-1 transition-all duration-200"
-                    >
-                      {l.label}
-                    </Link>
-                  ) : (
-                    <a
-                      href="#"
-                      className="text-slate-600 hover:text-blue-700 hover:pl-1 transition-all duration-200"
-                    >
-                      {l.label}
-                    </a>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Cột 3 */}
-          <div className="md:col-span-2 space-y-3">
-            <h4 className="text-xs font-extrabold uppercase tracking-[0.12em] text-slate-900">
-              Về PhoneShop
-              <span className="block w-7 h-[2.5px] bg-blue-600 rounded-full mt-2" />
-            </h4>
-            <ul className="space-y-[9px] text-[13px]">
-              {['Giới thiệu hệ thống', 'Hệ thống chuỗi cửa hàng', 'Tuyển dụng nhân tài', 'Liên hệ hợp tác B2B'].map(
-                (label) => (
-                  <li key={label}>
-                    <a href="#" className="text-slate-600 hover:text-blue-700 hover:pl-1 transition-all duration-200">
-                      {label}
-                    </a>
-                  </li>
-                ),
-              )}
-            </ul>
-          </div>
-
-          {/* Cột 4 */}
-          <div className="md:col-span-3 space-y-5">
+          <div className="space-y-5">
             <div>
               <h4 className="text-xs font-extrabold uppercase tracking-[0.12em] text-slate-900">
                 Phương thức thanh toán
@@ -241,15 +158,6 @@ export const Footer: React.FC = () => {
                 <Lock className="w-3.5 h-3.5 text-emerald-600" />
                 Thanh toán an toàn &amp; bảo mật SSL.
               </p>
-            </div>
-
-            <div>
-              <h4 className="text-xs font-extrabold uppercase tracking-[0.12em] text-slate-900 mb-2.5">
-                Chứng nhận website
-              </h4>
-              <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-700 to-blue-600 text-white text-[10.5px] font-extrabold tracking-wide px-3 py-[7px] rounded-lg shadow-[0_6px_16px_-8px_rgba(37,99,235,0.7)]">
-                <ShieldCheck className="w-3.5 h-3.5" />✓ ĐÃ THÔNG BÁO BỘ CÔNG THƯƠNG
-              </div>
             </div>
           </div>
         </div>
