@@ -93,6 +93,17 @@ export const OrderSuccessPage: React.FC = () => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
   };
 
+  const handleReportTransfer = async () => {
+    const oid = order?.id || id;
+    if (!oid) return;
+    try {
+      await paymentService.reportTransfer(oid);
+      setTransferConfirmed(true);
+    } catch (err: any) {
+      notifyError(err, 'Không ghi nhận được. Bạn bấm lại giúp shop nhé.');
+    }
+  };
+
   const handleVNPayRedirect = async () => {
     if (!order) return;
     setVnpayError(null);
@@ -309,7 +320,7 @@ export const OrderSuccessPage: React.FC = () => {
                 </div>
               ) : (
                 <button
-                  onClick={() => setTransferConfirmed(true)}
+                  onClick={handleReportTransfer}
                   className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/10 cursor-pointer"
                 >
                   <Check className="w-4 h-4" />

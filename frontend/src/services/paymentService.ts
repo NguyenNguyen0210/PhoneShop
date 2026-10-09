@@ -66,6 +66,11 @@ export const paymentService = {
     return mapVietQrResponse(data);
   },
 
+  async reportTransfer(orderId: string) {
+    const response = await apiClient.post(`/payments/vietqr/${orderId}/report-transfer`, {});
+    return response.data?.data ?? response.data;
+  },
+
   async createVnpayUrl(data: {
     orderId: string;
     bankCode?: string;
