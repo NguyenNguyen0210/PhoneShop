@@ -122,7 +122,7 @@ describe('AdminReviewsPage', () => {
     expect(deleteButtons.length).toBeGreaterThan(0);
   });
 
-  it('calls approveReview when clicking Duyệt button', async () => {
+  it('calls approveReview when clicking Hiện button', async () => {
     vi.mocked(reviewService.approveReview).mockResolvedValueOnce({ id: 'rev-1', status: 'APPROVED' } as any);
 
     useAuthStore.setState({
@@ -132,7 +132,7 @@ describe('AdminReviewsPage', () => {
     render(<AdminReviewsPage />);
     await waitFor(() => expect(screen.getByText('iPhone 15 Pro Max')).toBeTruthy());
 
-    const approveBtn = screen.getByTitle('Duyệt đánh giá này');
+    const approveBtn = screen.getByTitle('Hiện đánh giá này');
     fireEvent.click(approveBtn);
 
     await waitFor(() => {

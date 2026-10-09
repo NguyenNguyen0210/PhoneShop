@@ -146,35 +146,35 @@ export const AdminReviewsPage: React.FC = () => {
   // Actions
   const handleApprove = async (review: Review) => {
     if (review.userId === currentUser?.id) {
-      message.warning('Bạn không thể tự duyệt đánh giá của chính mình');
+      message.warning('Bạn không thể tự hiện đánh giá của chính mình');
       return;
     }
     try {
       await reviewService.approveReview(review.id);
-      message.success('Đã duyệt đánh giá thành công');
+      message.success('Đã hiện đánh giá thành công');
       fetchReviews();
       if (selectedReview?.id === review.id) {
         setSelectedReview((prev) => (prev ? { ...prev, status: 'APPROVED' } : null));
       }
     } catch (err: any) {
-      message.error(err?.response?.data?.message || 'Lỗi khi duyệt đánh giá');
+      message.error(err?.response?.data?.message || 'Lỗi khi hiện đánh giá');
     }
   };
 
   const handleReject = async (review: Review) => {
     if (review.userId === currentUser?.id) {
-      message.warning('Bạn không thể từ chối đánh giá của chính mình');
+      message.warning('Bạn không thể tự ẩn đánh giá của chính mình');
       return;
     }
     try {
       await reviewService.rejectReview(review.id);
-      message.success('Đã ẩn / từ chối đánh giá');
+      message.success('Đã ẩn đánh giá');
       fetchReviews();
       if (selectedReview?.id === review.id) {
         setSelectedReview((prev) => (prev ? { ...prev, status: 'REJECTED' } : null));
       }
     } catch (err: any) {
-      message.error(err?.response?.data?.message || 'Lỗi khi từ chối đánh giá');
+      message.error(err?.response?.data?.message || 'Lỗi khi ẩn đánh giá');
     }
   };
 
@@ -301,8 +301,8 @@ export const AdminReviewsPage: React.FC = () => {
       key: 'status',
       width: 140,
       render: (_, r) => {
-        if (r.status === 'APPROVED') return <Tag color="success">Đã duyệt</Tag>;
-        if (r.status === 'REJECTED') return <Tag color="error">Bị từ chối / Ẩn</Tag>;
+        if (r.status === 'APPROVED') return <Tag color="success">Hiện</Tag>;
+        if (r.status === 'REJECTED') return <Tag color="error">Ẩn</Tag>;
         return <Tag color="warning">Chờ duyệt</Tag>;
       },
     },
@@ -325,12 +325,12 @@ export const AdminReviewsPage: React.FC = () => {
 
         return (
           <Space size="small">
-            {/* Duyệt Button */}
+            {/* Hiện Button */}
             {r.status !== 'APPROVED' && (
-              <Tooltip title={isSelf ? 'Không thể tự duyệt bài của bạn' : 'Duyệt đánh giá này'}>
+              <Tooltip title={isSelf ? 'Không thể tự hiện bài của bạn' : 'Hiện đánh giá này'}>
                 <Button
-                  title={isSelf ? 'Không thể tự duyệt bài của bạn' : 'Duyệt đánh giá này'}
-                  aria-label="Duyệt đánh giá này"
+                  title={isSelf ? 'Không thể tự hiện bài của bạn' : 'Hiện đánh giá này'}
+                  aria-label="Hiện đánh giá này"
                   type="text"
                   shape="circle"
                   disabled={isSelf}
@@ -344,12 +344,12 @@ export const AdminReviewsPage: React.FC = () => {
               </Tooltip>
             )}
 
-            {/* Từ chối / Ẩn Button */}
+            {/* Ẩn Button */}
             {r.status !== 'REJECTED' && (
-              <Tooltip title={isSelf ? 'Không thể từ chối bài của bạn' : 'Ẩn / Từ chối đánh giá'}>
+              <Tooltip title={isSelf ? 'Không thể ẩn bài của bạn' : 'Ẩn đánh giá'}>
                 <Button
-                  title={isSelf ? 'Không thể từ chối bài của bạn' : 'Ẩn / Từ chối đánh giá'}
-                  aria-label="Ẩn / Từ chối đánh giá"
+                  title={isSelf ? 'Không thể ẩn bài của bạn' : 'Ẩn đánh giá'}
+                  aria-label="Ẩn đánh giá"
                   type="text"
                   shape="circle"
                   disabled={isSelf}
@@ -447,7 +447,7 @@ export const AdminReviewsPage: React.FC = () => {
             style={{ background: '#f6ffed', border: '1px solid #b7eb8f' }}
           >
             <Statistic
-              title="Đã duyệt"
+              title="Đang hiện"
               value={displayStats.approved}
               styles={{ content: { color: '#52c41a' } }}
             />
@@ -460,7 +460,7 @@ export const AdminReviewsPage: React.FC = () => {
             style={{ background: '#fff2f0', border: '1px solid #ffccc7' }}
           >
             <Statistic
-              title="Đã từ chối"
+              title="Đang ẩn"
               value={displayStats.rejected}
               styles={{ content: { color: '#ff4d4f' } }}
             />
@@ -486,8 +486,8 @@ export const AdminReviewsPage: React.FC = () => {
                 </span>
               ),
             },
-            { key: 'APPROVED', label: 'Đã duyệt' },
-            { key: 'REJECTED', label: 'Bị từ chối / Ẩn' },
+            { key: 'APPROVED', label: 'Hiện' },
+            { key: 'REJECTED', label: 'Ẩn' },
           ]}
         />
 

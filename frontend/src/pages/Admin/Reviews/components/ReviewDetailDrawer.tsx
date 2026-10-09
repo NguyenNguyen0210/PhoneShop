@@ -66,8 +66,8 @@ export const ReviewDetailDrawer: React.FC<ReviewDetailDrawerProps> = ({
 
   const statusTag = {
     PENDING: <Tag color="warning">Chờ duyệt</Tag>,
-    APPROVED: <Tag color="success">Đã duyệt</Tag>,
-    REJECTED: <Tag color="error">Bị từ chối / Ẩn</Tag>,
+    APPROVED: <Tag color="success">Hiện</Tag>,
+    REJECTED: <Tag color="error">Ẩn</Tag>,
   }[review.status || 'PENDING'];
 
   const replies = Array.isArray(review.replies) ? review.replies : [];
