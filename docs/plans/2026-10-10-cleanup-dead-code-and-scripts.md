@@ -19,7 +19,7 @@
 - Delete: `frontend/src/pages/Admin/Dashboard/AdminDashboard.tsx`
 - Delete: `frontend/src/pages/storefront/Products/ProductDetailPage.tsx`
 
-- [ ] **Step 1: Cập nhật import trong `AppRoutes.tsx`**
+- [x] **Step 1: Cập nhật import trong `AppRoutes.tsx`**
 Trong `frontend/src/routes/AppRoutes.tsx`:
 Đổi dòng:
 ```tsx
@@ -30,14 +30,14 @@ Thành:
 import { AdminDashboard } from '../pages/Admin/Dashboard/AdminDashboardPage';
 ```
 
-- [ ] **Step 2: Xóa các file dead code và shim thừa**
+- [x] **Step 2: Xóa các file dead code và shim thừa**
 Xóa các file:
 - `frontend/src/components/admin/AdminSidebar.tsx`
 - `frontend/src/components/admin/__tests__/AdminSidebar.spec.tsx`
 - `frontend/src/pages/Admin/Dashboard/AdminDashboard.tsx`
 - `frontend/src/pages/storefront/Products/ProductDetailPage.tsx`
 
-- [ ] **Step 3: Kiểm tra linter và commit**
+- [x] **Step 3: Kiểm tra linter và commit**
 Run: `npx oxlint src` trong `frontend`
 ```bash
 git add -A frontend/
@@ -53,13 +53,13 @@ git commit -m "refactor(frontend): remove unused AdminSidebar, test, and legacy 
 - Delete: `backend/test/pagination_verification.ts`
 - Delete: `backend/test/wishlist_verification.ts`
 
-- [ ] **Step 1: Xóa các script kiểm tra thủ công**
+- [x] **Step 1: Xóa các script kiểm tra thủ công**
 Xóa các file:
 - `backend/test/seed_verification.ts`
 - `backend/test/pagination_verification.ts`
 - `backend/test/wishlist_verification.ts`
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 ```bash
 git add -A backend/test/
 git commit -m "chore(backend): remove obsolete verification scripts"
@@ -73,7 +73,7 @@ git commit -m "chore(backend): remove obsolete verification scripts"
 - Verify: `frontend/`
 - Verify: `backend/`
 
-- [ ] **Step 1: Chạy toàn bộ linter và typecheck**
+- [x] **Step 1: Chạy toàn bộ linter và typecheck**
 Run: `npx oxlint src` và `npx tsc --noEmit` trong `frontend`
 Run: `npm run build` trong `frontend`
 Expected: 0 errors, build thành công.
