@@ -26,7 +26,7 @@ import { OAuthCallbackPage } from '../pages/storefront/Auth/OAuthCallbackPage';
 import { ResetPasswordPage } from '../pages/storefront/Auth/ResetPasswordPage';
 
 // Admin Pages
-import { AdminDashboard } from '../pages/Admin/Dashboard/AdminDashboard';
+import { AdminDashboard } from '../pages/Admin/Dashboard/AdminDashboardPage';
 import { AdminProductsPage } from '../pages/Admin/Products/AdminProductsPage';
 import { AdminBrandsPage } from '../pages/Admin/Brands/AdminBrandsPage';
 import { AdminSuppliersPage } from '../pages/Admin/Suppliers/AdminSuppliersPage';
