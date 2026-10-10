@@ -159,8 +159,8 @@ describe('HomePage URL Params & Auto-Scroll Synchronization', () => {
     expect(screen.queryByRole('heading', { level: 3, name: 'Samsung Galaxy S24' })).toBeNull();
 
     // Apple brand button should be active (contains bg-blue-50)
-    const appleButton = screen.getByRole('button', { name: /^AppleApple$/i });
-    expect(appleButton.className).toContain('bg-blue-50');
+    const appleButtons = screen.getAllByRole('button', { name: /Apple/i });
+    expect(appleButtons.some((btn) => btn.className.includes('bg-blue-50'))).toBe(true);
 
     // scrollIntoView should have been triggered
     expect(scrollIntoViewMock).toHaveBeenCalledWith({
@@ -183,8 +183,8 @@ describe('HomePage URL Params & Auto-Scroll Synchronization', () => {
     expect(screen.queryByRole('heading', { level: 3, name: 'iPhone 15 Pro' })).toBeNull();
     expect(screen.queryByRole('heading', { level: 3, name: 'iPad Pro 11 M4' })).toBeNull();
 
-    const samsungButton = screen.getByRole('button', { name: /Samsung/i });
-    expect(samsungButton.className).toContain('bg-blue-50');
+    const samsungButtons = screen.getAllByRole('button', { name: /Samsung/i });
+    expect(samsungButtons.some((btn) => btn.className.includes('bg-blue-50'))).toBe(true);
 
     expect(scrollIntoViewMock).toHaveBeenCalledWith({
       behavior: 'smooth',

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { productService } from '../../../services/productService';
 import { flashSaleService } from '../../../services/flashSaleService';
+import { brandService } from '../../../services/brandService';
 import type { Product } from '../../../types';
 import { ProductCard } from '../../../components/storefront/ProductCard';
 import { FlashSaleSection } from '../../../components/storefront/FlashSaleSection';
@@ -21,6 +22,8 @@ import {
 import { StorefrontPagination } from '../../../components/storefront/StorefrontPagination';
 import { HeroBannerShowcase } from '../../../components/storefront/HeroBannerShowcase';
 import { useCatalogStore } from '../../../stores/useCatalogStore';
+
+const DEFAULT_FEATURED_BRANDS = ['apple', 'samsung', 'xiaomi', 'oppo', 'vivo', 'realme', 'honor', 'oneplus'];
 
 export const HomePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -73,6 +76,23 @@ export const HomePage: React.FC = () => {
 
   const [loading, setLoading] = useState<boolean>(!hasLoaded);
   const [showMobileFilter, setShowMobileFilter] = useState<boolean>(false);
+  const [featuredBrandSlugs, setFeaturedBrandSlugs] = useState<string[]>(DEFAULT_FEATURED_BRANDS);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+
+  const activeBrandList = useMemo(() => {
+    if (selectedBrands.length > 0) return selectedBrands;
+    if (selectedBrand && selectedBrand !== 'all') return [selectedBrand];
+    return [];
+  }, [selectedBrands, selectedBrand]);
+
+  const featuredBrandsList = useMemo(() => {
+    return brands.filter((b) => {
+      const slug = (b.slug || b.name || '').toLowerCase();
+      return featuredBrandSlugs.some(
+        (f) => f.toLowerCase() === slug || slug.includes(f.toLowerCase())
+      );
+    });
+  }, [brands, featuredBrandSlugs]);
 
   const lastScrolledParamsRef = useRef<string | null>(
     (() => {
@@ -96,7 +116,9 @@ export const HomePage: React.FC = () => {
           b.name.toLowerCase() === brandParam.toLowerCase() ||
           b.slug?.toLowerCase() === brandParam.toLowerCase()
       );
-      setSelectedBrand(matchedBrand ? matchedBrand.name : brandParam);
+      const canonical = matchedBrand ? matchedBrand.name : brandParam;
+      setSelectedBrand(canonical);
+      setSelectedBrands([canonical]);
     }
 
     const isInitialOrPush = navigationType !== 'POP' || location.key === 'default';
@@ -129,13 +151,17 @@ export const HomePage: React.FC = () => {
       productService.getProducts({ limit: 100 }),
       productService.getBrands(),
       flashSaleService.getActiveCampaign().catch(() => null),
+      brandService.getFeatured().catch(() => DEFAULT_FEATURED_BRANDS),
     ])
-      .then(([prodRes, brandsRes, flashSaleRes]) => {
+      .then(([prodRes, brandsRes, flashSaleRes, featuredRes]) => {
         setCatalogData({
           products: prodRes.items || [],
           brands: Array.isArray(brandsRes) ? brandsRes : [],
           activeFlashSale: flashSaleRes || null,
         });
+        if (Array.isArray(featuredRes) && featuredRes.length > 0) {
+          setFeaturedBrandSlugs(featuredRes);
+        }
       })
       .catch((err) => {
         console.error('Failed to load catalog from database:', err);
@@ -166,7 +192,42 @@ export const HomePage: React.FC = () => {
   };
 
   const handleSelectBrand = (brandName: string) => {
-    setSelectedBrand(brandName);
+    if (brandName === 'all') {
+      setSelectedBrand('all');
+      setSelectedBrands([]);
+    } else {
+      const isCurrentlySelected = activeBrandList.some(
+        (b) => b.toLowerCase() === brandName.toLowerCase()
+      );
+      if (isCurrentlySelected && activeBrandList.length === 1) {
+        setSelectedBrand('all');
+        setSelectedBrands([]);
+      } else {
+        setSelectedBrand(brandName);
+        setSelectedBrands([brandName]);
+      }
+    }
+    resetPageToFirst();
+  };
+
+  const handleToggleBrand = (brandName: string) => {
+    const isCurrentlySelected = activeBrandList.some(
+      (b) => b.toLowerCase() === brandName.toLowerCase()
+    );
+    let next: string[];
+    if (isCurrentlySelected) {
+      next = activeBrandList.filter(
+        (b) => b.toLowerCase() !== brandName.toLowerCase()
+      );
+    } else {
+      next = [...activeBrandList, brandName];
+    }
+    setSelectedBrands(next);
+    if (next.length === 0) {
+      setSelectedBrand('all');
+    } else {
+      setSelectedBrand(next[0]);
+    }
     resetPageToFirst();
   };
 
@@ -256,7 +317,7 @@ export const HomePage: React.FC = () => {
   };
 
   const hasActiveFilters =
-    selectedBrand !== 'all' ||
+    activeBrandList.length > 0 ||
     priceRange[0] > 0 ||
     priceRange[1] < 50000000 ||
     selectedStorages.length > 0 ||
@@ -274,6 +335,7 @@ export const HomePage: React.FC = () => {
 
   const resetFilters = () => {
     resetStoreFilters();
+    setSelectedBrands([]);
     setSearchParams((prev) => {
       if (!prev.has('page')) return prev;
       const next = new URLSearchParams(prev);
@@ -340,10 +402,15 @@ export const HomePage: React.FC = () => {
 
     const filtered = products.filter((p) => {
       // Brand filter
-      if (selectedBrand !== 'all') {
-        const brandMatch =
-          p.brand?.name?.toLowerCase() === selectedBrand.toLowerCase() ||
-          (p.brandId && p.brandId.toLowerCase() === selectedBrand.toLowerCase());
+      if (activeBrandList.length > 0) {
+        const brandMatch = activeBrandList.some((brandName) => {
+          const lower = brandName.toLowerCase();
+          return (
+            p.brand?.name?.toLowerCase() === lower ||
+            (p.brand?.slug && p.brand.slug.toLowerCase() === lower) ||
+            (p.brandId && p.brandId.toLowerCase() === lower)
+          );
+        });
         if (!brandMatch) return false;
       }
 
@@ -486,7 +553,7 @@ export const HomePage: React.FC = () => {
     return filtered;
   }, [
     products,
-    selectedBrand,
+    activeBrandList,
     searchKeyword,
     priceRange,
     selectedStorages,
@@ -570,7 +637,7 @@ export const HomePage: React.FC = () => {
               type="button"
               onClick={() => handleSelectBrand('all')}
               className={`h-11 min-w-[112px] px-4 rounded-xl text-[13px] transition-all cursor-pointer shrink-0 flex items-center justify-center gap-2 border ${
-                selectedBrand === 'all'
+                activeBrandList.length === 0
                   ? 'border-blue-600 bg-blue-50 text-blue-600 font-semibold shadow-xs'
                   : 'bg-white border-slate-200 text-slate-700 font-medium hover:border-blue-300 hover:bg-blue-50/50'
               }`}
@@ -579,8 +646,12 @@ export const HomePage: React.FC = () => {
               <span>Tất cả</span>
             </button>
 
-            {brands.map((b) => {
-              const isSelected = selectedBrand.toLowerCase() === b.name.toLowerCase();
+            {featuredBrandsList.map((b) => {
+              const isSelected = activeBrandList.some(
+                (brandName) =>
+                  brandName.toLowerCase() === b.name.toLowerCase() ||
+                  (b.slug && brandName.toLowerCase() === b.slug.toLowerCase())
+              );
 
               return (
                 <button
@@ -611,7 +682,10 @@ export const HomePage: React.FC = () => {
           {/* Left Column: Filter Sidebar (Desktop) */}
           <div className="hidden lg:block w-72 shrink-0 sticky top-24 self-start">
             <ProductFilterSidebar
-              showBrands={false}
+              showBrands={true}
+              brands={brands}
+              selectedBrands={activeBrandList}
+              onToggleBrand={handleToggleBrand}
               priceRange={priceRange}
               onPriceRangeChange={handlePriceRangeChange}
               selectedStorages={selectedStorages}
@@ -740,7 +814,10 @@ export const HomePage: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto p-4">
               <ProductFilterSidebar
-                showBrands={false}
+                showBrands={true}
+                brands={brands}
+                selectedBrands={activeBrandList}
+                onToggleBrand={handleToggleBrand}
                 priceRange={priceRange}
                 onPriceRangeChange={handlePriceRangeChange}
                 selectedStorages={selectedStorages}

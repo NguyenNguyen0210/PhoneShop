@@ -170,6 +170,20 @@ describe('ProductFilterSidebar', () => {
     expect(onToggleBrand).toHaveBeenCalledWith('Samsung');
   });
 
+  it('renders brand options as button chips with active styling when selected', () => {
+    render(
+      <ProductFilterSidebar
+        {...defaultProps}
+        selectedBrands={['Apple']}
+      />
+    );
+    const appleBtn = screen.getByText('Apple').closest('button');
+    const samsungBtn = screen.getByText('Samsung').closest('button');
+
+    expect(appleBtn?.className).toContain('border-blue-600 bg-blue-50 text-blue-700 shadow-xs font-semibold');
+    expect(samsungBtn?.className).toContain('border-slate-200 bg-white');
+  });
+
   it('collapses and expands accordion section on title click', () => {
     render(<ProductFilterSidebar {...defaultProps} />);
     expect(screen.getByText('Titan')).toBeDefined();

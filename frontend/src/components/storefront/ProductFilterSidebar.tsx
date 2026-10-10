@@ -396,36 +396,32 @@ export const ProductFilterSidebar: React.FC<ProductFilterSidebarProps> = ({
           isOpen={Boolean(openSections.brands)}
           onToggle={() => toggleSection('brands')}
         >
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+          <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
             {brands.map((b) => {
               const checked = selectedBrands.some(
                 (brandName) =>
                   brandName.toLowerCase() === b.name.toLowerCase() ||
-                  brandName.toLowerCase() === b.slug.toLowerCase()
+                  (b.slug && brandName.toLowerCase() === b.slug.toLowerCase())
               );
               return (
-                <label
+                <button
                   key={b.id || b.slug}
+                  type="button"
                   onClick={() => onToggleBrand?.(b.name)}
-                  className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer hover:text-blue-600 select-none transition-colors"
+                  className={`flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-medium border transition-all text-left cursor-pointer ${
+                    checked
+                      ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-xs font-semibold'
+                      : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50 text-slate-700'
+                  }`}
                 >
-                  <div
-                    className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                      checked
-                        ? 'bg-blue-600 border-blue-600 text-white'
-                        : 'border-slate-300 bg-white'
-                    }`}
-                  >
-                    {checked && <Check className="w-3 h-3 stroke-[3]" />}
-                  </div>
                   <BrandLogo
                     name={b.name}
                     slug={b.slug}
                     logoUrl={b.logoUrl || b.logo}
                     isSelected={checked}
                   />
-                  <span className="font-medium">{b.name}</span>
-                </label>
+                  <span className="truncate">{b.name}</span>
+                </button>
               );
             })}
           </div>
