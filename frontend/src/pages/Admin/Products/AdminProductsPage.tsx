@@ -37,6 +37,7 @@ import { productService } from '../../../services/productService';
 import { inventoryService } from '../../../services/inventoryService';
 import { ImageUploadDragger } from '../../../components/admin/ImageUploadDragger';
 import { ProductEditModal } from './components/ProductEditModal';
+import { ProductDetailDrawer } from './components/ProductDetailDrawer';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 import type { Product, Brand, Category, ProductVariant } from '../../../types';
 
@@ -56,6 +57,8 @@ export const AdminProductsPage: React.FC = () => {
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editModalInitialTab, setEditModalInitialTab] = useState('general');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [detailProductId, setDetailProductId] = useState<string | null>(null);
+  const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
@@ -722,18 +725,18 @@ export const AdminProductsPage: React.FC = () => {
       align: 'right',
       render: (_, record) => (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-          <Tooltip title="Xem ngoài web">
+          <Tooltip title="Xem chi tiết sản phẩm">
             <Button
               size="small"
               type="text"
               icon={<EyeOutlined />}
               onClick={() => {
-                const url = `/products/${record.slug || record.id}`;
-                window.open(url, '_blank');
+                setDetailProductId(record.id);
+                setIsDetailDrawerOpen(true);
               }}
               style={{ color: '#64748b', borderRadius: 6 }}
-              aria-label="Xem sản phẩm ngoài storefront"
-              title="Xem ngoài web"
+              aria-label="Xem chi tiết"
+              title="Xem chi tiết"
             />
           </Tooltip>
           <Tooltip title="Chỉnh sửa sản phẩm">
@@ -1421,6 +1424,21 @@ export const AdminProductsPage: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Drawer: View Product Details */}
+      <ProductDetailDrawer
+        open={isDetailDrawerOpen}
+        productId={detailProductId}
+        onClose={() => {
+          setIsDetailDrawerOpen(false);
+          setDetailProductId(null);
+        }}
+        onOpenEdit={(prodId) => {
+          setEditingProductId(prodId);
+          setEditModalInitialTab('general');
+          setIsEditModalOpen(true);
+        }}
+      />
 
       {/* Modal: Edit Product with 3 tabs */}
       <ProductEditModal
