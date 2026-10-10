@@ -11,9 +11,15 @@ export const brandService = {
   },
 
   async getFeatured(): Promise<string[]> {
-    const response = await apiClient.get('/brands/featured');
-    const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : [];
+    try {
+      const response = await apiClient.get('/brands/featured');
+      const data = response.data?.data ?? response.data;
+      return Array.isArray(data)
+        ? data
+        : ['apple', 'samsung', 'xiaomi', 'oppo', 'vivo', 'realme', 'honor', 'oneplus'];
+    } catch {
+      return ['apple', 'samsung', 'xiaomi', 'oppo', 'vivo', 'realme', 'honor', 'oneplus'];
+    }
   },
 
   async updateFeatured(slugs: string[]): Promise<string[]> {
