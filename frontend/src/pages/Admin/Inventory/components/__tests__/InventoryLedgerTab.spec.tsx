@@ -240,6 +240,10 @@ describe('InventoryLedgerTab', () => {
     vi.mocked(inventoryService.getLedger).mockResolvedValue(mockLedgerData as any);
 
     const refreshBtn = screen.getByRole('button', { name: /Làm mới/i });
+    await waitFor(() => {
+      expect(refreshBtn.classList.contains('ant-btn-loading')).toBe(false);
+    });
+
     fireEvent.click(refreshBtn);
 
     await waitFor(() => {
