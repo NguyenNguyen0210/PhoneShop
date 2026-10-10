@@ -1,7 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { AuthService } from '../../src/modules/auth/auth.service';
 import { AuthController } from '../../src/modules/auth/auth.controller';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 
@@ -97,12 +97,26 @@ describe('Auth Password Reset & Forgot Password Unit Tests', () => {
       );
     });
 
-    it('should return success and NOT send email when user does not exist (anti-enumeration)', async () => {
+    it('should throw NotFoundException when user does not exist', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
-      const res = await authService.forgotPassword({ email: 'nonexistent@example.com' });
+      await expect(
+        authService.forgotPassword({ email: 'nonexistent@example.com' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockPrisma.passwordResetToken.create).not.toHaveBeenCalled();
+      expect(mockEmailService.sendPasswordResetEmail).not.toHaveBeenCalled();
+    });
 
-      expect(res.success).toBe(true);
+    it('should throw BadRequestException when user account is not ACTIVE', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-uuid-inactive',
+        email: 'inactive@example.com',
+        status: 'LOCKED',
+      });
+
+      await expect(
+        authService.forgotPassword({ email: 'inactive@example.com' }),
+      ).rejects.toThrow(BadRequestException);
       expect(mockPrisma.passwordResetToken.create).not.toHaveBeenCalled();
       expect(mockEmailService.sendPasswordResetEmail).not.toHaveBeenCalled();
     });

@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  NotFoundException,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -407,8 +408,6 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    // AUDIT: uniform response — never reveal whether an email exists or is
-    // locked. All branches return the identical payload (no 404/400 oracle).
     const genericResponse = {
       success: true,
       message:
@@ -423,14 +422,18 @@ export class AuthService {
       this.logger.warn(
         `Password reset requested for non-existent email: "${normalizedEmail}".`,
       );
-      return genericResponse;
+      throw new NotFoundException(
+        'Địa chỉ email này chưa được đăng ký tài khoản trong hệ thống.',
+      );
     }
 
     if (user.status !== 'ACTIVE') {
       this.logger.warn(
         `Password reset requested for inactive account: "${normalizedEmail}".`,
       );
-      return genericResponse;
+      throw new BadRequestException(
+        'Tài khoản liên kết với email này đã bị khóa hoặc chưa được kích hoạt.',
+      );
     }
 
     // Invalidate existing unused tokens for this user
