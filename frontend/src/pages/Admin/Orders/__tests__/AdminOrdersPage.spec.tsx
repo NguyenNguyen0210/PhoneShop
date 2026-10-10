@@ -4,7 +4,6 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { MemoryRouter } from 'react-router-dom';
 import { AdminOrdersPage } from '../AdminOrdersPage';
 import { orderService } from '../../../../services/orderService';
-import { paymentService } from '../../../../services/paymentService';
 import type { Order } from '../../../../types';
 
 beforeAll(() => {
