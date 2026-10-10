@@ -70,6 +70,12 @@ export const paymentService = {
     return response.data?.data ?? response.data;
   },
 
+  async getPaymentsByOrder(orderId: string): Promise<Payment[]> {
+    const response = await apiClient.get(`/payments/order/${orderId}`);
+    const data = response.data?.data ?? response.data;
+    return Array.isArray(data) ? data : [];
+  },
+
   async createVnpayUrl(data: {
     orderId: string;
     bankCode?: string;

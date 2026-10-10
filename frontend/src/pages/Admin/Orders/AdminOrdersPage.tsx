@@ -15,6 +15,7 @@ import {
   Tabs,
   Input,
   Dropdown,
+  Tooltip,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
@@ -30,8 +31,10 @@ import {
   DownOutlined,
 } from '@ant-design/icons';
 import { orderService } from '../../../services/orderService';
-import type { Order, OrderStatus } from '../../../types';
+import { paymentService } from '../../../services/paymentService';
+import type { Order, OrderStatus, Payment } from '../../../types';
 import { ShippingDispatchModal } from './components/ShippingDispatchModal';
+import { ReconciliationModal } from '../Payments/components/ReconciliationModal';
 
 const { Title, Text } = Typography;
 
@@ -152,6 +155,65 @@ export const AdminOrdersPage: React.FC = () => {
   const [total, setTotal] = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<string>(urlStatus);
   const [searchKeyword, setSearchKeyword] = useState<string>(urlSearch);
+
+  const [reconcileModalOpen, setReconcileModalOpen] = useState(false);
+  const [reconcilePayment, setReconcilePayment] = useState<Payment | null>(null);
+
+  const handleOpenReconcile = async (order: Order) => {
+    let payment = order.payments?.[0];
+    if (!payment || !payment.id) {
+      try {
+        const payments = await paymentService.getPaymentsByOrder(order.id);
+        payment = payments?.[0];
+      } catch (err) {
+        console.error('Failed to fetch payments for order', err);
+      }
+    }
+
+    const enrichedPayment: Payment = {
+      ...(payment || {}),
+      id: payment?.id || '',
+      orderId: order.id,
+      amount: payment?.amount || order.totalAmount,
+      status: payment?.status || 'PENDING',
+      method: payment?.method || order.paymentMethod,
+      order: {
+        orderNumber: order.orderNumber,
+        user: {
+          firstName: order.customerName,
+          lastName: '',
+          email: '',
+        },
+      },
+      createdAt: payment?.createdAt || order.createdAt,
+      updatedAt: payment?.updatedAt || order.createdAt,
+    } as Payment;
+
+    if (!enrichedPayment.id) {
+      message.error('Không tìm thấy bản ghi thanh toán chờ đối soát của đơn này.');
+      return;
+    }
+
+    setReconcilePayment(enrichedPayment);
+    setReconcileModalOpen(true);
+  };
+
+  const handleReconcileSuccess = () => {
+    message.success('Đối soát và xác nhận thanh toán thành công!');
+    setReconcileModalOpen(false);
+    void loadOrders();
+    if (selectedOrder) {
+      setSelectedOrder((prev) =>
+        prev
+          ? {
+              ...prev,
+              paymentStatus: 'PAID',
+              status: prev.status === 'PENDING' ? 'CONFIRMED' : prev.status,
+            }
+          : null,
+      );
+    }
+  };
 
   // Sync filter states if URL params change
   useEffect(() => {
@@ -450,12 +512,43 @@ export const AdminOrdersPage: React.FC = () => {
     {
       title: 'Thanh toán',
       key: 'payment',
-      render: (_, record) => (
-        <Space direction="vertical" size={2}>
-          <Tag color="geekblue">{formatPaymentMethod(record.paymentMethod)}</Tag>
-          {getPaymentStatusTag(record.paymentStatus)}
-        </Space>
-      ),
+      render: (_, record) => {
+        const isVietQr =
+          record.paymentMethod === 'BANK_TRANSFER' || record.paymentMethod === 'VIETQR';
+        return (
+          <Space direction="vertical" size={2}>
+            <Tag color="geekblue">{formatPaymentMethod(record.paymentMethod)}</Tag>
+            {getPaymentStatusTag(record.paymentStatus)}
+            {isVietQr && record.paymentStatus === 'PENDING' && (
+              record.customerReportedTransfer ? (
+                <Tooltip
+                  title={
+                    record.customerReportedAt
+                      ? `Khách báo đã chuyển khoản lúc ${new Date(record.customerReportedAt).toLocaleString('vi-VN')}`
+                      : 'Khách đã bấm báo chuyển khoản trên web'
+                  }
+                >
+                  <Tag
+                    color="cyan"
+                    icon={<CheckCircleOutlined />}
+                    style={{ fontWeight: 600, fontSize: 11, cursor: 'pointer' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenReconcile(record);
+                    }}
+                  >
+                    Khách đã báo CK
+                  </Tag>
+                </Tooltip>
+              ) : (
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                  Chưa báo CK
+                </Text>
+              )
+            )}
+          </Space>
+        );
+      },
     },
     {
       title: 'Tổng thanh toán',
@@ -734,8 +827,36 @@ export const AdminOrdersPage: React.FC = () => {
                 {selectedOrder.shippingAddress}
               </Descriptions.Item>
               <Descriptions.Item label="Phương thức thanh toán">
-                <Tag color="geekblue">{formatPaymentMethod(selectedOrder.paymentMethod)}</Tag>
-                {getPaymentStatusTag(selectedOrder.paymentStatus)}
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                  <Space>
+                    <Tag color="geekblue">{formatPaymentMethod(selectedOrder.paymentMethod)}</Tag>
+                    {getPaymentStatusTag(selectedOrder.paymentStatus)}
+                  </Space>
+                  {(selectedOrder.paymentMethod === 'BANK_TRANSFER' ||
+                    selectedOrder.paymentMethod === 'VIETQR') &&
+                    selectedOrder.paymentStatus === 'PENDING' && (
+                      <div style={{ marginTop: 4 }}>
+                        {selectedOrder.customerReportedTransfer && (
+                          <div style={{ marginBottom: 6 }}>
+                            <Tag color="cyan" icon={<CheckCircleOutlined />}>
+                              Khách đã báo chuyển khoản
+                              {selectedOrder.customerReportedAt &&
+                                ` (${new Date(selectedOrder.customerReportedAt).toLocaleTimeString('vi-VN')})`}
+                            </Tag>
+                          </div>
+                        )}
+                        <Button
+                          type="primary"
+                          size="small"
+                          style={{ background: '#16a34a', borderColor: '#16a34a' }}
+                          icon={<CheckCircleOutlined />}
+                          onClick={() => handleOpenReconcile(selectedOrder)}
+                        >
+                          Xác nhận đã nhận tiền CK (VietQR)
+                        </Button>
+                      </div>
+                    )}
+                </Space>
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái đơn hàng">
                 <Space>
@@ -1011,6 +1132,16 @@ export const AdminOrdersPage: React.FC = () => {
             }
           }
         }}
+      />
+
+      <ReconciliationModal
+        open={reconcileModalOpen}
+        payment={reconcilePayment}
+        onClose={() => {
+          setReconcileModalOpen(false);
+          setReconcilePayment(null);
+        }}
+        onSuccess={handleReconcileSuccess}
       />
     </div>
   );
