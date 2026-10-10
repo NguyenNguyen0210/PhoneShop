@@ -215,4 +215,38 @@ describe('AdminSettingsPage', () => {
       );
     });
   });
+
+  it('correctly handles response wrapped in .data and excludes group keys from updateAdminSettings payload', async () => {
+    vi.mocked(settingsService.getAdminSettings).mockResolvedValue({
+      data: mockGroupedSettings,
+    } as any);
+
+    render(<AdminSettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('SANDBOX1')).toBeDefined();
+    });
+
+    const saveButton = screen.getByRole('button', { name: /Lưu thay đổi/i });
+    const tmnInput = screen.getByDisplayValue('SANDBOX1');
+    fireEvent.change(tmnInput, { target: { value: 'NEWSANDBOX99' } });
+
+    await waitFor(() => {
+      expect(saveButton).toHaveProperty('disabled', false);
+    });
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(settingsService.updateAdminSettings).toHaveBeenCalled();
+    });
+
+    const sentItems = vi.mocked(settingsService.updateAdminSettings).mock.calls[0][0];
+    const sentKeys = sentItems.map((i) => i.key);
+    expect(sentKeys).not.toContain('payment');
+    expect(sentKeys).not.toContain('storage');
+    expect(sentKeys).not.toContain('email');
+    expect(sentKeys).not.toContain('general');
+    expect(sentKeys).toContain('VNPAY_TMN_CODE');
+  });
 });

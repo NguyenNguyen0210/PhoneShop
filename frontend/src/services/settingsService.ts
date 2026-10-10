@@ -50,33 +50,34 @@ export interface TestEmailPayload {
 
 export const settingsService = {
   async getAdminSettings(): Promise<GroupedSettings> {
-    const res = await apiClient.get<GroupedSettings>('/admin/settings');
-    return res.data;
+    const res = await apiClient.get<any>('/admin/settings');
+    const data = res.data?.data ?? res.data;
+    return data;
   },
 
   async updateAdminSettings(settings: SettingItem[]): Promise<{ success: boolean; message: string }> {
-    const res = await apiClient.patch<{ success: boolean; message: string }>('/admin/settings', { settings });
-    return res.data;
+    const res = await apiClient.patch<any>('/admin/settings', { settings });
+    return res.data?.data ?? res.data;
   },
 
   async testVietQr(payload: TestVietQrPayload): Promise<{ success: boolean; qrUrl: string }> {
-    const res = await apiClient.post<{ success: boolean; qrUrl: string }>('/admin/settings/test/vietqr', payload);
-    return res.data;
+    const res = await apiClient.post<any>('/admin/settings/test/vietqr', payload);
+    return res.data?.data ?? res.data;
   },
 
   async testStorage(payload: TestStoragePayload): Promise<{ success: boolean; message: string }> {
-    const res = await apiClient.post<{ success: boolean; message: string }>('/admin/settings/test/storage', payload);
-    return res.data;
+    const res = await apiClient.post<any>('/admin/settings/test/storage', payload);
+    return res.data?.data ?? res.data;
   },
 
   async testEmail(payload: TestEmailPayload): Promise<{ success: boolean; message: string }> {
-    const res = await apiClient.post<{ success: boolean; message: string }>('/admin/settings/test/email', payload);
-    return res.data;
+    const res = await apiClient.post<any>('/admin/settings/test/email', payload);
+    return res.data?.data ?? res.data;
   },
 
   async getPublicSettings(): Promise<PublicSettings> {
-    const res = await apiClient.get<PublicSettings>('/settings/public');
-    return res.data;
+    const res = await apiClient.get<any>('/settings/public');
+    return res.data?.data ?? res.data;
   },
 };
 

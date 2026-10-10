@@ -19,7 +19,7 @@ import {
   SaveOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
-import { settingsService, type SettingItem } from '../../../services/settingsService';
+import { settingsService, type SettingItem, type GroupedSettings } from '../../../services/settingsService';
 import { PaymentSettingsTab } from './components/PaymentSettingsTab';
 import { StorageSettingsTab } from './components/StorageSettingsTab';
 import { EmailSettingsTab } from './components/EmailSettingsTab';
@@ -38,6 +38,7 @@ const SECRET_KEYS = new Set([
   'VNPAY_HASH_SECRET',
   'CLOUDFLARE_R2_SECRET_ACCESS_KEY',
   'EMAIL_PASS',
+  'BREVO_API_KEY',
 ]);
 
 const KEY_TO_GROUP: Record<string, string> = {
@@ -64,12 +65,15 @@ const KEY_TO_GROUP: Record<string, string> = {
   EMAIL_USER: 'email',
   EMAIL_PASS: 'email',
   EMAIL_FROM: 'email',
+  EMAIL_PROVIDER: 'email',
+  BREVO_API_KEY: 'email',
 
   STORE_NAME: 'general',
   STORE_HOTLINE: 'general',
   STORE_EMAIL: 'general',
   STORE_ADDRESS: 'general',
   MAINTENANCE_MODE: 'general',
+  FEATURED_BRANDS: 'general',
 };
 
 export const AdminSettingsPage: React.FC = () => {
@@ -82,12 +86,15 @@ export const AdminSettingsPage: React.FC = () => {
   const fetchSettings = useCallback(async () => {
     setLoading(true);
     try {
-      const grouped = await settingsService.getAdminSettings();
+      const res = await settingsService.getAdminSettings();
+      const grouped: GroupedSettings = (res as any)?.data ?? res;
       const formValues: Record<string, any> = {};
 
-      if (grouped) {
-        for (const groupData of Object.values(grouped)) {
-          if (groupData && typeof groupData === 'object') {
+      if (grouped && typeof grouped === 'object') {
+        const groupKeys = ['payment', 'storage', 'email', 'general'];
+        for (const gKey of groupKeys) {
+          const groupData = (grouped as any)[gKey];
+          if (groupData && typeof groupData === 'object' && !Array.isArray(groupData)) {
             for (const [key, val] of Object.entries(groupData)) {
               if (BOOLEAN_KEYS.has(key)) {
                 formValues[key] = val === 'true' || val === true;
@@ -123,21 +130,23 @@ export const AdminSettingsPage: React.FC = () => {
       setSaving(true);
       const rawValues = form.getFieldsValue(true);
 
-      const itemsToUpdate: SettingItem[] = Object.entries(rawValues).map(([key, val]) => {
-        let valueStr = '';
-        if (BOOLEAN_KEYS.has(key)) {
-          valueStr = val ? 'true' : 'false';
-        } else if (val !== undefined && val !== null) {
-          valueStr = String(val);
-        }
+      const itemsToUpdate: SettingItem[] = Object.entries(rawValues)
+        .filter(([key]) => key in KEY_TO_GROUP || key.startsWith('CUSTOM_'))
+        .map(([key, val]) => {
+          let valueStr = '';
+          if (BOOLEAN_KEYS.has(key)) {
+            valueStr = val ? 'true' : 'false';
+          } else if (val !== undefined && val !== null) {
+            valueStr = String(val);
+          }
 
-        return {
-          key,
-          value: valueStr,
-          group: KEY_TO_GROUP[key] || 'general',
-          isSecret: SECRET_KEYS.has(key),
-        };
-      });
+          return {
+            key,
+            value: valueStr,
+            group: KEY_TO_GROUP[key] || 'general',
+            isSecret: SECRET_KEYS.has(key),
+          };
+        });
 
       await settingsService.updateAdminSettings(itemsToUpdate);
 
