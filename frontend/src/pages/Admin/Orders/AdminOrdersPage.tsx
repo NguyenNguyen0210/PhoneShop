@@ -519,7 +519,7 @@ export const AdminOrdersPage: React.FC = () => {
           <Space direction="vertical" size={2}>
             <Tag color="geekblue">{formatPaymentMethod(record.paymentMethod)}</Tag>
             {getPaymentStatusTag(record.paymentStatus)}
-            {isVietQr && record.paymentStatus === 'PENDING' && (
+            {record.paymentStatus === 'PENDING' && (
               record.customerReportedTransfer ? (
                 <Tooltip
                   title={
@@ -540,11 +540,11 @@ export const AdminOrdersPage: React.FC = () => {
                     Khách đã báo CK
                   </Tag>
                 </Tooltip>
-              ) : (
+              ) : isVietQr ? (
                 <Text type="secondary" style={{ fontSize: 11 }}>
                   Chưa báo CK
                 </Text>
-              )
+              ) : null
             )}
           </Space>
         );
@@ -832,7 +832,8 @@ export const AdminOrdersPage: React.FC = () => {
                     <Tag color="geekblue">{formatPaymentMethod(selectedOrder.paymentMethod)}</Tag>
                     {getPaymentStatusTag(selectedOrder.paymentStatus)}
                   </Space>
-                  {(selectedOrder.paymentMethod === 'BANK_TRANSFER' ||
+                  {(selectedOrder.customerReportedTransfer ||
+                    selectedOrder.paymentMethod === 'BANK_TRANSFER' ||
                     selectedOrder.paymentMethod === 'VIETQR') &&
                     selectedOrder.paymentStatus === 'PENDING' && (
                       <div style={{ marginTop: 4 }}>

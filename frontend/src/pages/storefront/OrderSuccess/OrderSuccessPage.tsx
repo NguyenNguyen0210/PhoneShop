@@ -34,7 +34,19 @@ export const OrderSuccessPage: React.FC = () => {
   const [vietQrData, setVietQrData] = useState<VietQrData | null>(null);
   const [vietQrError, setVietQrError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [transferConfirmed, setTransferConfirmed] = useState(false);
+  const [transferConfirmed, setTransferConfirmed] = useState<boolean>(() => {
+    if (!id) return false;
+    const snapshotRaw = sessionStorage.getItem(`order_${id}`);
+    if (snapshotRaw) {
+      try {
+        const parsed = JSON.parse(snapshotRaw);
+        return Boolean(parsed.customerReportedTransfer);
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
   const [loading, setLoading] = useState(true);
   const [vnpayError, setVnpayError] = useState<string | null>(null);
   const [vnpayLoading, setVnpayLoading] = useState(false);
@@ -48,6 +60,9 @@ export const OrderSuccessPage: React.FC = () => {
       .then((data) => {
         if (data) {
           setOrder(data);
+          if (data.customerReportedTransfer) {
+            setTransferConfirmed(true);
+          }
         }
       })
       .catch(() => {
@@ -55,6 +70,12 @@ export const OrderSuccessPage: React.FC = () => {
       })
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (order?.customerReportedTransfer) {
+      setTransferConfirmed(true);
+    }
+  }, [order?.customerReportedTransfer]);
 
   useEffect(() => {
     // Backend stores VietQR as BANK_TRANSFER — accept both labels so the QR
@@ -92,11 +113,22 @@ export const OrderSuccessPage: React.FC = () => {
   };
 
   const handleReportTransfer = async () => {
-    const oid = order?.id || id;
+    const oid = order?.id || (order as any)?.orderId || id;
     if (!oid) return;
     try {
       await paymentService.reportTransfer(oid);
       setTransferConfirmed(true);
+      setOrder((prev) => (prev ? { ...prev, customerReportedTransfer: true } : prev));
+      if (id) {
+        const snapshotRaw = sessionStorage.getItem(`order_${id}`);
+        if (snapshotRaw) {
+          try {
+            const parsed = JSON.parse(snapshotRaw);
+            parsed.customerReportedTransfer = true;
+            sessionStorage.setItem(`order_${id}`, JSON.stringify(parsed));
+          } catch {}
+        }
+      }
     } catch (err: any) {
       notifyError(err, 'Không ghi nhận được. Bạn bấm lại giúp shop nhé.');
     }

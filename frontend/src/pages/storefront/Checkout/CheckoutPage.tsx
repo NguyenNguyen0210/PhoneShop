@@ -237,6 +237,7 @@ export const CheckoutPage: React.FC = () => {
       sessionStorage.setItem(
         `order_${orderId}`,
         JSON.stringify({
+          id: orderId,
           orderId,
           orderNumber,
           customerName,

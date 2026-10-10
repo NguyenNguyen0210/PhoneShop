@@ -75,4 +75,22 @@ describe('reportTransfer', () => {
     expect(result).toEqual(recent);
     expect(mockPrisma.paymentTransaction.create).not.toHaveBeenCalled();
   });
+
+  it('allows staff or admin to report transfer without matching userId', async () => {
+    const mockPrisma: any = {
+      order: {
+        findFirst: jest.fn().mockImplementation(() => Promise.resolve(pendingOrder())),
+        findUnique: jest.fn().mockImplementation(() => Promise.resolve(pendingOrder())),
+      },
+      paymentTransaction: {
+        findFirst: jest.fn().mockImplementation(() => Promise.resolve(null)),
+        create: jest.fn().mockImplementation((args: any) => Promise.resolve({ id: 'txn-1', ...args.data })),
+      },
+    };
+    const svc = buildService(mockPrisma);
+
+    const result: any = await svc.reportTransfer('ord-1', 'admin-id', 'ADMIN');
+    expect(result).toBeDefined();
+    expect(mockPrisma.paymentTransaction.create).toHaveBeenCalled();
+  });
 });

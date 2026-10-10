@@ -22,7 +22,7 @@ export class OrdersController {
   // ── USER ──────────────────────────────────────────────
 
   @Post('checkout')
-  @Roles(Role.USER, Role.ADMIN)
+  @Roles(Role.USER, Role.STAFF, Role.MANAGER, Role.ADMIN)
   @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({ summary: 'Checkout and create order from cart (idempotent via Idempotency-Key header)' })
   checkout(@CurrentUser() user: any, @Body() dto: CreateOrderDto) {
@@ -30,22 +30,22 @@ export class OrdersController {
   }
 
   @Get('my')
-  @Roles(Role.USER, Role.ADMIN)
+  @Roles(Role.USER, Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Get my orders' })
   findMyOrders(@CurrentUser() user: any) {
     return this.ordersService.findMyOrders(user.id);
   }
 
   @Get('my/:id')
-  @Roles(Role.USER, Role.ADMIN)
+  @Roles(Role.USER, Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Get my order detail' })
   findMyOrder(@CurrentUser() user: any, @Param('id') id: string) {
     return this.ordersService.findMyOrder(user.id, id);
   }
 
   @Put('my/:id/cancel')
-  @Roles(Role.USER, Role.ADMIN)
-  @ApiOperation({ summary: 'Cancel my order (USER)' })
+  @Roles(Role.USER, Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Cancel my order (USER/STAFF/MANAGER/ADMIN)' })
   cancelMyOrder(
     @CurrentUser() user: any,
     @Param('id') id: string,

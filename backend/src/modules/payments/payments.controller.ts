@@ -35,24 +35,28 @@ export class PaymentsController {
 
   @Post('vietqr/:orderId')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.USER, Role.STAFF, Role.ADMIN)
+  @Roles(Role.USER, Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Generate VietQR dynamic code for an order' })
   generateVietQr(
     @Param('orderId') orderId: string,
     @CurrentUser() user: any,
   ) {
-    const userId = user?.role === Role.ADMIN ? undefined : user?.id;
+    const isPrivileged =
+      user?.role === Role.ADMIN ||
+      user?.role === Role.MANAGER ||
+      user?.role === Role.STAFF;
+    const userId = isPrivileged ? undefined : user?.id;
     return this.paymentsService.generateVietQr(orderId, userId);
   }
 
   @Post('vietqr/:orderId/report-transfer')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.USER, Role.ADMIN)
+  @Roles(Role.USER, Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Customer reports bank transfer done (USER)' })
+  @ApiOperation({ summary: 'Customer reports bank transfer done (USER/STAFF/MANAGER/ADMIN)' })
   reportTransfer(@Param('orderId') orderId: string, @CurrentUser() user: any) {
-    return this.paymentsService.reportTransfer(orderId, user.id);
+    return this.paymentsService.reportTransfer(orderId, user?.id, user?.role);
   }
 
   // ── VNPAY GATEWAY ──────────────────────────────────────

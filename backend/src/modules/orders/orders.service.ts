@@ -727,10 +727,13 @@ export class OrdersService {
     const shippingAddress = o.address
       ? `${o.address.addressLine1}, ${o.address.ward ? o.address.ward + ', ' : ''}${o.address.district ? o.address.district + ', ' : ''}${o.address.city}`
       : '';
-    const primaryPayment = o.payments?.[0];
-    const reportedTxn = primaryPayment?.transactions?.find(
-      (t: any) => t.providerReference === 'CUSTOMER_REPORTED',
-    );
+    const reportedTxn = o.payments
+      ?.flatMap((p: any) => p.transactions || [])
+      ?.find((t: any) => t.providerReference === 'CUSTOMER_REPORTED');
+    const primaryPayment =
+      o.payments?.find((p: any) => p.status === 'PAID') ||
+      o.payments?.find((p: any) => p.status === 'PENDING' && (p.method === 'BANK_TRANSFER' || p.method === 'VIETQR')) ||
+      o.payments?.[0];
     const discount =
       o.discount ?? (o.discountAmount !== undefined ? Number(o.discountAmount) : 0);
     const notes = o.notes ?? o.customerNote ?? undefined;
@@ -754,7 +757,15 @@ export class OrdersService {
       where: { userId },
       include: {
         items: true,
-        payments: true,
+        payments: {
+          include: {
+            transactions: {
+              where: { providerReference: 'CUSTOMER_REPORTED' },
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+        },
         shipping: true,
         address: true,
       },
@@ -765,7 +776,10 @@ export class OrdersService {
 
   async findMyOrder(userId: string, id: string) {
     const order = await this.prisma.order.findFirst({
-      where: { id, userId },
+      where: {
+        userId,
+        OR: [{ id }, { orderNumber: id }],
+      },
       include: {
         items: {
           include: {
@@ -773,7 +787,15 @@ export class OrdersService {
             imeiDevice: true,
           },
         },
-        payments: true,
+        payments: {
+          include: {
+            transactions: {
+              where: { providerReference: 'CUSTOMER_REPORTED' },
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+        },
         address: true,
         shipping: true,
       },
@@ -842,10 +864,13 @@ export class OrdersService {
       const shippingAddress = o.address
         ? `${o.address.addressLine1}, ${o.address.ward ? o.address.ward + ', ' : ''}${o.address.district ? o.address.district + ', ' : ''}${o.address.city}`
         : '';
-      const primaryPayment = o.payments?.[0];
-      const reportedTxn = primaryPayment?.transactions?.find(
-        (t: any) => t.providerReference === 'CUSTOMER_REPORTED',
-      );
+      const reportedTxn = o.payments
+        ?.flatMap((p: any) => p.transactions || [])
+        ?.find((t: any) => t.providerReference === 'CUSTOMER_REPORTED');
+      const primaryPayment =
+        o.payments?.find((p: any) => p.status === 'PAID') ||
+        o.payments?.find((p: any) => p.status === 'PENDING' && (p.method === 'BANK_TRANSFER' || p.method === 'VIETQR')) ||
+        o.payments?.[0];
 
       return {
         ...o,
@@ -869,16 +894,47 @@ export class OrdersService {
   }
 
   async findOne(id: string) {
-    const order = await this.prisma.order.findUnique({
-      where: { id },
-      include: {
-        user: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } },
-        items: { include: { variant: { include: { product: true } }, imeiDevice: true } },
-        payments: { include: { transactions: true } },
-        address: true,
-        shipping: true,
-      },
-    });
+    const order =
+      (this.prisma.order.findFirst
+        ? await this.prisma.order.findFirst({
+            where: {
+              OR: [{ id }, { orderNumber: id }],
+            },
+            include: {
+              user: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } },
+              items: { include: { variant: { include: { product: true } }, imeiDevice: true } },
+              payments: {
+                include: {
+                  transactions: {
+                    where: { providerReference: 'CUSTOMER_REPORTED' },
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                  },
+                },
+              },
+              address: true,
+              shipping: true,
+            },
+          })
+        : null) ||
+      (await this.prisma.order.findUnique({
+        where: { id },
+        include: {
+          user: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } },
+          items: { include: { variant: { include: { product: true } }, imeiDevice: true } },
+          payments: {
+            include: {
+              transactions: {
+                where: { providerReference: 'CUSTOMER_REPORTED' },
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+              },
+            },
+          },
+          address: true,
+          shipping: true,
+        },
+      }));
     if (!order) throw new NotFoundException('Order not found');
 
     const customerName =
@@ -888,10 +944,13 @@ export class OrdersService {
     const shippingAddress = order.address
       ? `${order.address.addressLine1}, ${order.address.ward ? order.address.ward + ', ' : ''}${order.address.district ? order.address.district + ', ' : ''}${order.address.city}`
       : '';
-    const primaryPayment = order.payments?.[0];
-    const reportedTxn = primaryPayment?.transactions?.find(
-      (t: any) => t.providerReference === 'CUSTOMER_REPORTED',
-    );
+    const reportedTxn = order.payments
+      ?.flatMap((p: any) => p.transactions || [])
+      ?.find((t: any) => t.providerReference === 'CUSTOMER_REPORTED');
+    const primaryPayment =
+      order.payments?.find((p: any) => p.status === 'PAID') ||
+      order.payments?.find((p: any) => p.status === 'PENDING' && (p.method === 'BANK_TRANSFER' || p.method === 'VIETQR')) ||
+      order.payments?.[0];
 
     return {
       ...order,

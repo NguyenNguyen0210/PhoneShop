@@ -24,6 +24,7 @@ import {
   ImeiStatus,
   WarrantyStatus,
 } from '@prisma/client';
+import { Role } from '../../common/enums/role.enum';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
 
@@ -90,10 +91,19 @@ export class PaymentsService {
   // ============================================================
 
   async generateVietQr(orderId: string, userId?: string) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      include: { user: true, payments: true },
-    });
+    const order =
+      (this.prisma.order.findFirst
+        ? await this.prisma.order.findFirst({
+            where: {
+              OR: [{ id: orderId }, { orderNumber: orderId }],
+            },
+            include: { user: true, payments: true },
+          })
+        : null) ||
+      (await this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: { user: true, payments: true },
+      }));
 
     if (!order) {
       throw new NotFoundException('Order not found');
@@ -142,16 +152,48 @@ export class PaymentsService {
     };
   }
 
-  async reportTransfer(orderId: string, userId: string) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      include: { payments: true },
-    });
-    if (!order || order.userId !== userId) throw new NotFoundException('Order not found');
-    const pending = order.payments.find(
+  async reportTransfer(orderId: string, userId?: string, userRole?: string) {
+    const order =
+      (this.prisma.order.findFirst
+        ? await this.prisma.order.findFirst({
+            where: {
+              OR: [{ id: orderId }, { orderNumber: orderId }],
+            },
+            include: { payments: true },
+          })
+        : null) ||
+      (await this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: { payments: true },
+      }));
+    if (!order) throw new NotFoundException('Order not found');
+
+    const isPrivileged =
+      userRole === Role.ADMIN ||
+      userRole === Role.MANAGER ||
+      userRole === Role.STAFF;
+    if (!isPrivileged && userId && order.userId !== userId) {
+      throw new BadRequestException('Unauthorized order access');
+    }
+
+    let pending = order.payments.find(
       (p) => p.method === PaymentMethod.BANK_TRANSFER && p.status === PaymentStatus.PENDING,
     );
-    if (!pending) throw new BadRequestException('Đơn này không có khoản VietQR nào đang chờ đối soát');
+    if (!pending) {
+      pending = order.payments.find((p) => p.status === PaymentStatus.PENDING);
+    }
+    if (!pending) {
+      pending = await this.prisma.payment.create({
+        data: {
+          orderId: order.id,
+          method: PaymentMethod.BANK_TRANSFER,
+          status: PaymentStatus.PENDING,
+          amount: order.totalAmount,
+          provider: 'VIETQR',
+        },
+      });
+    }
+
     const recent = await this.prisma.paymentTransaction.findFirst({
       where: { paymentId: pending.id, providerReference: 'CUSTOMER_REPORTED' },
       orderBy: { createdAt: 'desc' },
