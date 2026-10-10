@@ -23,6 +23,7 @@ import {
 import { StorefrontPagination } from '../../../components/storefront/StorefrontPagination';
 import { HeroBannerShowcase } from '../../../components/storefront/HeroBannerShowcase';
 import { useCatalogStore } from '../../../stores/useCatalogStore';
+import { getBrandSoftTheme } from '../../../utils/brandTheme';
 
 const DEFAULT_FEATURED_BRANDS = ['apple', 'samsung', 'xiaomi', 'oppo', 'vivo', 'realme', 'honor', 'oneplus'];
 
@@ -664,6 +665,7 @@ export const HomePage: React.FC = () => {
                     brandName.toLowerCase() === b.name.toLowerCase() ||
                     (b.slug && brandName.toLowerCase() === b.slug.toLowerCase())
                 );
+                const theme = getBrandSoftTheme(b.slug || b.name);
 
                 return (
                   <button
@@ -672,8 +674,8 @@ export const HomePage: React.FC = () => {
                     onClick={() => handleSelectBrand(b.name)}
                     className={`h-11 min-w-[112px] px-4 rounded-xl text-[13px] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shrink-0 border shadow-xs ${
                       isSelected
-                        ? 'border-blue-600 bg-blue-50 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white font-bold shadow-md shadow-blue-500/25 -translate-y-0.5'
-                        : 'bg-white border-slate-200/90 text-slate-700 font-semibold hover:border-blue-400 hover:text-blue-600 hover:shadow-md hover:shadow-blue-500/10 hover:-translate-y-0.5'
+                        ? `border-blue-600 bg-blue-50 bg-gradient-to-r ${theme.activeGradient} text-white font-bold shadow-md shadow-blue-500/25 -translate-y-0.5`
+                        : `${theme.bg} ${theme.border} ${theme.text} ${theme.hover} ${theme.shadow} font-semibold hover:shadow-md hover:-translate-y-0.5`
                     }`}
                   >
                     <BrandLogo
