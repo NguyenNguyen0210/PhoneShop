@@ -14,22 +14,22 @@ export const SHOP_FAQ: FaqEntry[] = [
       'PhoneShop miễn phí giao hàng toàn quốc. Nội thành 1-2 ngày, tỉnh 2-4 ngày. Đơn giữ máy 15 phút sau khi đặt, quá hạn tự hủy giữ chỗ.',
   },
   {
-    keywords: ['thanh toán', 'vnpay', 'vietqr', 'cod', 'trả góp'],
+    keywords: ['thanh toán', 'vnpay', 'vietqr', 'cod'],
     question: 'Các hình thức thanh toán?',
     answer:
-      'Hỗ trợ COD, VietQR NAPAS 247 (quét mã theo đúng số tiền/nội dung), VNPay Sandbox (ký HMAC-SHA512, xử lý qua IPN). Trả góp qua đối tác, liên hệ CSKH để được tư vấn.',
+      'Hỗ trợ COD, VietQR NAPAS 247 (quét mã theo đúng số tiền/nội dung), VNPay Sandbox (ký HMAC-SHA512, xử lý qua IPN). Cửa hàng hiện không hỗ trợ hình thức mua hàng trả góp.',
   },
   {
     keywords: ['bảo hành', 'imei', 'kích hoạt', 'tra cứu', 'warranty'],
     question: 'Chính sách bảo hành?',
     answer:
-      'Bảo hành chính hãng 12-24 tháng tùy sản phẩm, 1 đổi 1 trong 30 ngày nếu lỗi NSX. Tra cứu bằng IMEI tại trang Tra cứu bảo hành. Mỗi IMEI là duy nhất, kiểm tra Luhn khi nhập kho.',
+      'Bảo hành chính hãng 12-24 tháng tùy sản phẩm nếu lỗi NSX. Tra cứu bằng IMEI tại trang Tra cứu bảo hành. Mỗi IMEI là duy nhất, kiểm tra Luhn khi nhập kho.',
   },
   {
-    keywords: ['đổi trả', 'hoàn', 'trả hàng', '1 đổi 1'],
+    keywords: ['đổi trả', 'hoàn', 'trả hàng'],
     question: 'Đổi trả ra sao?',
     answer:
-      '1 đổi 1 trong 30 ngày với lỗi nhà sản xuất, máy giữ nguyên seal/phụ kiện. Quá 30 ngày chuyển sang bảo hành sửa chữa. Tạo yêu cầu tại mục Bảo hành/Đổi trả.',
+      'Cửa hàng không áp dụng chính sách đổi trả hàng sau khi đã mua. Các sản phẩm phát sinh lỗi từ nhà sản xuất sẽ được tiếp nhận và bảo hành theo quy định chính hãng.',
   },
   {
     keywords: ['giữ hàng', 'giữ máy', '15 phút', 'hold', 'hết hàng', 'flash sale'],
@@ -47,7 +47,7 @@ export const SHOP_FAQ: FaqEntry[] = [
     keywords: ['trả góp', 'installment', 'góp'],
     question: 'Có trả góp không?',
     answer:
-      'Có hỗ trợ trả góp qua thẻ tín dụng/đối tác tài chính. Chọn trả góp ở bước thanh toán để xem kỳ hạn và lãi suất.',
+      'Hiện tại cửa hàng không hỗ trợ mua hàng trả góp. Bạn có thể thanh toán thuận tiện qua COD, chuyển khoản VietQR hoặc cổng VNPay.',
   },
   {
     keywords: ['cửa hàng', 'địa chỉ', 'liên hệ', 'hotline', 'nhân viên'],

@@ -6,8 +6,6 @@ import {
   TransactionType,
   TransactionStatus,
   ShippingStatus,
-  InstallmentProvider,
-  InstallmentStatus,
   ImeiStatus,
   ShippingMethod,
 } from '@prisma/client';
@@ -36,8 +34,6 @@ interface OrderBlueprint {
   status: OrderStatus;
   paymentMethod: PaymentMethod;
   ageDays: number;
-  installmentProvider?: InstallmentProvider;
-  installmentStatus?: InstallmentStatus;
   cancelledReason?: string;
 }
 
@@ -50,11 +46,8 @@ function formatOrderDate(d: Date): string {
 
 function getPaymentProviderName(
   method: PaymentMethod,
-  installmentProvider?: InstallmentProvider
 ): string {
   switch (method) {
-    case PaymentMethod.INSTALLMENT:
-      return installmentProvider === InstallmentProvider.FE_CREDIT ? 'FE Credit' : 'Home Credit';
     case PaymentMethod.COD:
       return 'COD';
     case PaymentMethod.VNPAY:
@@ -83,32 +76,25 @@ function getPaymentProviderName(
  * - 8 CANCELLED
  *
  * Payment distribution:
- * - 20 INSTALLMENT (16 APPROVED, 2 PENDING, 2 REJECTED)
  * - 70 COD
  * - 60 VNPAY
  * - 30 MOMO
- * - 20 BANK_TRANSFER
+ * - 40 BANK_TRANSFER
  */
 function buildOrderBlueprints(): OrderBlueprint[] {
   const blueprints: OrderBlueprint[] = [];
 
   // 1. COMPLETED: 120 orders (Ages from 178 days ago down to 8 days ago)
-  // Methods: 12 INSTALLMENT (APPROVED), 46 COD, 33 VNPAY, 17 MOMO, 12 BANK_TRANSFER
+  // Methods: 50 COD, 38 VNPAY, 18 MOMO, 14 BANK_TRANSFER
   for (let i = 0; i < 120; i++) {
     const ageDays = 178 - (i / 119) * (178 - 8);
     let paymentMethod: PaymentMethod;
-    let installmentProvider: InstallmentProvider | undefined;
-    let installmentStatus: InstallmentStatus | undefined;
 
-    if (i < 12) {
-      paymentMethod = PaymentMethod.INSTALLMENT;
-      installmentProvider = i % 2 === 0 ? InstallmentProvider.HOME_CREDIT : InstallmentProvider.FE_CREDIT;
-      installmentStatus = InstallmentStatus.APPROVED;
-    } else if (i < 12 + 46) {
+    if (i < 50) {
       paymentMethod = PaymentMethod.COD;
-    } else if (i < 12 + 46 + 33) {
+    } else if (i < 50 + 38) {
       paymentMethod = PaymentMethod.VNPAY;
-    } else if (i < 12 + 46 + 33 + 17) {
+    } else if (i < 50 + 38 + 18) {
       paymentMethod = PaymentMethod.MOMO;
     } else {
       paymentMethod = PaymentMethod.BANK_TRANSFER;
@@ -118,26 +104,18 @@ function buildOrderBlueprints(): OrderBlueprint[] {
       status: OrderStatus.COMPLETED,
       paymentMethod,
       ageDays,
-      installmentProvider,
-      installmentStatus,
     });
   }
 
   // 2. DELIVERED: 20 orders (Ages from 7 days ago down to 3 days ago)
-  // Methods: 2 INSTALLMENT (APPROVED), 10 VNPAY, 5 MOMO, 3 BANK_TRANSFER (All online -> PAID)
+  // Methods: 11 VNPAY, 5 MOMO, 4 BANK_TRANSFER (All online -> PAID)
   for (let i = 0; i < 20; i++) {
     const ageDays = 7 - (i / 19) * (7 - 3);
     let paymentMethod: PaymentMethod;
-    let installmentProvider: InstallmentProvider | undefined;
-    let installmentStatus: InstallmentStatus | undefined;
 
-    if (i < 2) {
-      paymentMethod = PaymentMethod.INSTALLMENT;
-      installmentProvider = i % 2 === 0 ? InstallmentProvider.HOME_CREDIT : InstallmentProvider.FE_CREDIT;
-      installmentStatus = InstallmentStatus.APPROVED;
-    } else if (i < 2 + 10) {
+    if (i < 11) {
       paymentMethod = PaymentMethod.VNPAY;
-    } else if (i < 2 + 10 + 5) {
+    } else if (i < 11 + 5) {
       paymentMethod = PaymentMethod.MOMO;
     } else {
       paymentMethod = PaymentMethod.BANK_TRANSFER;
@@ -147,28 +125,20 @@ function buildOrderBlueprints(): OrderBlueprint[] {
       status: OrderStatus.DELIVERED,
       paymentMethod,
       ageDays,
-      installmentProvider,
-      installmentStatus,
     });
   }
 
   // 3. SHIPPING: 18 orders (Ages from 3 days ago down to 1.2 days ago)
-  // Methods: 2 INSTALLMENT (APPROVED), 7 COD, 5 VNPAY, 2 MOMO, 2 BANK_TRANSFER
+  // Methods: 8 COD, 6 VNPAY, 2 MOMO, 2 BANK_TRANSFER
   for (let i = 0; i < 18; i++) {
     const ageDays = 3 - (i / 17) * (3 - 1.2);
     let paymentMethod: PaymentMethod;
-    let installmentProvider: InstallmentProvider | undefined;
-    let installmentStatus: InstallmentStatus | undefined;
 
-    if (i < 2) {
-      paymentMethod = PaymentMethod.INSTALLMENT;
-      installmentProvider = i % 2 === 0 ? InstallmentProvider.HOME_CREDIT : InstallmentProvider.FE_CREDIT;
-      installmentStatus = InstallmentStatus.APPROVED;
-    } else if (i < 2 + 7) {
+    if (i < 8) {
       paymentMethod = PaymentMethod.COD;
-    } else if (i < 2 + 7 + 5) {
+    } else if (i < 8 + 6) {
       paymentMethod = PaymentMethod.VNPAY;
-    } else if (i < 2 + 7 + 5 + 2) {
+    } else if (i < 8 + 6 + 2) {
       paymentMethod = PaymentMethod.MOMO;
     } else {
       paymentMethod = PaymentMethod.BANK_TRANSFER;
@@ -178,8 +148,6 @@ function buildOrderBlueprints(): OrderBlueprint[] {
       status: OrderStatus.SHIPPING,
       paymentMethod,
       ageDays,
-      installmentProvider,
-      installmentStatus,
     });
   }
 
@@ -215,22 +183,16 @@ function buildOrderBlueprints(): OrderBlueprint[] {
   }
 
   // 4. PROCESSING: 10 orders (Ages from 1.2 days ago down to 0.5 days ago)
-  // Methods: 1 INSTALLMENT (PENDING), 4 COD, 3 VNPAY, 1 MOMO, 1 BANK_TRANSFER
+  // Methods: 5 COD, 3 VNPAY, 1 MOMO, 1 BANK_TRANSFER
   for (let i = 0; i < 10; i++) {
     const ageDays = 1.2 - (i / 9) * (1.2 - 0.5);
     let paymentMethod: PaymentMethod;
-    let installmentProvider: InstallmentProvider | undefined;
-    let installmentStatus: InstallmentStatus | undefined;
 
-    if (i === 0) {
-      paymentMethod = PaymentMethod.INSTALLMENT;
-      installmentProvider = InstallmentProvider.HOME_CREDIT;
-      installmentStatus = InstallmentStatus.PENDING;
-    } else if (i < 1 + 4) {
+    if (i < 5) {
       paymentMethod = PaymentMethod.COD;
-    } else if (i < 1 + 4 + 3) {
+    } else if (i < 5 + 3) {
       paymentMethod = PaymentMethod.VNPAY;
-    } else if (i < 1 + 4 + 3 + 1) {
+    } else if (i < 5 + 3 + 1) {
       paymentMethod = PaymentMethod.MOMO;
     } else {
       paymentMethod = PaymentMethod.BANK_TRANSFER;
@@ -240,28 +202,20 @@ function buildOrderBlueprints(): OrderBlueprint[] {
       status: OrderStatus.PROCESSING,
       paymentMethod,
       ageDays,
-      installmentProvider,
-      installmentStatus,
     });
   }
 
   // 5. PENDING: 8 orders (Ages from 0.5 days ago down to 0.05 days / ~1 hour ago)
-  // Methods: 1 INSTALLMENT (PENDING), 3 COD, 2 VNPAY, 1 MOMO, 1 BANK_TRANSFER
+  // Methods: 4 COD, 2 VNPAY, 1 MOMO, 1 BANK_TRANSFER
   for (let i = 0; i < 8; i++) {
     const ageDays = 0.5 - (i / 7) * (0.5 - 0.05);
     let paymentMethod: PaymentMethod;
-    let installmentProvider: InstallmentProvider | undefined;
-    let installmentStatus: InstallmentStatus | undefined;
 
-    if (i === 0) {
-      paymentMethod = PaymentMethod.INSTALLMENT;
-      installmentProvider = InstallmentProvider.FE_CREDIT;
-      installmentStatus = InstallmentStatus.PENDING;
-    } else if (i < 1 + 3) {
+    if (i < 4) {
       paymentMethod = PaymentMethod.COD;
-    } else if (i < 1 + 3 + 2) {
+    } else if (i < 4 + 2) {
       paymentMethod = PaymentMethod.VNPAY;
-    } else if (i < 1 + 3 + 2 + 1) {
+    } else if (i < 4 + 2 + 1) {
       paymentMethod = PaymentMethod.MOMO;
     } else {
       paymentMethod = PaymentMethod.BANK_TRANSFER;
@@ -271,13 +225,11 @@ function buildOrderBlueprints(): OrderBlueprint[] {
       status: OrderStatus.PENDING,
       paymentMethod,
       ageDays,
-      installmentProvider,
-      installmentStatus,
     });
   }
 
   // 6. CANCELLED: 8 orders (Distributed across the 180 days)
-  // Methods: 2 INSTALLMENT (REJECTED), 2 COD, 2 VNPAY, 1 MOMO, 1 BANK_TRANSFER
+  // Methods: 3 COD, 2 VNPAY, 2 MOMO, 1 BANK_TRANSFER
   const cancelledAges = [170, 145, 120, 95, 70, 45, 20, 0.2];
   const cancelledReasons = [
     'Khách muốn đổi sang màu khác',
@@ -287,23 +239,17 @@ function buildOrderBlueprints(): OrderBlueprint[] {
     'Khách muốn đổi sang màu khác',
     'Đặt nhầm dung lượng',
     'Khách muốn đổi sang màu khác',
-    'Điểm tín dụng CIC không đạt tiêu chuẩn',
+    'Khách đổi ý không muốn mua nữa',
   ];
 
   for (let i = 0; i < 8; i++) {
     let paymentMethod: PaymentMethod;
-    let installmentProvider: InstallmentProvider | undefined;
-    let installmentStatus: InstallmentStatus | undefined;
 
-    if (i < 2) {
-      paymentMethod = PaymentMethod.INSTALLMENT;
-      installmentProvider = i % 2 === 0 ? InstallmentProvider.HOME_CREDIT : InstallmentProvider.FE_CREDIT;
-      installmentStatus = InstallmentStatus.REJECTED;
-    } else if (i < 2 + 2) {
+    if (i < 3) {
       paymentMethod = PaymentMethod.COD;
-    } else if (i < 2 + 2 + 2) {
+    } else if (i < 3 + 2) {
       paymentMethod = PaymentMethod.VNPAY;
-    } else if (i < 2 + 2 + 2 + 1) {
+    } else if (i < 3 + 2 + 2) {
       paymentMethod = PaymentMethod.MOMO;
     } else {
       paymentMethod = PaymentMethod.BANK_TRANSFER;
@@ -313,8 +259,6 @@ function buildOrderBlueprints(): OrderBlueprint[] {
       status: OrderStatus.CANCELLED,
       paymentMethod,
       ageDays: cancelledAges[i],
-      installmentProvider,
-      installmentStatus,
       cancelledReason: cancelledReasons[i],
     });
   }
@@ -373,7 +317,6 @@ export async function seedOrdersAndInstallments(
 
   const now = new Date();
   let shippingIdx = 0;
-  let installmentAppIdx = 0;
 
   for (let i = 0; i < blueprints.length; i++) {
     const bp = blueprints[i];
@@ -599,7 +542,7 @@ export async function seedOrdersAndInstallments(
     }
 
     const paidAt = paymentStatus === PaymentStatus.PAID ? (confirmedAt ?? createdAt) : null;
-    const providerName = getPaymentProviderName(bp.paymentMethod, bp.installmentProvider);
+    const providerName = getPaymentProviderName(bp.paymentMethod);
 
     const payment = await prisma.payment.create({
       data: {
@@ -632,70 +575,6 @@ export async function seedOrdersAndInstallments(
           },
           createdAt: paidAt ?? createdAt,
           updatedAt: paidAt ?? createdAt,
-        },
-      });
-    }
-
-    // Create InstallmentApplication record if payment method is INSTALLMENT
-    if (bp.paymentMethod === PaymentMethod.INSTALLMENT) {
-      const installmentIndex = installmentAppIdx++;
-      const prepayPercent = [20, 30, 50][installmentIndex % 3];
-      const termMonths = installmentIndex % 2 === 0 ? 6 : 12;
-      const prepayAmount = (totalAmount * prepayPercent) / 100;
-      const loanAmount = totalAmount - prepayAmount;
-      const monthlyAmount = Math.round(loanAmount / termMonths + loanAmount * 0.015);
-      const provider =
-        bp.installmentProvider ??
-        (installmentIndex % 2 === 0 ? InstallmentProvider.HOME_CREDIT : InstallmentProvider.FE_CREDIT);
-      const appStatus = bp.installmentStatus ?? InstallmentStatus.APPROVED;
-
-      let reviewedBy: string | null = null;
-      let reviewedAt: Date | null = null;
-      let staffNotes: string | null = null;
-      let rejectionReason: string | null = null;
-
-      if (appStatus === InstallmentStatus.APPROVED) {
-        reviewedBy = staffUserId || null;
-        reviewedAt = createdAt;
-        staffNotes = 'Hồ sơ tín dụng tốt, đã phê duyệt giải ngân.';
-      } else if (appStatus === InstallmentStatus.REJECTED) {
-        reviewedBy = staffUserId || null;
-        reviewedAt = createdAt;
-        staffNotes = 'Hồ sơ bị từ chối do điểm tín dụng không đạt tiêu chuẩn.';
-        rejectionReason = 'Điểm tín dụng CIC không đạt tiêu chuẩn';
-      }
-
-      const citizenId = `07920100${String(installmentIndex + 1).padStart(4, '0')}`;
-      const birthYear = 1990 + (installmentIndex % 10);
-      const birthMonth = installmentIndex % 12;
-      const birthDay = ((installmentIndex * 3) % 25) + 1;
-      const birthDate = new Date(birthYear, birthMonth, birthDay);
-
-      await prisma.installmentApplication.create({
-        data: {
-          orderId: order.id,
-          userId: customer.id,
-          provider,
-          status: appStatus,
-          termMonths,
-          prepayPercent,
-          prepayAmount,
-          loanAmount,
-          monthlyAmount,
-          fullName: customerName,
-          citizenId,
-          birthDate,
-          phoneNumber: customer.phone,
-          currentAddress: 'TP. Hồ Chí Minh',
-          incomeRange: '15 - 25 triệu',
-          cccdFrontUrl: 'https://pub-dcd7bf5fa7c74b97a10cdc8dfadc4064.r2.dev/demo/cccd_front.webp',
-          cccdBackUrl: 'https://pub-dcd7bf5fa7c74b97a10cdc8dfadc4064.r2.dev/demo/cccd_back.webp',
-          reviewedBy,
-          reviewedAt,
-          staffNotes,
-          rejectionReason,
-          createdAt,
-          updatedAt: reviewedAt ?? createdAt,
         },
       });
     }

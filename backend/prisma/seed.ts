@@ -178,8 +178,8 @@ async function main() {
     throw new Error('No active product variants found in database to seed orders.');
   }
 
-  // 5. SEED ORDERS, SHIPPINGS, PAYMENTS & INSTALLMENTS
-  console.log('\n📦 [5/7] Seeding 200 Lifecycle Orders, Shippings, Payments & Installments...');
+  // 5. SEED ORDERS, SHIPPINGS & PAYMENTS
+  console.log('\n📦 [5/7] Seeding 200 Lifecycle Orders, Shippings & Payments...');
   let imeiSeq = 100000;
   async function createImeiForVariant(
     variantId: string,
@@ -212,10 +212,10 @@ async function main() {
   );
   console.log(`  ✔ Seeded 200 orders (${orderResult.deliveredItems.length} delivered items with real IMEIs).`);
 
-  // 6. SEED FEEDBACK, WARRANTIES, RETURNS, VOUCHERS, CARTS & WISHLISTS
-  console.log('\n⭐ [6/7] Seeding Reviews, Staff Replies, Warranties, Returns, Carts & Wishlists...');
+  // 6. SEED FEEDBACK, WARRANTIES, VOUCHERS, CARTS & WISHLISTS
+  console.log('\n⭐ [6/7] Seeding Reviews, Staff Replies, Warranties, Vouchers, Carts & Wishlists...');
   await seedFeedbackAndAftersales(prisma, customers, orderResult, primaryStaffId);
-  console.log('  ✔ Seeded warranties, reviews, staff replies, vouchers, returns, carts and wishlists.');
+  console.log('  ✔ Seeded warranties, reviews, staff replies, vouchers, carts and wishlists.');
 
   // 7. WAREHOUSE STOCK & AVAILABLE IMEIS
   console.log('\n🏭 [7/7] Generating Ready Warehouse Stock (AVAILABLE IMEIs & Inventory)...');

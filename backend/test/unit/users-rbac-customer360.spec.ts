@@ -231,11 +231,6 @@ describe('UsersService & UsersController RBAC & Customer 360', () => {
         { id: 'w2', status: 'EXPIRED', warrantyCode: 'WAR-2' },
       ]);
 
-      prisma.installmentApplication.findMany.mockResolvedValue([
-        { id: 'i1', status: 'APPROVED', termMonths: 6, monthlyAmount: 1500000 },
-        { id: 'i2', status: 'PENDING', termMonths: 12, monthlyAmount: 800000 },
-      ]);
-
       prisma.ticket.findMany.mockResolvedValue([
         { id: 't1', status: 'OPEN', code: 'TK-01', title: 'Support screen' },
         { id: 't2', status: 'IN_PROGRESS', code: 'TK-02', title: 'Payment check' },
@@ -262,13 +257,9 @@ describe('UsersService & UsersController RBAC & Customer 360', () => {
 
       expect(res.metrics.activeWarranties).toBe(1);
 
-      expect(res.metrics.totalInstallments).toBe(2);
-      expect(res.metrics.approvedInstallments).toBe(1);
-
       // Arrays attached
       expect(res.recentOrders).toHaveLength(3);
       expect(res.warranties).toHaveLength(2);
-      expect(res.installments).toHaveLength(2);
       expect(res.tickets).toHaveLength(3);
     });
 

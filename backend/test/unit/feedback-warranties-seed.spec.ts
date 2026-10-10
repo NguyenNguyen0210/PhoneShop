@@ -5,8 +5,6 @@ import { SeededOrderResult, DeliveredItemInfo } from '../../prisma/seed_modules/
 import {
   PrismaClient,
   WarrantyStatus,
-  ReturnStatus,
-  RefundStatus,
   ReviewStatus,
   VoucherType,
   CartStatus,
@@ -22,9 +20,6 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
   const upsertedVouchers: any[] = [];
   const createdVoucherUsages: any[] = [];
   const upsertedWarranties: any[] = [];
-  const upsertedReturns: any[] = [];
-  const createdReturnItems: any[] = [];
-  const upsertedRefunds: any[] = [];
   const upsertedReviews: any[] = [];
   const createdReviewReplies: any[] = [];
   const upsertedCarts: any[] = [];
@@ -36,9 +31,6 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
     upsertedVouchers.length = 0;
     createdVoucherUsages.length = 0;
     upsertedWarranties.length = 0;
-    upsertedReturns.length = 0;
-    createdReturnItems.length = 0;
-    upsertedRefunds.length = 0;
     upsertedReviews.length = 0;
     createdReviewReplies.length = 0;
     upsertedCarts.length = 0;
@@ -137,21 +129,6 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
           return Promise.resolve({ count: args.data.length });
         }),
       },
-      return: {
-        upsert: jest.fn().mockImplementation((args: any) => {
-          const record = { id: `return-uuid-${upsertedReturns.length + 1}`, ...args.create };
-          upsertedReturns.push(record);
-          return Promise.resolve(record);
-        }),
-      },
-      returnItem: {
-        findFirst: jest.fn().mockImplementation(() => Promise.resolve(null)),
-        create: jest.fn().mockImplementation((args: any) => {
-          const record = { id: `return-item-uuid-${createdReturnItems.length + 1}`, ...args.data };
-          createdReturnItems.push(record);
-          return Promise.resolve(record);
-        }),
-      },
       orderItem: {
         findUnique: jest.fn().mockImplementation(() => Promise.resolve({ unitPrice: 15000000 })),
         findMany: jest.fn().mockImplementation(() => Promise.resolve([])),
@@ -159,12 +136,8 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
       payment: {
         findFirst: jest.fn().mockImplementation(() => Promise.resolve({ id: 'payment-uuid-1' })),
       },
-      refund: {
-        upsert: jest.fn().mockImplementation((args: any) => {
-          const record = { id: `refund-uuid-${upsertedRefunds.length + 1}`, ...args.create };
-          upsertedRefunds.push(record);
-          return Promise.resolve(record);
-        }),
+      order: {
+        findMany: jest.fn().mockImplementation(() => Promise.resolve([])),
       },
       review: {
         findMany: jest.fn().mockImplementation(() => Promise.resolve([])),
@@ -268,6 +241,26 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
           return Promise.resolve({ count: args.data.length });
         }),
       },
+      ticket: {
+        upsert: jest.fn().mockImplementation((args: any) =>
+          Promise.resolve({ id: `ticket-${args.where.code}`, ...args.create }),
+        ),
+        findMany: jest.fn().mockImplementation(() => Promise.resolve([])),
+      },
+      ticketMessage: {
+        deleteMany: jest.fn().mockImplementation(() => Promise.resolve({ count: 0 })),
+        create: jest.fn().mockImplementation((args: any) =>
+          Promise.resolve({ id: 'msg-uuid-1', ...args.data }),
+        ),
+      },
+      conversation: {
+        upsert: jest.fn().mockImplementation(() => Promise.resolve({})),
+        findMany: jest.fn().mockImplementation(() => Promise.resolve([])),
+      },
+      conversationMessage: {
+        create: jest.fn().mockImplementation(() => Promise.resolve({})),
+        deleteMany: jest.fn().mockImplementation(() => Promise.resolve({})),
+      },
     } as unknown as PrismaClient;
   });
 
@@ -336,36 +329,6 @@ describe('Feedback, Warranties, and Aftersales Seed Module Tests', () => {
       const start = new Date(warranty.startDate);
       const end = new Date(warranty.endDate);
       expect(end.getFullYear() - start.getFullYear()).toBe(1);
-    }
-  });
-
-  it('should create 5 return requests (3 COMPLETED, 1 INSPECTING, 1 REJECTED) and 3 refunds', async () => {
-    await seedFeedbackAndAftersales(mockPrisma, mockCustomers, mockOrderResult, staffUserId);
-
-    expect(upsertedReturns).toHaveLength(5);
-    const returnStatuses = upsertedReturns.map((r) => r.status);
-    expect(returnStatuses).toEqual([
-      ReturnStatus.COMPLETED,
-      ReturnStatus.COMPLETED,
-      ReturnStatus.COMPLETED,
-      ReturnStatus.INSPECTING,
-      ReturnStatus.REJECTED,
-    ]);
-
-    expect(upsertedReturns[0].returnNumber).toBe('RET-2026-0001');
-    expect(upsertedReturns[4].returnNumber).toBe('RET-2026-0005');
-
-    // Return items
-    expect(createdReturnItems).toHaveLength(5);
-
-    // Refunds for the 3 completed returns
-    expect(upsertedRefunds).toHaveLength(3);
-    expect(upsertedRefunds[0].refundNumber).toBe('REF-2026-0001');
-    expect(upsertedRefunds[1].refundNumber).toBe('REF-2026-0002');
-    expect(upsertedRefunds[2].refundNumber).toBe('REF-2026-0003');
-    for (const ref of upsertedRefunds) {
-      expect(ref.status).toBe(RefundStatus.COMPLETED);
-      expect(ref.amount).toBe(15000000);
     }
   });
 

@@ -7,8 +7,6 @@ export interface Customer360Metrics {
   totalTickets: number;
   openTickets: number;
   activeWarranties: number;
-  totalInstallments: number;
-  approvedInstallments: number;
 }
 
 export interface Customer360Response {
@@ -27,6 +25,5 @@ export interface Customer360Response {
   addresses: any[];
   recentOrders: any[];
   warranties: any[];
-  installments: any[];
   tickets: any[];
 }

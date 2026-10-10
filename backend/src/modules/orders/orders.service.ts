@@ -24,8 +24,6 @@ import {
   PaymentMethod,
   TransactionStatus,
   TransactionType,
-  RefundStatus,
-  InstallmentStatus,
   ShippingMethod,
   ShippingStatus,
   StockMovementType,
@@ -71,10 +69,6 @@ export class OrdersService {
 
   private generateOrderNumber(): string {
     return `ORD-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
-  }
-
-  private generateRefundNumber(): string {
-    return `REF-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
   }
 
   calculateShippingFee(method: ShippingMethod, subtotal: number): number {
@@ -144,29 +138,13 @@ export class OrdersService {
       }
     }
 
-    const isInstallment = dto.paymentMethod === PaymentMethod.INSTALLMENT;
-    if (isInstallment) {
-      if (!dto.installmentData) {
-        throw new BadRequestException('Thông tin hồ sơ trả góp không được để trống');
-      }
-      const birth = new Date(dto.installmentData.birthDate);
-      if (isNaN(birth.getTime())) {
-        throw new BadRequestException('Ngày sinh không hợp lệ');
-      }
-      const today = new Date();
-      let age = today.getFullYear() - birth.getFullYear();
-      const m = today.getMonth() - birth.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-        age--;
-      }
-      if (age < 18) {
-        throw new BadRequestException('Người đăng ký trả góp phải từ 18 tuổi trở lên');
-      }
+    if (dto.paymentMethod === PaymentMethod.INSTALLMENT) {
+      throw new BadRequestException('Phương thức thanh toán trả góp không được hỗ trợ');
     }
 
     // 3. Fresh catalog prices are resolved INSIDE the transaction (M1);
     // subtotal is computed there, never from stale cart snapshots.
-    const holdDurationMs = isInstallment ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000;
+    const holdDurationMs = 15 * 60 * 1000;
     const holdExpiresAt = new Date(Date.now() + holdDurationMs);
 
     // 4. Atomic transaction with IMEI reservation, voucher validation, and inventory deduction.
@@ -480,60 +458,11 @@ export class OrdersService {
         (newOrder as any).shipping = shippingRecord;
       }
 
-      if (isInstallment && dto.installmentData) {
-        const prepayAmount = Math.round(
-          (Number(totalAmount) * dto.installmentData.prepayPercent) / 100,
-        );
-        const loanAmount = Number(totalAmount) - prepayAmount;
-        const monthlyAmount = Math.round(
-          loanAmount / dto.installmentData.termMonths,
-        );
-
-        if (tx.payment?.create) {
-          await tx.payment.create({
-            data: {
-              orderId: newOrder.id,
-              method: PaymentMethod.INSTALLMENT,
-              status: PaymentStatus.PENDING,
-              amount: totalAmount,
-            },
-          });
-        }
-
-        if (tx.installmentApplication?.create) {
-          const installmentApp = await tx.installmentApplication.create({
-            data: {
-              orderId: newOrder.id,
-              userId,
-              provider: dto.installmentData.provider,
-              status: InstallmentStatus.PENDING,
-              termMonths: dto.installmentData.termMonths,
-              prepayPercent: dto.installmentData.prepayPercent,
-              prepayAmount: new Prisma.Decimal(prepayAmount),
-              loanAmount: new Prisma.Decimal(loanAmount),
-              monthlyAmount: new Prisma.Decimal(monthlyAmount),
-              fullName: dto.installmentData.fullName,
-              citizenId: dto.installmentData.citizenId,
-              birthDate: new Date(dto.installmentData.birthDate),
-              phoneNumber: dto.installmentData.phoneNumber,
-              currentAddress: dto.installmentData.currentAddress,
-              incomeRange: dto.installmentData.incomeRange,
-              cccdFrontUrl: dto.installmentData.cccdFrontUrl,
-              cccdBackUrl: dto.installmentData.cccdBackUrl,
-            },
-          });
-          (newOrder as any).installmentApplication = installmentApp;
-        }
-      }
-
-      // Every non-installment order needs a PENDING payment row at checkout
+      // Every order needs a PENDING payment row at checkout
       // inside the same transaction: COD for the delivery auto-PAID step,
       // BANK_TRANSFER (VietQR) for the manual-confirm/QR flow, VNPAY for the
-      // IPN flow. Without this the order has zero payments until the
-      // frontend's second POST /payments succeeds — if that request fails,
-      // readers fall back to 'COD' and the success page loses the method.
-      // INSTALLMENT already created its row above.
-      if (!isInstallment && tx.payment?.create) {
+      // IPN flow.
+      if (tx.payment?.create) {
         const methodForPayment =
           dto.paymentMethod ?? PaymentMethod.COD;
         await tx.payment.create({
@@ -600,14 +529,14 @@ export class OrdersService {
       }
     }
 
-    // 6. Push BullMQ job for hold auto-release (15m standard, 24h installment)
+    // 6. Push BullMQ job for hold auto-release (15m standard)
     try {
       await this.orderQueue.add(
         'expire-order-hold',
         { orderId: order.id },
         { delay: holdDurationMs },
       );
-      this.logger.log(`Enqueued ${isInstallment ? '24h' : '15m'} hold expiry job for order ${order.id}`);
+      this.logger.log(`Enqueued 15m hold expiry job for order ${order.id}`);
     } catch (queueErr) {
       this.logger.error(
         `Failed to enqueue expire-order-hold job for order ${order.id}:`,
@@ -708,7 +637,6 @@ export class OrdersService {
       include: {
         items: true,
         user: { select: { email: true, firstName: true, lastName: true } },
-        installmentApplication: { select: { id: true } },
       },
     });
     if (!order || order.status !== OrderStatus.PENDING) return false;
@@ -720,29 +648,19 @@ export class OrdersService {
         data: {
           status: OrderStatus.CANCELLED,
           cancelledAt: new Date(),
-          cancelledReason: (order as any).installmentApplication
-            ? 'Hold expired (24 hours)'
-            : 'Hold expired (15 minutes)',
+          cancelledReason: 'Hold expired (15 minutes)',
         },
       });
       if (affected.count === 0) return;
       cancelled = true;
 
-      if (tx.installmentApplication?.updateMany) {
-        await tx.installmentApplication.updateMany({
-          where: { orderId, status: InstallmentStatus.PENDING },
-          data: {
-            status: InstallmentStatus.CANCELLED,
-            rejectionReason: 'Hết thời hạn 24h thẩm định hồ sơ',
-          },
+      // Close still-pending payments so the expired order keeps no live rows.
+      if (tx.payment?.updateMany) {
+        await tx.payment.updateMany({
+          where: { orderId, status: PaymentStatus.PENDING },
+          data: { status: PaymentStatus.CANCELLED },
         });
       }
-
-      // Close still-pending payments so the expired order keeps no live rows.
-      await tx.payment.updateMany({
-        where: { orderId, status: PaymentStatus.PENDING },
-        data: { status: PaymentStatus.CANCELLED },
-      });
 
       await this.rollbackVoucherUsage(tx, order);
 
@@ -776,10 +694,7 @@ export class OrdersService {
           const u = (order as any).user;
           const recipientName =
             [u.firstName, u.lastName].filter(Boolean).join(' ') || undefined;
-          const isInstallment = Boolean((order as any).installmentApplication);
-          const holdReason = isInstallment
-            ? 'Hết thời hạn 24 giờ thẩm định hồ sơ trả góp'
-            : 'Quá thời hạn 15 phút giữ hàng chưa hoàn tất thanh toán';
+          const holdReason = 'Quá thời hạn 15 phút giữ hàng chưa hoàn tất thanh toán';
 
           await emailService.sendOrderCancelled(u.email, {
             orderNumber: order.orderNumber,
@@ -831,7 +746,6 @@ export class OrdersService {
       include: {
         items: true,
         payments: true,
-        installmentApplication: true,
         shipping: true,
         address: true,
       },
@@ -852,7 +766,6 @@ export class OrdersService {
         },
         payments: true,
         address: true,
-        installmentApplication: true,
         shipping: true,
       },
     });
@@ -898,7 +811,6 @@ export class OrdersService {
             },
           },
           payments: true,
-          installmentApplication: true,
           shipping: true,
         },
         orderBy: { createdAt: 'desc' },
@@ -942,7 +854,6 @@ export class OrdersService {
         items: { include: { variant: { include: { product: true } }, imeiDevice: true } },
         payments: { include: { transactions: true } },
         address: true,
-        installmentApplication: true,
         shipping: true,
       },
     });
@@ -1030,18 +941,6 @@ export class OrdersService {
       return order;
     }
 
-    // Installment orders must go through the finance review flow: a direct
-    // PENDING → CONFIRMED would confirm stock for an unvetted application.
-    if (
-      newStatus === OrderStatus.CONFIRMED &&
-      (order as any).installmentApplication &&
-      (order as any).installmentApplication.status === InstallmentStatus.PENDING
-    ) {
-      throw new BadRequestException(
-        'Order has a pending installment application — approve or reject it via the installment review flow instead of confirming directly',
-      );
-    }
-
     const allowedTransitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
       [OrderStatus.PENDING]:    [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
       [OrderStatus.CONFIRMED]:  [OrderStatus.PROCESSING, OrderStatus.PACKED, OrderStatus.CANCELLED],
@@ -1076,47 +975,15 @@ export class OrdersService {
         newStatus === OrderStatus.CANCELLED &&
         ([OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.PACKED] as OrderStatus[]).includes(order.status)
       ) {
-        if (tx.installmentApplication?.updateMany) {
-          await tx.installmentApplication.updateMany({
-            where: { orderId: id, status: InstallmentStatus.PENDING },
-            data: {
-              status: InstallmentStatus.CANCELLED,
-              rejectionReason: reason || 'Đơn hàng bị hủy bởi nhân viên',
-            },
-          });
-        }
         await this.rollbackVoucherUsage(tx, order);
-        // P2: cancelling a PAID order must refund it in the same transaction —
-        // otherwise stock comes back while the money stays captured.
-        const paid = (order.payments || []).find(
-          (p: any) => p.status === PaymentStatus.PAID,
-        );
-        if (paid) {
-          const existingRefund = await tx.refund.findFirst({
-            where: {
-              paymentId: paid.id,
-              status: { notIn: [RefundStatus.FAILED, RefundStatus.CANCELLED] },
-            },
-            select: { id: true },
-          });
-          if (!existingRefund) {
-            await tx.refund.create({
-              data: {
-                paymentId: paid.id,
-                refundNumber: this.generateRefundNumber(),
-                amount: paid.amount,
-                status: RefundStatus.PENDING,
-                reason: `Auto-created: paid order ${order.orderNumber} cancelled by staff`,
-              },
-            });
-          }
-        }
         // Close still-pending payments so a cancelled order never keeps a
         // live PENDING row (finance filter + orphan cleanup).
-        await tx.payment.updateMany({
-          where: { orderId: id, status: PaymentStatus.PENDING },
-          data: { status: PaymentStatus.CANCELLED },
-        });
+        if (tx.payment?.updateMany) {
+          await tx.payment.updateMany({
+            where: { orderId: id, status: PaymentStatus.PENDING },
+            data: { status: PaymentStatus.CANCELLED },
+          });
+        }
         for (const item of order.items) {
           if (item.imeiDeviceId) {
             await tx.imeiDevice.updateMany({
@@ -1203,36 +1070,37 @@ export class OrdersService {
         // P3: cash is collected at the door — flip pending COD payments to
         // PAID on delivery so finance never shows delivered orders as unpaid.
         // (VietQR/bank-transfer rows stay manual: only a bank reference proves
-        // the money arrived.) INSTALLMENT joins COD here: the prepay is taken
-        // at handover and the balance is covered by the finance company, so a
-        // delivered installment order must not linger as unpaid either.
+        // the money arrived.)
         // Idempotent via the PENDING filter.
-        const doorPending = await tx.payment.findMany({
-          where: {
-            orderId: id,
-            method: { in: [PaymentMethod.COD, PaymentMethod.INSTALLMENT] },
-            status: PaymentStatus.PENDING,
-          },
-          select: { id: true, amount: true, method: true },
-        });
+        const doorPending = tx.payment?.findMany
+          ? await tx.payment.findMany({
+              where: {
+                orderId: id,
+                method: PaymentMethod.COD,
+                status: PaymentStatus.PENDING,
+              },
+              select: { id: true, amount: true, method: true },
+            })
+          : [];
         for (const cp of doorPending) {
-          await tx.payment.update({
-            where: { id: cp.id },
-            data: { status: PaymentStatus.PAID, paidAt: now },
-          });
-          await tx.paymentTransaction.create({
-            data: {
-              paymentId: cp.id,
-              transactionCode: `COD-${Date.now()}-${randomBytes(2).toString('hex').toUpperCase()}`,
-              type: TransactionType.PAYMENT,
-              status: TransactionStatus.SUCCESS,
-              amount: cp.amount,
-              providerReference:
-                cp.method === PaymentMethod.INSTALLMENT
-                  ? 'INSTALLMENT_PREPAY_AT_DELIVERY'
-                  : 'CASH_ON_DELIVERY',
-            },
-          });
+          if (tx.payment?.update) {
+            await tx.payment.update({
+              where: { id: cp.id },
+              data: { status: PaymentStatus.PAID, paidAt: now },
+            });
+          }
+          if (tx.paymentTransaction?.create) {
+            await tx.paymentTransaction.create({
+              data: {
+                paymentId: cp.id,
+                transactionCode: `COD-${Date.now()}-${randomBytes(2).toString('hex').toUpperCase()}`,
+                type: TransactionType.PAYMENT,
+                status: TransactionStatus.SUCCESS,
+                amount: cp.amount,
+                providerReference: 'CASH_ON_DELIVERY',
+              },
+            });
+          }
         }
 
         const warrantable = await tx.orderItem.findMany({
@@ -1397,16 +1265,15 @@ export class OrdersService {
       throw new BadRequestException('Order cannot be cancelled in its current status');
     }
 
-    // P2: a paid order must never be cancelled into thin air — the money
-    // would stay PAID with no refund row. Buyers go through return/refund;
-    // staff use the admin cancel path (which auto-creates the refund below).
+    // P2: a paid order must never be cancelled directly by buyer into thin air.
+    // Buyers should contact support.
     const paidPayment = await this.prisma.payment.findFirst({
       where: { orderId: id, status: PaymentStatus.PAID },
       select: { id: true },
     });
     if (paidPayment) {
       throw new BadRequestException(
-        'Order is already paid and cannot be cancelled directly. Please request a return to receive a refund.',
+        'Order is already paid and cannot be cancelled directly. Please contact support.',
       );
     }
 
@@ -1432,16 +1299,6 @@ export class OrdersService {
         where: { orderId: id, status: PaymentStatus.PENDING },
         data: { status: PaymentStatus.CANCELLED },
       });
-
-      if (tx.installmentApplication?.updateMany) {
-        await tx.installmentApplication.updateMany({
-          where: { orderId: id, status: InstallmentStatus.PENDING },
-          data: {
-            status: InstallmentStatus.CANCELLED,
-            rejectionReason: dto.reason || 'Khách hàng hủy đơn hàng',
-          },
-        });
-      }
 
       await this.rollbackVoucherUsage(tx, order);
 

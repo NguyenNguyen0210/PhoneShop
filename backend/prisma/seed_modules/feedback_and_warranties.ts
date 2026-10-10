@@ -1,8 +1,6 @@
 import {
   PrismaClient,
   WarrantyStatus,
-  ReturnStatus,
-  RefundStatus,
   ReviewStatus,
   VoucherType,
   CartStatus,
@@ -563,135 +561,9 @@ export async function seedFeedbackAndAftersales(
   console.log(`    + Provisioned ${warrantyCreatedCount} electronic warranty records.`);
 
   // ============================================================
-  // 3. RETURNS & REFUNDS
+  // 3. VERIFIED REVIEWS & SHOP REPLIES
   // ============================================================
-  console.log('  3. Seeding 5 Return & Refund requests...');
-  const returnStatuses: ReturnStatus[] = [
-    ReturnStatus.COMPLETED,
-    ReturnStatus.COMPLETED,
-    ReturnStatus.COMPLETED,
-    ReturnStatus.INSPECTING,
-    ReturnStatus.REJECTED,
-  ];
-
-  const returnReasons: string[] = [
-    'Màn hình có 1 điểm pixel bị mờ',
-    'Khay SIM bị lỏng nhẹ',
-    'Đổi ý muốn lên đời Pro Max',
-    'Màn hình có 1 điểm pixel bị mờ',
-    'Khay SIM bị lỏng nhẹ',
-  ];
-
-  const returnCandidates = deliveredItemsList.slice(0, 5);
-  for (let i = 0; i < returnCandidates.length; i++) {
-    const item = returnCandidates[i];
-    const returnNumber = `RET-2026-${String(i + 1).padStart(4, '0')}`;
-    const status = returnStatuses[i];
-    const reason = returnReasons[i];
-
-    const requestedAt = new Date(item.deliveredAt);
-    const approvedAt =
-      status === ReturnStatus.REJECTED ? null : new Date(requestedAt.getTime() + 86400000);
-    const receivedAt =
-      status === ReturnStatus.REJECTED ? null : new Date(requestedAt.getTime() + 2 * 86400000);
-    const completedAt =
-      status === ReturnStatus.COMPLETED ? new Date(requestedAt.getTime() + 3 * 86400000) : null;
-
-    let adminNote = 'Yêu cầu đổi trả đang được xử lý.';
-    if (status === ReturnStatus.COMPLETED) {
-      adminNote = 'Đã nhận máy, kiểm tra đúng lỗi kỹ thuật, chấp thuận hoàn tiền.';
-    } else if (status === ReturnStatus.INSPECTING) {
-      adminNote = 'Máy đã về trung tâm bảo hành, đang tiến hành đo đạc phần cứng.';
-    } else if (status === ReturnStatus.REJECTED) {
-      adminNote = 'Máy có dấu hiệu rơi cấn móp góc cạnh, từ chối chính sách đổi trả.';
-    }
-
-    const returnRecord = await prisma.return.upsert({
-      where: { returnNumber },
-      update: {
-        status,
-        reason,
-        adminNote,
-      },
-      create: {
-        orderId: item.orderId,
-        userId: item.userId,
-        returnNumber,
-        status,
-        reason,
-        customerNote: 'Kính nhờ cửa hàng hỗ trợ kiểm tra và giải quyết theo chính sách đổi trả.',
-        adminNote,
-        requestedAt,
-        approvedAt,
-        receivedAt,
-        completedAt,
-      },
-    });
-
-    // Ensure ReturnItem attached
-    const existingReturnItem = await prisma.returnItem.findFirst({
-      where: {
-        returnId: returnRecord.id,
-        orderItemId: item.orderItemId,
-      },
-    });
-
-    if (!existingReturnItem) {
-      await prisma.returnItem.create({
-        data: {
-          returnId: returnRecord.id,
-          orderItemId: item.orderItemId,
-          quantity: 1,
-          reason,
-          condition: status === ReturnStatus.REJECTED ? 'TRẦY XƯỚC' : 'NGUYÊN VẸN',
-        },
-      });
-    }
-
-    // For COMPLETED returns, create Refund record
-    if (status === ReturnStatus.COMPLETED) {
-      const payment = await prisma.payment.findFirst({
-        where: { orderId: item.orderId },
-      });
-      const refundNumber = `REF-2026-000${i + 1}`;
-
-      const orderItemRecord = prisma.orderItem?.findUnique
-        ? await prisma.orderItem.findUnique({
-            where: { id: item.orderItemId },
-            select: { unitPrice: true },
-          })
-        : null;
-      const refundAmount =
-        orderItemRecord?.unitPrice ??
-        (item as any).price ??
-        (item as any).unitPrice ??
-        15000000;
-
-      await prisma.refund.upsert({
-        where: { refundNumber },
-        update: {
-          amount: refundAmount,
-          status: RefundStatus.COMPLETED,
-        },
-        create: {
-          returnId: returnRecord.id,
-          paymentId: payment?.id ?? null,
-          refundNumber,
-          amount: refundAmount,
-          status: RefundStatus.COMPLETED,
-          reason: 'Hoàn tiền trả hàng thành công do sản phẩm lỗi kỹ thuật',
-          providerRef: `VNPAY-REF-${String(i + 1).padStart(6, '0')}`,
-          processedAt: completedAt ?? new Date(),
-        },
-      });
-    }
-  }
-  console.log('    + Processed 5 return records (3 COMPLETED, 1 INSPECTING, 1 REJECTED) with refunds.');
-
-  // ============================================================
-  // 4. VERIFIED REVIEWS & SHOP REPLIES
-  // ============================================================
-  console.log('  4. Seeding 120 verified reviews with ~60 staff replies...');
+  console.log('  3. Seeding 120 verified reviews with ~60 staff replies...');
   const allActiveProducts = await prisma.product.findMany({
     where: { status: 'ACTIVE' },
     select: { id: true, name: true },

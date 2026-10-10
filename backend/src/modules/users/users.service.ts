@@ -242,7 +242,7 @@ export class UsersService {
   async getCustomer360(id: string, currentUser: any): Promise<Customer360Response> {
     const user = await this.findOne(id, currentUser);
 
-    const [orders, warranties, installments, tickets] = await Promise.all([
+    const [orders, warranties, tickets] = await Promise.all([
       this.prisma.order.findMany({
         where: { userId: id },
         orderBy: { createdAt: 'desc' },
@@ -285,18 +285,6 @@ export class UsersService {
               variant: { select: { sku: true, color: true, storage: true } },
             },
           },
-        },
-      }),
-      this.prisma.installmentApplication.findMany({
-        where: { userId: id },
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          status: true,
-          termMonths: true,
-          monthlyAmount: true,
-          createdAt: true,
-          order: { select: { id: true, orderNumber: true, totalAmount: true } },
         },
       }),
       this.prisma.ticket.findMany({
@@ -344,8 +332,6 @@ export class UsersService {
       totalTickets: tickets.length,
       openTickets: tickets.filter((t: any) => ['OPEN', 'IN_PROGRESS'].includes(t.status)).length,
       activeWarranties: warranties.filter((w: any) => w.status === 'ACTIVE').length,
-      totalInstallments: installments.length,
-      approvedInstallments: installments.filter((i: any) => i.status === 'APPROVED').length,
     };
 
     const recentOrders = orders.map((o: any) => ({
@@ -364,11 +350,6 @@ export class UsersService {
       deviceSerial: w.imeiDevice?.serialNumber || null,
     }));
 
-    const mappedInstallments = installments.map((i: any) => ({
-      ...i,
-      monthlyPayment: i.monthlyPayment ?? i.monthlyAmount,
-    }));
-
     return {
       customer: {
         id: user.id,
@@ -385,7 +366,6 @@ export class UsersService {
       addresses: user.addresses || [],
       recentOrders,
       warranties: mappedWarranties,
-      installments: mappedInstallments,
       tickets,
     };
   }

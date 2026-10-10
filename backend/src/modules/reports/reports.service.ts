@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { OrderStatus, PaymentStatus, RefundStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 export interface BrandSalesItem {
   brandId: string;
@@ -33,8 +33,7 @@ export interface CategorySalesReport {
   categories: CategorySalesItem[];
 }
 
-// M11: all money figures in this service are NET (paid minus completed
-// refunds) and day buckets follow Asia/Ho_Chi_Minh — never UTC.
+// Day buckets follow Asia/Ho_Chi_Minh — never UTC.
 const VN_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 const vnDayFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: VN_TIME_ZONE,
@@ -51,20 +50,6 @@ export class ReportsService {
     return vnDayFormatter.format(d);
   }
 
-  private async completedRefundsTotal(from?: Date, to?: Date): Promise<number> {
-    const where: any = { status: RefundStatus.COMPLETED };
-    if (from || to) {
-      where.processedAt = {};
-      if (from) where.processedAt.gte = from;
-      if (to) where.processedAt.lte = to;
-    }
-    const agg = await this.prisma.refund.aggregate({
-      _sum: { amount: true },
-      where,
-    });
-    return Number(agg._sum.amount ?? 0);
-  }
-
   async getDashboardSummary() {
     const [
       totalOrders,
@@ -73,7 +58,6 @@ export class ReportsService {
       totalUsers,
       totalProducts,
       inventories,
-      refundedTotal,
     ] = await Promise.all([
       this.prisma.order.count(),
       this.prisma.order.count({ where: { status: OrderStatus.PENDING } }),
@@ -89,15 +73,16 @@ export class ReportsService {
       this.prisma.inventory.findMany({
         select: { availableQty: true, reorderLevel: true },
       }),
-      this.completedRefundsTotal(),
     ]);
+
+    const revenue = Number(totalRevenue._sum.amount ?? 0);
 
     return {
       totalOrders,
       pendingOrders,
-      totalRevenue: Number(totalRevenue._sum.amount ?? 0),
-      refundedTotal,
-      netRevenue: Number(totalRevenue._sum.amount ?? 0) - refundedTotal,
+      totalRevenue: revenue,
+      refundedTotal: 0,
+      netRevenue: revenue,
       totalUsers,
       totalProducts,
       totalLowStock: inventories.filter((i) => i.availableQty <= i.reorderLevel).length,
@@ -117,21 +102,18 @@ export class ReportsService {
       throw new BadRequestException('"from" must not be after "to"');
     }
 
-    const [payments, refundedTotal] = await Promise.all([
-      this.prisma.payment.findMany({
-        where: {
-          status: PaymentStatus.PAID,
-          paidAt: { gte: from, lte: to },
-        },
-        select: {
-          amount: true,
-          paidAt: true,
-          method: true,
-        },
-        orderBy: { paidAt: 'asc' },
-      }),
-      this.completedRefundsTotal(from, to),
-    ]);
+    const payments = await this.prisma.payment.findMany({
+      where: {
+        status: PaymentStatus.PAID,
+        paidAt: { gte: from, lte: to },
+      },
+      select: {
+        amount: true,
+        paidAt: true,
+        method: true,
+      },
+      orderBy: { paidAt: 'asc' },
+    });
 
     // Group by VN-local date
     const byDate: Record<string, number> = {};
@@ -147,8 +129,8 @@ export class ReportsService {
       to: toInput,
       timeZone: VN_TIME_ZONE,
       totalRevenue,
-      refundedTotal,
-      netRevenue: totalRevenue - refundedTotal,
+      refundedTotal: 0,
+      netRevenue: totalRevenue,
       dailyBreakdown: Object.entries(byDate).map(([date, revenue]) => ({ date, revenue })),
       paymentCount: payments.length,
     };

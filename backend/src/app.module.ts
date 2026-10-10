@@ -10,7 +10,6 @@ import { HealthModule } from './health/health.module';
 import { CachingModule } from './infrastructure/caching/caching.module';
 import { RateLimitingModule } from './infrastructure/rate-limiting/rate-limiting.module';
 import { IdempotencyModule } from './infrastructure/idempotency/idempotency.module';
-import { ObservabilityModule } from './infrastructure/observability/observability.module';
 import { BackgroundJobsModule } from './infrastructure/background-jobs/background-jobs.module';
 import { SecurityModule } from './infrastructure/security/security.module';
 import { EmailModule } from './infrastructure/email/email.module';
@@ -29,12 +28,10 @@ import { CartModule } from './modules/cart/cart.module';
 import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { FlashSalesModule } from './modules/flash-sales/flash-sales.module';
 import { OrdersModule } from './modules/orders/orders.module';
-import { InstallmentsModule } from './modules/installments/installments.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { WarrantyModule } from './modules/warranty/warranty.module';
-import { ReturnsModule } from './modules/returns/returns.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
@@ -65,7 +62,6 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
     CachingModule,
     RateLimitingModule,
     IdempotencyModule,
-    ObservabilityModule,
     BackgroundJobsModule,
     SecurityModule,
     EmailModule,
@@ -87,12 +83,10 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
     VouchersModule,
     FlashSalesModule,
     OrdersModule,
-    InstallmentsModule,
     PaymentsModule,
     ReviewsModule,
     WishlistModule,
     WarrantyModule,
-    ReturnsModule,
     NotificationsModule,
     AuditLogModule,
     SuppliersModule,

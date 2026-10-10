@@ -45,8 +45,8 @@ describe('OrdersService - PACKED and SHIPPING transitions', () => {
         update: jest.fn(),
         updateMany: (jest.fn() as any).mockResolvedValue({ count: 1 }),
       },
-      installmentApplication: {
-        updateMany: jest.fn(),
+      payment: {
+        updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 0 })),
       },
       $transaction: jest.fn((cb: any) => cb(prisma)),
     };

@@ -29,9 +29,6 @@ describe('ReportsService', () => {
       inventory: {
         findMany: jest.fn(),
       },
-      refund: {
-        aggregate: jest.fn(),
-      },
     };
 
     service = new ReportsService(prisma);

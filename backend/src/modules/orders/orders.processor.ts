@@ -3,7 +3,7 @@ import { Logger, Optional } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../infrastructure/email/email.service';
-import { OrderStatus, ImeiStatus, InstallmentStatus, PaymentStatus } from '@prisma/client';
+import { OrderStatus, ImeiStatus, PaymentStatus } from '@prisma/client';
 
 export interface ExpireOrderHoldJobData {
   orderId: string;
@@ -36,7 +36,6 @@ export class OrdersProcessor extends WorkerHost {
       include: {
         items: true,
         user: { select: { email: true, firstName: true, lastName: true } },
-        installmentApplication: { select: { id: true } },
       },
     });
 
@@ -67,29 +66,19 @@ export class OrdersProcessor extends WorkerHost {
         data: {
           status: OrderStatus.CANCELLED,
           cancelledAt: new Date(),
-          cancelledReason: (order as any).installmentApplication
-            ? 'Hold expired (24 hours)'
-            : 'Hold expired (15 minutes)',
+          cancelledReason: 'Hold expired (15 minutes)',
         },
       });
       if (affected.count === 0) return; // Order was already confirmed, paid, or cancelled
       cancelled = true;
 
-      if ((tx as any).installmentApplication?.updateMany) {
-        await (tx as any).installmentApplication.updateMany({
-          where: { orderId, status: InstallmentStatus.PENDING },
-          data: {
-            status: InstallmentStatus.CANCELLED,
-            rejectionReason: 'Hết thời hạn 24h thẩm định hồ sơ',
-          },
+      // Close still-pending payments so the expired order keeps no live rows.
+      if (tx.payment?.updateMany) {
+        await tx.payment.updateMany({
+          where: { orderId, status: PaymentStatus.PENDING },
+          data: { status: PaymentStatus.CANCELLED },
         });
       }
-
-      // Close still-pending payments so the expired order keeps no live rows.
-      await tx.payment.updateMany({
-        where: { orderId, status: PaymentStatus.PENDING },
-        data: { status: PaymentStatus.CANCELLED },
-      });
 
       // H2: give the voucher use back together with the stock release
       if ((order as any).voucherCode) {
@@ -132,10 +121,7 @@ export class OrdersProcessor extends WorkerHost {
           const u = (order as any).user;
           const recipientName =
             [u.firstName, u.lastName].filter(Boolean).join(' ') || undefined;
-          const isInstallment = Boolean((order as any).installmentApplication);
-          const holdReason = isInstallment
-            ? 'Hết thời hạn 24 giờ thẩm định hồ sơ trả góp'
-            : 'Quá thời hạn 15 phút giữ hàng chưa hoàn tất thanh toán';
+          const holdReason = 'Quá thời hạn 15 phút giữ hàng chưa hoàn tất thanh toán';
 
           await this.emailService.sendOrderCancelled(u.email, {
             orderNumber: order.orderNumber,
