@@ -285,10 +285,11 @@ export const AiChatWidget: React.FC = () => {
                       {m.products.map((p) => {
                         const flash = getFlashSaleInfo(p);
                         const isFlash = flash.isFlashSale || (m.sources || []).includes('flash-sale');
+                        const productHref = p.variantId ? `/products/${p.slug}?variantId=${p.variantId}` : `/products/${p.slug}`;
                         return (
                           <Link
                             key={p.slug}
-                            to={`/products/${p.slug}`}
+                            to={productHref}
                             className={`group relative flex items-center gap-3 p-2.5 bg-white border rounded-xl hover:shadow-sm transition-all ${
                               isFlash
                                 ? 'border-rose-200 hover:border-rose-300 bg-linear-to-r from-white to-rose-50/20'
@@ -308,7 +309,11 @@ export const AiChatWidget: React.FC = () => {
                             />
                             <div className="min-w-0 flex-1">
                               <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-violet-600 transition-colors">
-                                {p.brand ? `${p.brand} ` : ''}
+                                {p.brand &&
+                                !p.name.toLowerCase().includes(p.brand.toLowerCase()) &&
+                                p.brand.toLowerCase() !== 'apple'
+                                  ? `${p.brand} `
+                                  : ''}
                                 {p.name}
                               </p>
                               <div className="flex items-baseline gap-1.5 flex-wrap">

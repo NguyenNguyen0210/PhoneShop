@@ -20,6 +20,7 @@ export interface ChatbotProduct {
   warrantyMonths?: number;
   specsSummary?: string;
   variants?: ChatbotVariant[];
+  variantId?: string;
 }
 
 export interface FlashSalePricingInfo {

@@ -366,3 +366,77 @@ describe('ProductDetailPage inactive brand handling', () => {
     expect(screen.queryByText('Điện thoại Sony Xperia 1 VI')).toBeNull();
   });
 });
+
+describe('ProductDetailPage name and default variant selection', () => {
+  const originalScrollTo = window.scrollTo;
+
+  const mockProduct = {
+    id: 'prod-iphone-16',
+    name: 'iPhone 16',
+    slug: 'iphone-16',
+    brandId: 'b-apple',
+    brand: { id: 'b-apple', name: 'Apple', isActive: true },
+    categoryId: 'c-phone',
+    category: { id: 'c-phone', name: 'Điện thoại' },
+    status: 'ACTIVE',
+    variants: [
+      {
+        id: 'var-pink',
+        productId: 'prod-iphone-16',
+        color: 'Hồng',
+        storage: '128GB',
+        ram: '8GB',
+        price: 21490000,
+        sku: 'IP16-128-PNK',
+        stock: 12,
+        inventory: { availableQty: 12 },
+        isActive: true,
+      },
+      {
+        id: 'var-teal',
+        productId: 'prod-iphone-16',
+        color: 'Xanh',
+        storage: '128GB',
+        ram: '8GB',
+        price: 19990000,
+        sku: 'APL-IP16-128-XANH',
+        stock: 25,
+        inventory: { availableQty: 25 },
+        isActive: true,
+      },
+    ],
+    images: ['/images/ip16.png'],
+  };
+
+  beforeEach(() => {
+    window.scrollTo = vi.fn();
+    vi.mocked(productService.getProductById).mockResolvedValue(mockProduct as any);
+    vi.mocked(flashSaleService.getActiveCampaign).mockResolvedValue(null);
+  });
+
+  afterEach(() => {
+    window.scrollTo = originalScrollTo;
+    vi.restoreAllMocks();
+  });
+
+  it('renders exact English product name in heading without "Điện thoại " prefix and selects cheapest in-stock variant by default', async () => {
+    render(
+      <MemoryRouter initialEntries={['/products/iphone-16']}>
+        <Routes>
+          <Route path="/products/:id" element={<ProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const heading = screen.getByRole('heading', { level: 1 });
+      expect(heading.textContent?.trim()).toBe('iPhone 16');
+      expect(heading.textContent).not.toContain('Điện thoại');
+    });
+
+    // Default variant chosen should be var-teal with lowest price 19.990.000đ (not var-pink with 21.490.000đ)
+    await waitFor(() => {
+      expect(screen.getAllByText(/19\.990\.000/).length).toBeGreaterThan(0);
+    });
+  });
+});

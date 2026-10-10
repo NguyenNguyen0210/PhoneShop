@@ -87,6 +87,46 @@ describe('AiChatWidget', () => {
     });
   });
 
+  it('renders product card with variantId in href and clean product name without redundant brand', async () => {
+    (chatbotService.ask as any).mockResolvedValue({
+      reply: 'Shop gợi ý bạn iPhone 16 giá tốt nhất nhé!',
+      products: [
+        {
+          slug: 'iphone-16',
+          name: 'iPhone 16',
+          brand: 'Apple',
+          price: 19990000,
+          variantId: 'var-ip16-teal-128',
+          image: '/images/ip16.png',
+          specsSummary: 'Màn hình: 6.0", Chip: Apple A18, Pin: 3561mAh',
+        },
+      ],
+      sources: [],
+      escalate: false,
+    });
+
+    render(
+      <BrowserRouter>
+        <AiChatWidget />
+      </BrowserRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Hỏi AI PhoneShop/i }));
+
+    const chip = await screen.findByText(/⚡ Flash sale nào đang chạy\?/i);
+    fireEvent.click(chip);
+
+    await waitFor(() => {
+      expect(screen.getByText('Shop gợi ý bạn iPhone 16 giá tốt nhất nhé!')).toBeDefined();
+      // Product title should be clean "iPhone 16" without "Apple iPhone 16"
+      expect(screen.getByText('iPhone 16')).toBeDefined();
+      expect(screen.queryByText('Apple iPhone 16')).toBeNull();
+      // Link should target the variant ID query
+      const cardLink = screen.getByRole('link', { name: /iPhone 16/i });
+      expect(cardLink.getAttribute('href')).toBe('/products/iphone-16?variantId=var-ip16-teal-128');
+    });
+  });
+
   it('refreshes local cart after a successful ask so cart page is not stale', async () => {    (chatbotService.ask as any).mockResolvedValue({
       reply: 'Đã thêm vào giỏ.',
       products: [],
