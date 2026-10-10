@@ -15,9 +15,9 @@ describe('StorefrontServiceBar', () => {
     expect(screen.getByText('Bảo hành 12 tháng')).toBeTruthy();
     expect(screen.getByText('Chính hãng toàn quốc')).toBeTruthy();
 
-    // 3. 1 đổi 1 trong 30 ngày - Nếu lỗi nhà sản xuất
-    expect(screen.getByText('1 đổi 1 trong 30 ngày')).toBeTruthy();
-    expect(screen.getByText('Nếu lỗi nhà sản xuất')).toBeTruthy();
+    // 3. Chính hãng 100% - Nguyên seal hộp
+    expect(screen.getByText('Chính hãng 100%')).toBeTruthy();
+    expect(screen.getByText('Nguyên seal hộp')).toBeTruthy();
 
     // 4. Thu cũ đổi mới - Trợ giá đến 2.000.000₫
     expect(screen.getByText('Thu cũ đổi mới')).toBeTruthy();

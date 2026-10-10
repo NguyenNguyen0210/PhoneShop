@@ -211,7 +211,7 @@ export const OrderInvoiceModal: React.FC<OrderInvoiceModalProps> = ({ order, isO
           {/* Warranty & Signature Footer */}
           <div className="pt-4 border-t border-slate-200 space-y-4 text-xs">
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
-              <strong className="text-slate-800">Quy định bảo hành:</strong> Máy được bảo hành 12 tháng theo số IMEI ghi trên hóa đơn. Bao test 1 đổi 1 trong 30 ngày đầu tiên đối với lỗi phần cứng từ nhà sản xuất. Không áp dụng bảo hành đối với các trường hợp rơi vỡ, vào nước hoặc can thiệp phần mềm trái phép.
+              <strong className="text-slate-800">Quy định bảo hành:</strong> Máy được bảo hành 12 tháng theo số IMEI ghi trên hóa đơn. Không áp dụng bảo hành đối với các trường hợp rơi vỡ, vào nước hoặc can thiệp phần mềm trái phép.
             </div>
 
             <div className="grid grid-cols-3 gap-4 text-center pt-2">

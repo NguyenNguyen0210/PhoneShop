@@ -1,5 +1,5 @@
 import React from 'react';
-import { Truck, ShieldCheck, RotateCcw, ArrowLeftRight } from 'lucide-react';
+import { Truck, ShieldCheck, CheckCircle2, ArrowLeftRight } from 'lucide-react';
 
 export interface StorefrontServiceBarProps {
   className?: string;
@@ -35,10 +35,10 @@ const GUARANTEES: GuaranteeItem[] = [
     borderColor: 'group-hover:border-emerald-200',
   },
   {
-    id: 'exchange',
-    icon: RotateCcw,
-    title: '1 đổi 1 trong 30 ngày',
-    description: 'Nếu lỗi nhà sản xuất',
+    id: 'genuine',
+    icon: CheckCircle2,
+    title: 'Chính hãng 100%',
+    description: 'Nguyên seal hộp',
     iconBg: 'bg-indigo-50',
     iconColor: 'text-indigo-600',
     borderColor: 'group-hover:border-indigo-200',

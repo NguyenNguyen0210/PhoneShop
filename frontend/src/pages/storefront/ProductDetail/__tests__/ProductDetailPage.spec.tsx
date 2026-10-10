@@ -103,6 +103,8 @@ describe('ProductDetailPage flash sale variant switching (regression)', () => {
         ram: '8GB',
         price: 28000000,
         sku: 'S24U-256-BLK-8',
+        stock: 10,
+        inventory: { availableQty: 10 },
       },
       {
         id: 'var-1-flash',
@@ -112,6 +114,8 @@ describe('ProductDetailPage flash sale variant switching (regression)', () => {
         ram: '12GB',
         price: 30000000,
         sku: 'S24U-256-BLK-12',
+        stock: 10,
+        inventory: { availableQty: 10 },
       },
       {
         id: 'var-3',
@@ -121,6 +125,8 @@ describe('ProductDetailPage flash sale variant switching (regression)', () => {
         ram: '12GB',
         price: 31000000,
         sku: 'S24U-256-WHT-12',
+        stock: 10,
+        inventory: { availableQty: 10 },
       },
     ],
     images: ['/images/s24-1.webp'],
