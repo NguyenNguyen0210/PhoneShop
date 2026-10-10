@@ -143,3 +143,94 @@ describe('OrdersService - Fulfillment Stock Movements & Ledger Sync', () => {
     });
   });
 });
+
+describe('OrdersService - Checkout Brand Deactivation Validation', () => {
+  let ordersService: OrdersService;
+  let mockPrisma: any;
+  let mockQueue: any;
+
+  beforeEach(() => {
+    mockQueue = { add: (jest.fn() as any).mockResolvedValue({ id: 'job-1' }) };
+    mockPrisma = {
+      cart: {
+        findUnique: (jest.fn() as any),
+      },
+    };
+    ordersService = new OrdersService(mockPrisma, mockQueue);
+  });
+
+  it('throws BadRequestException when cart item product brand isActive is false', async () => {
+    mockPrisma.cart.findUnique.mockResolvedValue({
+      id: 'cart-1',
+      userId: 'user-1',
+      items: [
+        {
+          id: 'item-1',
+          variantId: 'var-1',
+          quantity: 1,
+          variant: {
+            id: 'var-1',
+            name: 'iPhone 15 Blue',
+            isActive: true,
+            inventory: { availableQty: 5 },
+            product: {
+              name: 'iPhone 15',
+              brand: {
+                id: 'brand-1',
+                name: 'Apple',
+                isActive: false,
+              },
+            },
+          },
+        },
+      ],
+    });
+
+    await expect(
+      ordersService.checkout('user-1', {
+        addressId: 'addr-1',
+        paymentMethod: 'COD' as any,
+        shippingMethod: 'STANDARD' as any,
+      }),
+    ).rejects.toThrow(
+      'Sản phẩm "iPhone 15" thuộc thương hiệu đã tạm ngừng kinh doanh.',
+    );
+  });
+
+  it('uses variant name in exception when product name is missing', async () => {
+    mockPrisma.cart.findUnique.mockResolvedValue({
+      id: 'cart-1',
+      userId: 'user-1',
+      items: [
+        {
+          id: 'item-1',
+          variantId: 'var-1',
+          quantity: 1,
+          variant: {
+            id: 'var-1',
+            name: 'Generic Phone Var',
+            isActive: true,
+            inventory: { availableQty: 5 },
+            product: {
+              brand: {
+                id: 'brand-1',
+                name: 'Brand X',
+                isActive: false,
+              },
+            },
+          },
+        },
+      ],
+    });
+
+    await expect(
+      ordersService.checkout('user-1', {
+        addressId: 'addr-1',
+        paymentMethod: 'COD' as any,
+        shippingMethod: 'STANDARD' as any,
+      }),
+    ).rejects.toThrow(
+      'Sản phẩm "Generic Phone Var" thuộc thương hiệu đã tạm ngừng kinh doanh.',
+    );
+  });
+});

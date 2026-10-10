@@ -154,6 +154,7 @@ export class ProductsService {
 
     if (publicOnly) {
       where.status = ProductStatus.ACTIVE;
+      where.brand = { isActive: true };
     } else if (status) {
       where.status = status;
     }

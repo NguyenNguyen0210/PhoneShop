@@ -99,7 +99,10 @@ export class OrdersService {
         items: {
           include: {
             variant: {
-              include: { inventory: true, product: { select: { name: true } } },
+              include: {
+                inventory: true,
+                product: { include: { brand: true } },
+              },
             },
           },
         },
@@ -132,6 +135,11 @@ export class OrdersService {
     for (const item of itemsToCheckout) {
       if (!item.variant.isActive) {
         throw new BadRequestException(`Variant ${item.variant.name} is not available`);
+      }
+      if (item.variant.product?.brand?.isActive === false) {
+        throw new BadRequestException(
+          `Sản phẩm "${item.variant.product?.name || item.variant.name}" thuộc thương hiệu đã tạm ngừng kinh doanh.`,
+        );
       }
       if (!item.variant.inventory || item.variant.inventory.availableQty < item.quantity) {
         throw new BadRequestException(`Insufficient stock for ${item.variant.name}`);

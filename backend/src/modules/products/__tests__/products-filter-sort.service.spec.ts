@@ -215,4 +215,44 @@ describe('ProductsService - Filter & Sort', () => {
     expect(first.variants).toBeDefined();
     expect(first.variants.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('should filter by brand.isActive = true when publicOnly is true', async () => {
+    await service.findAll({}, true);
+
+    expect(prisma.product.findMany).toHaveBeenCalled();
+    const callArgs: any = (prisma.product.findMany as jest.Mock).mock.calls[
+      (prisma.product.findMany as jest.Mock).mock.calls.length - 1
+    ][0];
+    const where = callArgs.where;
+
+    expect(where.status).toBe('ACTIVE');
+    expect(where.brand).toEqual({ isActive: true });
+  });
+
+  it('should filter by both brand.isActive = true and brandId when publicOnly is true and brandId is supplied', async () => {
+    await service.findAll({ brandId: 'brand-123' }, true);
+
+    expect(prisma.product.findMany).toHaveBeenCalled();
+    const callArgs: any = (prisma.product.findMany as jest.Mock).mock.calls[
+      (prisma.product.findMany as jest.Mock).mock.calls.length - 1
+    ][0];
+    const where = callArgs.where;
+
+    expect(where.status).toBe('ACTIVE');
+    expect(where.brand).toEqual({ isActive: true });
+    expect(where.brandId).toBe('brand-123');
+  });
+
+  it('should not filter by brand.isActive when publicOnly is false', async () => {
+    await service.findAll({ brandId: 'brand-123' }, false);
+
+    expect(prisma.product.findMany).toHaveBeenCalled();
+    const callArgs: any = (prisma.product.findMany as jest.Mock).mock.calls[
+      (prisma.product.findMany as jest.Mock).mock.calls.length - 1
+    ][0];
+    const where = callArgs.where;
+
+    expect(where.brand).toBeUndefined();
+    expect(where.brandId).toBe('brand-123');
+  });
 });

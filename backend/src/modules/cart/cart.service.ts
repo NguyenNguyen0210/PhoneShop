@@ -11,7 +11,7 @@ export class CartService {
       where: { userId },
       include: {
         items: {
-          include: { variant: { include: { product: true, inventory: true } } },
+          include: { variant: { include: { product: { include: { brand: true } }, inventory: true } } },
         },
       },
     });
@@ -20,7 +20,7 @@ export class CartService {
         data: { userId },
         include: {
           items: {
-            include: { variant: { include: { product: true, inventory: true } } },
+            include: { variant: { include: { product: { include: { brand: true } }, inventory: true } } },
           },
         },
       });
@@ -50,9 +50,14 @@ export class CartService {
     // Get current price
     const variant = await this.prisma.productVariant.findUnique({
       where: { id: dto.variantId },
+      include: { product: { include: { brand: true } } },
     });
     if (!variant || !variant.isActive) {
       throw new NotFoundException('Product variant not found or inactive');
+    }
+
+    if (variant.product?.brand && variant.product.brand.isActive === false) {
+      throw new BadRequestException('Thương hiệu của sản phẩm này hiện đã tạm ngừng hoạt động');
     }
 
     const existing = await this.prisma.cartItem.findUnique({
@@ -80,6 +85,10 @@ export class CartService {
     });
   }
 
+  async addToCart(userId: string, dto: AddCartItemDto) {
+    return this.addItem(userId, dto);
+  }
+
   async updateItem(userId: string, itemId: string, dto: UpdateCartItemDto) {
     const cart = await this.getOrCreateCart(userId);
     const item = await this.prisma.cartItem.findFirst({
@@ -92,9 +101,14 @@ export class CartService {
 
     const variant = await this.prisma.productVariant.findUnique({
       where: { id: item.variantId },
+      include: { product: { include: { brand: true } } },
     });
     if (!variant || !variant.isActive) {
       throw new NotFoundException('Product variant not found or inactive');
+    }
+
+    if (variant.product?.brand && variant.product.brand.isActive === false) {
+      throw new BadRequestException('Thương hiệu của sản phẩm này hiện đã tạm ngừng hoạt động');
     }
 
     const inventory = await this.prisma.inventory.findUnique({
@@ -108,6 +122,10 @@ export class CartService {
       where: { id: item.id },
       data: { quantity: dto.quantity, unitPrice: variant.price },
     });
+  }
+
+  async updateQuantity(userId: string, itemId: string, dto: UpdateCartItemDto) {
+    return this.updateItem(userId, itemId, dto);
   }
 
   async removeItem(userId: string, itemId: string) {
