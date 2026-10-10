@@ -151,9 +151,8 @@ export const AdminSettingsPage: React.FC = () => {
       await settingsService.updateAdminSettings(itemsToUpdate);
 
       notification.success({
-        title: 'Cập nhật cấu hình thành công',
-        message: 'Cập nhật cấu hình thành công',
-        description: 'Tất cả tham số đã được lưu vào hệ thống và xóa cache Redis tương ứng.',
+        message: 'Lưu cấu hình thành công',
+        description: 'Các thay đổi đã được lưu và áp dụng ngay trên toàn hệ thống.',
         placement: 'topRight',
       });
 
@@ -162,10 +161,9 @@ export const AdminSettingsPage: React.FC = () => {
       await fetchSettings();
     } catch (err: any) {
       const errMsg =
-        err?.response?.data?.message || err?.message || 'Lỗi khi lưu cấu hình hệ thống';
+        err?.response?.data?.message || err?.message || 'Không thể lưu cấu hình hệ thống. Vui lòng thử lại sau.';
       notification.error({
-        title: 'Lưu cấu hình thất bại',
-        message: 'Lưu cấu hình thất bại',
+        message: 'Lưu cấu hình không thành công',
         description: errMsg,
         placement: 'topRight',
       });
