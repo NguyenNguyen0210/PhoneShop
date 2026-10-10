@@ -18,10 +18,14 @@ describe('FlashSalesService', () => {
       },
       flashSaleItem: {
         findFirst: jest.fn(),
+        deleteMany: jest.fn(),
+        update: jest.fn(),
+        create: jest.fn(),
       },
       productVariant: {
         findUnique: jest.fn(),
       },
+      $transaction: jest.fn(async (cb: any) => cb(prisma)),
     };
 
     (prisma.flashSaleItem.findFirst as any).mockResolvedValue(null);
@@ -231,6 +235,382 @@ describe('FlashSalesService', () => {
       const result = await service.remove('camp-1');
       expect(result.id).toBe('camp-1');
       expect(prisma.flashSaleCampaign.delete).toHaveBeenCalledWith({ where: { id: 'camp-1' } });
+    });
+  });
+
+  describe('update', () => {
+    it('should throw NotFoundException if campaign not found', async () => {
+      (prisma.flashSaleCampaign.findUnique as any).mockResolvedValue(null);
+
+      await expect(
+        service.update('camp-unknown', {
+          name: 'Updated',
+          startAt: new Date(Date.now() + 1000).toISOString(),
+          endAt: new Date(Date.now() + 5000).toISOString(),
+          items: [],
+        } as any),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should reject update on ENDED campaign when isActive is false', async () => {
+      (prisma.flashSaleCampaign.findUnique as any).mockResolvedValue({
+        id: 'camp-1',
+        isActive: false,
+        startAt: new Date(Date.now() - 50000),
+        endAt: new Date(Date.now() + 50000),
+        items: [],
+      });
+
+      await expect(
+        service.update('camp-1', {
+          name: 'Updated',
+          startAt: new Date(Date.now() + 1000).toISOString(),
+          endAt: new Date(Date.now() + 5000).toISOString(),
+          items: [],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject update on ENDED campaign when endAt is in the past', async () => {
+      (prisma.flashSaleCampaign.findUnique as any).mockResolvedValue({
+        id: 'camp-1',
+        isActive: true,
+        startAt: new Date(Date.now() - 50000),
+        endAt: new Date(Date.now() - 1000),
+        items: [],
+      });
+
+      await expect(
+        service.update('camp-1', {
+          name: 'Updated',
+          startAt: new Date(Date.now() + 1000).toISOString(),
+          endAt: new Date(Date.now() + 5000).toISOString(),
+          items: [],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should successfully update an UPCOMING campaign', async () => {
+      const now = Date.now();
+      const existingCampaign = {
+        id: 'camp-1',
+        name: 'Upcoming Sale',
+        description: 'Old description',
+        isActive: true,
+        startAt: new Date(now + 100000),
+        endAt: new Date(now + 200000),
+        items: [
+          {
+            id: 'item-1',
+            campaignId: 'camp-1',
+            variantId: 'var-1',
+            flashPrice: 15000000,
+            stockLimit: 10,
+            soldCount: 0,
+          },
+          {
+            id: 'item-2',
+            campaignId: 'camp-1',
+            variantId: 'var-2',
+            flashPrice: 16000000,
+            stockLimit: 5,
+            soldCount: 0,
+          },
+        ],
+      };
+
+      (prisma.flashSaleCampaign.findUnique as any).mockResolvedValue(existingCampaign);
+
+      (prisma.productVariant.findUnique as any).mockImplementation(async ({ where }: any) => {
+        if (where.id === 'var-1') {
+          return {
+            id: 'var-1',
+            sku: 'VAR-1',
+            price: 20000000,
+            isActive: true,
+            inventory: { availableQty: 15 },
+          };
+        }
+        if (where.id === 'var-3') {
+          return {
+            id: 'var-3',
+            sku: 'VAR-3',
+            price: 18000000,
+            isActive: true,
+            inventory: { availableQty: 8 },
+          };
+        }
+        return null;
+      });
+
+      const updatedCampaign = {
+        id: 'camp-1',
+        name: 'Updated Upcoming Sale',
+        description: 'New description',
+        startAt: new Date(now + 120000),
+        endAt: new Date(now + 250000),
+        items: [],
+      };
+      (prisma.flashSaleCampaign.update as any).mockResolvedValue(updatedCampaign);
+
+      const dto = {
+        name: 'Updated Upcoming Sale',
+        description: 'New description',
+        startAt: new Date(now + 120000).toISOString(),
+        endAt: new Date(now + 250000).toISOString(),
+        items: [
+          { variantId: 'var-1', flashPrice: 14000000, stockLimit: 8 },
+          { variantId: 'var-3', flashPrice: 12000000, stockLimit: 5 },
+        ],
+      };
+
+      const result = await service.update('camp-1', dto as any);
+
+      expect(result).toEqual(updatedCampaign);
+      expect(prisma.flashSaleItem.deleteMany).toHaveBeenCalledWith({
+        where: { id: { in: ['item-2'] } },
+      });
+      expect(prisma.flashSaleItem.update).toHaveBeenCalledWith({
+        where: { id: 'item-1' },
+        data: { flashPrice: 14000000, stockLimit: 8 },
+      });
+      expect(prisma.flashSaleItem.create).toHaveBeenCalledWith({
+        data: {
+          campaignId: 'camp-1',
+          variantId: 'var-3',
+          flashPrice: 12000000,
+          stockLimit: 5,
+        },
+      });
+    });
+
+    it('should successfully update an ACTIVE campaign (locking startAt and extending endAt)', async () => {
+      const now = Date.now();
+      const originalStartAt = new Date(now - 3600000);
+      const existingCampaign = {
+        id: 'camp-1',
+        name: 'Active Sale',
+        description: 'Running sale',
+        isActive: true,
+        startAt: originalStartAt,
+        endAt: new Date(now + 3600000),
+        items: [
+          {
+            id: 'item-1',
+            campaignId: 'camp-1',
+            variantId: 'var-1',
+            flashPrice: 15000000,
+            stockLimit: 10,
+            soldCount: 3,
+          },
+        ],
+      };
+
+      (prisma.flashSaleCampaign.findUnique as any).mockResolvedValue(existingCampaign);
+
+      (prisma.productVariant.findUnique as any).mockResolvedValue({
+        id: 'var-1',
+        sku: 'VAR-1',
+        price: 20000000,
+        isActive: true,
+        inventory: { availableQty: 10 },
+      });
+
+      const updatedCampaign = {
+        id: 'camp-1',
+        name: 'Active Sale Extended',
+        startAt: originalStartAt,
+        endAt: new Date(now + 7200000),
+        items: [],
+      };
+      (prisma.flashSaleCampaign.update as any).mockResolvedValue(updatedCampaign);
+
+      const dto = {
+        name: 'Active Sale Extended',
+        startAt: new Date(now - 7200000).toISOString(), // Attempt to alter startAt
+        endAt: new Date(now + 7200000).toISOString(),
+        items: [
+          { variantId: 'var-1', flashPrice: 15000000, stockLimit: 12 },
+        ],
+      };
+
+      const result = await service.update('camp-1', dto as any);
+
+      expect(result).toEqual(updatedCampaign);
+      // Ensure startAt passed to prisma update is the locked original startAt, NOT dto.startAt
+      expect(prisma.flashSaleCampaign.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            startAt: originalStartAt,
+            endAt: new Date(dto.endAt),
+          }),
+        }),
+      );
+    });
+
+    it('should reject update on ACTIVE campaign if endAt is not in the future', async () => {
+      const now = Date.now();
+      const existingCampaign = {
+        id: 'camp-1',
+        name: 'Active Sale',
+        isActive: true,
+        startAt: new Date(now - 3600000),
+        endAt: new Date(now + 3600000),
+        items: [],
+      };
+
+      (prisma.flashSaleCampaign.findUnique as any).mockResolvedValue(existingCampaign);
+
+      const dto = {
+        name: 'Active Sale',
+        startAt: new Date(now - 3600000).toISOString(),
+        endAt: new Date(now - 1000).toISOString(),
+        items: [],
+      };
+
+      await expect(service.update('camp-1', dto as any)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject changing flashPrice of item with soldCount > 0 in ACTIVE campaign', async () => {
+      const now = Date.now();
+      const existingCampaign = {
+        id: 'camp-1',
+        name: 'Active Sale',
+        isActive: true,
+        startAt: new Date(now - 3600000),
+        endAt: new Date(now + 3600000),
+        items: [
+          {
+            id: 'item-1',
+            campaignId: 'camp-1',
+            variantId: 'var-1',
+            flashPrice: 15000000,
+            stockLimit: 10,
+            soldCount: 2,
+          },
+        ],
+      };
+
+      (prisma.flashSaleCampaign.findUnique as any).mockResolvedValue(existingCampaign);
+
+      const dto = {
+        name: 'Active Sale',
+        startAt: new Date(now - 3600000).toISOString(),
+        endAt: new Date(now + 7200000).toISOString(),
+        items: [
+          { variantId: 'var-1', flashPrice: 14000000, stockLimit: 10 },
+        ],
+      };
+
+      await expect(service.update('camp-1', dto as any)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject removing item with soldCount > 0 in ACTIVE campaign', async () => {
+      const now = Date.now();
+      const existingCampaign = {
+        id: 'camp-1',
+        name: 'Active Sale',
+        isActive: true,
+        startAt: new Date(now - 3600000),
+        endAt: new Date(now + 3600000),
+        items: [
+          {
+            id: 'item-1',
+            campaignId: 'camp-1',
+            variantId: 'var-1',
+            flashPrice: 15000000,
+            stockLimit: 10,
+            soldCount: 3,
+          },
+        ],
+      };
+
+      (prisma.flashSaleCampaign.findUnique as any).mockResolvedValue(existingCampaign);
+
+      const dto = {
+        name: 'Active Sale',
+        startAt: new Date(now - 3600000).toISOString(),
+        endAt: new Date(now + 7200000).toISOString(),
+        items: [],
+      };
+
+      await expect(service.update('camp-1', dto as any)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject setting stockLimit < soldCount', async () => {
+      const now = Date.now();
+      const existingCampaign = {
+        id: 'camp-1',
+        name: 'Active Sale',
+        isActive: true,
+        startAt: new Date(now - 3600000),
+        endAt: new Date(now + 3600000),
+        items: [
+          {
+            id: 'item-1',
+            campaignId: 'camp-1',
+            variantId: 'var-1',
+            flashPrice: 15000000,
+            stockLimit: 10,
+            soldCount: 5,
+          },
+        ],
+      };
+
+      (prisma.flashSaleCampaign.findUnique as any).mockResolvedValue(existingCampaign);
+
+      const dto = {
+        name: 'Active Sale',
+        startAt: new Date(now - 3600000).toISOString(),
+        endAt: new Date(now + 7200000).toISOString(),
+        items: [
+          { variantId: 'var-1', flashPrice: 15000000, stockLimit: 4 },
+        ],
+      };
+
+      await expect(service.update('camp-1', dto as any)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject overlapping campaign with another active campaign', async () => {
+      const now = Date.now();
+      const existingCampaign = {
+        id: 'camp-1',
+        name: 'Upcoming Sale',
+        isActive: true,
+        startAt: new Date(now + 100000),
+        endAt: new Date(now + 200000),
+        items: [],
+      };
+
+      (prisma.flashSaleCampaign.findUnique as any).mockResolvedValue(existingCampaign);
+
+      (prisma.productVariant.findUnique as any).mockResolvedValue({
+        id: 'var-1',
+        sku: 'VAR-1',
+        price: 20000000,
+        isActive: true,
+        inventory: { availableQty: 10 },
+      });
+
+      (prisma.flashSaleItem.findFirst as any).mockResolvedValue({ id: 'overlap-item' });
+
+      const dto = {
+        name: 'Upcoming Sale',
+        startAt: new Date(now + 100000).toISOString(),
+        endAt: new Date(now + 200000).toISOString(),
+        items: [
+          { variantId: 'var-1', flashPrice: 15000000, stockLimit: 5 },
+        ],
+      };
+
+      await expect(service.update('camp-1', dto as any)).rejects.toThrow(BadRequestException);
+      expect(prisma.flashSaleItem.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            campaignId: { not: 'camp-1' },
+          }),
+        }),
+      );
     });
   });
 });

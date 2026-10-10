@@ -45,6 +45,15 @@ export class FlashSalesController {
     return this.flashSalesService.create(dto);
   }
 
+  @Put(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cập nhật chiến dịch Flash Sale (MANAGER/ADMIN)' })
+  update(@Param('id') id: string, @Body() dto: CreateFlashSaleDto) {
+    return this.flashSalesService.update(id, dto);
+  }
+
   @Put(':id/end-early')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.MANAGER, Role.ADMIN)

@@ -16,13 +16,14 @@ import {
   Typography,
   message,
   Divider,
+  Tooltip,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { productService } from '../../../../services/productService';
 import { flashSaleService } from '../../../../services/flashSaleService';
-import type { Product, ProductVariant, CreateFlashSaleInput } from '../../../../types';
+import type { Product, ProductVariant, CreateFlashSaleInput, FlashSaleCampaign } from '../../../../types';
 
 const { TextArea } = Input;
 const { RangePicker } = DatePicker;
@@ -32,6 +33,7 @@ export interface FlashSaleFormModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  campaignToEdit?: FlashSaleCampaign | null;
 }
 
 interface SelectedVariantItem {
@@ -45,15 +47,25 @@ interface SelectedVariantItem {
   flashPrice: number;
   stockLimit: number;
   discountPercent: number;
+  soldCount?: number;
 }
 
 export const FlashSaleFormModal: React.FC<FlashSaleFormModalProps> = ({
   open,
   onClose,
   onSuccess,
+  campaignToEdit,
 }) => {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+
+  const isEditMode = Boolean(campaignToEdit);
+  const isCampaignActive = Boolean(
+    campaignToEdit &&
+      dayjs(campaignToEdit.startAt).isBefore(dayjs()) &&
+      dayjs(campaignToEdit.endAt).isAfter(dayjs()) &&
+      campaignToEdit.isActive
+  );
 
   // Products catalog search & selection
   const [products, setProducts] = useState<Product[]>([]);
@@ -90,20 +102,70 @@ export const FlashSaleFormModal: React.FC<FlashSaleFormModalProps> = ({
 
   useEffect(() => {
     if (open) {
-      form.resetFields();
-      form.setFieldsValue({
-        dateRange: [dayjs().add(1, 'hour'), dayjs().add(1, 'hour').add(3, 'hour')],
-      });
-      setCampaignItems([]);
-      setSelectedProductId(null);
-      setSelectedProduct(null);
-      setSelectedVariantId(null);
-      setSelectedVariant(null);
-      setItemFlashPrice(null);
-      setItemStockLimit(null);
-      loadProducts();
+      if (campaignToEdit) {
+        form.setFieldsValue({
+          name: campaignToEdit.name,
+          description: campaignToEdit.description || '',
+          dateRange: [dayjs(campaignToEdit.startAt), dayjs(campaignToEdit.endAt)],
+        });
+        const items: SelectedVariantItem[] = (campaignToEdit.items || []).map((item) => {
+          const originalPrice = Number(item.variant?.price) || 0;
+          const flashPrice = Number(item.flashPrice);
+          const discountPercent =
+            originalPrice > flashPrice
+              ? Math.round(((originalPrice - flashPrice) / originalPrice) * 100)
+              : 0;
+
+          const variantLabel =
+            [item.variant?.color, item.variant?.storage, item.variant?.name]
+              .filter(Boolean)
+              .join(' - ') ||
+            item.variant?.sku ||
+            '';
+
+          const availableStock =
+            item.variant?.inventory?.availableQty ??
+            item.variant?.inventory?.quantity ??
+            0;
+
+          return {
+            variantId: item.variantId,
+            productId: item.variant?.product?.id || '',
+            productName: item.variant?.product?.name || item.variant?.name || 'Sản phẩm',
+            sku: item.variant?.sku || '',
+            variantLabel: variantLabel || item.variant?.sku || '',
+            originalPrice,
+            availableStock,
+            flashPrice,
+            stockLimit: item.stockLimit,
+            discountPercent,
+            soldCount: item.soldCount || 0,
+          };
+        });
+        setCampaignItems(items);
+        setSelectedProductId(null);
+        setSelectedProduct(null);
+        setSelectedVariantId(null);
+        setSelectedVariant(null);
+        setItemFlashPrice(null);
+        setItemStockLimit(null);
+        loadProducts();
+      } else {
+        form.resetFields();
+        form.setFieldsValue({
+          dateRange: [dayjs().add(1, 'hour'), dayjs().add(1, 'hour').add(3, 'hour')],
+        });
+        setCampaignItems([]);
+        setSelectedProductId(null);
+        setSelectedProduct(null);
+        setSelectedVariantId(null);
+        setSelectedVariant(null);
+        setItemFlashPrice(null);
+        setItemStockLimit(null);
+        loadProducts();
+      }
     }
-  }, [open, form, loadProducts]);
+  }, [open, campaignToEdit, form, loadProducts]);
 
   // When a product is selected
   const handleProductSelect = (productId: string) => {
@@ -202,6 +264,7 @@ export const FlashSaleFormModal: React.FC<FlashSaleFormModalProps> = ({
       flashPrice: itemFlashPrice,
       stockLimit: itemStockLimit,
       discountPercent: currentDiscountPercent,
+      soldCount: 0,
     };
 
     setCampaignItems([...campaignItems, newItem]);
@@ -241,13 +304,22 @@ export const FlashSaleFormModal: React.FC<FlashSaleFormModalProps> = ({
         })),
       };
 
-      await flashSaleService.createCampaign(payload);
-      message.success('Tạo chiến dịch Flash Sale thành công!');
+      if (campaignToEdit) {
+        await flashSaleService.updateCampaign(campaignToEdit.id, payload);
+        message.success('Cập nhật chiến dịch Flash Sale thành công!');
+      } else {
+        await flashSaleService.createCampaign(payload);
+        message.success('Tạo chiến dịch Flash Sale thành công!');
+      }
       onSuccess();
       onClose();
     } catch (error: any) {
       if (error?.errorFields) return;
-      const msg = error?.response?.data?.message || 'Có lỗi xảy ra khi tạo chiến dịch Flash Sale';
+      const msg =
+        error?.response?.data?.message ||
+        (isEditMode
+          ? 'Có lỗi xảy ra khi cập nhật chiến dịch Flash Sale'
+          : 'Có lỗi xảy ra khi tạo chiến dịch Flash Sale');
       message.error(msg);
     } finally {
       setSubmitting(false);
@@ -289,39 +361,60 @@ export const FlashSaleFormModal: React.FC<FlashSaleFormModalProps> = ({
       title: 'Suất bán / Tồn kho',
       key: 'stock',
       render: (_, record) => (
-        <Text>
-          <Text strong style={{ color: '#2563eb' }}>
-            {record.stockLimit}
-          </Text>{' '}
-          / {record.availableStock}
-        </Text>
+        <div>
+          <Text>
+            <Text strong style={{ color: '#2563eb' }}>
+              {record.stockLimit}
+            </Text>{' '}
+            / {record.availableStock}
+          </Text>
+          {(record.soldCount ?? 0) > 0 && (
+            <div style={{ fontSize: 12, color: '#059669', marginTop: 2 }}>
+              Đã bán: {record.soldCount}
+            </div>
+          )}
+        </div>
       ),
     },
     {
       title: 'Thao tác',
       key: 'action',
       align: 'right',
-      render: (_, record) => (
-        <Button
-          type="text"
-          danger
-          icon={<DeleteOutlined />}
-          onClick={() => handleRemoveItem(record.variantId)}
-        >
-          Xóa
-        </Button>
-      ),
+      render: (_, record) => {
+        if (isCampaignActive && (record.soldCount ?? 0) > 0) {
+          return (
+            <Tooltip title={`Đã có ${record.soldCount} lượt mua, không thể xóa`}>
+              <span>
+                <Button type="text" danger disabled icon={<DeleteOutlined />}>
+                  Xóa
+                </Button>
+              </span>
+            </Tooltip>
+          );
+        }
+
+        return (
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleRemoveItem(record.variantId)}
+          >
+            Xóa
+          </Button>
+        );
+      },
     },
   ];
 
   return (
     <Modal
       open={open}
-      title="Tạo chiến dịch Flash Sale mới"
+      title={isEditMode ? 'Chỉnh sửa chiến dịch Flash Sale' : 'Tạo chiến dịch Flash Sale mới'}
       onCancel={onClose}
       onOk={handleSubmit}
       confirmLoading={submitting}
-      okText="Tạo chiến dịch"
+      okText={isEditMode ? 'Lưu thay đổi' : 'Tạo chiến dịch'}
       cancelText="Hủy bỏ"
       width={800}
       destroyOnHidden
@@ -349,6 +442,7 @@ export const FlashSaleFormModal: React.FC<FlashSaleFormModalProps> = ({
             format="YYYY-MM-DD HH:mm:ss"
             style={{ width: '100%' }}
             placeholder={['Bắt đầu lúc', 'Kết thúc lúc']}
+            disabled={isCampaignActive ? [true, false] : undefined}
           />
         </Form.Item>
 

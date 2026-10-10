@@ -22,6 +22,11 @@ export const flashSaleService = {
     return res.data?.data ?? res.data;
   },
 
+  updateCampaign: async (id: string, data: CreateFlashSaleInput): Promise<FlashSaleCampaign> => {
+    const res = await apiClient.put(`/flash-sales/${id}`, data);
+    return res.data?.data ?? res.data;
+  },
+
   endEarly: async (id: string): Promise<FlashSaleCampaign> => {
     const res = await apiClient.put(`/flash-sales/${id}/end-early`);
     return res.data?.data ?? res.data;
