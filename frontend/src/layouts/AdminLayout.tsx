@@ -18,7 +18,6 @@ import {
   UndoOutlined,
   CommentOutlined,
   CustomerServiceOutlined,
-  FolderOpenOutlined,
   TagOutlined,
   TagsOutlined,
   SettingOutlined,
@@ -82,11 +81,6 @@ export const AdminLayout: React.FC = () => {
           key: '/admin/products',
           icon: <ShoppingOutlined style={{ fontSize: 16 }} />,
           label: 'Quản lý Sản phẩm',
-        },
-        {
-          key: '/admin/categories',
-          icon: <FolderOpenOutlined style={{ fontSize: 16 }} />,
-          label: 'Quản lý Danh mục',
         },
         {
           key: '/admin/brands',
@@ -184,7 +178,6 @@ export const AdminLayout: React.FC = () => {
   // Dynamic breadcrumb labels
   const getBreadcrumbTitle = () => {
     if (location.pathname === '/admin/products') return 'Quản lý Sản phẩm & Biến thể';
-    if (location.pathname === '/admin/categories') return 'Quản lý Cây Danh Mục Sản Phẩm';
     if (location.pathname === '/admin/brands') return 'Quản lý Thương hiệu Smartphone';
     if (location.pathname === '/admin/suppliers') return 'Quản lý Nhà cung cấp';
     if (location.pathname === '/admin/imei') return 'Quản trị Kho Thiết bị & Quản lý IMEI';
@@ -213,7 +206,6 @@ export const AdminLayout: React.FC = () => {
     if (path.startsWith('/admin/tickets')) return '/admin/tickets';
     if (path.startsWith('/admin/promotions')) return '/admin/promotions';
     if (path.startsWith('/admin/products')) return '/admin/products';
-    if (path.startsWith('/admin/categories')) return '/admin/categories';
     if (path.startsWith('/admin/brands')) return '/admin/brands';
     if (path.startsWith('/admin/suppliers')) return '/admin/suppliers';
     if (path.startsWith('/admin/payments')) return '/admin/payments';
