@@ -7,8 +7,6 @@ import { StaffDashboardPage } from '../StaffDashboardPage';
 // Import services to verify mocks and call assertions
 import { orderService } from '../../../../services/orderService';
 import { ticketService } from '../../../../services/ticketService';
-import { returnService } from '../../../../services/returnService';
-import { installmentService } from '../../../../services/installmentService';
 import { inventoryService } from '../../../../services/inventoryService';
 import { reportService } from '../../../../services/reportService';
 
@@ -65,20 +63,6 @@ vi.mock('../../../../services/orderService', () => ({
 vi.mock('../../../../services/ticketService', () => ({
   ticketService: {
     getAdminTickets: vi.fn(),
-  },
-}));
-
-vi.mock('../../../../services/returnService', () => ({
-  returnService: {
-    getAdminReturns: vi.fn(),
-    getAllReturnsAdmin: vi.fn(),
-  },
-}));
-
-vi.mock('../../../../services/installmentService', () => ({
-  installmentService: {
-    getInstallments: vi.fn(),
-    getAdminInstallments: vi.fn(),
   },
 }));
 
@@ -150,25 +134,6 @@ describe('StaffDashboardPage', () => {
     total: 7,
   };
 
-  const mockReturns = {
-    items: [
-      { id: 'ret-1', status: 'PENDING' },
-      { id: 'ret-2', status: 'PENDING' },
-      { id: 'ret-3', status: 'PENDING' },
-    ],
-    total: 3,
-  };
-
-  const mockInstallments = {
-    items: [
-      { id: 'inst-1', status: 'PENDING' },
-      { id: 'inst-2', status: 'PENDING' },
-      { id: 'inst-3', status: 'PENDING' },
-      { id: 'inst-4', status: 'PENDING' },
-    ],
-    total: 4,
-  };
-
   const mockInventory = [
     {
       id: 'inv-1',
@@ -216,8 +181,6 @@ describe('StaffDashboardPage', () => {
     } as any);
 
     vi.mocked(ticketService.getAdminTickets).mockResolvedValue(mockTickets as any);
-    vi.mocked(returnService.getAdminReturns).mockResolvedValue(mockReturns as any);
-    vi.mocked(installmentService.getInstallments).mockResolvedValue(mockInstallments as any);
     vi.mocked(inventoryService.getStockLevels).mockResolvedValue(mockInventory as any);
   });
 
@@ -239,8 +202,6 @@ describe('StaffDashboardPage', () => {
     // Verify operational services were called
     expect(orderService.getAllOrdersAdmin).toHaveBeenCalledTimes(1);
     expect(ticketService.getAdminTickets).toHaveBeenCalledWith({ status: 'OPEN', limit: 10 });
-    expect(returnService.getAdminReturns).toHaveBeenCalledWith({ status: 'REQUESTED', limit: 10 });
-    expect(installmentService.getInstallments).toHaveBeenCalledWith({ status: 'PENDING', limit: 10 });
     expect(inventoryService.getStockLevels).toHaveBeenCalledWith({ limit: 50 });
 
     // CRITICAL: reportService must NEVER be called
@@ -252,7 +213,7 @@ describe('StaffDashboardPage', () => {
     expect(reportService.getLowStockReport).not.toHaveBeenCalled();
   });
 
-  it('renders all 5 counter cards with correct counts, titles, and navigation links', async () => {
+  it('renders all counter cards with correct counts, titles, and navigation links', async () => {
     render(
       <BrowserRouter>
         <StaffDashboardPage />
@@ -281,20 +242,6 @@ describe('StaffDashboardPage', () => {
     expect(ticketsCard).toBeInTheDocument();
     expect(ticketsCard.closest('a')?.getAttribute('href')).toBe('/staff/tickets?status=OPEN');
     expect(screen.getByTestId('card-open-tickets-count').textContent).toContain('7');
-
-    // 4. Pending returns (3 pending returns)
-    expect(screen.getByText('Đổi trả chờ xử lý')).toBeInTheDocument();
-    const returnsCard = screen.getByTestId('card-pending-returns');
-    expect(returnsCard).toBeInTheDocument();
-    expect(returnsCard.closest('a')?.getAttribute('href')).toBe('/staff/returns?status=REQUESTED');
-    expect(screen.getByTestId('card-pending-returns-count').textContent).toContain('3');
-
-    // 5. Submitted installments (4 submitted installments)
-    expect(screen.getByText('Hồ sơ trả góp')).toBeInTheDocument();
-    const installmentsCard = screen.getByTestId('card-submitted-installments');
-    expect(installmentsCard).toBeInTheDocument();
-    expect(installmentsCard.closest('a')?.getAttribute('href')).toBe('/staff/installments?status=PENDING');
-    expect(screen.getByTestId('card-submitted-installments-count').textContent).toContain('4');
   });
 
   it('renders orders queue with required columns and action buttons', async () => {

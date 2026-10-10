@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Typography, Row, Col, Button, Space, message } from 'antd';
+import { Typography, Row, Col, Button, Space, message, Alert } from 'antd';
 import {
   ReloadOutlined,
   DashboardOutlined,
 } from '@ant-design/icons';
 import { orderService } from '../../../services/orderService';
 import { ticketService } from '../../../services/ticketService';
-import { returnService } from '../../../services/returnService';
-import { installmentService } from '../../../services/installmentService';
 import { inventoryService } from '../../../services/inventoryService';
-import type { Order, InventoryRecord, ReturnRequest, InstallmentApplication } from '../../../types';
+import type { Order, InventoryRecord } from '../../../types';
 import type { Ticket } from '../../../types/ticket';
 import {
   StaffActionCards,
@@ -21,12 +19,11 @@ const { Title, Text } = Typography;
 
 export const StaffDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
+  const [hasError, setHasError] = useState<boolean>(false);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [openTicketsCount, setOpenTicketsCount] = useState<number>(0);
-  const [pendingReturnsCount, setPendingReturnsCount] = useState<number>(0);
-  const [submittedInstallmentsCount, setSubmittedInstallmentsCount] = useState<number>(0);
   const [lowStockItems, setLowStockItems] = useState<InventoryRecord[]>([]);
 
   const fetchDashboardData = useCallback(async () => {
@@ -37,12 +34,10 @@ export const StaffDashboardPage: React.FC = () => {
     // list, so it must NOT be a truncated page — backend defaults to
     // limit=10, which silently dropped older PENDING/CONFIRMED orders and
     // pinned the cards at 0. Fetch a wide window for counting.
-    const [ordersRes, ticketsRes, returnsRes, installmentsRes, inventoryRes] =
+    const [ordersRes, ticketsRes, inventoryRes] =
       await Promise.allSettled([
         orderService.getAllOrdersAdmin({ limit: 100 }),
         ticketService.getAdminTickets({ status: 'OPEN', limit: 10 }),
-        returnService.getAdminReturns({ status: 'REQUESTED', limit: 10 }),
-        installmentService.getInstallments({ status: 'PENDING', limit: 10 }),
         inventoryService.getStockLevels({ limit: 50 }),
       ]);
 
@@ -85,40 +80,6 @@ export const StaffDashboardPage: React.FC = () => {
       anyFailed = true;
     }
 
-    // Process Returns
-    if (returnsRes.status === 'fulfilled') {
-      const val: any = returnsRes.value;
-      const returnList: ReturnRequest[] = Array.isArray(val)
-        ? val
-        : Array.isArray(val?.items)
-        ? val.items
-        : Array.isArray(val?.data)
-        ? val.data
-        : [];
-      const totalCount =
-        typeof val?.total === 'number' ? val.total : returnList.length;
-      setPendingReturnsCount(totalCount);
-    } else {
-      console.error('Failed to load returns:', returnsRes.reason);
-      anyFailed = true;
-    }
-
-    // Process Installments
-    if (installmentsRes.status === 'fulfilled') {
-      const val: any = installmentsRes.value;
-      const installmentList: InstallmentApplication[] = Array.isArray(val)
-        ? val
-        : Array.isArray(val?.items)
-        ? val.items
-        : [];
-      const totalCount =
-        typeof val?.total === 'number' ? val.total : installmentList.length;
-      setSubmittedInstallmentsCount(totalCount);
-    } else {
-      console.error('Failed to load installments:', installmentsRes.reason);
-      anyFailed = true;
-    }
-
     // Process Inventory
     if (inventoryRes.status === 'fulfilled') {
       const val: any = inventoryRes.value;
@@ -139,7 +100,10 @@ export const StaffDashboardPage: React.FC = () => {
     }
 
     if (anyFailed) {
+      setHasError(true);
       message.error('Không thể tải một số dữ liệu vận hành. Vui lòng bấm thử lại.');
+    } else {
+      setHasError(false);
     }
 
     setLoading(false);
@@ -219,14 +183,32 @@ export const StaffDashboardPage: React.FC = () => {
         </Space>
       </div>
 
+      {hasError && (
+        <Alert
+          message="Lỗi tải dữ liệu"
+          description="Không thể tải một số dữ liệu vận hành. Vui lòng bấm thử lại."
+          type="error"
+          showIcon
+          style={{ marginBottom: 16 }}
+          action={
+            <Button
+              size="small"
+              danger
+              data-testid="retry-btn"
+              onClick={() => void fetchDashboardData()}
+            >
+              Thử lại
+            </Button>
+          }
+        />
+      )}
+
       {/* Counter Action Cards */}
       <div style={{ marginBottom: 20 }}>
         <StaffActionCards
           pendingOrdersCount={pendingOrdersCount}
           packingOrdersCount={packingOrdersCount}
           openTicketsCount={openTicketsCount}
-          pendingReturnsCount={pendingReturnsCount}
-          submittedInstallmentsCount={submittedInstallmentsCount}
           loading={loading}
         />
       </div>

@@ -40,18 +40,6 @@ test('STAFF full tour in one window', async ({ page }) => {
     await pause();
   });
 
-  await test.step('06 returns', async () => {
-    await gotoStaff(page, '/staff/returns');
-    await expect.soft(page.getByRole('heading', { name: /Đổi trả/ })).toBeVisible();
-    await pause();
-  });
-
-  await test.step('07 installments', async () => {
-    await gotoStaff(page, '/staff/installments');
-    await expect.soft(page.getByRole('heading', { name: 'Quản lý hồ sơ trả góp' })).toBeVisible();
-    await pause();
-  });
-
   await test.step('08 reviews', async () => {
     await gotoStaff(page, '/staff/reviews');
     await expect.soft(page.getByRole('heading', { name: /Đánh giá/ })).toBeVisible();
@@ -147,17 +135,6 @@ test('STAFF full tour in one window', async ({ page }) => {
       }
       const cancel = page.getByRole('button', { name: 'Hủy', exact: true });
       if (await cancel.count()) await cancel.click().catch(() => {});
-    }
-    await pause();
-  });
-
-  await test.step('16 returns deep: open detail without deciding', async () => {
-    await gotoStaff(page, '/staff/returns');
-    const row = page.locator('tbody tr').first();
-    if (await row.count()) {
-      await row.click().catch(() => {});
-      await page.waitForTimeout(1500);
-      await page.keyboard.press('Escape').catch(() => {});
     }
     await pause();
   });

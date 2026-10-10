@@ -201,17 +201,6 @@ describe('AdminCustomer360Page', () => {
       expect(screen.getByText('Còn hiệu lực')).toBeTruthy();
     });
 
-    // Check switching to Installments Tab
-    const installmentTab = screen.getByText(/Hồ sơ Trả góp \(/);
-    fireEvent.click(installmentTab);
-
-    await waitFor(() => {
-      expect(screen.getByText('ORD-20260603-0040')).toBeTruthy();
-      expect(screen.getByText('6 tháng')).toBeTruthy();
-      expect(screen.getByText('1.040.025 đ')).toBeTruthy();
-      expect(screen.getByText('Đã phê duyệt')).toBeTruthy();
-    });
-
     // Check switching to Tickets Tab
     const ticketTab = screen.getByText(/Vé Hỗ trợ \(/);
     fireEvent.click(ticketTab);

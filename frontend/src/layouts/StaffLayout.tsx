@@ -11,8 +11,6 @@ import {
   ShopOutlined,
   MenuUnfoldOutlined,
   MenuFoldOutlined,
-  CreditCardOutlined,
-  UndoOutlined,
   CommentOutlined,
   CustomerServiceOutlined,
   SearchOutlined,
@@ -61,16 +59,6 @@ export const StaffLayout: React.FC = () => {
       key: '/staff/tickets',
       icon: <CustomerServiceOutlined style={{ fontSize: 16 }} />,
       label: 'Hỗ trợ & Chat CSKH',
-    },
-    {
-      key: '/staff/returns',
-      icon: <UndoOutlined style={{ fontSize: 16 }} />,
-      label: 'Xử lý Đổi trả',
-    },
-    {
-      key: '/staff/installments',
-      icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
-      label: 'Thẩm định Trả góp',
     },
     {
       key: '/staff/reviews',
@@ -134,8 +122,6 @@ export const StaffLayout: React.FC = () => {
     if (location.pathname.startsWith('/staff/orders')) return 'Quản lý đơn hàng & giao vận';
     if (location.pathname.startsWith('/staff/inventory')) return 'Quản lý kho & thiết bị IMEI';
     if (location.pathname.startsWith('/staff/tickets')) return 'Hệ thống vé hỗ trợ CSKH';
-    if (location.pathname.startsWith('/staff/returns')) return 'Xử lý yêu cầu đổi trả';
-    if (location.pathname.startsWith('/staff/installments')) return 'Thẩm định hồ sơ trả góp';
     if (location.pathname.startsWith('/staff/reviews')) return 'Quản lý đánh giá & phản hồi';
     if (location.pathname.startsWith('/staff/payments')) return 'Tra cứu giao dịch & thanh toán';
     if (location.pathname.startsWith('/staff/customers')) return 'Tra cứu thông tin khách hàng';
@@ -148,8 +134,6 @@ export const StaffLayout: React.FC = () => {
     if (path.startsWith('/staff/orders')) return '/staff/orders';
     if (path.startsWith('/staff/inventory')) return '/staff/inventory';
     if (path.startsWith('/staff/tickets')) return '/staff/tickets';
-    if (path.startsWith('/staff/returns')) return '/staff/returns';
-    if (path.startsWith('/staff/installments')) return '/staff/installments';
     if (path.startsWith('/staff/reviews')) return '/staff/reviews';
     if (path.startsWith('/staff/payments')) return '/staff/payments';
     if (path.startsWith('/staff/customers')) return '/staff/customers';

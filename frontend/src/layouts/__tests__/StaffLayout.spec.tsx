@@ -64,11 +64,7 @@ describe('StaffLayout', () => {
     // Operational menu items
     const operationalMenuItems = [
       'Bàn làm việc (Dashboard)',
-      'Đơn hàng & Giao vận',
-      'Kho hàng & Quản lý IMEI',
-      'Vé hỗ trợ CSKH',
-      'Xử lý Đổi trả',
-      'Thẩm định Trả góp',
+      'Hỗ trợ & Chat CSKH',
       'Đánh giá & Phản hồi',
       'Tra cứu Khách hàng',
     ];
@@ -78,7 +74,7 @@ describe('StaffLayout', () => {
     });
   });
 
-  it('does NOT contain forbidden admin links', () => {
+  it('does NOT contain forbidden admin links or removed modules', () => {
     renderLayout();
 
     const forbiddenLinks = [
@@ -89,6 +85,8 @@ describe('StaffLayout', () => {
       'Nhà cung cấp',
       'Quản lý Danh mục',
       'Quản lý Thương hiệu',
+      'Xử lý Đổi trả',
+      'Thẩm định Trả góp',
     ];
 
     forbiddenLinks.forEach((link) => {
@@ -117,7 +115,7 @@ describe('StaffLayout', () => {
     // 15-digit IMEI
     fireEvent.change(searchInput, { target: { value: '123456789012345' } });
     fireEvent.keyDown(searchInput, { key: 'Enter', code: 'Enter' });
-    expect(mockNavigate).toHaveBeenCalledWith('/staff/inventory?search=123456789012345');
+    expect(mockNavigate).toHaveBeenCalledWith('/staff/inventory?tab=imei&search=123456789012345');
 
     // Phone number
     fireEvent.change(searchInput, { target: { value: '0901234567' } });

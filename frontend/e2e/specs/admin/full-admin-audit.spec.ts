@@ -429,32 +429,6 @@ test('10 payments tabs + reconciliation guard', async ({ page, request }) => {
   ok([200, 404].includes(t.status()), `GET /payments/transactions status=${t.status()}`);
 });
 
-test('11 returns list + reject-reason required', async ({ page, request }) => {
-  await loginUI(page, ADMIN.email, ADMIN.password);
-  await gotoAdmin(page, '/admin/returns');
-  await page.locator('.ant-table-wrapper, .ant-card, .ant-tabs').first().waitFor({ timeout: 15000 }).catch(() => {});
-  const body = await page.content();
-  ok(/Đổi trả|Hoàn tiền|Tiếp nhận|Return/i.test(body), 'returns page loads');
-  const token = await apiLogin(ADMIN.email, ADMIN.password, request);
-  const r = await request.get(`${API_BASE}/returns?page=1&limit=1`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  ok([200, 404].includes(r.status()), `GET /returns status=${r.status()}`);
-});
-
-test('12 installments list + review guard', async ({ page, request }) => {
-  await loginUI(page, ADMIN.email, ADMIN.password);
-  await gotoAdmin(page, '/admin/installments');
-  await page.locator('.ant-table-wrapper, .ant-card, .ant-tabs').first().waitFor({ timeout: 15000 }).catch(() => {});
-  const body = await page.content();
-  ok(/Trả góp|Thẩm định|Installment/i.test(body), 'installments page loads');
-  const token = await apiLogin(ADMIN.email, ADMIN.password, request);
-  const r = await request.get(`${API_BASE}/admin/installments?page=1&limit=1`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  ok([200, 404].includes(r.status()), `GET installments status=${r.status()}`);
-});
-
 test('13 reviews list + reply guard', async ({ page, request }) => {
   await loginUI(page, ADMIN.email, ADMIN.password);
   await gotoAdmin(page, '/admin/reviews');

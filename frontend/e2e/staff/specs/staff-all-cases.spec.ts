@@ -177,42 +177,6 @@ test.describe('STAFF Tickets /staff/tickets', () => {
   });
 });
 
-test.describe('STAFF Returns /staff/returns', () => {
-  test('RET-01 list + status filter + detail drawer', async ({ page }) => {
-    await gotoStaff(page, '/staff/returns');
-    await expect(page.getByText('Quản lý Đổi trả & Hoàn tiền')).toBeVisible();
-    await expect(page.locator('table').first()).toBeVisible();
-  });
-
-  test('RET-02 approve reject requires reason', async ({ page }) => {
-    await gotoStaff(page, '/staff/returns');
-    const row = page.locator('tbody tr').first();
-    if (await row.count()) await row.click().catch(() => {});
-  });
-
-  test('RET-03 double refund blocked (ledger consistency)', async ({ page }) => {
-    await gotoStaff(page, '/staff/returns');
-    await expect(page.getByText('Quản lý Đổi trả & Hoàn tiền')).toBeVisible();
-  });
-});
-
-test.describe('STAFF Installments /staff/installments', () => {
-  test('INS-01 list + review modal opens', async ({ page }) => {
-    await gotoStaff(page, '/staff/installments');
-    await expect(page.getByRole('heading', { name: 'Quản lý hồ sơ trả góp' })).toBeVisible();
-    await expect(page.locator('table').first()).toBeVisible();
-    const reviewBtn = page.getByRole('button', { name: /Thẩm định|chi tiết/i }).first();
-    if (await reviewBtn.count()) {
-      await reviewBtn.click().catch(() => {});
-      await page.waitForTimeout(1000);
-    }
-  });
-
-  test('INS-02 missing CCCD income blocked in review', async ({ page }) => {
-    await gotoStaff(page, '/staff/installments');
-    await expect(page.getByText('Quản lý hồ sơ trả góp')).toBeVisible();
-  });
-});
 test.describe('STAFF Reviews /staff/reviews', () => {
   test('REV-01 list + star filter + reply box', async ({ page }) => {
     await gotoStaff(page, '/staff/reviews');

@@ -26,7 +26,7 @@ import { OAuthCallbackPage } from '../pages/storefront/Auth/OAuthCallbackPage';
 import { ResetPasswordPage } from '../pages/storefront/Auth/ResetPasswordPage';
 
 // Admin Pages
-import { AdminDashboard } from '../pages/Admin/Dashboard/AdminDashboard';
+import { AdminDashboard } from '../pages/Admin/Dashboard/AdminDashboardPage';
 import { AdminProductsPage } from '../pages/Admin/Products/AdminProductsPage';
 import { AdminCategoriesPage } from '../pages/Admin/Categories/AdminCategoriesPage';
 import { AdminBrandsPage } from '../pages/Admin/Brands/AdminBrandsPage';
@@ -34,8 +34,6 @@ import { AdminSuppliersPage } from '../pages/Admin/Suppliers/AdminSuppliersPage'
 import { AdminInventoryPage } from '../pages/Admin/Inventory/AdminInventoryPage';
 import { AdminOrdersPage } from '../pages/Admin/Orders/AdminOrdersPage';
 import { AdminPaymentsPage } from '../pages/Admin/Payments/AdminPaymentsPage';
-import { AdminReturnsPage } from '../pages/Admin/Returns/AdminReturnsPage';
-import { AdminInstallmentsPage } from '../pages/Admin/Installments/AdminInstallmentsPage';
 import { AdminReviewsPage } from '../pages/Admin/Reviews/AdminReviewsPage';
 import { AdminCustomersPage } from '../pages/Admin/Customers/AdminCustomersPage';
 import { AdminCustomer360Page } from '../pages/Admin/Customers/AdminCustomer360Page';
@@ -149,22 +147,6 @@ export const AppRoutes: React.FC = () => {
             }
           />
           <Route
-            path="/admin/returns"
-            element={
-              <RoleGuard allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
-                <AdminReturnsPage />
-              </RoleGuard>
-            }
-          />
-          <Route
-            path="/admin/installments"
-            element={
-              <RoleGuard allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
-                <AdminInstallmentsPage />
-              </RoleGuard>
-            }
-          />
-          <Route
             path="/admin/reviews"
             element={
               <RoleGuard allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
@@ -214,8 +196,6 @@ export const AppRoutes: React.FC = () => {
           <Route path="/staff/imei" element={<Navigate to="/staff/inventory?tab=imei" replace />} />
           <Route path="/staff/tickets" element={<AdminTicketsPage />} />
           <Route path="/staff/tickets/:id" element={<AdminTicketDetailPage />} />
-          <Route path="/staff/returns" element={<AdminReturnsPage />} />
-          <Route path="/staff/installments" element={<AdminInstallmentsPage />} />
           <Route path="/staff/reviews" element={<AdminReviewsPage />} />
           <Route path="/staff/payments" element={<AdminPaymentsPage />} />
           <Route path="/staff/customers" element={<StaffCustomersPage />} />

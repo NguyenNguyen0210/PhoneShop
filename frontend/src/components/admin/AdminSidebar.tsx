@@ -7,8 +7,6 @@ import {
   ShoppingOutlined,
   BarcodeOutlined,
   OrderedListOutlined,
-  CreditCardOutlined,
-  UndoOutlined,
   CommentOutlined,
   UserOutlined,
   CustomerServiceOutlined,
@@ -49,16 +47,6 @@ const adminMenuItems: MenuProps['items'] = [
     key: '/admin/promotions',
     icon: <TagOutlined style={{ fontSize: 16 }} />,
     label: 'Khuyến mãi & Flash Sale',
-  },
-  {
-    key: '/admin/returns',
-    icon: <UndoOutlined style={{ fontSize: 16 }} />,
-    label: 'Quản lý Đổi trả',
-  },
-  {
-    key: '/admin/installments',
-    icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
-    label: 'Hồ sơ trả góp',
   },
   {
     key: '/admin/customers',

@@ -26,7 +26,6 @@ import {
   ShoppingOutlined,
   CustomerServiceOutlined,
   SafetyCertificateOutlined,
-  CreditCardOutlined,
   HomeOutlined,
   ArrowLeftOutlined,
   CheckCircleOutlined,
@@ -115,7 +114,7 @@ export const AdminCustomer360Page: React.FC = () => {
     );
   }
 
-  const { customer, metrics, addresses, recentOrders, warranties, installments, tickets } = data;
+  const { customer, metrics, addresses, recentOrders, warranties, tickets } = data;
   const fullName = [customer.lastName, customer.firstName].filter(Boolean).join(' ') || 'Khách hàng';
 
   // Determine VIP Tier
@@ -279,53 +278,6 @@ export const AdminCustomer360Page: React.FC = () => {
           {notes || 'Bảo hành chính hãng'}
         </Text>
       ),
-    },
-  ];
-
-  // Installments Table Columns
-  const installmentColumns: ColumnsType<any> = [
-    {
-      title: 'Đơn hàng',
-      key: 'order',
-      render: (_, record) => record.order?.orderNumber || '—',
-    },
-    {
-      title: 'Đối tác tài chính',
-      dataIndex: 'provider',
-      key: 'provider',
-      render: (prov) => <Tag color="blue">{prov || 'Home Credit'}</Tag>,
-    },
-    {
-      title: 'Kỳ hạn',
-      dataIndex: 'termMonths',
-      key: 'termMonths',
-      render: (t) => `${t} tháng`,
-    },
-    {
-      title: 'Trả góp hàng tháng',
-      dataIndex: 'monthlyPayment',
-      key: 'monthlyPayment',
-      render: (amt) => (
-        <Text strong style={{ color: '#cf1322' }}>
-          {Number(amt).toLocaleString('vi-VN')} đ
-        </Text>
-      ),
-    },
-    {
-      title: 'Tình trạng hồ sơ',
-      dataIndex: 'status',
-      key: 'status',
-      render: (st) => {
-        if (st === 'APPROVED') return <Tag color="success">Đã phê duyệt</Tag>;
-        if (st === 'REJECTED') return <Tag color="error">Từ chối</Tag>;
-        return <Tag color="processing">Đang xét duyệt</Tag>;
-      },
-    },
-    {
-      title: 'Ngày tạo hồ sơ',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (d) => new Date(d).toLocaleDateString('vi-VN'),
     },
   ];
 
@@ -660,8 +612,8 @@ export const AdminCustomer360Page: React.FC = () => {
             <Col xs={12} sm={6}>
               <Card bordered={false} style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderRadius: 8 }}>
                 <Statistic
-                  title="Vé hỗ trợ / Trả góp"
-                  value={metrics.totalTickets + metrics.totalInstallments}
+                  title="Vé hỗ trợ CSKH"
+                  value={metrics.totalTickets}
                   suffix={`(${metrics.openTickets} vé mở)`}
                   valueStyle={{ color: '#fa8c16', fontWeight: 700, fontSize: 16 }}
                   prefix={<CustomerServiceOutlined />}
@@ -708,24 +660,6 @@ export const AdminCustomer360Page: React.FC = () => {
                       pagination={false}
                       scroll={{ x: 750 }}
                       locale={{ emptyText: <Empty description="Chưa có thiết bị đăng ký bảo hành" /> }}
-                    />
-                  ),
-                },
-                {
-                  key: 'installments',
-                  label: (
-                    <span>
-                      <CreditCardOutlined /> Hồ sơ Trả góp ({installments.length})
-                    </span>
-                  ),
-                  children: (
-                    <Table
-                      rowKey="id"
-                      columns={installmentColumns}
-                      dataSource={installments}
-                      pagination={false}
-                      scroll={{ x: 750 }}
-                      locale={{ emptyText: <Empty description="Khách hàng chưa đăng ký trả góp" /> }}
                     />
                   ),
                 },

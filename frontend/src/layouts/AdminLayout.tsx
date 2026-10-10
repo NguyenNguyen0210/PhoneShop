@@ -13,9 +13,7 @@ import {
   MenuUnfoldOutlined,
   MenuFoldOutlined,
   ThunderboltOutlined,
-  CreditCardOutlined,
   DollarOutlined,
-  UndoOutlined,
   CommentOutlined,
   CustomerServiceOutlined,
   FolderOpenOutlined,
@@ -61,16 +59,6 @@ export const AdminLayout: React.FC = () => {
           key: '/admin/orders',
           icon: <OrderedListOutlined style={{ fontSize: 16 }} />,
           label: 'Quản lý Đơn hàng',
-        },
-        {
-          key: '/admin/returns',
-          icon: <UndoOutlined style={{ fontSize: 16 }} />,
-          label: 'Quản lý Đổi trả',
-        },
-        {
-          key: '/admin/installments',
-          icon: <CreditCardOutlined style={{ fontSize: 16 }} />,
-          label: 'Hồ sơ trả góp',
         },
       ],
     },
@@ -191,10 +179,8 @@ export const AdminLayout: React.FC = () => {
     if (location.pathname === '/admin/orders') return 'Quản lý Đơn hàng & Điều phối';
     if (location.pathname.startsWith('/admin/promotions')) return 'Quản lý Khuyến mãi & Flash Sale';
     if (location.pathname === '/admin/payments') return 'Quản lý Thanh toán & Đối soát';
-    if (location.pathname === '/admin/returns') return 'Quản lý Đổi trả & Hoàn tiền';
     if (location.pathname.startsWith('/admin/customers')) return 'Hồ sơ Khách hàng Customer 360°';
     if (location.pathname.startsWith('/admin/tickets')) return 'Hệ thống Vé Hỗ trợ & Khiếu nại';
-    if (location.pathname === '/admin/installments') return 'Quản lý Hồ sơ trả góp & Thẩm định';
     if (location.pathname === '/admin/users') return 'Quản lý Người dùng & Phân quyền';
     if (location.pathname === '/admin/audit-logs') return 'Nhật ký Hoạt động (Audit Logs)';
     if (location.pathname === '/admin/reviews') return 'Quản lý Đánh giá & Phản hồi';
@@ -217,8 +203,6 @@ export const AdminLayout: React.FC = () => {
     if (path.startsWith('/admin/brands')) return '/admin/brands';
     if (path.startsWith('/admin/suppliers')) return '/admin/suppliers';
     if (path.startsWith('/admin/payments')) return '/admin/payments';
-    if (path.startsWith('/admin/returns')) return '/admin/returns';
-    if (path.startsWith('/admin/installments')) return '/admin/installments';
     if (path.startsWith('/admin/reviews')) return '/admin/reviews';
     if (path.startsWith('/admin/users')) return '/admin/users';
     if (path.startsWith('/admin/audit-logs')) return '/admin/audit-logs';

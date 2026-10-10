@@ -4,8 +4,6 @@ import {
   ClockCircleOutlined,
   InboxOutlined,
   CustomerServiceOutlined,
-  RollbackOutlined,
-  CreditCardOutlined,
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 
@@ -15,14 +13,10 @@ export interface StaffActionCardsProps {
   pendingOrdersCount?: number;
   packingOrdersCount?: number;
   openTicketsCount?: number;
-  pendingReturnsCount?: number;
-  submittedInstallmentsCount?: number;
   // Aliases for flexibility
   pendingOrders?: number;
   packingOrders?: number;
   openTickets?: number;
-  pendingReturns?: number;
-  submittedInstallments?: number;
   loading?: boolean;
 }
 
@@ -30,20 +24,14 @@ export const StaffActionCards: React.FC<StaffActionCardsProps> = ({
   pendingOrdersCount,
   packingOrdersCount,
   openTicketsCount,
-  pendingReturnsCount,
-  submittedInstallmentsCount,
   pendingOrders,
   packingOrders,
   openTickets,
-  pendingReturns,
-  submittedInstallments,
   loading = false,
 }) => {
   const pOrders = pendingOrdersCount ?? pendingOrders ?? 0;
   const packOrders = packingOrdersCount ?? packingOrders ?? 0;
   const oTickets = openTicketsCount ?? openTickets ?? 0;
-  const pReturns = pendingReturnsCount ?? pendingReturns ?? 0;
-  const sInstallments = submittedInstallmentsCount ?? submittedInstallments ?? 0;
 
   const cardItems = [
     {
@@ -75,26 +63,6 @@ export const StaffActionCards: React.FC<StaffActionCardsProps> = ({
       path: '/staff/tickets?status=OPEN',
       icon: <CustomerServiceOutlined />,
       testId: 'card-open-tickets',
-    },
-    {
-      key: 'pending-returns',
-      title: 'Đổi trả chờ xử lý',
-      count: pReturns,
-      color: '#8b5cf6',
-      bgColor: '#ede9fe',
-      path: '/staff/returns?status=REQUESTED',
-      icon: <RollbackOutlined />,
-      testId: 'card-pending-returns',
-    },
-    {
-      key: 'submitted-installments',
-      title: 'Hồ sơ trả góp',
-      count: sInstallments,
-      color: '#10b981',
-      bgColor: '#d1fae5',
-      path: '/staff/installments?status=PENDING',
-      icon: <CreditCardOutlined />,
-      testId: 'card-submitted-installments',
     },
   ];
 
