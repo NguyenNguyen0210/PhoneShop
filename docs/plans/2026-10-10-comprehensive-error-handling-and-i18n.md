@@ -16,14 +16,14 @@
 - Modify: `backend/src/modules/auth/auth.service.ts:38-120`
 - Test: `backend/test/unit/auth-register-login.spec.ts`
 
-- [ ] **Step 1: Tạo unit test cho các case đăng ký và đăng nhập mới**
+- [x] **Step 1: Tạo unit test cho các case đăng ký và đăng nhập mới**
 Tạo file test `backend/test/unit/auth-register-login.spec.ts`:
 - Test 1: Đăng ký với email đã tồn tại -> ném `ConflictException` chứa `"email này đã được đăng ký"`.
 - Test 2: Đăng ký với SĐT đã tồn tại -> ném `ConflictException` chứa `"số điện thoại này đã được sử dụng"`.
 - Test 3: Đăng nhập với tài khoản bị `LOCKED` và mật khẩu đúng -> ném `UnauthorizedException` chứa `"tài khoản của bạn đã bị tạm khóa"`.
 - Test 4: Đăng nhập với mật khẩu sai -> ném `UnauthorizedException` chứa `"không chính xác"`.
 
-- [ ] **Step 2: Cập nhật `auth.service.ts`**
+- [x] **Step 2: Cập nhật `auth.service.ts`**
 Trong `backend/src/modules/auth/auth.service.ts`:
 1. Trong `register(dto: RegisterDto)`:
    ```typescript
@@ -64,7 +64,7 @@ Trong `backend/src/modules/auth/auth.service.ts`:
    }
    ```
 
-- [ ] **Step 3: Chạy test backend và commit**
+- [x] **Step 3: Chạy test backend và commit**
 Run: `npm test test/unit/auth-register-login.spec.ts`
 Run: `npm run build`
 ```bash
@@ -80,7 +80,7 @@ git commit -m "feat(auth): separate duplicate email/phone errors and handle lock
 - Modify: `frontend/src/utils/notify.ts`
 - Test: `frontend/src/utils/__tests__/notify.spec.ts`
 
-- [ ] **Step 1: Viết test cho từ điển `notify.spec.ts`**
+- [x] **Step 1: Viết test cho từ điển `notify.spec.ts`**
 Tạo file `frontend/src/utils/__tests__/notify.spec.ts`:
 - Kiểm tra các chuỗi lỗi tiếng Anh được dịch sang tiếng Việt:
   - `"Warranty not found"` -> `"Không tìm thấy thông tin bảo hành cho mã/IMEI này."`
@@ -90,7 +90,7 @@ Tạo file `frontend/src/utils/__tests__/notify.spec.ts`:
   - `"Order cannot be cancelled in its current status"` -> `"Đơn hàng không thể hủy ở trạng thái hiện tại."`
   - `"Order is already paid and cannot be cancelled directly. Please contact support."` -> `"Đơn hàng đã thanh toán không thể tự hủy. Vui lòng liên hệ CSKH để được hỗ trợ."`
 
-- [ ] **Step 2: Cập nhật `notify.ts`**
+- [x] **Step 2: Cập nhật `notify.ts`**
 Thêm các pattern mới vào `VI_ERROR_MAP`:
 ```typescript
   { match: /warranty.*not\s*found/i, text: 'Không tìm thấy thông tin bảo hành cho mã/IMEI này.' },
@@ -106,7 +106,7 @@ Thêm các pattern mới vào `VI_ERROR_MAP`:
   { match: /address.*not\s*found/i, text: 'Không tìm thấy địa chỉ giao hàng.' },
 ```
 
-- [ ] **Step 3: Chạy test và commit**
+- [x] **Step 3: Chạy test và commit**
 Run: `npx vitest run src/utils/__tests__/notify.spec.ts`
 ```bash
 git add frontend/src/utils/notify.ts frontend/src/utils/__tests__/notify.spec.ts
@@ -121,14 +121,14 @@ git commit -m "feat(i18n): expand VI_ERROR_MAP with comprehensive business error
 - Modify: `frontend/src/pages/storefront/Cart/CartPage.tsx:148-165`
 - Test: `frontend/src/pages/storefront/Cart/__tests__/CartPageVoucher.spec.tsx`
 
-- [ ] **Step 1: Viết test cho trường hợp voucher `valid: false` trong CartPage**
+- [x] **Step 1: Viết test cho trường hợp voucher `valid: false` trong CartPage**
 Tạo file test `frontend/src/pages/storefront/Cart/__tests__/CartPageVoucher.spec.tsx`:
 - Render CartPage với sản phẩm được chọn.
 - Mock `voucherService.validateVoucher` trả về `{ valid: false, message: 'Đơn hàng tối thiểu 5.000.000đ để áp dụng mã' }`.
 - Nhập mã voucher và bấm Áp dụng.
 - Kỳ vọng `notifyError` được gọi với thông điệp lỗi rõ ràng.
 
-- [ ] **Step 2: Cập nhật `CartPage.tsx`**
+- [x] **Step 2: Cập nhật `CartPage.tsx`**
 Trong `frontend/src/pages/storefront/Cart/CartPage.tsx`:
 Cập nhật `handleApplyVoucher`:
 ```typescript
@@ -155,7 +155,7 @@ Cập nhật `handleApplyVoucher`:
     }
 ```
 
-- [ ] **Step 3: Chạy test và commit**
+- [x] **Step 3: Chạy test và commit**
 Run: `npx vitest run src/pages/storefront/Cart/__tests__/CartPageVoucher.spec.tsx`
 Run: `npm run build`
 ```bash
