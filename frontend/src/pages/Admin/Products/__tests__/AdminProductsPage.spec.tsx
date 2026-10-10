@@ -86,4 +86,41 @@ describe('AdminProductsPage Integration', () => {
       expect(productService.getProductById).toHaveBeenCalledWith('prod-abc');
     });
   });
+
+  it('displays "Thương hiệu đã ẩn" tag when product brand is inactive', async () => {
+    (productService.getAllProductsAdmin as any).mockResolvedValueOnce({
+      items: [
+        {
+          id: 'prod-active',
+          name: 'Active Brand Phone',
+          brand: { id: 'b-active', name: 'Brand On', isActive: true },
+          variants: [],
+          status: 'ACTIVE',
+        },
+        {
+          id: 'prod-inactive',
+          name: 'Inactive Brand Phone',
+          brand: { id: 'b-1', name: 'Brand Off', isActive: false },
+          variants: [],
+          status: 'ACTIVE',
+        },
+      ],
+      total: 2,
+    });
+
+    render(
+      <MemoryRouter>
+        <AdminProductsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Inactive Brand Phone')).toBeDefined();
+    });
+
+    expect(screen.getByText('Brand On')).toBeDefined();
+    expect(screen.getByText('Brand Off')).toBeDefined();
+    const inactiveTags = screen.getAllByText('Thương hiệu đã ẩn');
+    expect(inactiveTags).toHaveLength(1);
+  });
 });

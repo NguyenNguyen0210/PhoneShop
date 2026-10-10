@@ -456,24 +456,31 @@ export const AdminProductsPage: React.FC = () => {
       title: 'Thương hiệu',
       dataIndex: 'brand',
       key: 'brand',
-      width: 130,
+      width: 140,
       render: (brand, record) => (
-        <span
-          style={{
-            display: 'inline-block',
-            padding: '2px 8px',
-            fontSize: 11,
-            fontWeight: 600,
-            background: '#eff6ff',
-            color: '#1d4ed8',
-            borderRadius: 6,
-            border: '1px solid #dbeafe',
-            textTransform: 'uppercase',
-            letterSpacing: '0.025em',
-          }}
-        >
-          {brand?.name || record.brandId || 'Chính hãng'}
-        </span>
+        <Space direction="vertical" size={2}>
+          <span
+            style={{
+              display: 'inline-block',
+              padding: '2px 8px',
+              fontSize: 11,
+              fontWeight: 600,
+              background: '#eff6ff',
+              color: '#1d4ed8',
+              borderRadius: 6,
+              border: '1px solid #dbeafe',
+              textTransform: 'uppercase',
+              letterSpacing: '0.025em',
+            }}
+          >
+            {brand?.name || record.brandId || 'Chính hãng'}
+          </span>
+          {record.brand && record.brand.isActive === false && (
+            <Tag color="default" style={{ fontSize: 11, padding: '0 4px', lineHeight: '18px' }}>
+              Thương hiệu đã ẩn
+            </Tag>
+          )}
+        </Space>
       ),
     },
     {
