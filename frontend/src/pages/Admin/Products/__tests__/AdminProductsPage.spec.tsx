@@ -17,6 +17,19 @@ vi.mock('../../../../services/productService', () => ({
   },
 }));
 
+vi.mock('../../../../services/supplierService', () => ({
+  supplierService: {
+    getSuppliers: vi.fn().mockResolvedValue([]),
+  },
+}));
+
+vi.mock('../../../../services/inventoryService', () => ({
+  inventoryService: {
+    getInventoryList: vi.fn().mockResolvedValue([]),
+    getVariantLedger: vi.fn().mockResolvedValue({ items: [] }),
+  },
+}));
+
 class ResizeObserverMock {
   observe() {}
   unobserve() {}
@@ -84,6 +97,49 @@ describe('AdminProductsPage Integration', () => {
 
     await waitFor(() => {
       expect(productService.getProductById).toHaveBeenCalledWith('prod-abc');
+    });
+  });
+
+  it('clicking "Xem chi tiết" button opens ProductDetailDrawer with selected product ID', async () => {
+    (productService.getAllProductsAdmin as any).mockResolvedValueOnce({
+      items: [
+        {
+          id: 'prod-xyz',
+          name: 'iPhone 16 Pro Max',
+          brand: { name: 'Apple' },
+          variants: [],
+          status: 'ACTIVE',
+        },
+      ],
+      total: 1,
+    });
+    (productService.getProductById as any).mockResolvedValueOnce({
+      id: 'prod-xyz',
+      name: 'iPhone 16 Pro Max',
+      variants: [],
+      specs: {},
+      status: 'ACTIVE',
+    });
+
+    render(
+      <MemoryRouter>
+        <AdminProductsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('iPhone 16 Pro Max')).toBeDefined();
+    });
+
+    const detailButtons = screen.getAllByRole('button', { name: /xem chi tiết/i });
+    fireEvent.click(detailButtons[0]);
+
+    await waitFor(() => {
+      expect(productService.getProductById).toHaveBeenCalledWith('prod-xyz');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Tổng quan sản phẩm')).toBeDefined();
     });
   });
 });

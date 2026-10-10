@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
+import { message } from 'antd';
 import { ProductDetailDrawer } from '../ProductDetailDrawer';
 import { productService } from '../../../../../services/productService';
 import { supplierService } from '../../../../../services/supplierService';
@@ -297,5 +298,28 @@ describe('ProductDetailDrawer', () => {
 
     expect(openSpy).toHaveBeenCalledWith('/products/iphone-16-pro-max', '_blank');
     openSpy.mockRestore();
+  });
+
+  it('displays error message when product fetching fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const messageErrorSpy = vi.spyOn(message, 'error').mockImplementation(() => ({} as any));
+    vi.mocked(productService.getProductById).mockRejectedValueOnce(
+      new Error('Lỗi kết nối máy chủ')
+    );
+
+    render(
+      <ProductDetailDrawer
+        open={true}
+        productId="prod-err"
+        onClose={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(messageErrorSpy).toHaveBeenCalledWith('Lỗi kết nối máy chủ');
+    });
+
+    errorSpy.mockRestore();
+    messageErrorSpy.mockRestore();
   });
 });

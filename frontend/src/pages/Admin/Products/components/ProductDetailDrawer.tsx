@@ -13,6 +13,7 @@ import {
   Col,
   Spin,
   Empty,
+  message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -24,6 +25,7 @@ import {
   InfoCircleOutlined,
   FileTextOutlined,
   DatabaseOutlined,
+  MobileOutlined,
 } from '@ant-design/icons';
 import { productService } from '../../../../services/productService';
 import { supplierService } from '../../../../services/supplierService';
@@ -82,6 +84,10 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
         ]);
 
         if (!active) return;
+
+        if (prodResult.status === 'rejected') {
+          throw prodResult.reason;
+        }
 
         const prod = prodResult.status === 'fulfilled' ? prodResult.value : null;
         const suppliers: Supplier[] =
@@ -176,8 +182,11 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
         } else {
           setSupplierInfo(null);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to load product details:', err);
+        message.error(
+          err?.response?.data?.message || err?.message || 'Không thể tải chi tiết sản phẩm'
+        );
       } finally {
         if (active) {
           setLoading(false);
@@ -306,12 +315,13 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
           setSupplierInfo(null);
         }
       }}
-      size="large"
+      width="min(100vw, 720px)"
       destroyOnHidden
       title={
         product ? (
           <Space orientation="vertical" size={2} style={{ width: '100%' }}>
             <Space align="center" wrap>
+              <MobileOutlined style={{ color: '#2563eb', fontSize: 18 }} />
               <Title level={4} style={{ margin: 0 }}>
                 {product.name}
               </Title>
@@ -329,7 +339,10 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
             </Space>
           </Space>
         ) : (
-          'Chi tiết sản phẩm'
+          <Space align="center">
+            <MobileOutlined style={{ color: '#2563eb' }} />
+            <span>Chi tiết sản phẩm</span>
+          </Space>
         )
       }
       footer={
