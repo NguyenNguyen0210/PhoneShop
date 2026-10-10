@@ -728,6 +728,9 @@ export class OrdersService {
       ? `${o.address.addressLine1}, ${o.address.ward ? o.address.ward + ', ' : ''}${o.address.district ? o.address.district + ', ' : ''}${o.address.city}`
       : '';
     const primaryPayment = o.payments?.[0];
+    const reportedTxn = primaryPayment?.transactions?.find(
+      (t: any) => t.providerReference === 'CUSTOMER_REPORTED',
+    );
     const discount =
       o.discount ?? (o.discountAmount !== undefined ? Number(o.discountAmount) : 0);
     const notes = o.notes ?? o.customerNote ?? undefined;
@@ -739,6 +742,8 @@ export class OrdersService {
       shippingAddress,
       paymentMethod: primaryPayment?.method || 'COD',
       paymentStatus: primaryPayment?.status || 'PENDING',
+      customerReportedTransfer: Boolean(reportedTxn),
+      customerReportedAt: reportedTxn?.createdAt,
       discount,
       notes,
     };
@@ -814,7 +819,15 @@ export class OrdersService {
               imeiDevice: true,
             },
           },
-          payments: true,
+          payments: {
+            include: {
+              transactions: {
+                where: { providerReference: 'CUSTOMER_REPORTED' },
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+              },
+            },
+          },
           shipping: true,
         },
         orderBy: { createdAt: 'desc' },
@@ -830,6 +843,9 @@ export class OrdersService {
         ? `${o.address.addressLine1}, ${o.address.ward ? o.address.ward + ', ' : ''}${o.address.district ? o.address.district + ', ' : ''}${o.address.city}`
         : '';
       const primaryPayment = o.payments?.[0];
+      const reportedTxn = primaryPayment?.transactions?.find(
+        (t: any) => t.providerReference === 'CUSTOMER_REPORTED',
+      );
 
       return {
         ...o,
@@ -838,6 +854,8 @@ export class OrdersService {
         shippingAddress,
         paymentMethod: primaryPayment?.method || 'COD',
         paymentStatus: primaryPayment?.status || 'PENDING',
+        customerReportedTransfer: Boolean(reportedTxn),
+        customerReportedAt: reportedTxn?.createdAt,
       };
     });
 
@@ -871,6 +889,9 @@ export class OrdersService {
       ? `${order.address.addressLine1}, ${order.address.ward ? order.address.ward + ', ' : ''}${order.address.district ? order.address.district + ', ' : ''}${order.address.city}`
       : '';
     const primaryPayment = order.payments?.[0];
+    const reportedTxn = primaryPayment?.transactions?.find(
+      (t: any) => t.providerReference === 'CUSTOMER_REPORTED',
+    );
 
     return {
       ...order,
@@ -879,6 +900,8 @@ export class OrdersService {
       shippingAddress,
       paymentMethod: primaryPayment?.method || 'COD',
       paymentStatus: primaryPayment?.status || 'PENDING',
+      customerReportedTransfer: Boolean(reportedTxn),
+      customerReportedAt: reportedTxn?.createdAt,
     };
   }
 
