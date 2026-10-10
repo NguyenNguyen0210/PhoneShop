@@ -16,7 +16,7 @@
 - Modify: `backend/src/modules/auth/auth.service.ts:410-435`
 - Test: `backend/test/unit/auth-password-reset.spec.ts:100-110`
 
-- [ ] **Step 1: Cập nhật unit test trong `auth-password-reset.spec.ts`**
+- [x] **Step 1: Cập nhật unit test trong `auth-password-reset.spec.ts`**
 Trong `backend/test/unit/auth-password-reset.spec.ts`:
 Cập nhật test case:
 ```typescript
@@ -45,7 +45,7 @@ Cập nhật test case:
     });
 ```
 
-- [ ] **Step 2: Cập nhật `auth.service.ts`**
+- [x] **Step 2: Cập nhật `auth.service.ts`**
 Trong `backend/src/modules/auth/auth.service.ts`:
 Đảm bảo `NotFoundException` được import từ `@nestjs/common`.
 Thay đổi trong method `forgotPassword`:
@@ -74,7 +74,7 @@ Thay đổi trong method `forgotPassword`:
     }
 ```
 
-- [ ] **Step 3: Commit backend changes**
+- [x] **Step 3: Commit backend changes**
 ```bash
 git add backend/src/modules/auth/auth.service.ts backend/test/unit/auth-password-reset.spec.ts
 git commit -m "feat(auth): throw NotFoundException if email does not exist in forgotPassword"
@@ -88,7 +88,7 @@ git commit -m "feat(auth): throw NotFoundException if email does not exist in fo
 - Modify: `frontend/src/pages/storefront/Auth/LoginPage.tsx`
 - Test: `frontend/src/pages/storefront/Auth/__tests__/LoginPage.spec.tsx`
 
-- [ ] **Step 1: Viết test cho trường hợp email không tồn tại trong `LoginPage.spec.tsx`**
+- [x] **Step 1: Viết test cho trường hợp email không tồn tại trong `LoginPage.spec.tsx`**
 Trong `frontend/src/pages/storefront/Auth/__tests__/LoginPage.spec.tsx`:
 Thêm test case:
 ```typescript
@@ -118,7 +118,7 @@ Thêm test case:
   });
 ```
 
-- [ ] **Step 2: Cập nhật `LoginPage.tsx`**
+- [x] **Step 2: Cập nhật `LoginPage.tsx`**
 Trong `frontend/src/pages/storefront/Auth/LoginPage.tsx`:
 1. Thêm state:
    ```typescript
@@ -149,12 +149,12 @@ Trong `frontend/src/pages/storefront/Auth/LoginPage.tsx`:
    )}
    ```
 
-- [ ] **Step 3: Chạy test và typecheck**
+- [x] **Step 3: Chạy test và typecheck**
 Run: `npx vitest run src/pages/storefront/Auth/__tests__/LoginPage.spec.tsx`
 Run: `npx tsc --noEmit`
 Run: `npm run build`
 
-- [ ] **Step 4: Commit frontend changes**
+- [x] **Step 4: Commit frontend changes**
 ```bash
 git add frontend/src/pages/storefront/Auth/LoginPage.tsx frontend/src/pages/storefront/Auth/__tests__/LoginPage.spec.tsx
 git commit -m "feat(storefront): display clear error message when forgot password email does not exist"
