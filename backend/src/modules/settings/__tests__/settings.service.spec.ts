@@ -140,4 +140,13 @@ describe('SystemSettingsService', () => {
       'Thông số SMTP (HOST, USER, PASS) chưa được cấu hình đầy đủ',
     );
   });
+
+  it('should include FEATURED_BRANDS in getPublicSettings', async () => {
+    (cache.get as any).mockResolvedValue(null);
+    (prisma.systemSetting.findUnique as any).mockResolvedValue(null);
+    (config.get as any).mockImplementation((k: string, def: string) => def);
+
+    const publicSettings = await service.getPublicSettings();
+    expect(publicSettings.FEATURED_BRANDS).toBe('apple,samsung,xiaomi,oppo,vivo,realme,honor,oneplus');
+  });
 });

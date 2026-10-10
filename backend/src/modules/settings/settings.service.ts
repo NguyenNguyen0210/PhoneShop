@@ -45,6 +45,11 @@ export const DEFAULT_DEFINITIONS: Record<
   STORE_EMAIL: { group: 'general', isSecret: false, defaultVal: 'support@phoneshop.vn' },
   STORE_ADDRESS: { group: 'general', isSecret: false, defaultVal: 'Hồ Chí Minh, Việt Nam' },
   MAINTENANCE_MODE: { group: 'general', isSecret: false, defaultVal: 'false' },
+  FEATURED_BRANDS: {
+    group: 'general',
+    isSecret: false,
+    defaultVal: 'apple,samsung,xiaomi,oppo,vivo,realme,honor,oneplus',
+  },
 };
 
 @Injectable()
@@ -134,6 +139,7 @@ export class SystemSettingsService {
       MAINTENANCE_MODE: await this.get('MAINTENANCE_MODE', 'false'),
       PAYMENT_VNPAY_ENABLED: await this.get('PAYMENT_VNPAY_ENABLED', 'true'),
       PAYMENT_VIETQR_ENABLED: await this.get('PAYMENT_VIETQR_ENABLED', 'true'),
+      FEATURED_BRANDS: await this.get('FEATURED_BRANDS', 'apple,samsung,xiaomi,oppo,vivo,realme,honor,oneplus'),
     };
   }
 

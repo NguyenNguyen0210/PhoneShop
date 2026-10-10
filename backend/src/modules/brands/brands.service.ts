@@ -107,4 +107,30 @@ export class BrandsService {
       data: { isActive },
     });
   }
+
+  async getFeaturedBrands(): Promise<string[]> {
+    // Query SystemSetting where key is 'FEATURED_BRANDS' from prisma or fallback to default
+    const setting = await this.prisma.systemSetting.findUnique({
+      where: { key: 'FEATURED_BRANDS' },
+    });
+    const val = setting?.value || 'apple,samsung,xiaomi,oppo,vivo,realme,honor,oneplus';
+    return val.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  }
+
+  async updateFeaturedBrands(slugs: string[]): Promise<string[]> {
+    const cleanSlugs = (slugs || []).map((s) => s.trim().toLowerCase()).filter(Boolean);
+    const val = cleanSlugs.join(',');
+    await this.prisma.systemSetting.upsert({
+      where: { key: 'FEATURED_BRANDS' },
+      update: { value: val },
+      create: {
+        key: 'FEATURED_BRANDS',
+        value: val,
+        group: 'GENERAL',
+        isSecret: false,
+        description: 'Featured brand slugs shown on homepage',
+      },
+    });
+    return cleanSlugs;
+  }
 }

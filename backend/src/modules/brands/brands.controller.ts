@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { BrandsService } from './brands.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { UpdateBrandDto } from './dto/update-brand.dto';
+import { UpdateFeaturedBrandsDto } from './dto/update-featured-brands.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -30,6 +31,21 @@ export class BrandsController {
   @ApiQuery({ name: 'search', required: false, type: String })
   findAllAdmin(@Query('search') search?: string) {
     return this.brandsService.findAll(search, false);
+  }
+
+  @Get('featured')
+  @ApiOperation({ summary: 'Get featured brands on homepage (Public)' })
+  getFeatured() {
+    return this.brandsService.getFeaturedBrands();
+  }
+
+  @Put('featured')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.MANAGER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update featured brands on homepage (MANAGER/ADMIN)' })
+  updateFeatured(@Body() body: UpdateFeaturedBrandsDto) {
+    return this.brandsService.updateFeaturedBrands(body.slugs);
   }
 
   @Get(':id')
