@@ -23,8 +23,10 @@ export const AdminPaymentsPage: React.FC = () => {
   const canManage =
     user?.role === 'ADMIN' ||
     user?.role === 'MANAGER' ||
+    user?.role === 'STAFF' ||
     roleNames.includes('ADMIN') ||
-    roleNames.includes('MANAGER');
+    roleNames.includes('MANAGER') ||
+    roleNames.includes('STAFF');
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);

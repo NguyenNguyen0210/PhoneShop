@@ -156,7 +156,7 @@ export const ReconciliationTab: React.FC<ReconciliationTabProps> = ({
       render: (_: any, record: Payment) => {
         if (!canManage) {
           return (
-            <Tooltip title="Chỉ Quản lý (Manager/Admin) có quyền xác nhận đối soát">
+            <Tooltip title="Chỉ Quản lý hoặc Nhân viên được phân quyền mới có thể xác nhận đối soát">
               <Button size="small" disabled icon={<CheckOutlined />}>
                 🔒 Xác nhận
               </Button>

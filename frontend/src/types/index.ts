@@ -344,6 +344,9 @@ export interface Order {
   completedAt?: string;
   cancelledAt?: string;
   cancelledReason?: string;
+  payments?: Payment[];
+  customerReportedTransfer?: boolean;
+  customerReportedAt?: string;
   createdAt: string;
   updatedAt?: string;
 }
