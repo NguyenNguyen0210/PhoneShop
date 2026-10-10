@@ -458,7 +458,7 @@ export const AdminProductsPage: React.FC = () => {
       key: 'brand',
       width: 140,
       render: (brand, record) => (
-        <Space direction="vertical" size={2}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
           <span
             style={{
               display: 'inline-block',
@@ -480,7 +480,7 @@ export const AdminProductsPage: React.FC = () => {
               Thương hiệu đã ẩn
             </Tag>
           )}
-        </Space>
+        </div>
       ),
     },
     {
