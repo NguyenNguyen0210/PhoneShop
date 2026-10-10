@@ -149,6 +149,36 @@ describe('ChatbotService Unit Tests', () => {
     expect(res.products.map((p) => p.slug)).toContain('iphone-16-pro-max');
   });
 
+  it('should return variantId matching the cheapest in-stock variant and summarizeSpecs', async () => {
+    const iphone = {
+      slug: 'iphone-16',
+      name: 'iPhone 16',
+      brand: { name: 'Apple' },
+      warrantyMonths: 12,
+      specs: {
+        screenSize: 6.0,
+        chipset: 'Apple A18',
+        batteryCapacity: 3561,
+        mainCameraMp: 48,
+      },
+      variants: [
+        { id: 'var-expensive', name: 'iPhone 16 128GB Hồng', price: 21490000, inventory: { availableQty: 10 } },
+        { id: 'var-cheapest', name: 'iPhone 16 128GB Xanh', price: 19990000, inventory: { availableQty: 25 } },
+        { id: 'var-out-of-stock', name: 'iPhone 16 256GB Trắng', price: 18000000, inventory: { availableQty: 0 } },
+      ],
+    };
+    (mockPrisma.product.findMany as any).mockResolvedValue([iphone]);
+    const res = await service.ask({ message: 'tư vấn mua iPhone 16' }, null);
+
+    const p = res.products.find((prod) => prod.slug === 'iphone-16');
+    expect(p).toBeDefined();
+    expect(p?.price).toBe(19990000);
+    expect(p?.variantId).toBe('var-cheapest');
+    expect(p?.specsSummary).toContain('Màn hình: 6"');
+    expect(p?.specsSummary).toContain('Chip: Apple A18');
+    expect(p?.specsSummary).toContain('Pin: 3561mAh');
+  });
+
   it('should not dump flash-sale/voucher blocks for unrelated payment question', async () => {
     (mockPrisma.voucher.findMany as any).mockResolvedValue([
       {

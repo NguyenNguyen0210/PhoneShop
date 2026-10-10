@@ -449,7 +449,10 @@ export class ProductsService {
         include: {
           brand: true,
           category: true,
-          variants: { include: { inventory: true } },
+          variants: {
+            include: { inventory: true },
+            orderBy: { price: 'asc' },
+          },
           reviews: {
             ...reviewsWithRepliesInclude,
             orderBy: { createdAt: 'desc' as const },
@@ -472,7 +475,10 @@ export class ProductsService {
       include: {
         brand: true,
         category: true,
-        variants: { include: { inventory: true } },
+        variants: {
+          include: { inventory: true },
+          orderBy: { price: 'asc' },
+        },
         reviews: {
           ...reviewsWithRepliesInclude,
           orderBy: { createdAt: 'desc' as const },

@@ -32,6 +32,7 @@ export interface ChatbotProduct {
   warrantyMonths?: number;
   specsSummary?: string;
   variants?: ChatbotVariant[];
+  variantId?: string;
 }
 
 export interface ChatbotVoucher {
@@ -245,19 +246,56 @@ function formatVoucherValue(v: ChatbotVoucher): string {
 
 function summarizeSpecs(specs: any): string {
   if (!specs || typeof specs !== 'object') return '';
-  const pick = ['chip', 'ram', 'storage', 'camera', 'battery', 'screen', 'display'];
   const parts: string[] = [];
+
+  const screen =
+    specs['Màn hình chính'] ||
+    specs['Màn hình'] ||
+    specs['screen'] ||
+    (specs['screenSize']
+      ? `${specs['screenSize']}"${specs['screenRefreshRate'] ? ` ${specs['screenRefreshRate']}Hz` : ''}`
+      : null);
+  if (screen) parts.push(`Màn hình: ${screen}`);
+
+  const chip =
+    specs['Chipset'] ||
+    specs['chipset'] ||
+    specs['Vi xử lý'] ||
+    specs['CPU'] ||
+    specs['chip'];
+  if (chip) parts.push(`Chip: ${chip}`);
+
+  const ram = specs['RAM'] || specs['ram'];
+  if (ram) parts.push(`RAM: ${ram}`);
+
+  const cam =
+    specs['Camera sau'] ||
+    specs['camera'] ||
+    (specs['mainCameraMp'] ? `${specs['mainCameraMp']}MP` : null);
+  if (cam) parts.push(`Camera: ${cam}`);
+
+  const battery =
+    specs['Pin & Sạc'] ||
+    specs['Pin'] ||
+    specs['battery'] ||
+    (specs['batteryCapacity'] ? `${specs['batteryCapacity']}mAh` : null);
+  if (battery) parts.push(`Pin: ${battery}`);
+
+  if (parts.length > 0) {
+    return parts.slice(0, 4).join(', ');
+  }
+
+  const pick = ['chip', 'ram', 'storage', 'camera', 'battery', 'screen', 'display'];
   for (const k of pick) {
     const val = (specs as any)[k];
     if (val) parts.push(`${k}: ${String(val)}`);
   }
-  if (parts.length === 0) {
-    return Object.entries(specs)
-      .slice(0, 4)
-      .map(([k, v]) => `${k}: ${String(v)}`)
-      .join('; ');
-  }
-  return parts.slice(0, 4).join('; ');
+  if (parts.length > 0) return parts.slice(0, 4).join('; ');
+
+  return Object.entries(specs)
+    .slice(0, 3)
+    .map(([k, v]) => `${k}: ${String(v)}`)
+    .join('; ');
 }
 
 @Injectable()
@@ -777,6 +815,7 @@ export class ChatbotService {
               name: p.name,
               brand: p.brand?.name,
               price: flashPrice,
+              variantId: it.variant?.id ? String(it.variant.id) : undefined,
               image: it.variant?.imageUrl || p.thumbnailUrl || '/images/products/iphone-16-pro-max.png',
               warrantyMonths: p.warrantyMonths ?? 12,
               specsSummary: summarizeSpecs(p.specs) || undefined,
@@ -826,6 +865,7 @@ export class ChatbotService {
           take: 5,
           orderBy: { price: 'asc' as const },
           select: {
+            id: true,
             name: true,
             color: true,
             storage: true,
@@ -960,7 +1000,8 @@ export class ChatbotService {
 
       const mapped: ChatbotProduct[] = allRows
         .map((p: any) => {
-          const variants: ChatbotVariant[] = (p.variants || []).map((v: any) => ({
+          const variants: (ChatbotVariant & { id?: string })[] = (p.variants || []).map((v: any) => ({
+            id: v.id ? String(v.id) : undefined,
             name: v.name,
             color: v.color ?? undefined,
             storage: v.storage ?? undefined,
@@ -979,10 +1020,11 @@ export class ChatbotService {
             name: p.name,
             brand: p.brand?.name,
             price: cheapest.price,
+            variantId: cheapest.id,
             image: (p.variants || [])[0]?.imageUrl || p.thumbnailUrl || '/images/products/iphone-16-pro-max.png',
             warrantyMonths: p.warrantyMonths ?? 12,
             specsSummary: summarizeSpecs(p.specs) || undefined,
-            variants: inStockVariants.slice(0, 4),
+            variants: inStockVariants.slice(0, 4).map(({ id, ...rest }) => rest),
           };
         })
         .filter(Boolean) as ChatbotProduct[];
@@ -1512,7 +1554,13 @@ export class ChatbotService {
                   `${[v.color, v.storage, v.ram].filter(Boolean).join('/') || v.name} | ${v.flashPrice ?? v.price}đ${v.flashPrice ? ` (flash, gốc ${v.price}đ)` : ''} | còn ${v.availableQty}`,
               )
               .join(' ; ');
-            return `- ${p.brand || ''} ${p.name} | từ ${p.price}đ | BH ${p.warrantyMonths ?? 12}th | /products/${p.slug}${p.specsSummary ? ` | ${p.specsSummary}` : ''}${vars ? `\n  Bản: ${vars}` : ''}`;
+            const brandPrefix =
+              p.brand &&
+              !p.name.toLowerCase().includes(p.brand.toLowerCase()) &&
+              p.brand.toLowerCase() !== 'apple'
+                ? `${p.brand} `
+                : '';
+            return `- ${brandPrefix}${p.name} | từ ${p.price}đ | BH ${p.warrantyMonths ?? 12}th | /products/${p.slug}${p.specsSummary ? ` | ${p.specsSummary}` : ''}${vars ? `\n  Bản: ${vars}` : ''}`;
           })
           .join('\n')
       : '(không có sản phẩm khớp)';

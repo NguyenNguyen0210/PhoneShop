@@ -178,7 +178,23 @@ export const ProductDetailPage: React.FC = () => {
             }
           }
 
-          const chosen = targetVariant || data.variants[0];
+          let defaultVariant: ProductVariant | undefined;
+          if (!targetVariant) {
+            const inStockActive = data.variants.filter(
+              (v) => (v.isActive ?? true) && getInventoryAvailable(v) > 0,
+            );
+            if (inStockActive.length > 0) {
+              defaultVariant = [...inStockActive].sort((a, b) => Number(a.price) - Number(b.price))[0];
+            } else {
+              const active = data.variants.filter((v) => v.isActive ?? true);
+              defaultVariant =
+                active.length > 0
+                  ? [...active].sort((a, b) => Number(a.price) - Number(b.price))[0]
+                  : [...data.variants].sort((a, b) => Number(a.price) - Number(b.price))[0];
+            }
+          }
+
+          const chosen = targetVariant || defaultVariant || data.variants[0];
           setSelectedVariant(chosen);
           setActiveImage(chosen.images?.[0] || data.images?.[0] || data.thumbnail || '');
         }
@@ -505,7 +521,7 @@ export const ProductDetailPage: React.FC = () => {
               }}
               className="hover:text-blue-600 transition-colors cursor-pointer"
             >
-              Điện thoại
+              {product.category?.name || 'Điện thoại'}
             </button>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             <span className="text-slate-800 font-semibold truncate max-w-xs sm:max-w-md">
@@ -644,7 +660,7 @@ export const ProductDetailPage: React.FC = () => {
 
               {/* CRITICAL: Simplified Title in <h1> (Line name without bundled color/storage) */}
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug">
-                Điện thoại {product.name}
+                {product.name}
               </h1>
 
               {/* Rating & Live Stock Radar */}
@@ -976,7 +992,7 @@ export const ProductDetailPage: React.FC = () => {
               />
               <div className="min-w-0">
                 <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                  Điện thoại {product.name}
+                  {product.name}
                 </div>
                 <div className="text-[11px] text-slate-500 font-mono truncate">
                   {selectedVariant.color} • {selectedVariant.storage}
@@ -1040,7 +1056,7 @@ export const ProductDetailPage: React.FC = () => {
       <ProductSpecsModal
         open={isSpecsModalOpen}
         onClose={() => setIsSpecsModalOpen(false)}
-        productName={`Điện thoại ${product.name}`}
+        productName={product.name}
         specs={product.specs}
       />
     </div>
