@@ -53,11 +53,13 @@ interface LatestSupplierInfo {
   inboundUnitPrice?: number | string;
 }
 
+const vndFormatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+
 const formatPrice = (val?: number | string | null): string => {
   if (val === undefined || val === null || val === '') return '-';
   const num = typeof val === 'string' ? Number(val) : val;
   if (isNaN(num)) return '-';
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
+  return vndFormatter.format(num);
 };
 
 export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
@@ -122,9 +124,10 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
 
           for (const m of allMovements) {
             const isInbound =
-              (m.type as string) === 'INBOUND' ||
-              m.type === 'IMPORT_MANUAL' ||
-              (m.quantity !== undefined && m.quantity > 0);
+              !m.type?.startsWith('EXPORT') &&
+              ((m.type as string) === 'INBOUND' ||
+                m.type === 'IMPORT_MANUAL' ||
+                (m.quantity !== undefined && m.quantity > 0));
 
             if (!isInbound) continue;
 
@@ -134,7 +137,8 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
             let extractedName: string | undefined = undefined;
 
             if (m.note) {
-              const nccMatch = m.note.match(/\[NCC:\s*([^\]]+)\]/i);
+              const note = m.note;
+              const nccMatch = note.match(/\[NCC:\s*([^\]]+)\]/i);
               if (nccMatch) {
                 extractedName = nccMatch[1].trim();
                 if (!matchedSupplier) {
@@ -147,7 +151,12 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               }
               if (!matchedSupplier) {
                 matchedSupplier = suppliers.find(
-                  (s) => s.name && m.note && m.note.toLowerCase().includes(s.name.toLowerCase())
+                  (s) =>
+                    Boolean(
+                      s.name &&
+                        s.name.trim().length >= 3 &&
+                        note.toLowerCase().includes(s.name.toLowerCase())
+                    )
                 );
               }
             }
@@ -183,6 +192,7 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
           setSupplierInfo(null);
         }
       } catch (err: any) {
+        if (!active) return;
         console.error('Failed to load product details:', err);
         message.error(
           err?.response?.data?.message || err?.message || 'Không thể tải chi tiết sản phẩm'
@@ -213,82 +223,85 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
     }, 0);
   }, [product]);
 
-  const variantColumns: ColumnsType<ProductVariant> = [
-    {
-      title: 'SKU / Tên biến thể',
-      dataIndex: 'sku',
-      key: 'sku',
-      render: (sku: string, record: ProductVariant) => (
-        <div>
-          <Text strong>{sku || '-'}</Text>
-          {record.name && (
-            <div style={{ fontSize: 12, color: '#6b7280' }}>{record.name}</div>
-          )}
-        </div>
-      ),
-    },
-    {
-      title: 'Màu sắc',
-      dataIndex: 'color',
-      key: 'color',
-      render: (color: string, record: ProductVariant) => (
-        <Space size={6}>
-          {record.colorHex && (
-            <span
-              style={{
-                display: 'inline-block',
-                width: 12,
-                height: 12,
-                borderRadius: '50%',
-                backgroundColor: record.colorHex,
-                border: '1px solid #d1d5db',
-              }}
-            />
-          )}
-          <span>{color || '-'}</span>
-        </Space>
-      ),
-    },
-    {
-      title: 'Cấu hình (RAM/Bộ nhớ)',
-      key: 'config',
-      render: (_: any, record: ProductVariant) => {
-        const configStr = [record.ram, record.storage].filter(Boolean).join(' / ');
-        return <span>{configStr || '-'}</span>;
+  const variantColumns: ColumnsType<ProductVariant> = useMemo(
+    () => [
+      {
+        title: 'SKU / Tên biến thể',
+        dataIndex: 'sku',
+        key: 'sku',
+        render: (sku: string, record: ProductVariant) => (
+          <div>
+            <Text strong>{sku || '-'}</Text>
+            {record.name && (
+              <div style={{ fontSize: 12, color: '#6b7280' }}>{record.name}</div>
+            )}
+          </div>
+        ),
       },
-    },
-    {
-      title: 'Giá bán',
-      dataIndex: 'price',
-      key: 'price',
-      render: (price: number) => (
-        <Text strong style={{ color: '#2563eb' }}>
-          {formatPrice(price)}
-        </Text>
-      ),
-    },
-    {
-      title: 'Giá vốn',
-      dataIndex: 'costPrice',
-      key: 'costPrice',
-      render: (costPrice?: number) => (
-        <Text type="secondary">{formatPrice(costPrice)}</Text>
-      ),
-    },
-    {
-      title: 'Tồn kho',
-      key: 'stock',
-      render: (_: any, record: ProductVariant) => {
-        const qty =
-          record.inventory?.availableQty ??
-          record.inventory?.quantity ??
-          (record as any).stock ??
-          0;
-        const color = qty > 10 ? 'green' : qty > 0 ? 'orange' : 'red';
-        return <Tag color={color}>{qty}</Tag>;
+      {
+        title: 'Màu sắc',
+        dataIndex: 'color',
+        key: 'color',
+        render: (color: string, record: ProductVariant) => (
+          <Space size={6}>
+            {record.colorHex && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  backgroundColor: record.colorHex,
+                  border: '1px solid #d1d5db',
+                }}
+              />
+            )}
+            <span>{color || '-'}</span>
+          </Space>
+        ),
       },
-    },
-  ];
+      {
+        title: 'Cấu hình (RAM/Bộ nhớ)',
+        key: 'config',
+        render: (_: any, record: ProductVariant) => {
+          const configStr = [record.ram, record.storage].filter(Boolean).join(' / ');
+          return <span>{configStr || '-'}</span>;
+        },
+      },
+      {
+        title: 'Giá bán',
+        dataIndex: 'price',
+        key: 'price',
+        render: (price: number) => (
+          <Text strong style={{ color: '#2563eb' }}>
+            {formatPrice(price)}
+          </Text>
+        ),
+      },
+      {
+        title: 'Giá vốn',
+        dataIndex: 'costPrice',
+        key: 'costPrice',
+        render: (costPrice?: number) => (
+          <Text type="secondary">{formatPrice(costPrice)}</Text>
+        ),
+      },
+      {
+        title: 'Tồn kho',
+        key: 'stock',
+        render: (_: any, record: ProductVariant) => {
+          const qty =
+            record.inventory?.availableQty ??
+            record.inventory?.quantity ??
+            (record as any).stock ??
+            0;
+          const color = qty > 10 ? 'green' : qty > 0 ? 'orange' : 'red';
+          return <Tag color={color}>{qty}</Tag>;
+        },
+      },
+    ],
+    []
+  );
 
   const conditionDisplay = useMemo(() => {
     const cond = (product as any)?.condition;
@@ -315,7 +328,7 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
           setSupplierInfo(null);
         }
       }}
-      width="min(100vw, 720px)"
+      size="min(100vw, 720px)"
       destroyOnHidden
       title={
         product ? (
@@ -471,15 +484,19 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
                 </Descriptions.Item>
                 <Descriptions.Item label="Ngày nhập gần nhất">
                   <Text>
-                    {supplierInfo.inboundDate
-                      ? new Date(supplierInfo.inboundDate).toLocaleDateString('vi-VN', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                      : '-'}
+                    {(() => {
+                      if (!supplierInfo.inboundDate) return '-';
+                      const d = new Date(supplierInfo.inboundDate);
+                      return isNaN(d.getTime())
+                        ? '-'
+                        : d.toLocaleDateString('vi-VN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          });
+                    })()}
                   </Text>
                 </Descriptions.Item>
                 <Descriptions.Item label="Số lượng nhập gần nhất">
@@ -536,7 +553,13 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               <Descriptions size="small" bordered column={{ xs: 1, sm: 2 }}>
                 {Object.entries(product.specs).map(([key, val]) => (
                   <Descriptions.Item key={key} label={key}>
-                    {val !== undefined && val !== null ? String(val) : '-'}
+                    {val !== undefined && val !== null
+                      ? typeof val === 'object'
+                        ? Array.isArray(val)
+                          ? val.join(', ')
+                          : JSON.stringify(val)
+                        : String(val)
+                      : '-'}
                   </Descriptions.Item>
                 ))}
               </Descriptions>

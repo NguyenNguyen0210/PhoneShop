@@ -322,4 +322,141 @@ describe('ProductDetailDrawer', () => {
     errorSpy.mockRestore();
     messageErrorSpy.mockRestore();
   });
+
+  it('safely handles invalid inbound date and renders fallback dash', async () => {
+    vi.mocked(inventoryService.getVariantLedger).mockResolvedValueOnce({
+      items: [
+        {
+          id: 'sm-invalid-date',
+          variantId: 'var-1',
+          type: 'INBOUND',
+          quantity: 10,
+          balanceBefore: 0,
+          balanceAfter: 10,
+          referenceType: 'SUPPLIER',
+          referenceId: 'sup-1',
+          note: '[NCC: FPT Synnex] Nhập hàng',
+          createdAt: 'not-a-valid-date',
+        },
+      ],
+      pagination: { page: 1, limit: 5, total: 1, totalPages: 1 },
+      summary: { totalInQuantity: 10, totalOutQuantity: 0, totalInAmount: 0, totalOutAmount: 0, netAmount: 0, totalTransactions: 1 },
+    } as any);
+
+    render(
+      <ProductDetailDrawer
+        open={true}
+        productId="prod-101"
+        onClose={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('FPT Synnex')).toBeDefined();
+    });
+
+    // Inbound date should safely render '-'
+    expect(screen.getAllByText('-').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('renders complex specs safely (arrays and objects)', async () => {
+    vi.mocked(productService.getProductById).mockResolvedValueOnce({
+      ...mockProduct,
+      specs: {
+        'Cổng kết nối': ['USB-C', 'Thunderbolt 4'],
+        'Kích thước': { width: 70, height: 140 },
+        'Trống': null,
+      },
+    } as any);
+
+    render(
+      <ProductDetailDrawer
+        open={true}
+        productId="prod-101"
+        onClose={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Cổng kết nối')).toBeDefined();
+    });
+
+    expect(screen.getByText('USB-C, Thunderbolt 4')).toBeDefined();
+    expect(screen.getByText('{"width":70,"height":140}')).toBeDefined();
+    expect(screen.getByText('Trống')).toBeDefined();
+  });
+
+  it('ignores export movements even when quantity is positive', async () => {
+    vi.mocked(inventoryService.getVariantLedger).mockResolvedValueOnce({
+      items: [
+        {
+          id: 'sm-export',
+          variantId: 'var-1',
+          type: 'EXPORT_SALE',
+          quantity: 5,
+          referenceType: 'SUPPLIER',
+          referenceId: 'sup-1',
+          note: '[NCC: FPT Synnex] Xuất bán',
+          createdAt: '2026-03-15T08:30:00Z',
+        },
+      ],
+      pagination: { page: 1, limit: 5, total: 1, totalPages: 1 },
+      summary: { totalInQuantity: 0, totalOutQuantity: 5, totalInAmount: 0, totalOutAmount: 0, netAmount: 0, totalTransactions: 1 },
+    } as any);
+
+    render(
+      <ProductDetailDrawer
+        open={true}
+        productId="prod-101"
+        onClose={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Chưa có thông tin nhập kho từ nhà cung cấp/i)).toBeDefined();
+    });
+  });
+
+  it('ignores short supplier names (< 3 chars) in note search', async () => {
+    vi.mocked(supplierService.getSuppliers).mockResolvedValueOnce([
+      {
+        id: 'sup-short',
+        name: 'AB',
+        contactName: 'Short Name',
+        phone: '123',
+        email: 'ab@test.com',
+        isActive: true,
+      },
+    ] as any);
+
+    vi.mocked(inventoryService.getVariantLedger).mockResolvedValueOnce({
+      items: [
+        {
+          id: 'sm-short',
+          variantId: 'var-1',
+          type: 'INBOUND',
+          quantity: 10,
+          referenceType: 'OTHER',
+          referenceId: 'other-1',
+          note: 'Nhap kho ve tu ABC',
+          createdAt: '2026-03-15T08:30:00Z',
+        },
+      ],
+      pagination: { page: 1, limit: 5, total: 1, totalPages: 1 },
+      summary: { totalInQuantity: 10, totalOutQuantity: 0, totalInAmount: 0, totalOutAmount: 0, netAmount: 0, totalTransactions: 1 },
+    } as any);
+
+    render(
+      <ProductDetailDrawer
+        open={true}
+        productId="prod-101"
+        onClose={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      // Short supplier 'AB' should NOT be matched from note 'Nhap kho ve tu ABC'
+      expect(screen.queryByText('Short Name')).toBeNull();
+    });
+  });
 });
