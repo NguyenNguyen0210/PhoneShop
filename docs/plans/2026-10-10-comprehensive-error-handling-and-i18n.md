@@ -170,6 +170,6 @@ git commit -m "feat(cart): notify error when voucher validation returns invalid"
 **Files:**
 - Merge branch `feature/comprehensive-error-handling-and-i18n` vào `main`
 
-- [ ] **Step 1: Merge vào `main`**
-- [ ] **Step 2: Chạy full verification trên `main`**
-- [ ] **Step 3: Dọn dẹp branch feature**
+- [x] **Step 1: Merge vào `main`**
+- [x] **Step 2: Chạy full verification trên `main`**
+- [x] **Step 3: Dọn dẹp branch feature**
