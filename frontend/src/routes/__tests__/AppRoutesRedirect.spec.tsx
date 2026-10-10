@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useEffect } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, useLocation, Outlet } from 'react-router-dom';
@@ -84,7 +85,10 @@ describe('ProductsRedirect component', () => {
   it('preserves search and hash when redirecting', () => {
     let capturedLocation: any;
     const LocationWatcher = () => {
-      capturedLocation = useLocation();
+      const loc = useLocation();
+      useEffect(() => {
+        capturedLocation = loc;
+      }, [loc]);
       return null;
     };
 
