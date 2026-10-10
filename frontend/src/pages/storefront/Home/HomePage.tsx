@@ -6,6 +6,7 @@ import {
   Smartphone,
   X,
   Filter,
+  Sparkles,
 } from 'lucide-react';
 import { productService } from '../../../services/productService';
 import { flashSaleService } from '../../../services/flashSaleService';
@@ -624,56 +625,68 @@ export const HomePage: React.FC = () => {
             </span>
           </div>
 
-          {/* Integrated Segmented Brand Filter Tabs */}
-          <div
-            className="flex items-center gap-2 overflow-x-auto pb-3 pt-1 scroll-smooth"
-            onWheel={(e) => {
-              if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
-                e.currentTarget.scrollLeft += e.deltaY;
-              }
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => handleSelectBrand('all')}
-              className={`h-11 min-w-[112px] px-4 rounded-xl text-[13px] transition-all cursor-pointer shrink-0 flex items-center justify-center gap-2 border ${
-                activeBrandList.length === 0
-                  ? 'border-blue-600 bg-blue-50 text-blue-600 font-semibold shadow-xs'
-                  : 'bg-white border-slate-200 text-slate-700 font-medium hover:border-blue-300 hover:bg-blue-50/50'
-              }`}
+          {/* Integrated Segmented Brand Filter Tabs (Premium Glow Container) */}
+          <div className="rounded-2xl p-2.5 sm:p-3 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-slate-50/80 border border-blue-100/90 shadow-xs backdrop-blur-xs">
+            <div className="flex items-center justify-between px-1 mb-2 text-xs">
+              <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-blue-700">
+                <Sparkles className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
+                <span>Thương hiệu nổi bật</span>
+              </span>
+              <span className="text-[11px] font-medium text-slate-500 hidden sm:inline-block">
+                Cam kết 100% chính hãng & bảo hành toàn quốc
+              </span>
+            </div>
+
+            <div
+              className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-0.5 scroll-smooth no-scrollbar"
+              onWheel={(e) => {
+                if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
+                  e.currentTarget.scrollLeft += e.deltaY;
+                }
+              }}
             >
-              <LayoutGrid className="w-4 h-4" />
-              <span>Tất cả</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => handleSelectBrand('all')}
+                className={`h-11 min-w-[112px] px-4 rounded-xl text-[13px] transition-all duration-200 cursor-pointer shrink-0 flex items-center justify-center gap-2 border shadow-xs ${
+                  activeBrandList.length === 0
+                    ? 'border-blue-600 bg-blue-50 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white font-bold shadow-md shadow-blue-500/25 -translate-y-0.5'
+                    : 'bg-white border-slate-200/90 text-slate-700 font-semibold hover:border-blue-400 hover:text-blue-600 hover:shadow-md hover:shadow-blue-500/10 hover:-translate-y-0.5'
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                <span>Tất cả</span>
+              </button>
 
-            {featuredBrandsList.map((b) => {
-              const isSelected = activeBrandList.some(
-                (brandName) =>
-                  brandName.toLowerCase() === b.name.toLowerCase() ||
-                  (b.slug && brandName.toLowerCase() === b.slug.toLowerCase())
-              );
+              {featuredBrandsList.map((b) => {
+                const isSelected = activeBrandList.some(
+                  (brandName) =>
+                    brandName.toLowerCase() === b.name.toLowerCase() ||
+                    (b.slug && brandName.toLowerCase() === b.slug.toLowerCase())
+                );
 
-              return (
-                <button
-                  key={b.id || b.slug}
-                  type="button"
-                  onClick={() => handleSelectBrand(b.name)}
-                  className={`h-11 min-w-[112px] px-4 rounded-xl text-[13px] transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 border ${
-                    isSelected
-                      ? 'border-blue-600 bg-blue-50 text-blue-600 font-semibold shadow-xs'
-                      : 'bg-white border-slate-200 text-slate-700 font-medium hover:border-blue-300 hover:bg-blue-50/50'
-                  }`}
-                >
-                  <BrandLogo
-                    name={b.name}
-                    slug={b.slug}
-                    logoUrl={b.logoUrl || b.logo}
-                    isSelected={isSelected}
-                  />
-                  <span>{b.name}</span>
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={b.id || b.slug}
+                    type="button"
+                    onClick={() => handleSelectBrand(b.name)}
+                    className={`h-11 min-w-[112px] px-4 rounded-xl text-[13px] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shrink-0 border shadow-xs ${
+                      isSelected
+                        ? 'border-blue-600 bg-blue-50 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white font-bold shadow-md shadow-blue-500/25 -translate-y-0.5'
+                        : 'bg-white border-slate-200/90 text-slate-700 font-semibold hover:border-blue-400 hover:text-blue-600 hover:shadow-md hover:shadow-blue-500/10 hover:-translate-y-0.5'
+                    }`}
+                  >
+                    <BrandLogo
+                      name={b.name}
+                      slug={b.slug}
+                      logoUrl={b.logoUrl || b.logo}
+                      isSelected={isSelected}
+                    />
+                    <span>{b.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
