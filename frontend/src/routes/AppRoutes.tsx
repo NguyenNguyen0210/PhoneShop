@@ -28,7 +28,6 @@ import { ResetPasswordPage } from '../pages/storefront/Auth/ResetPasswordPage';
 // Admin Pages
 import { AdminDashboard } from '../pages/Admin/Dashboard/AdminDashboardPage';
 import { AdminProductsPage } from '../pages/Admin/Products/AdminProductsPage';
-import { AdminCategoriesPage } from '../pages/Admin/Categories/AdminCategoriesPage';
 import { AdminBrandsPage } from '../pages/Admin/Brands/AdminBrandsPage';
 import { AdminSuppliersPage } from '../pages/Admin/Suppliers/AdminSuppliersPage';
 import { AdminInventoryPage } from '../pages/Admin/Inventory/AdminInventoryPage';
@@ -116,14 +115,7 @@ export const AppRoutes: React.FC = () => {
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/products" element={<AdminProductsPage />} />
-          <Route
-            path="/admin/categories"
-            element={
-              <RoleGuard allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
-                <AdminCategoriesPage />
-              </RoleGuard>
-            }
-          />
+          <Route path="/admin/categories" element={<Navigate to="/admin/products" replace />} />
           <Route
             path="/admin/brands"
             element={
