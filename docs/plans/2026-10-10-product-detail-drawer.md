@@ -27,7 +27,7 @@
 - Create: `frontend/src/pages/Admin/Products/components/ProductDetailDrawer.tsx`
 - Create: `frontend/src/pages/Admin/Products/components/__tests__/ProductDetailDrawer.spec.tsx`
 
-- [ ] **Step 1: Write the failing unit tests for `ProductDetailDrawer`**
+- [x] **Step 1: Write the failing unit tests for `ProductDetailDrawer`**
 
 Create `frontend/src/pages/Admin/Products/components/__tests__/ProductDetailDrawer.spec.tsx`:
 
@@ -225,12 +225,12 @@ describe('ProductDetailDrawer', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm test -- src/pages/Admin/Products/components/__tests__/ProductDetailDrawer.spec.tsx --run` in `frontend` directory.  
 Expected: FAIL because `ProductDetailDrawer.tsx` does not exist yet.
 
-- [ ] **Step 3: Implement `ProductDetailDrawer.tsx`**
+- [x] **Step 3: Implement `ProductDetailDrawer.tsx`**
 
 Create `frontend/src/pages/Admin/Products/components/ProductDetailDrawer.tsx`:
 
@@ -823,12 +823,12 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
 export default ProductDetailDrawer;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npm test -- src/pages/Admin/Products/components/__tests__/ProductDetailDrawer.spec.tsx --run` in `frontend` directory.  
 Expected: PASS with all tests passing.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/pages/Admin/Products/components/ProductDetailDrawer.tsx frontend/src/pages/Admin/Products/components/__tests__/ProductDetailDrawer.spec.tsx
@@ -843,7 +843,7 @@ git commit -m "feat(admin): implement ProductDetailDrawer component and unit tes
 - Modify: `frontend/src/pages/Admin/Products/AdminProductsPage.tsx:55-80, 715-745, 1420-1435`
 - Modify: `frontend/src/pages/Admin/Products/__tests__/AdminProductsPage.spec.tsx`
 
-- [ ] **Step 1: Write the failing test in `AdminProductsPage.spec.tsx`**
+- [x] **Step 1: Write the failing test in `AdminProductsPage.spec.tsx`**
 
 Update `frontend/src/pages/Admin/Products/__tests__/AdminProductsPage.spec.tsx` to verify clicking the eye button opens the detail drawer:
 
@@ -865,12 +865,12 @@ Update `frontend/src/pages/Admin/Products/__tests__/AdminProductsPage.spec.tsx` 
   });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm test -- src/pages/Admin/Products/__tests__/AdminProductsPage.spec.tsx --run` in `frontend` directory.  
 Expected: FAIL because eye button still has label "Xem sản phẩm ngoài storefront" and does not open a dialog.
 
-- [ ] **Step 3: Modify `AdminProductsPage.tsx` to integrate `ProductDetailDrawer`**
+- [x] **Step 3: Modify `AdminProductsPage.tsx` to integrate `ProductDetailDrawer`**
 
 In `frontend/src/pages/Admin/Products/AdminProductsPage.tsx`:
 1. Import `ProductDetailDrawer`:
@@ -916,17 +916,17 @@ In `frontend/src/pages/Admin/Products/AdminProductsPage.tsx`:
    />
    ```
 
-- [ ] **Step 4: Run tests to verify all pass**
+- [x] **Step 4: Run tests to verify all pass**
 
 Run: `npm test -- src/pages/Admin/Products/__tests__/AdminProductsPage.spec.tsx --run` in `frontend` directory.  
 Expected: PASS.
 
-- [ ] **Step 5: Run full frontend build check**
+- [x] **Step 5: Run full frontend build check**
 
 Run: `npm run build` in `frontend` directory.  
 Expected: Build succeeds without TypeScript or bundling errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/pages/Admin/Products/AdminProductsPage.tsx frontend/src/pages/Admin/Products/__tests__/AdminProductsPage.spec.tsx
