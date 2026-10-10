@@ -112,7 +112,7 @@ export const OrderCancelModal: React.FC<OrderCancelModalProps> = ({
           <div>
             <span className="font-semibold block mb-0.5">Lưu ý khi hủy đơn hàng:</span>
             <span>
-              Mọi thiết bị/IMEI đã giữ chỗ cho đơn hàng này sẽ được giải phóng cho khách hàng khác và lượt sử dụng mã giảm giá/voucher (nếu có) sẽ được hoàn lại vào tài khoản của bạn.
+              Đơn hàng sẽ được hủy và lượt sử dụng mã giảm giá (nếu có) sẽ được hoàn lại vào tài khoản của bạn để sử dụng cho lần mua sau.
             </span>
           </div>
         </div>

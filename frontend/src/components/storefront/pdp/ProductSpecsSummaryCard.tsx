@@ -152,7 +152,7 @@ export const ProductSpecsSummaryCard: React.FC<ProductSpecsSummaryCardProps> = (
           </li>
           <li className="flex items-start gap-2">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
-            <span>Giữ máy 15 phút tại bước thanh toán – Yên tâm không lo mất suất</span>
+            <span>Bảo đảm có hàng khi thanh toán – Yên tâm không lo hết ưu đãi</span>
           </li>
           <li className="flex items-start gap-2">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />

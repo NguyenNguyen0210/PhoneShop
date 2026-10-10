@@ -207,7 +207,7 @@ export const CheckoutPage: React.FC = () => {
     }
 
     if (secondsRemaining <= 0) {
-      notifyError('Đơn này đã hết thời gian giữ. Bạn quay lại giỏ hàng để đặt lại giúp shop nhé.');
+      notifyError('Đơn hàng đã hết thời gian chờ thanh toán. Bạn vui lòng quay lại giỏ hàng để đặt lại giúp shop nhé.');
       return;
     }
 
@@ -316,7 +316,7 @@ export const CheckoutPage: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm uppercase tracking-wide text-slate-900">
-                  Đơn này đang được giữ cho bạn
+                  Thời gian hoàn tất đơn hàng
                 </span>
                 <span
                   className={`px-2 py-0.5 text-[10px] font-bold rounded-md border ${
@@ -325,11 +325,11 @@ export const CheckoutPage: React.FC = () => {
                       : 'bg-blue-100 border-blue-200 text-blue-800'
                   }`}
                 >
-                  Thời gian giữ đơn: 15:00
+                  Thời gian còn lại: 15:00
                 </span>
               </div>
               <p className="text-xs mt-1 text-slate-600">
-                Bạn cứ thong thả hoàn tất thông tin giao hàng nhé! Đơn sẽ tự hết giữ sau{' '}
+                Bạn vui lòng hoàn tất thông tin giao hàng và thanh toán trước{' '}
                 <strong
                   className={`font-mono text-sm underline ${
                     secondsRemaining < 180 ? 'text-rose-600 font-black' : 'text-blue-700 font-bold'
@@ -337,7 +337,7 @@ export const CheckoutPage: React.FC = () => {
                 >
                   {timeFormatted}
                 </strong>
-                . Bạn hãy an tâm hoàn tất thanh toán!
+                {' '}để nhận trọn vẹn ưu đãi nhé!
               </p>
             </div>
           </div>
@@ -842,7 +842,7 @@ export const CheckoutPage: React.FC = () => {
                   <ShieldAlert className="w-4 h-4 text-blue-600" />
                   <span>Yên tâm mua sắm:</span>
                 </div>
-                <p>• Máy của bạn được giữ riêng trong 15 phút.</p>
+                <p>• Đơn hàng và giá ưu đãi của bạn được bảo lưu trong thời gian thanh toán.</p>
                 <p>• Bảo hành chính hãng 12 tháng có hiệu lực ngay khi bạn thanh toán xong.</p>
               </div>
             </div>

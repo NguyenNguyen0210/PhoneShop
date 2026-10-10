@@ -68,9 +68,9 @@ describe('OrderCancelModal', () => {
       screen.getByText(`Hủy đơn hàng #${mockOrder.orderNumber}`)
     ).toBeTruthy();
 
-    // Check notice about reserved IMEIs and voucher release
+    // Check notice about voucher release
     expect(
-      screen.getByText(/Mọi thiết bị\/IMEI đã giữ chỗ.*voucher/i)
+      screen.getByText(/Đơn hàng sẽ được hủy và lượt sử dụng mã giảm giá/i)
     ).toBeTruthy();
 
     // Check reason radio options

@@ -558,7 +558,7 @@ export function buildOrderCancelledEmail(options: OrderCancelledOptions): string
   const {
     orderNumber,
     recipientName,
-    cancelledReason = 'Theo yêu cầu của khách hàng hoặc hệ thống hết hạn giữ hàng',
+    cancelledReason = 'Theo yêu cầu của khách hàng hoặc đã hết thời gian chờ thanh toán',
     voucherRestored = false,
     orderUrl,
   } = options;
@@ -575,7 +575,7 @@ export function buildOrderCancelledEmail(options: OrderCancelledOptions): string
       Xin chào ${safeName},
     </p>
     <p style="margin:0 0 20px 0;font-size:14px;line-height:1.6;color:#334155;">
-      Đơn hàng <strong>#${safeOrderNumber}</strong> của bạn đã được hủy trên hệ thống PhoneShop. Các thiết bị được giữ chỗ trong đơn hàng đã được giải phóng tồn kho.
+      Đơn hàng <strong>#${safeOrderNumber}</strong> của bạn đã được hủy thành công trên hệ thống PhoneShop.
     </p>
 
     <!-- Cancellation Details Box -->

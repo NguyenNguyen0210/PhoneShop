@@ -382,9 +382,7 @@ export class OrdersService {
         `;
 
         if (availableImeis.length < item.quantity) {
-          throw new BadRequestException(
-            `Not enough available IMEIs for variant ${item.variantId}`,
-          );
+          throw new BadRequestException('Sản phẩm hiện không đủ số lượng trong kho');
         }
 
         // Mark those IMEIs as RESERVED
@@ -700,7 +698,7 @@ export class OrdersService {
           const u = (order as any).user;
           const recipientName =
             [u.firstName, u.lastName].filter(Boolean).join(' ') || undefined;
-          const holdReason = 'Quá thời hạn 15 phút giữ hàng chưa hoàn tất thanh toán';
+          const holdReason = 'Đã quá thời gian chờ hoàn tất thanh toán';
 
           await emailService.sendOrderCancelled(u.email, {
             orderNumber: order.orderNumber,

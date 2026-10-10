@@ -632,7 +632,7 @@ export const ProductDetailPage: React.FC = () => {
                     <Clock className="w-3 h-3 stroke-[2.5]" />
                   </div>
                   <span className="leading-relaxed">
-                    <strong>Giữ máy 15 phút</strong> tại bước thanh toán – Yên tâm không lo mất suất.
+                    <strong>Bảo đảm có hàng</strong> khi thanh toán – Yên tâm trọn vẹn quyền lợi.
                   </span>
                 </div>
 
@@ -956,8 +956,8 @@ export const ProductDetailPage: React.FC = () => {
               </div>
               <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-xs">
                 <Clock className="w-5 h-5 text-emerald-600 mx-auto mb-1" />
-                <span className="font-semibold block text-slate-900">Giữ máy 15 phút</span>
-                <span className="text-[10px] text-slate-500">An tâm thanh toán</span>
+                <span className="font-semibold block text-slate-900">Đảm bảo có hàng</span>
+                <span className="text-[10px] text-slate-500">Giữ nguyên ưu đãi khi đặt</span>
               </div>
             </div>
           </div>

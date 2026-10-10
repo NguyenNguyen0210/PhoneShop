@@ -121,7 +121,7 @@ export class OrdersProcessor extends WorkerHost {
           const u = (order as any).user;
           const recipientName =
             [u.firstName, u.lastName].filter(Boolean).join(' ') || undefined;
-          const holdReason = 'Quá thời hạn 15 phút giữ hàng chưa hoàn tất thanh toán';
+          const holdReason = 'Đã quá thời gian chờ hoàn tất thanh toán';
 
           await this.emailService.sendOrderCancelled(u.email, {
             orderNumber: order.orderNumber,

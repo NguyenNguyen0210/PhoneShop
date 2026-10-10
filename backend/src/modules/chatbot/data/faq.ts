@@ -11,19 +11,19 @@ export const SHOP_FAQ: FaqEntry[] = [
     keywords: ['giao hàng', 'ship', 'vận chuyển', 'bao lâu', 'phí ship'],
     question: 'Giao hàng thế nào?',
     answer:
-      'PhoneShop miễn phí giao hàng toàn quốc. Nội thành 1-2 ngày, tỉnh 2-4 ngày. Đơn giữ máy 15 phút sau khi đặt, quá hạn tự hủy giữ chỗ.',
+      'PhoneShop miễn phí giao hàng toàn quốc. Nội thành 1-2 ngày, tỉnh 2-4 ngày. Đơn hàng được giữ ưu đãi trong thời gian thanh toán; bạn vui lòng hoàn tất sớm để shop chuẩn bị đơn nhé.',
   },
   {
     keywords: ['thanh toán', 'vnpay', 'vietqr', 'cod'],
     question: 'Các hình thức thanh toán?',
     answer:
-      'Hỗ trợ COD, VietQR NAPAS 247 (quét mã theo đúng số tiền/nội dung), VNPay Sandbox (ký HMAC-SHA512, xử lý qua IPN). Cửa hàng hiện không hỗ trợ hình thức mua hàng trả góp.',
+      'Hỗ trợ thanh toán khi nhận hàng (COD), chuyển khoản VietQR và cổng thanh toán trực tuyến VNPay (thẻ ATM, thẻ quốc tế, VNPay-QR). Cửa hàng hiện không hỗ trợ hình thức mua hàng trả góp.',
   },
   {
     keywords: ['bảo hành', 'imei', 'kích hoạt', 'tra cứu', 'warranty'],
     question: 'Chính sách bảo hành?',
     answer:
-      'Bảo hành chính hãng 12-24 tháng tùy sản phẩm nếu lỗi NSX. Tra cứu bằng IMEI tại trang Tra cứu bảo hành. Mỗi IMEI là duy nhất, kiểm tra Luhn khi nhập kho.',
+      'Bảo hành chính hãng 12-24 tháng tùy sản phẩm nếu lỗi NSX. Tra cứu bằng IMEI tại trang Tra cứu bảo hành. Mỗi thiết bị chính hãng có số IMEI định danh duy nhất để kích hoạt và theo dõi bảo hành điện tử chính xác.',
   },
   {
     keywords: ['đổi trả', 'hoàn', 'trả hàng'],
@@ -32,10 +32,10 @@ export const SHOP_FAQ: FaqEntry[] = [
       'Cửa hàng không áp dụng chính sách đổi trả hàng sau khi đã mua. Các sản phẩm phát sinh lỗi từ nhà sản xuất sẽ được tiếp nhận và bảo hành theo quy định chính hãng.',
   },
   {
-    keywords: ['giữ hàng', 'giữ máy', '15 phút', 'hold', 'hết hàng', 'flash sale'],
-    question: 'Giữ hàng 15 phút là gì?',
+    keywords: ['giữ hàng', 'giữ đơn', 'thời gian thanh toán', 'hết hàng', 'flash sale'],
+    question: 'Quy định giữ đơn thế nào?',
     answer:
-      'Khi đặt hàng, IMEI được khóa giữ (HOLD) 15 phút để bạn thanh toán. Hết 15 phút chưa thanh toán, đơn tự hủy và máy trả về kho AVAILABLE. Flash sale dùng pessimistic lock nên không bị bán trùng.',
+      'Khi bạn tiến hành đặt hàng, shop sẽ ưu tiên giữ đơn và mức giá ưu đãi trong thời gian bạn hoàn tất thanh toán. Quá thời gian quy định, sản phẩm sẽ được mở lại để phục vụ các khách hàng khác.',
   },
   {
     keywords: ['voucher', 'mã giảm', 'coupon', 'khuyến mãi'],

@@ -1619,7 +1619,7 @@ export class ChatbotService {
       '- Voucher/flash sale chỉ dùng danh sách VOUCHER / FLASH SALE dưới đây, ghi đúng mã, điều kiện, HSD, số suất còn.',
       '- Không bao giờ tiết lộ IMEI đầy đủ, chỉ dạng ***1234. IMEI chỉ tra cho chủ sở hữu đã login (xem WARRANTY).',
       '- Đơn hàng/ship/payment cá nhân chỉ dùng ORDER CONTEXT; khách chưa login thì nhắc đăng nhập.',
-      '- Ship: miễn phí toàn quốc; nội thành 1-2 ngày, tỉnh 2-4 ngày; giữ máy 15 phút sau khi đặt.',
+      '- Ship: miễn phí toàn quốc; nội thành 1-2 ngày, tỉnh 2-4 ngày; đơn hàng được giữ ưu đãi trong thời gian thanh toán.',
       groundingStatus,
       `- Catalog:\n${catalog}`,
       `- FAQ:\n${faqText}`,

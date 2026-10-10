@@ -591,7 +591,7 @@ export const AdminImeiPage: React.FC = () => {
               options={[
                 { value: 'ALL', label: 'Tất cả trạng thái' },
                 { value: 'AVAILABLE', label: 'Sẵn sàng (AVAILABLE)' },
-                { value: 'RESERVED', label: 'Khóa giữ 15 phút (RESERVED)' },
+                { value: 'RESERVED', label: 'Đang giữ cho đơn hàng (RESERVED)' },
                 { value: 'SOLD', label: 'Đã xuất bán (SOLD)' },
                 { value: 'WARRANTY', label: 'Bảo hành (WARRANTY)' },
               ]}
