@@ -37,14 +37,20 @@ export class AuthService {
   ) {}
   async register(dto: RegisterDto) {
     const normalizedEmail = dto.email.toLowerCase().trim();
-    const existingUser = await this.prisma.user.findFirst({
-      where: {
-        OR: [{ email: normalizedEmail }, { phone: dto.phone }],
-      },
+    const existingEmail = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
     });
+    if (existingEmail) {
+      throw new ConflictException('Địa chỉ email này đã được đăng ký tài khoản.');
+    }
 
-    if (existingUser) {
-      throw new ConflictException('Email or phone already exists');
+    if (dto.phone) {
+      const existingPhone = await this.prisma.user.findFirst({
+        where: { phone: dto.phone },
+      });
+      if (existingPhone) {
+        throw new ConflictException('Số điện thoại này đã được sử dụng cho một tài khoản khác.');
+      }
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -105,17 +111,19 @@ export class AuthService {
 
     if (!user) {
       await bcrypt.compare(dto.password, DUMMY_BCRYPT_HASH);
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    if (user.status !== 'ACTIVE') {
-      await bcrypt.compare(dto.password, DUMMY_BCRYPT_HASH);
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Email hoặc mật khẩu không chính xác.');
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Email hoặc mật khẩu không chính xác.');
+    }
+
+    if (user.status !== 'ACTIVE') {
+      if ((user.status as string) === 'LOCKED' || (user.status as string) === 'BANNED') {
+        throw new UnauthorizedException('Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ bộ phận hỗ trợ.');
+      }
+      throw new UnauthorizedException('Tài khoản chưa được kích hoạt hoặc đang tạm ngưng.');
     }
 
     // Update last login

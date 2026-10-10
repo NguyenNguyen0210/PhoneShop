@@ -16,6 +16,17 @@ const VI_ERROR_MAP: Array<{ match: RegExp; text: string }> = [
   { match: /too many requests|rate limit/i, text: 'Bạn thao tác quá nhanh. Vui lòng đợi một chút rồi thử lại.' },
   { match: /voucher.*expired|coupon.*expired/i, text: 'Mã ưu đãi đã hết hạn sử dụng.' },
   { match: /voucher.*invalid|coupon.*invalid|invalid.*voucher/i, text: 'Mã ưu đãi không hợp lệ.' },
+  { match: /warranty.*not\s*found/i, text: 'Không tìm thấy thông tin bảo hành cho mã/IMEI này.' },
+  { match: /already.*reviewed/i, text: 'Bạn đã gửi đánh giá cho sản phẩm này rồi.' },
+  { match: /insufficient\s*stock/i, text: 'Số lượng sản phẩm trong kho không đủ đáp ứng.' },
+  { match: /out\s*of\s*stock/i, text: 'Phiên bản sản phẩm này hiện đã hết hàng.' },
+  { match: /variant.*not\s*found|variant.*inactive/i, text: 'Phiên bản sản phẩm không tồn tại hoặc đã ngừng kinh doanh.' },
+  { match: /already.*wishlist/i, text: 'Sản phẩm này đã có trong danh sách yêu thích của bạn.' },
+  { match: /not.*in\s*wishlist/i, text: 'Sản phẩm không có trong danh sách yêu thích.' },
+  { match: /already.*paid.*cannot.*cancel/i, text: 'Đơn hàng đã thanh toán không thể tự hủy. Vui lòng liên hệ CSKH để được hỗ trợ.' },
+  { match: /order.*cannot.*cancel|cannot.*cancelled/i, text: 'Đơn hàng không thể hủy ở trạng thái hiện tại.' },
+  { match: /order.*not\s*found/i, text: 'Không tìm thấy thông tin đơn hàng.' },
+  { match: /address.*not\s*found/i, text: 'Không tìm thấy địa chỉ giao hàng.' },
 ];
 
 export function translateErrorMessage(raw: string): string {
