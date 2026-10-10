@@ -142,9 +142,9 @@ export class PaymentsController {
 
   @Put(':id/confirm')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.MANAGER, Role.ADMIN)
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Manually confirm payment with bank evidence (MANAGER/ADMIN)' })
+  @ApiOperation({ summary: 'Manually confirm payment with bank evidence (STAFF/MANAGER/ADMIN)' })
   confirmPayment(
     @Param('id') id: string,
     @Body() dto: ConfirmPaymentDto,
@@ -155,9 +155,9 @@ export class PaymentsController {
 
   @Put(':id/fail')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.MANAGER, Role.ADMIN)
+  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Mark payment as failed (MANAGER/ADMIN)' })
+  @ApiOperation({ summary: 'Mark payment as failed (STAFF/MANAGER/ADMIN)' })
   failPayment(@Param('id') id: string) {
     return this.paymentsService.failPayment(id);
   }

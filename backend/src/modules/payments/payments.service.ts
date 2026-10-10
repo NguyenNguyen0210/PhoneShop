@@ -848,15 +848,8 @@ export class PaymentsService {
 
     const order = payment.order;
     if (!order) throw new NotFoundException('Order for payment not found');
-    // Manual confirmation may only confirm a still-PENDING order — confirming
-    // a PROCESSING/SHIPPING/DELIVERED order would rewrite history (and a
-    // concurrent IPN claim already guards the PENDING→CONFIRMED edge).
-    if (order.status !== OrderStatus.PENDING) {
-      throw new BadRequestException(
-        order.status === OrderStatus.CANCELLED
-          ? 'Cannot confirm payment for a cancelled order'
-          : 'Only a PENDING order can be confirmed',
-      );
+    if (order.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException('Cannot confirm payment for a cancelled order');
     }
     // H5: the confirmed amount must equal what the buyer actually owes.
     if (Math.round(Number(payment.amount)) !== Math.round(Number(order.totalAmount))) {
@@ -891,12 +884,14 @@ export class PaymentsService {
         },
       });
 
-      const orderClaimed = await tx.order.updateMany({
-        where: { id: order.id, status: OrderStatus.PENDING },
-        data: { status: OrderStatus.CONFIRMED, confirmedAt: paidAt },
-      });
-      if (orderClaimed.count === 0) {
-        throw new BadRequestException('Order was already processed concurrently');
+      if (order.status === OrderStatus.PENDING) {
+        const orderClaimed = await tx.order.updateMany({
+          where: { id: order.id, status: OrderStatus.PENDING },
+          data: { status: OrderStatus.CONFIRMED, confirmedAt: paidAt },
+        });
+        if (orderClaimed.count === 0) {
+          throw new BadRequestException('Order was already processed concurrently');
+        }
       }
 
       for (const item of order.items) {

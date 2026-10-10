@@ -204,7 +204,7 @@ describe('Payments Unit Tests', () => {
       );
     });
 
-    it('should throw when confirming a payment whose order is not PENDING', async () => {
+    it('should throw when confirming a payment whose order is CANCELLED', async () => {
       const mockPrisma: any = {
         payment: {
           findUnique: jest.fn().mockImplementation(() =>
@@ -216,7 +216,7 @@ describe('Payments Unit Tests', () => {
                 id: 'ord-1',
                 userId: 'user-1',
                 totalAmount: 1000000,
-                status: OrderStatus.PROCESSING,
+                status: OrderStatus.CANCELLED,
                 holdExpiresAt: new Date(Date.now() + 60000),
               },
             }),
@@ -230,6 +230,61 @@ describe('Payments Unit Tests', () => {
       await expect(
         svc.confirmPayment('pay-1', { providerRef: 'REF-123' }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should allow confirming a pending payment whose order is already CONFIRMED', async () => {
+      const mockTx = {
+        payment: {
+          updateMany: jest.fn().mockImplementation(() => Promise.resolve({ count: 1 })),
+          findUnique: jest.fn().mockImplementation(() => Promise.resolve({ id: 'pay-1', status: 'PAID' })),
+        },
+        paymentTransaction: {
+          create: jest.fn().mockImplementation(() => Promise.resolve({ id: 'txn-1' })),
+        },
+        order: {
+          updateMany: jest.fn().mockImplementation(() => Promise.resolve({ count: 1 })),
+        },
+        imeiDevice: {
+          updateMany: jest.fn().mockImplementation(() => Promise.resolve({ count: 1 })),
+        },
+        orderItem: {
+          findMany: jest.fn().mockImplementation(() => Promise.resolve([])),
+        },
+      };
+      const mockPrisma: any = {
+        payment: {
+          findUnique: jest.fn().mockImplementation(() =>
+            Promise.resolve({
+              id: 'pay-1',
+              status: 'PENDING',
+              amount: 1000000,
+              order: {
+                id: 'ord-1',
+                userId: 'user-1',
+                totalAmount: 1000000,
+                status: OrderStatus.CONFIRMED,
+                items: [],
+                holdExpiresAt: null,
+              },
+            }),
+          ),
+        },
+        $transaction: jest.fn().mockImplementation((cb: any) => cb(mockTx)),
+      };
+      const mockConfig: any = { get: (_k: string, d?: string) => d };
+      const vietqrService = new VietqrService(mockConfig);
+      const svc = new PaymentsService(mockPrisma, vietqrService, {} as any, mockConfig);
+
+      const result = await svc.confirmPayment('pay-1', { providerRef: 'REF-123' });
+      expect(result).toBeDefined();
+      expect(mockTx.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'pay-1', status: 'PENDING' },
+          data: expect.objectContaining({ status: 'PAID' }),
+        }),
+      );
+      // Order updateMany should NOT be called since order is already CONFIRMED
+      expect(mockTx.order.updateMany).not.toHaveBeenCalled();
     });
   });
 
