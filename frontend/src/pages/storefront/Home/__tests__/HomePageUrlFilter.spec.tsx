@@ -1,15 +1,22 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { HomePage } from '../HomePage';
 import { productService } from '../../../../services/productService';
+import { brandService } from '../../../../services/brandService';
 import { useCatalogStore } from '../../../../stores/useCatalogStore';
 
 vi.mock('../../../../services/productService', () => ({
   productService: {
     getProducts: vi.fn(),
     getBrands: vi.fn(),
+  },
+}));
+
+vi.mock('../../../../services/brandService', () => ({
+  brandService: {
+    getFeatured: vi.fn(),
   },
 }));
 
@@ -113,6 +120,7 @@ describe('HomePage URL Params & Auto-Scroll Synchronization', () => {
     });
 
     (productService.getBrands as any).mockResolvedValue(mockBrands);
+    (brandService.getFeatured as any).mockResolvedValue(['apple', 'samsung']);
   });
 
   it('syncs search keyword from URL and filters products and triggers scroll', async () => {
@@ -236,5 +244,68 @@ describe('HomePage URL Params & Auto-Scroll Synchronization', () => {
     expect(allButton.className).toContain('bg-blue-50');
 
     expect(scrollIntoViewMock).not.toHaveBeenCalled();
+  });
+
+  it('displays only featured brands on top bar while sidebar displays all active brands', async () => {
+    const customBrands = [
+      { id: 'b1', name: 'Apple', slug: 'apple', isActive: true },
+      { id: 'b2', name: 'Samsung', slug: 'samsung', isActive: true },
+      { id: 'b3', name: 'Nokia', slug: 'nokia', isActive: true },
+    ];
+    (productService.getBrands as any).mockResolvedValue(customBrands);
+    (brandService.getFeatured as any).mockResolvedValue(['apple']); // Only Apple is featured
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 3, name: 'iPhone 15 Pro' })).toBeTruthy();
+    });
+
+    // In sidebar filter: Nokia chip should exist
+    const nokiaInSidebar = screen.getByText('Nokia');
+    expect(nokiaInSidebar).toBeTruthy();
+  });
+
+  it('filters products correctly when multiple brands are toggled in sidebar', async () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 3, name: 'iPhone 15 Pro' })).toBeTruthy();
+      expect(screen.getByRole('heading', { level: 3, name: 'Samsung Galaxy S24' })).toBeTruthy();
+    });
+
+    // Find sidebar chip buttons
+    const sidebarButtons = screen.getAllByRole('button');
+    const appleChip = sidebarButtons.find(
+      (b) => b.textContent?.includes('Apple') && b.className.includes('rounded-xl text-xs')
+    );
+    expect(appleChip).toBeDefined();
+
+    // Click Apple chip
+    fireEvent.click(appleChip!);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 3, name: 'iPhone 15 Pro' })).toBeTruthy();
+      expect(screen.queryByRole('heading', { level: 3, name: 'Samsung Galaxy S24' })).toBeNull();
+    });
+
+    // Now click Samsung chip to select both
+    const samsungChip = sidebarButtons.find(
+      (b) => b.textContent?.includes('Samsung') && b.className.includes('rounded-xl text-xs')
+    );
+    fireEvent.click(samsungChip!);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 3, name: 'iPhone 15 Pro' })).toBeTruthy();
+      expect(screen.getByRole('heading', { level: 3, name: 'Samsung Galaxy S24' })).toBeTruthy();
+    });
   });
 });
