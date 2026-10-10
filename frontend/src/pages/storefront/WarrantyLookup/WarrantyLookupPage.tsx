@@ -423,8 +423,8 @@ export const WarrantyLookupPage: React.FC = () => {
                   <Award className="w-4 h-4 text-blue-600" />
                   <span>Quyền lợi bảo hành chuẩn Phone Shop:</span>
                 </div>
-                <p>• 1 đổi 1 trong 30 ngày đầu tiên nếu máy phát sinh lỗi từ nhà sản xuất.</p>
                 <p>• Bảo hành thay thế linh kiện chính hãng 100% không thu phụ phí.</p>
+                <p>• Hỗ trợ kỹ thuật và kiểm tra máy chính hãng nhanh chóng.</p>
                 <p>• Vui lòng mang theo mã số này khi đến các trung tâm bảo hành.</p>
               </div>
             </div>

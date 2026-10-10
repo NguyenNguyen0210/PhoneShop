@@ -14,7 +14,6 @@ import {
   ChevronLeft,
   Truck,
   Lock,
-  RefreshCw,
   X,
 } from 'lucide-react';
 import { useCartStore } from '../../../stores/useCartStore';
@@ -656,11 +655,11 @@ export const CartPage: React.FC = () => {
 
               <div className="bg-white border border-slate-200/80 rounded-2xl p-4 flex items-center gap-3 shadow-2xs">
                 <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                  <RefreshCw className="w-5 h-5" />
+                  <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900">30 Ngày Đổi Mới</h4>
-                  <p className="text-[11px] text-slate-500">Lỗi phần cứng 1 đổi 1</p>
+                  <h4 className="text-xs font-bold text-slate-900">Bảo Hành 12 Tháng</h4>
+                  <p className="text-[11px] text-slate-500">Chính hãng toàn quốc</p>
                 </div>
               </div>
 

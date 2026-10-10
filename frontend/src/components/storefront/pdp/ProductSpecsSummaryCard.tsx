@@ -158,10 +158,6 @@ export const ProductSpecsSummaryCard: React.FC<ProductSpecsSummaryCardProps> = (
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
             <span>Kích hoạt bảo hành điện tử chính hãng 12 tháng theo số IMEI</span>
           </li>
-          <li className="flex items-start gap-2">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
-            <span>1 đổi 1 trong 30 ngày nếu phát sinh lỗi từ nhà sản xuất</span>
-          </li>
         </ul>
       </div>
     </div>

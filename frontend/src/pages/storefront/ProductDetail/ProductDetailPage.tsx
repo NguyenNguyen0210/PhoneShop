@@ -4,7 +4,6 @@ import {
   Star,
   ShieldCheck,
   Truck,
-  RotateCcw,
   ShoppingCart,
   Zap,
   Clock,
@@ -606,15 +605,6 @@ export const ProductDetailPage: React.FC = () => {
                     <strong>Kích hoạt bảo hành điện tử chính hãng 12 tháng</strong> theo số IMEI.
                   </span>
                 </div>
-
-                <div className="flex items-start gap-2.5 text-xs text-slate-700">
-                  <div className="w-5 h-5 rounded-full bg-indigo-100/80 border border-indigo-200 text-indigo-700 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                    <RotateCcw className="w-3 h-3 stroke-[2.5]" />
-                  </div>
-                  <span className="leading-relaxed">
-                    <strong>1 đổi 1 trong 30 ngày</strong> nếu phát sinh bất kỳ lỗi phần cứng nào.
-                  </span>
-                </div>
               </div>
             </div>
           </div>
@@ -919,16 +909,11 @@ export const ProductDetailPage: React.FC = () => {
             </div>
 
             {/* Value Proposition Micro Grid */}
-            <div className="grid grid-cols-3 gap-3 pt-1 text-center text-xs">
+            <div className="grid grid-cols-2 gap-3 pt-1 text-center text-xs">
               <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-xs">
                 <Truck className="w-5 h-5 text-blue-600 mx-auto mb-1" />
                 <span className="font-semibold block text-slate-900">Giao hoả tốc 2h</span>
                 <span className="text-[10px] text-slate-500">Miễn phí toàn quốc</span>
-              </div>
-              <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-xs">
-                <RotateCcw className="w-5 h-5 text-blue-600 mx-auto mb-1" />
-                <span className="font-semibold block text-slate-900">Đổi mới 30 ngày</span>
-                <span className="text-[10px] text-slate-500">Nếu lỗi nhà sản xuất</span>
               </div>
               <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-xs">
                 <Clock className="w-5 h-5 text-emerald-600 mx-auto mb-1" />
