@@ -35,6 +35,7 @@ vi.mock('../../../../utils/notify', () => ({
 }));
 
 import { notifyError } from '../../../../utils/notify';
+import { authService } from '../../../../services/authService';
 
 describe('LoginPage (Centered Card Layout)', () => {
   beforeEach(() => {
@@ -128,5 +129,35 @@ describe('LoginPage (Centered Card Layout)', () => {
     await waitFor(() => {
       expect(screen.getByText(/Đã gửi email khôi phục/i)).toBeDefined();
     });
+  });
+
+  it('displays error message when forgot password email does not exist', async () => {
+    vi.mocked(authService.forgotPassword).mockRejectedValueOnce(
+      new Error('Địa chỉ email này chưa được đăng ký tài khoản trong hệ thống.')
+    );
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText(/Quên mật khẩu\?/i));
+
+    const forgotInput = screen.getByPlaceholderText(/Địa chỉ email đã đăng ký/i);
+    fireEvent.change(forgotInput, { target: { value: 'notfound@example.com' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Gửi link đặt lại mật khẩu/i }));
+
+    await waitFor(() => {
+      expect(notifyError).toHaveBeenCalledWith('Địa chỉ email này chưa được đăng ký tài khoản trong hệ thống.');
+    });
+
+    expect(screen.queryByText(/Đã gửi email khôi phục!/i)).toBeNull();
+    expect(screen.getByText('Địa chỉ email này chưa được đăng ký tài khoản trong hệ thống.')).toBeDefined();
+
+    // Typing in the input clears the inline error
+    fireEvent.change(forgotInput, { target: { value: 'different@example.com' } });
+    expect(screen.queryByText('Địa chỉ email này chưa được đăng ký tài khoản trong hệ thống.')).toBeNull();
   });
 });
