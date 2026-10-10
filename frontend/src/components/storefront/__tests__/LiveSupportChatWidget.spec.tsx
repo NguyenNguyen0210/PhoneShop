@@ -50,7 +50,7 @@ describe('LiveSupportChatWidget', () => {
     // Now dialog should be open
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(screen.getByText('Hỗ trợ khách hàng PhoneShop')).toBeTruthy();
-    expect(screen.getByText('Trực tuyến')).toBeTruthy();
+    expect(screen.getByText('Đang online • trả lời trong vài phút')).toBeTruthy();
   });
 
   it('minimizes and closes the chat window when buttons clicked', async () => {
@@ -202,11 +202,11 @@ describe('LiveSupportChatWidget', () => {
     expect(customerBubble?.className).toContain('bg-blue-600');
     expect(customerBubble?.className).toContain('text-white');
 
-    // Staff message should be rendered with CSKH badge and staff name
+    // Staff message should be rendered with Hỗ trợ badge and staff name
     const staffMsg = screen.getByText('Dạ chào anh A, màu titan tự nhiên bên em vẫn còn sẵn hàng ạ!');
     expect(staffMsg).toBeTruthy();
     expect(screen.getByText('Lan CSKH')).toBeTruthy();
-    expect(screen.getByText('CSKH')).toBeTruthy();
+    expect(screen.getByText('Hỗ trợ')).toBeTruthy();
     const staffBubble = staffMsg.closest('div');
     expect(staffBubble?.className).toContain('bg-slate-100');
     expect(staffBubble?.className).toContain('text-slate-800');
@@ -324,7 +324,7 @@ describe('LiveSupportChatWidget', () => {
 
     // Wait for starter form to show
     await waitFor(() => {
-      expect(screen.getByText('Bắt đầu yêu cầu tư vấn')).toBeTruthy();
+      expect(screen.getByText('Bạn cần giúp gì?')).toBeTruthy();
       expect(screen.getByText('Bắt đầu trò chuyện')).toBeTruthy();
     });
 
@@ -438,7 +438,7 @@ describe('LiveSupportChatWidget', () => {
     fireEvent.click(screen.getByRole('button', { name: /Cần hỗ trợ\? Chat ngay/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Bắt đầu yêu cầu tư vấn')).toBeTruthy();
+      expect(screen.getByText('Bạn cần giúp gì?')).toBeTruthy();
     });
 
     const initialTextarea = screen.getByPlaceholderText(/Mô tả thắc mắc của bạn.../i);
@@ -452,15 +452,9 @@ describe('LiveSupportChatWidget', () => {
       expect(screen.getByText('Không thể tạo yêu cầu hỗ trợ. Vui lòng thử lại.')).toBeTruthy();
     });
 
-    // Verify retry button resets error
-    const retryBtn = screen.getByRole('button', { name: /Thử lại/i });
-    expect(retryBtn).toBeTruthy();
-    fireEvent.click(retryBtn);
-
-    // Form should be back
-    await waitFor(() => {
-      expect(screen.getByText('Bắt đầu yêu cầu tư vấn')).toBeTruthy();
-    });
+    // Form should still be present allowing user to retry immediately
+    expect(screen.getByText('Bạn cần giúp gì?')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Bắt đầu trò chuyện/i })).toBeTruthy();
   });
 
   it('displays closed message when ticket status is CLOSED and allows starting new chat', async () => {
@@ -505,7 +499,7 @@ describe('LiveSupportChatWidget', () => {
     // Because getMyTickets returns closedTicket but find checks OPEN or IN_PROGRESS,
     // activeTicket is null, showing starter form.
     await waitFor(() => {
-      expect(screen.getByText('Bắt đầu yêu cầu tư vấn')).toBeTruthy();
+      expect(screen.getByText('Bạn cần giúp gì?')).toBeTruthy();
     });
   });
 });

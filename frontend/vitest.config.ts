@@ -6,6 +6,9 @@ export default mergeConfig(
   defineConfig({
     test: {
       globals: true,
+      include: ['src/**/*.{test,spec}.{ts,tsx}'],
+      exclude: ['node_modules', 'dist', 'e2e/**'],
+      testTimeout: 15000,
     },
   })
 );

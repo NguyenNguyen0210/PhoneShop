@@ -165,7 +165,6 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
       const primaryVariant = p.variants?.[0];
       const price = primaryVariant?.price ?? 0;
       const comparePrice = primaryVariant?.compareAtPrice ?? price;
-      const monthlyPay = `${new Intl.NumberFormat('vi-VN').format(Math.round(price / 12))}₫/tháng`;
       const cutoutImage = getHeroCutoutImage(p);
       const fallbackImage = p.thumbnail ?? p.thumbnailUrl ?? FALLBACK_PRODUCT_IMAGE;
       const theme = getBrandTheme(p.brand?.name, p.name, p.slug, primaryVariant?.color);
@@ -214,7 +213,6 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
         description: p.description ?? 'Trải nghiệm đỉnh cao công nghệ với thiết kế hiện đại và hiệu năng vượt trội.',
         price,
         comparePrice,
-        monthlyPay,
         image: cutoutImage,
         cutoutImage,
         fallbackImage,
@@ -322,9 +320,6 @@ export const HeroBannerShowcase: React.FC<HeroBannerShowcaseProps> = ({
                   </span>
                 </>
               )}
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/80 border border-slate-200/70 text-slate-700 text-xs font-semibold shadow-2xs">
-                Trả góp 0% chỉ {current.monthlyPay}
-              </span>
             </div>
 
             {/* Action Buttons */}

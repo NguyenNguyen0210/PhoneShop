@@ -125,7 +125,7 @@ export function buildTestDiagnosticEmail(options: DiagnosticOptions): string {
     latencyMs = 185,
     secure = false,
     environment = process.env.NODE_ENV || 'development',
-    dashboardUrl = 'http://localhost:5173/admin/settings',
+    dashboardUrl = 'https://app.tutorhub.id.vn/admin/settings',
   } = options;
 
   const safeHost = escapeHtml(host);
@@ -242,7 +242,7 @@ export function buildTestDiagnosticEmail(options: DiagnosticOptions): string {
 
 // ── CUSTOMER TRANSACTIONAL EMAIL BUILDERS ──────────────────────────────
 
-export function buildWelcomeEmail(recipientName?: string, homeUrl = 'http://localhost:5173'): string {
+export function buildWelcomeEmail(recipientName?: string, homeUrl = 'https://app.tutorhub.id.vn'): string {
   const safeName = recipientName ? escapeHtml(recipientName.trim()) : 'bạn';
   const safeUrl = escapeHtml(homeUrl);
 

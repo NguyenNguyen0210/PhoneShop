@@ -79,7 +79,7 @@ describe('OrderInvoiceModal', () => {
       paymentStatus: 'PENDING',
     };
     rerender(<OrderInvoiceModal order={pendingOrder} isOpen={true} onClose={vi.fn()} />);
-    expect(screen.getByText(/Trạng thái: CHỜ THANH TOÁN \(COD\)/i)).toBeTruthy();
+    expect(screen.getByText(/Trạng thái: CHỜ THANH TOÁN/i)).toBeTruthy();
   });
 
   it('triggers window.print when print button is clicked', () => {

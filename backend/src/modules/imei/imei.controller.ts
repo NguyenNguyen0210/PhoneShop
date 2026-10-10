@@ -82,8 +82,8 @@ export class ImeiController {
   }
 
   @Put(':id/sell')
-  @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
-  @ApiOperation({ summary: 'Mark IMEI as sold (STAFF/MANAGER/ADMIN)' })
+  @Roles(Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Mark IMEI as sold (MANAGER/ADMIN)' })
   markSold(@Param('id') id: string) {
     return this.imeiService.markSold(id);
   }

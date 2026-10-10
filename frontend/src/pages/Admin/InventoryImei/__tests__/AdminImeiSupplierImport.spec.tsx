@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { message } from 'antd';
 import { AdminImeiPage } from '../AdminImeiPage';
 import { imeiService } from '../../../../services/imeiService';
@@ -126,7 +127,11 @@ describe('AdminImeiPage - Supplier Dropdown Import Integration', () => {
   });
 
   it('loads active suppliers and renders them in the import modal dropdown', async () => {
-    render(<AdminImeiPage />);
+    render(
+      <MemoryRouter>
+        <AdminImeiPage />
+      </MemoryRouter>,
+    );
 
     // Open import modal
     const importBtn = screen.getByRole('button', { name: /Nhập lô IMEI/i });
@@ -157,7 +162,11 @@ describe('AdminImeiPage - Supplier Dropdown Import Integration', () => {
   it('submits IMEI import with selected supplier and includes supplier name in success message', async () => {
     vi.mocked(imeiService.importImeis).mockResolvedValue({ imported: 1, total: 1 } as any);
 
-    render(<AdminImeiPage />);
+    render(
+      <MemoryRouter>
+        <AdminImeiPage />
+      </MemoryRouter>,
+    );
 
     // Open import modal
     fireEvent.click(screen.getByRole('button', { name: /Nhập lô IMEI/i }));
@@ -189,7 +198,11 @@ describe('AdminImeiPage - Supplier Dropdown Import Integration', () => {
   it('submits IMEI import without supplier and shows default success message', async () => {
     vi.mocked(imeiService.importImeis).mockResolvedValue({ imported: 1, total: 1 } as any);
 
-    render(<AdminImeiPage />);
+    render(
+      <MemoryRouter>
+        <AdminImeiPage />
+      </MemoryRouter>,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /Nhập lô IMEI/i }));
 

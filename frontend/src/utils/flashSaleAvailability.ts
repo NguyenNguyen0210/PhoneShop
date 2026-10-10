@@ -3,7 +3,7 @@ export function getFlashQuotaLeft(item: { stockLimit: number | string; soldCount
 }
 
 export function getInventoryAvailable(
-  variant: { inventory?: { availableQty?: number | string | null; quantity?: number | string | null } | null } | null | undefined
+  variant: { inventory?: { availableQty?: number | string | null; quantity?: number | string | null } | null; stock?: number } | null | undefined
 ): number {
   const inv = variant?.inventory;
   if (inv?.availableQty !== undefined && inv?.availableQty !== null) {
@@ -11,6 +11,9 @@ export function getInventoryAvailable(
   }
   if (inv?.quantity !== undefined && inv?.quantity !== null) {
     return Number(inv.quantity) || 0;
+  }
+  if ((variant as any)?.stock !== undefined && (variant as any)?.stock !== null) {
+    return Number((variant as any).stock) || 0;
   }
   return 0;
 }

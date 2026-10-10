@@ -106,11 +106,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
             {product.brand?.name || 'Chính hãng'}
           </span>
-          {!discountPercent && (
-            <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-              Trả góp 0%
-            </span>
-          )}
         </div>
 
         {/* 1. Hình ảnh + badge giảm giá góc trên */}

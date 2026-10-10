@@ -209,23 +209,25 @@ export const ProductDetailPage: React.FC = () => {
     }
   }, [activeFlashSale, product, queryVariantId]);
 
-  // Ensure scroll is at the top when entering product details or changing product id (PUSH only)
+  // Ensure scroll is at the top when entering product details or changing product id (PUSH or initial mount)
   useEffect(() => {
-    if (navigationType !== 'POP' && !location.hash) {
+    const isInitialOrPush = navigationType !== 'POP' || location.key === 'default';
+    if (isInitialOrPush && !location.hash) {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
       if (document.documentElement) document.documentElement.scrollTop = 0;
       if (document.body) document.body.scrollTop = 0;
     }
-  }, [id, location.hash, navigationType]);
+  }, [id, location.hash, navigationType, location.key]);
 
-  // Re-verify scroll is at the top once product details finish loading and replace skeleton/spinner (PUSH only)
+  // Re-verify scroll is at the top once product details finish loading and replace skeleton/spinner (PUSH or initial mount)
   useEffect(() => {
-    if (navigationType !== 'POP' && product && !location.hash) {
+    const isInitialOrPush = navigationType !== 'POP' || location.key === 'default';
+    if (isInitialOrPush && product && !location.hash) {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
       if (document.documentElement) document.documentElement.scrollTop = 0;
       if (document.body) document.body.scrollTop = 0;
     }
-  }, [product, location.hash, navigationType]);
+  }, [product, location.hash, navigationType, location.key]);
 
   // Handle scroll for sticky purchase bar
   useEffect(() => {

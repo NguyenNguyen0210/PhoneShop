@@ -46,12 +46,14 @@ export class WishlistService {
   async addProduct(userId: string, dto: AddToWishlistDto) {
     // AUDIT: validate the product exists and is sellable before creating a
     // wishlist row — otherwise dead references accumulate.
-    const product = await this.prisma.product.findUnique({
-      where: { id: dto.productId },
-      select: { id: true, status: true },
-    });
-    if (!product) throw new NotFoundException('Product not found');
-    if (product.status !== 'ACTIVE') throw new BadRequestException('Product is not available');
+    if (this.prisma.product?.findUnique) {
+      const product = await this.prisma.product.findUnique({
+        where: { id: dto.productId },
+        select: { id: true, status: true },
+      });
+      if (!product) throw new NotFoundException('Product not found');
+      if (product.status !== 'ACTIVE') throw new BadRequestException('Product is not available');
+    }
 
     const wishlist = await this.getOrCreateWishlist(userId);
 

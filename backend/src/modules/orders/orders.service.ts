@@ -178,7 +178,7 @@ export class OrdersService {
       const now = new Date();
       for (const item of itemsToCheckout) {
         const fresh = freshByVariant.get(item.variantId);
-        if (!fresh || !fresh.isActive) {
+        if (!fresh || fresh.isActive === false) {
           throw new BadRequestException(
             `Variant ${item.variant?.name || item.variantId} is no longer available`,
           );
@@ -211,10 +211,10 @@ export class OrdersService {
               })
             : null;
           if (
-            !flashCampaign ||
-            !flashCampaign.isActive ||
-            flashCampaign.startAt > now ||
-            flashCampaign.endAt < now
+            flashCampaign &&
+            (!flashCampaign.isActive ||
+              flashCampaign.startAt > now ||
+              flashCampaign.endAt < now)
           ) {
             const variantName = (item.variant as any).product?.name || item.variant?.name || item.variantId;
             throw new BadRequestException(
@@ -591,9 +591,7 @@ export class OrdersService {
                 ? 'Chuyển khoản VietQR / Ngân hàng'
                 : paymentMethod === PaymentMethod.VNPAY
                   ? 'Cổng thanh toán trực tuyến VNPAY'
-                  : paymentMethod === PaymentMethod.INSTALLMENT
-                    ? 'Mua trả góp 0%'
-                    : 'Tiêu chuẩn';
+                  : 'Tiêu chuẩn';
 
           const items = (order.items || []).map((it: any) => ({
             name: it.productName,

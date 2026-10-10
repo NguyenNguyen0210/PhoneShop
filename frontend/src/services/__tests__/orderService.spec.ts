@@ -54,12 +54,11 @@ describe('orderService', () => {
         voucherCode: 'SALE10',
         customerNote: 'Giao sau 18h',
         paymentMethod: 'COD',
-        installmentData: undefined,
         selectedItemIds: ['item-1', 'item-2'],
         shippingMethod: 'EXPRESS_2H',
       });
 
-      // Should record payment for non-installment paymentMethod
+      // Should record payment for paymentMethod
       expect(apiClient.post).toHaveBeenNthCalledWith(2, '/payments', {
         orderId: 'ord-123',
         method: 'COD',
@@ -108,7 +107,6 @@ describe('orderService', () => {
         voucherCode: undefined,
         customerNote: undefined,
         paymentMethod: undefined,
-        installmentData: undefined,
         selectedItemIds: undefined,
         shippingMethod: 'ECONOMY',
       });

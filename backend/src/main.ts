@@ -33,6 +33,7 @@ async function bootstrap() {
   const allowedOrigins: (string | RegExp)[] = [
     'http://localhost:5173',
     'http://localhost:3000',
+    'https://app.tutorhub.id.vn',
     process.env.FRONTEND_URL || '',
     /^https:\/\/phoneshop(-[a-z0-9-]+)?\.vercel\.app$/,
     /^https:\/\/phoneshop(-[a-z0-9-]+)?\.pages\.dev$/,

@@ -5,7 +5,7 @@ import { App as AntdApp, ConfigProvider, message } from 'antd';
 import viVN from 'antd/locale/vi_VN';
 import { AppRoutes } from './routes/AppRoutes';
 import { ScrollToTop } from './components/common/ScrollToTop';
-import './App.css';
+
 
 message.config({
   top: 24,

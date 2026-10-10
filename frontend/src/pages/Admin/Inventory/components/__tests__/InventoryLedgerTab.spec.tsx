@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
 import { InventoryLedgerTab } from '../InventoryLedgerTab';
 import { inventoryService } from '../../../../../services/inventoryService';
 
@@ -122,6 +122,10 @@ describe('InventoryLedgerTab', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it('renders KPI summary cards and ledger table with correct metrics', async () => {
     vi.mocked(inventoryService.getLedger).mockResolvedValue(mockLedgerData as any);
 
@@ -223,21 +227,24 @@ describe('InventoryLedgerTab', () => {
     });
   });
 
-  it('displays alert on error and retries upon clicking retry button', async () => {
-    vi.mocked(inventoryService.getLedger).mockRejectedValueOnce(new Error('Network Error'));
+  it('displays message on error and retries upon clicking refresh button', async () => {
+    vi.mocked(inventoryService.getLedger).mockRejectedValue(new Error('Network Error'));
 
     render(<InventoryLedgerTab />);
 
     await waitFor(() => {
-      expect(screen.getByText('Lỗi tải dữ liệu sổ kho')).toBeDefined();
       expect(screen.getByText('Network Error')).toBeDefined();
     });
 
     // Mock success for retry
-    vi.mocked(inventoryService.getLedger).mockResolvedValueOnce(mockLedgerData as any);
+    vi.mocked(inventoryService.getLedger).mockResolvedValue(mockLedgerData as any);
 
-    const retryBtn = screen.getByRole('button', { name: /Thử lại/i });
-    fireEvent.click(retryBtn);
+    const refreshBtn = screen.getByRole('button', { name: /Làm mới/i });
+    fireEvent.click(refreshBtn);
+
+    await waitFor(() => {
+      expect(inventoryService.getLedger).toHaveBeenCalledTimes(2);
+    });
 
     await waitFor(() => {
       expect(screen.getByText('iPhone 15 128GB')).toBeDefined();

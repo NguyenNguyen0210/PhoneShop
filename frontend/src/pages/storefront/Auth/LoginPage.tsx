@@ -110,7 +110,7 @@ export const LoginPage: React.FC = () => {
         '323053585279-2e3jkfp7m1nojsutf5dufau00ajd9osh.apps.googleusercontent.com';
       const redirectUri =
         import.meta.env.VITE_GOOGLE_REDIRECT_URI ||
-        'http://localhost:5173/auth/oauth/callback';
+        'https://app.tutorhub.id.vn/auth/oauth/callback';
       const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
       const options = {
         redirect_uri: redirectUri,

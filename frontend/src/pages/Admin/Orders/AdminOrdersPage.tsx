@@ -84,7 +84,6 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   BANK_TRANSFER: 'Chuyển khoản',
   CREDIT_CARD: 'Thẻ tín dụng',
   DEBIT_CARD: 'Thẻ ghi nợ',
-  INSTALLMENT: 'Trả góp 0%',
 };
 
 const formatPaymentMethod = (method?: string): string =>

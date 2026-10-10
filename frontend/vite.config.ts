@@ -15,6 +15,10 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: [
+      '.tutorhub.id.vn', // Cho phép đúng domain này
+      // hoặc dùng '.tutorhub.id.vn' để cho phép tất cả subdomain
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:3000',

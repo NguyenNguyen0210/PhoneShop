@@ -279,7 +279,6 @@ export const PaymentsListTab: React.FC<PaymentsListTabProps> = ({ payments, load
               { value: 'ALL', label: 'Tất cả cổng' },
               { value: 'VNPAY', label: 'VNPay-QR' },
               { value: 'VIETQR', label: 'VietQR' },
-              { value: 'INSTALLMENT', label: 'Trả góp tài chính' },
               { value: 'COD', label: 'COD (Tiền mặt)' },
             ]}
           />

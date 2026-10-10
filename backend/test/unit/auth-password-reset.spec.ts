@@ -28,6 +28,7 @@ describe('Auth Password Reset & Forgot Password Unit Tests', () => {
       refreshToken: {
         updateMany: jest.fn(),
       },
+      $transaction: jest.fn().mockImplementation((cb: any) => cb(mockPrisma)),
     };
 
     mockJwtService = {
@@ -63,6 +64,7 @@ describe('Auth Password Reset & Forgot Password Unit Tests', () => {
         email: 'customer@example.com',
         firstName: 'Nguyen',
         lastName: 'Van A',
+        status: 'ACTIVE',
       };
       mockPrisma.user.findUnique.mockResolvedValue(mockUser);
       mockPrisma.passwordResetToken.updateMany.mockResolvedValue({ count: 1 });
@@ -166,7 +168,7 @@ describe('Auth Password Reset & Forgot Password Unit Tests', () => {
         tokenHash: expectedHash,
       });
       mockPrisma.user.update.mockResolvedValue({ id: 'user-rec-1' });
-      mockPrisma.passwordResetToken.update.mockResolvedValue({ id: 'token-rec-1' });
+      mockPrisma.passwordResetToken.updateMany.mockResolvedValue({ count: 1 });
       mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 2 });
 
       const res = await authService.resetPassword({
@@ -195,8 +197,8 @@ describe('Auth Password Reset & Forgot Password Unit Tests', () => {
       expect(isMatch).toBe(true);
 
       // Verify token marked used
-      expect(mockPrisma.passwordResetToken.update).toHaveBeenCalledWith({
-        where: { id: 'token-rec-1' },
+      expect(mockPrisma.passwordResetToken.updateMany).toHaveBeenCalledWith({
+        where: { id: 'token-rec-1', usedAt: null },
         data: { usedAt: expect.any(Date) },
       });
 

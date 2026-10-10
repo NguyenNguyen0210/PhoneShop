@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { HomePage } from '../HomePage';
 import { productService } from '../../../../services/productService';
+import { useCatalogStore } from '../../../../stores/useCatalogStore';
 
 vi.mock('../../../../services/productService', () => ({
   productService: {
@@ -97,6 +98,8 @@ describe('HomePage URL Params & Auto-Scroll Synchronization', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    useCatalogStore.getState().resetFilters();
+    useCatalogStore.setState({ hasLoaded: false });
 
     scrollIntoViewMock = vi.fn();
     window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock as any;
@@ -155,9 +158,9 @@ describe('HomePage URL Params & Auto-Scroll Synchronization', () => {
     // Samsung should be filtered out from grid
     expect(screen.queryByRole('heading', { level: 3, name: 'Samsung Galaxy S24' })).toBeNull();
 
-    // Apple brand button should be active (contains bg-slate-900)
+    // Apple brand button should be active (contains bg-blue-50)
     const appleButton = screen.getByRole('button', { name: /^AppleApple$/i });
-    expect(appleButton.className).toContain('bg-slate-900');
+    expect(appleButton.className).toContain('bg-blue-50');
 
     // scrollIntoView should have been triggered
     expect(scrollIntoViewMock).toHaveBeenCalledWith({
@@ -181,7 +184,7 @@ describe('HomePage URL Params & Auto-Scroll Synchronization', () => {
     expect(screen.queryByRole('heading', { level: 3, name: 'iPad Pro 11 M4' })).toBeNull();
 
     const samsungButton = screen.getByRole('button', { name: /Samsung/i });
-    expect(samsungButton.className).toContain('bg-slate-900');
+    expect(samsungButton.className).toContain('bg-blue-50');
 
     expect(scrollIntoViewMock).toHaveBeenCalledWith({
       behavior: 'smooth',
@@ -230,7 +233,7 @@ describe('HomePage URL Params & Auto-Scroll Synchronization', () => {
     expect(searchInput.value).toBe('');
 
     const allButton = screen.getByRole('button', { name: /Tất cả/i });
-    expect(allButton.className).toContain('bg-slate-900');
+    expect(allButton.className).toContain('bg-blue-50');
 
     expect(scrollIntoViewMock).not.toHaveBeenCalled();
   });
