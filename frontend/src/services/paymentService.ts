@@ -8,8 +8,7 @@ export type BackendPaymentMethod =
   | 'MOMO'
   | 'ZALOPAY'
   | 'CREDIT_CARD'
-  | 'DEBIT_CARD'
-  | 'INSTALLMENT';
+  | 'DEBIT_CARD';
 
 /** Map the storefront payment label to the backend PaymentMethod enum. */
 export const toBackendPaymentMethod = (method: string): BackendPaymentMethod => {
@@ -19,10 +18,10 @@ export const toBackendPaymentMethod = (method: string): BackendPaymentMethod => 
 
 /** Map the backend PaymentMethod enum back to the storefront label.
  * Backend stores VietQR as BANK_TRANSFER — the UI only knows VIETQR. */
-export const fromBackendPaymentMethod = (method?: string | null): 'COD' | 'VIETQR' | 'VNPAY' | 'INSTALLMENT' => {
+export const fromBackendPaymentMethod = (method?: string | null): 'COD' | 'VIETQR' | 'VNPAY' => {
   if (!method) return 'COD';
   if (method === 'BANK_TRANSFER') return 'VIETQR';
-  if (method === 'VNPAY' || method === 'COD' || method === 'INSTALLMENT') return method;
+  if (method === 'VNPAY' || method === 'COD') return method;
   return 'COD';
 };
 
@@ -77,16 +76,6 @@ export const paymentService = {
     ipAddr?: string;
   }): Promise<{ paymentUrl: string }> {
     const response = await apiClient.post('/payments/vnpay/create-url', data);
-    return response.data?.data ?? response.data;
-  },
-
-  /** Generate a VNPay URL for an approved installment prepay (partial amount). */
-  async createPrepayUrl(data: {
-    orderId: string;
-    bankCode?: string;
-    ipAddr?: string;
-  }): Promise<{ paymentUrl: string; orderNumber?: string; amount?: number; purpose?: string }> {
-    const response = await apiClient.post('/payments/vnpay/create-prepay-url', data);
     return response.data?.data ?? response.data;
   },
 

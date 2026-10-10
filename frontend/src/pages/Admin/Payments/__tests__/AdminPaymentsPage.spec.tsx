@@ -4,7 +4,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AdminPaymentsPage } from '../AdminPaymentsPage';
 import { paymentService } from '../../../../services/paymentService';
-import { returnService } from '../../../../services/returnService';
 import { useAuthStore } from '../../../../stores/useAuthStore';
 
 // MatchMedia Mock for Ant Design Tabs
@@ -36,12 +35,6 @@ vi.mock('../../../../services/paymentService', () => ({
   },
 }));
 
-vi.mock('../../../../services/returnService', () => ({
-  returnService: {
-    getRefundHistory: vi.fn(),
-  },
-}));
-
 vi.mock('../../../../stores/useAuthStore', () => ({
   useAuthStore: vi.fn(),
 }));
@@ -57,7 +50,6 @@ describe('AdminPaymentsPage', () => {
       { id: 'p1', orderId: 'o1', method: 'VIETQR', status: 'PENDING', amount: 5000000, createdAt: '', updatedAt: '' },
     ]);
     vi.mocked(paymentService.getTransactionHistoryAdmin).mockResolvedValue([]);
-    vi.mocked(returnService.getRefundHistory).mockResolvedValue([]);
   });
 
   it('renders page header and tabs correctly', async () => {
@@ -72,7 +64,6 @@ describe('AdminPaymentsPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/Giao dịch thanh toán/)).toBeTruthy();
       expect(screen.getByText(/Đối soát ngân hàng/)).toBeTruthy();
-      expect(screen.getByText(/Sổ cái hoàn tiền/)).toBeTruthy();
       expect(screen.getByText(/Nhật ký Gateway/)).toBeTruthy();
     });
   });

@@ -11,7 +11,6 @@ import {
   ChevronRight,
   Cpu,
   Check,
-  CreditCard,
   PackageCheck,
   Award,
   Heart,
@@ -35,7 +34,6 @@ import {
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 import {
   ProductPromotionBox,
-  ProductInstallmentModal,
   ProductSpecsModal,
   ProductSpecsSummaryCard,
   ProductHighlightsSection,
@@ -56,7 +54,6 @@ export const ProductDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showStickyBar, setShowStickyBar] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
-  const [isInstallmentModalOpen, setIsInstallmentModalOpen] = useState(false);
   const [isSpecsModalOpen, setIsSpecsModalOpen] = useState(false);
   const [activeFlashSale, setActiveFlashSale] = useState<FlashSaleCampaign | null>(
     () => useCatalogStore.getState().activeFlashSale
@@ -398,34 +395,6 @@ export const ProductDetailPage: React.FC = () => {
       isFlashSaleActive,
       isFlashSaleActive ? effectiveFlashQuotaLeft : undefined
     );
-    navigate('/checkout');
-  };
-
-  const handleBuyInstallment = (plan: { prepayPercent: number; termMonths: number }) => {
-    if (!product || !selectedVariant) return;
-    if (isOutOfStock) {
-      message.warning('Sản phẩm tạm hết hàng, vui lòng chọn phiên bản khác!');
-      return;
-    }
-    buyNow(
-      product,
-      selectedVariant,
-      1,
-      flashUnitPrice ?? undefined,
-      isFlashSaleActive,
-      isFlashSaleActive ? effectiveFlashQuotaLeft : undefined
-    );
-    // Land on checkout with the INSTALLMENT tab preselected and the
-    // calculator plan carried over — CheckoutPage consumes + clears this.
-    try {
-      sessionStorage.setItem(
-        'phoneshop_checkout_pref',
-        JSON.stringify({ paymentMethod: 'INSTALLMENT', installmentPlan: plan })
-      );
-    } catch {
-      // Storage unavailable — checkout still works, defaults to VIETQR.
-    }
-    setIsInstallmentModalOpen(false);
     navigate('/checkout');
   };
 
@@ -944,32 +913,6 @@ export const ProductDetailPage: React.FC = () => {
                       : 'Giao tận nơi hoặc nhận tại cửa hàng'}
                   </span>
                 </button>
-
-                {/* TRẢ GÓP 0% (Blue #2563eb / blue-600) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isOutOfStock) {
-                      message.warning('Sản phẩm tạm hết hàng, vui lòng chọn phiên bản khác!');
-                      return;
-                    }
-                    setIsInstallmentModalOpen(true);
-                  }}
-                  disabled={isOutOfStock}
-                  className={`flex-1 p-3 rounded-2xl flex flex-col items-center justify-center shadow-md transition-all group active:scale-[0.99] ${
-                    isOutOfStock
-                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20 cursor-pointer'
-                  }`}
-                >
-                  <span className="font-black text-sm sm:text-base leading-tight tracking-wide flex items-center gap-1.5">
-                    <CreditCard className="w-4 h-4" />
-                    TRẢ GÓP 0%
-                  </span>
-                  <span className="text-[10.5px] sm:text-[11px] text-blue-100 font-medium mt-0.5 line-clamp-1">
-                    Duyệt nhanh qua CCCD / Thẻ tín dụng
-                  </span>
-                </button>
               </div>
             </div>
 
@@ -1071,14 +1014,6 @@ export const ProductDetailPage: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsInstallmentModalOpen(true)}
-                  className="hidden md:flex py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold items-center gap-1.5 shadow-sm transition cursor-pointer"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  <span>Trả góp 0%</span>
-                </button>
-                <button
-                  type="button"
                   onClick={handleBuyNow}
                   className="py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-red-600/20 transition cursor-pointer"
                 >
@@ -1091,16 +1026,7 @@ export const ProductDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL 1: 0% INSTALLMENT CALCULATOR */}
-      <ProductInstallmentModal
-        open={isInstallmentModalOpen}
-        onClose={() => setIsInstallmentModalOpen(false)}
-        productName={`Điện thoại ${product.name} (${selectedVariant.color} - ${selectedVariant.storage})`}
-        price={currentPrice}
-        onProceedCheckout={handleBuyInstallment}
-      />
-
-      {/* MODAL 2: FULL DETAILED OEM HARDWARE SPECS */}
+      {/* FULL DETAILED OEM HARDWARE SPECS */}
       <ProductSpecsModal
         open={isSpecsModalOpen}
         onClose={() => setIsSpecsModalOpen(false)}

@@ -3,13 +3,11 @@ import { Tabs, Typography, Button, message, Badge, Space } from 'antd';
 import { ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { paymentService } from '../../../services/paymentService';
-import { returnService } from '../../../services/returnService';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import type { Payment, PaymentTransaction, RefundItem } from '../../../types';
+import type { Payment, PaymentTransaction } from '../../../types';
 import { PaymentStatsCards } from './components/PaymentStatsCards';
 import { PaymentsListTab } from './components/PaymentsListTab';
 import { ReconciliationTab } from './components/ReconciliationTab';
-import { RefundsLedgerTab } from './components/RefundsLedgerTab';
 import { TransactionsLogTab } from './components/TransactionsLogTab';
 import { exportPaymentsToExcel } from './utils/exportPaymentsExcel';
 
@@ -30,29 +28,23 @@ export const AdminPaymentsPage: React.FC = () => {
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
-  const [refunds, setRefunds] = useState<RefundItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [payRes, txnRes, refRes] = await Promise.all([
-        paymentService.getAllPaymentsAdmin().catch((err) => {
+      const [payRes, txnRes] = await Promise.all([
+        paymentService.getAllPaymentsAdmin().catch((err: any) => {
           console.error('Failed to load payments:', err);
           return [];
         }),
-        paymentService.getTransactionHistoryAdmin().catch((err) => {
+        paymentService.getTransactionHistoryAdmin().catch((err: any) => {
           console.error('Failed to load transactions:', err);
-          return [];
-        }),
-        returnService.getRefundHistory().catch((err) => {
-          console.error('Failed to load refund history:', err);
           return [];
         }),
       ]);
       setPayments(Array.isArray(payRes) ? payRes : []);
       setTransactions(Array.isArray(txnRes) ? txnRes : []);
-      setRefunds(Array.isArray(refRes) ? refRes : []);
     } catch (err: any) {
       message.error(err.response?.data?.message || err.message || 'Không thể tải dữ liệu thanh toán');
     } finally {
@@ -96,18 +88,6 @@ export const AdminPaymentsPage: React.FC = () => {
       ),
     },
     {
-      key: 'refunds',
-      label: `Sổ cái hoàn tiền (${refunds.length})`,
-      children: (
-        <RefundsLedgerTab
-          refunds={refunds}
-          loading={loading}
-          canManage={canManage}
-          onRefresh={loadData}
-        />
-      ),
-    },
-    {
       key: 'transactions',
       label: `Nhật ký Gateway (${transactions.length})`,
       children: <TransactionsLogTab transactions={transactions} loading={loading} />,
@@ -129,7 +109,7 @@ export const AdminPaymentsPage: React.FC = () => {
             Quản lý Thanh toán & Dòng tiền
           </Title>
           <Text type="secondary">
-            Theo dõi giao dịch đa kênh, đối soát chuyển khoản ngân hàng và kiểm soát lệnh hoàn tiền
+            Theo dõi giao dịch đa kênh và đối soát chuyển khoản ngân hàng
           </Text>
         </div>
         <Space>
@@ -146,7 +126,7 @@ export const AdminPaymentsPage: React.FC = () => {
         </Space>
       </div>
 
-      <PaymentStatsCards payments={payments} refunds={refunds} loading={loading} />
+      <PaymentStatsCards payments={payments} loading={loading} />
 
       <Tabs
         activeKey={activeTab}

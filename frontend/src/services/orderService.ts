@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import type { Order, PaymentMethod, InstallmentFormData, ShippingMethod } from '../types';
+import type { Order, PaymentMethod, ShippingMethod } from '../types';
 import { toBackendPaymentMethod, fromBackendPaymentMethod } from './paymentService';
 import { cartService } from './cartService';
 import { useCartStore } from '../stores/useCartStore';
@@ -48,7 +48,6 @@ const VALID_PAYMENT_METHODS: Array<PaymentMethod | string> = [
   'COD',
   'VIETQR',
   'VNPAY',
-  'INSTALLMENT',
 ];
 
 export interface CheckoutPayload {
@@ -59,7 +58,6 @@ export interface CheckoutPayload {
   city?: string;
   notes?: string;
   paymentMethod?: PaymentMethod | string;
-  installmentData?: InstallmentFormData | any;
   voucherCode?: string;
   addressId?: string;
   selectedItemIds?: string[];
@@ -133,7 +131,6 @@ export const orderService = {
       voucherCode: payload.voucherCode || undefined,
       customerNote: payload.notes || undefined,
       paymentMethod: backendPaymentMethod,
-      installmentData: payload.installmentData,
       selectedItemIds: payload.selectedItemIds,
       shippingMethod: payload.shippingMethod,
     });
@@ -141,10 +138,10 @@ export const orderService = {
     const orderData: Order = orderRes.data?.data ?? orderRes.data;
 
     // Backend now creates the PENDING payment row atomically inside checkout
-    // for every method (COD / BANK_TRANSFER / VNPAY / INSTALLMENT). The extra
+    // for every method (COD / BANK_TRANSFER / VNPAY). The extra
     // POST is kept as a dedup-safe backstop for orders created before that
     // fix — PaymentsService.create reuses the pending row instead of stacking.
-    if (backendPaymentMethod && backendPaymentMethod !== 'INSTALLMENT' && orderData?.id) {
+    if (backendPaymentMethod && orderData?.id) {
       try {
         await apiClient.post('/payments', {
           orderId: orderData.id,

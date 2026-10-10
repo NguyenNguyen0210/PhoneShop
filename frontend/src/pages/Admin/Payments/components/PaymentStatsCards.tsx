@@ -4,19 +4,17 @@ import {
   DollarOutlined,
   QrcodeOutlined,
   ExclamationCircleOutlined,
-  RollbackOutlined,
 } from '@ant-design/icons';
-import type { Payment, RefundItem } from '../../../../types';
+import type { Payment } from '../../../../types';
 
 const { Text, Title } = Typography;
 
 export interface PaymentStatsCardsProps {
   payments: Payment[];
-  refunds: RefundItem[];
   loading: boolean;
 }
 
-export const PaymentStatsCards: React.FC<PaymentStatsCardsProps> = ({ payments, refunds, loading }) => {
+export const PaymentStatsCards: React.FC<PaymentStatsCardsProps> = ({ payments, loading }) => {
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
   };
@@ -26,16 +24,13 @@ export const PaymentStatsCards: React.FC<PaymentStatsCardsProps> = ({ payments, 
 
   const pendingReconcile = payments.filter((p) => p.method === 'VIETQR' && p.status === 'PENDING').length;
 
-  const completedRefunds = refunds.filter((r) => r.status === 'COMPLETED');
-  const totalRefunded = completedRefunds.reduce((acc, r) => acc + Number(r.amount || 0), 0);
-
   const vnpayTotal = paidPayments.filter((p) => p.method === 'VNPAY').reduce((acc, p) => acc + Number(p.amount || 0), 0);
   const vietqrTotal = paidPayments.filter((p) => p.method === 'VIETQR').reduce((acc, p) => acc + Number(p.amount || 0), 0);
 
   return (
     <Spin spinning={loading}>
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card variant="borderless" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderRadius: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
@@ -56,7 +51,7 @@ export const PaymentStatsCards: React.FC<PaymentStatsCardsProps> = ({ payments, 
           </Card>
         </Col>
 
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card variant="borderless" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderRadius: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
@@ -77,7 +72,7 @@ export const PaymentStatsCards: React.FC<PaymentStatsCardsProps> = ({ payments, 
           </Card>
         </Col>
 
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card variant="borderless" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderRadius: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
@@ -101,27 +96,6 @@ export const PaymentStatsCards: React.FC<PaymentStatsCardsProps> = ({ payments, 
             </div>
             <Text type="secondary" style={{ fontSize: 11, marginTop: 8, display: 'block' }}>
               {pendingReconcile > 0 ? 'Cần kiểm tra biến động số dư' : 'Đã đối soát toàn bộ'}
-            </Text>
-          </Card>
-        </Col>
-
-        <Col xs={24} sm={12} lg={6}>
-          <Card variant="borderless" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderRadius: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <Text type="secondary" style={{ fontSize: 13 }}>
-                  Tổng tiền đã hoàn trả
-                </Text>
-                <Title level={4} style={{ margin: '4px 0 0', color: '#9333ea' }}>
-                  {formatPrice(totalRefunded)}
-                </Title>
-              </div>
-              <div style={{ background: '#f5f3ff', padding: 10, borderRadius: 10, color: '#9333ea' }}>
-                <RollbackOutlined style={{ fontSize: 20 }} />
-              </div>
-            </div>
-            <Text type="secondary" style={{ fontSize: 11, marginTop: 8, display: 'block' }}>
-              Đã chi trả {completedRefunds.length} yêu cầu đổi trả
             </Text>
           </Card>
         </Col>

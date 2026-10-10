@@ -54,8 +54,6 @@ export const getGatewayRef = (record: Payment): string => {
     case 'VIETQR':
     case 'BANK_TRANSFER':
       return `VCB-${hex.slice(0, 6)}`;
-    case 'INSTALLMENT':
-      return `HC-${hex.slice(0, 6)}`;
     case 'COD':
       return `COD-${hex.slice(0, 6)}`;
     default:
@@ -84,10 +82,6 @@ export const calculateGatewayFee = (method: string, amount: number): FeeCalculat
       feePercent = 0; // 0% VietQR direct
       feeLabel = 'VietQR trực tiếp: 0%';
       break;
-    case 'INSTALLMENT':
-      feePercent = 0.005; // 0.5% phí kết nối
-      feeLabel = 'Phí đối tác tài chính: 0.5%';
-      break;
     case 'COD':
       feePercent = 0.015; // 1.5% thu hộ bưu điện
       feeLabel = 'Phí thu hộ COD: 1.5%';
@@ -105,7 +99,7 @@ export const calculateGatewayFee = (method: string, amount: number): FeeCalculat
 
 export interface SplitPaymentInfo {
   isSplit: boolean;
-  role: 'PREPAY' | 'INSTALLMENT_LOAN' | 'STANDARD';
+  role: 'PREPAY' | 'STANDARD';
   roleLabel: string;
   percentLabel: string;
   siblingCount: number;
@@ -140,16 +134,6 @@ export const detectSplitPayment = (
   const totalAmount = siblings.reduce((sum, s) => sum + Number(s.amount || 0), 0);
   const currentAmount = Number(payment.amount || 0);
   const percent = totalAmount > 0 ? Math.round((currentAmount / totalAmount) * 100) : 0;
-
-  if (payment.method === 'INSTALLMENT') {
-    return {
-      isSplit: true,
-      role: 'INSTALLMENT_LOAN',
-      roleLabel: 'Khoản vay trả góp',
-      percentLabel: `${percent}%`,
-      siblingCount: siblings.length,
-    };
-  }
 
   return {
     isSplit: true,

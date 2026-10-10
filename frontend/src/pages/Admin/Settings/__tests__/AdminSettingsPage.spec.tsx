@@ -56,7 +56,7 @@ const mockGroupedSettings = {
     VNPAY_TMN_CODE: 'SANDBOX1',
     VNPAY_HASH_SECRET: '••••••••••••',
     VNPAY_URL: 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
-    VNPAY_RETURN_URL: 'http://localhost:5173/order/vnpay-return',
+    VNPAY_RETURN_URL: 'https://app.tutorhub.id.vn/order/vnpay-return',
     PAYMENT_VIETQR_ENABLED: 'true',
     VIETQR_BANK_ID: '970422',
     VIETQR_ACCOUNT_NO: '0987654321',

@@ -3,9 +3,7 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { storageService } from '../../../services/storageService';
 import { apiClient } from '../../../services/apiClient';
 import { orderService } from '../../../services/orderService';
-import { returnService } from '../../../services/returnService';
-import type { Order, ReturnRequest } from '../../../types';
-import { ReturnCard } from '../Orders/components/ReturnCard';
+import type { Order } from '../../../types';
 import { OrderCancelModal } from '../Orders/components/OrderCancelModal';
 import {
   Camera,
@@ -13,8 +11,6 @@ import {
   User,
   Mail,
   AlertCircle,
-  Clock,
-  RotateCcw,
   Headphones,
   Phone,
   Pencil,
@@ -49,14 +45,13 @@ export const ProfilePage: React.FC = () => {
     const queryTab = searchParams.get('tab') as ProfileTabKey | null;
     const allowedTabs: ProfileTabKey[] = isInternalStaff
       ? ['profile', 'password']
-      : ['profile', 'orders', 'addresses', 'returns', 'tickets', 'password'];
+      : ['profile', 'orders', 'addresses', 'tickets', 'password'];
 
     if (queryTab && allowedTabs.includes(queryTab)) {
       return queryTab;
     }
     if (!isInternalStaff) {
       if (location.pathname === '/orders' || location.hash === '#orders') return 'orders';
-      if (location.hash === '#returns') return 'returns';
       if (location.hash === '#tickets' || location.search.includes('tab=tickets')) return 'tickets';
       if (location.hash === '#addresses') return 'addresses';
     }
@@ -69,8 +64,6 @@ export const ProfilePage: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(() => Boolean(user && !isInternalStaff));
-  const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
-  const [loadingReturns, setLoadingReturns] = useState(() => Boolean(user && !isInternalStaff));
   const [addressCount, setAddressCount] = useState<number>(0);
   const [cancellingOrder, setCancellingOrder] = useState<Order | null>(null);
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
@@ -94,20 +87,6 @@ export const ProfilePage: React.FC = () => {
   useEffect(() => {
     fetchProfile().catch(() => {});
   }, [fetchProfile]);
-
-  const fetchReturns = () => {
-    if (!user || isInternalStaff) return;
-    setLoadingReturns(true);
-    returnService
-      .getMyReturns()
-      .then(setReturnRequests)
-      .catch(() => setReturnRequests([]))
-      .finally(() => setLoadingReturns(false));
-  };
-
-  useEffect(() => {
-    fetchReturns();
-  }, [user, isInternalStaff]);
 
   useEffect(() => {
     let isMounted = true;
@@ -252,7 +231,6 @@ export const ProfilePage: React.FC = () => {
               onTabChange={handleTabChange}
               orderCount={orders.length}
               addressCount={addressCount}
-              returnCount={returnRequests.length}
               onLogout={handleLogout}
             />
           </div>
@@ -406,69 +384,7 @@ export const ProfilePage: React.FC = () => {
                 <AddressesTab onAddressesLoaded={(count) => setAddressCount(count)} />
               )}
 
-              {/* TAB 4: Returns & Refunds */}
-              {!isInternalStaff && activeTab === 'returns' && (
-                <div className="space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200">
-                    <div>
-                      <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
-                        <RotateCcw className="w-5 h-5 text-blue-600" />
-                        <span>Yêu cầu Đổi trả & Hoàn tiền</span>
-                      </h2>
-                      <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                        Quản lý và theo dõi tiến trình xử lý các yêu cầu đổi trả hoặc bảo hành sản phẩm
-                      </p>
-                    </div>
-                  </div>
-
-                  {loadingReturns ? (
-                    <div className="py-12 text-center text-slate-400">
-                      <Clock className="w-8 h-8 animate-spin mx-auto text-blue-600 mb-2" />
-                      <p className="text-xs font-medium">Đang tải danh sách đổi trả...</p>
-                    </div>
-                  ) : returnRequests.length === 0 ? (
-                    <div className="py-16 text-center bg-slate-50/60 rounded-3xl border border-dashed border-slate-200 p-8 space-y-3">
-                      <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl font-bold">
-                        🔄
-                      </div>
-                      <h3 className="text-base font-bold text-slate-800">
-                        Chưa có yêu cầu đổi trả nào
-                      </h3>
-                      <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                        Khi bạn gửi yêu cầu đổi trả hoặc bảo hành cho các đơn hàng đã nhận, tiến
-                        trình sẽ hiển thị tại đây.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {returnRequests.map((req) => (
-                        <ReturnCard
-                          key={req.id}
-                          returnRequest={req}
-                          onCancel={async (id) => {
-                            if (!window.confirm('Bạn có chắc chắn muốn hủy yêu cầu đổi trả này?')) return;
-                            try {
-                              await returnService.cancelReturn(id);
-                              fetchReturns();
-                              setMessage({
-                                type: 'success',
-                                text: 'Đã hủy yêu cầu đổi trả thành công.',
-                              });
-                            } catch (err: any) {
-                              setMessage({
-                                type: 'error',
-                                text: err?.message || 'Không thể hủy yêu cầu đổi trả.',
-                              });
-                            }
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* TAB 5: Support Tickets (CSKH) */}
+              {/* TAB 4: Support Tickets (CSKH) */}
               {!isInternalStaff && activeTab === 'tickets' && (
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 pb-4 border-b border-slate-200">

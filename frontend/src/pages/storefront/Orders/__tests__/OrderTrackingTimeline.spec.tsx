@@ -206,27 +206,6 @@ describe('OrderTrackingTimeline 2-Layer', () => {
     ).toBeTruthy();
   });
 
-  it('renders active return request banner when returns are present', () => {
-    const orderWithReturn: Order = {
-      ...baseOrder,
-      status: 'DELIVERED',
-      returns: [
-        {
-          id: 'ret-1',
-          orderId: 'ord-1',
-          userId: 'user-1',
-          returnNumber: 'RET-0001',
-          status: 'REQUESTED',
-          reason: 'Lỗi phần cứng',
-          requestedAt: '2026-10-02T10:00:00Z',
-          items: [],
-        },
-      ],
-    };
-    render(<OrderTrackingTimeline order={orderWithReturn} />);
-    expect(screen.getByText(/Đơn hàng đang có yêu cầu đổi trả \(RET-0001\)/i)).toBeDefined();
-  });
-
   it('does NOT fabricate a packed milestone for a fresh PENDING order with a placeholder shipping row', () => {
     // Checkout creates the shipping row immediately (status PENDING), so
     // shipping.createdAt exists from birth — it must not render as "packed".

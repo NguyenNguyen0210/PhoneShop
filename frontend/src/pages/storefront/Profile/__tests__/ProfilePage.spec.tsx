@@ -11,11 +11,6 @@ vi.mock('../../../../services/orderService', () => ({
     getMyOrders: vi.fn().mockResolvedValue([]),
   },
 }));
-vi.mock('../../../../services/returnService', () => ({
-  returnService: {
-    getMyReturns: vi.fn().mockResolvedValue([]),
-  },
-}));
 vi.mock('../../../../services/addressService', () => ({
   addressService: {
     getAddresses: vi.fn().mockResolvedValue([]),
@@ -63,7 +58,7 @@ describe('ProfilePage - Dashboard Layout & Personal Info', () => {
     });
 
     expect(screen.getByText('Thành viên thân thiết')).toBeDefined();
-    expect(screen.getByText('Thông tin cá nhân')).toBeDefined();
+    expect(screen.getAllByText('Hồ sơ cá nhân').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Họ và tên')).toBeDefined();
     expect(screen.getByText('Số điện thoại')).toBeDefined();
     expect(screen.getByText('0901234567')).toBeDefined();
@@ -116,7 +111,7 @@ describe('ProfilePage - Dashboard Layout & Personal Info', () => {
       );
     });
 
-    expect(screen.getByText('Đơn hàng của tôi')).toBeDefined();
+    expect(screen.getAllByText('Đơn hàng của tôi').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Tất cả/)).toBeDefined();
   });
 });

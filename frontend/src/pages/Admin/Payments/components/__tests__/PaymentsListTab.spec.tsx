@@ -132,7 +132,7 @@ describe('PaymentsListTab', () => {
       {
         id: 'p-split-2',
         orderId: 'o-split',
-        method: 'INSTALLMENT',
+        method: 'BANK_TRANSFER',
         status: 'PENDING',
         amount: 19104000,
         createdAt: '2026-10-06T10:25:00Z',
@@ -148,8 +148,7 @@ describe('PaymentsListTab', () => {
     );
 
     expect(screen.getAllByText(/Split Payment/).length).toBe(2);
-    expect(screen.getByText(/Tiền trả trước/)).toBeInTheDocument();
-    expect(screen.getByText(/Khoản vay trả góp/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Tiền trả trước/).length).toBe(2);
     expect(screen.getAllByText('Nguyễn Khánh Vy').length).toBeGreaterThan(0);
   });
 });

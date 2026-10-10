@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { PaymentStatsCards } from '../PaymentStatsCards';
 import { PaymentMethodTag } from '../PaymentMethodTag';
 import { PaymentStatusTag } from '../PaymentStatusTag';
-import type { Payment, RefundItem } from '../../../../../types';
+import type { Payment } from '../../../../../types';
 
 declare module 'vitest' {
   interface Assertion<R extends void | Promise<void>, T> {
@@ -45,13 +45,8 @@ describe('PaymentStatsCards', () => {
     { id: '4', orderId: 'o4', method: 'COD', status: 'PAID', amount: 2000000, createdAt: '', updatedAt: '' },
   ];
 
-  const mockRefunds: RefundItem[] = [
-    { id: 'r1', returnId: 'ret1', refundNumber: 'REF-001', amount: 1000000, status: 'COMPLETED', createdAt: '' },
-    { id: 'r2', returnId: 'ret2', refundNumber: 'REF-002', amount: 500000, status: 'PENDING', createdAt: '' },
-  ];
-
   it('renders total revenue and formatted amounts accurately', () => {
-    render(<PaymentStatsCards payments={mockPayments} refunds={mockRefunds} loading={false} />);
+    render(<PaymentStatsCards payments={mockPayments} loading={false} />);
 
     // Total Paid = 10m + 5m + 2m = 17m
     expect(screen.getByText('Tổng doanh thu đã thu')).toBeInTheDocument();
@@ -60,19 +55,14 @@ describe('PaymentStatsCards', () => {
     // Pending Recon = 1 item (id 3)
     expect(screen.getByText('Chờ đối soát VietQR')).toBeInTheDocument();
     expect(screen.getByText('1')).toBeInTheDocument();
-
-    // Total Refunded = 1m
-    expect(screen.getByText('Tổng tiền đã hoàn trả')).toBeInTheDocument();
-    expect(screen.getByText(/1\.000\.000/)).toBeInTheDocument();
   });
 
   it('renders zero counts and empty values gracefully when no data', () => {
-    render(<PaymentStatsCards payments={[]} refunds={[]} loading={false} />);
+    render(<PaymentStatsCards payments={[]} loading={false} />);
 
     expect(screen.getByText('Tổng doanh thu đã thu')).toBeInTheDocument();
     expect(screen.getByText('Chờ đối soát VietQR')).toBeInTheDocument();
     expect(screen.getByText('0')).toBeInTheDocument();
-    expect(screen.getByText('Tổng tiền đã hoàn trả')).toBeInTheDocument();
   });
 });
 

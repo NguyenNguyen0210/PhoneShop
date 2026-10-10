@@ -216,10 +216,6 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({ or
     shipping?.trackingNumber
   );
 
-  const activeReturn = order.returns?.find(
-    (r) => r.status !== 'CANCELLED' && r.status !== 'REJECTED'
-  );
-
   const handleCopyTrackingNumber = async () => {
     if (!shipping?.trackingNumber) return;
     try {
@@ -358,19 +354,6 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({ or
         <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-800">
           <PackageCheck className="w-4 h-4 text-purple-600 shrink-0" />
           <span>Kiện hàng đã được đóng gói cẩn thận và đang chờ bàn giao cho đơn vị vận chuyển.</span>
-        </div>
-      )}
-
-      {/* Active Return Banner if applicable */}
-      {activeReturn && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3.5 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">Đơn hàng đang có yêu cầu đổi trả ({activeReturn.returnNumber})</span>
-            <span className="text-amber-600">• Trạng thái: {activeReturn.status}</span>
-          </div>
-          <a href="/profile#returns" className="font-bold text-amber-700 hover:underline text-xs">
-            Xem chi tiết
-          </a>
         </div>
       )}
 

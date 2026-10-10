@@ -4,10 +4,6 @@ import {
   Package,
   Calendar,
   CreditCard,
-  Building2,
-  Clock,
-  CheckCircle2,
-  XCircle,
   AlertCircle,
   Truck,
   User,
@@ -18,46 +14,32 @@ import {
   Printer,
   RotateCcw,
   Ban,
-  Undo2,
   Check,
   Star,
   Edit3,
   Headphones,
 } from 'lucide-react';
 import { orderService } from '../../../services/orderService';
-import { paymentService } from '../../../services/paymentService';
-import { installmentService } from '../../../services/installmentService';
 import { reviewService } from '../../../services/reviewService';
 import { ReviewModal } from '../../../components/storefront/reviews';
-import type { Order, InstallmentApplication, InstallmentStatus, InstallmentPaymentTerm, Review } from '../../../types';
-import { isInstallmentTermOverdue } from '../../../types';
+import type { Order, Review } from '../../../types';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 import { notifyError } from '../../../utils/notify';
 import { OrderTrackingTimeline } from './components/OrderTrackingTimeline';
 import { OrderInvoiceModal } from './components/OrderInvoiceModal';
 import { OrderCancelModal } from './components/OrderCancelModal';
-import { ReturnRequestModal } from './components/ReturnRequestModal';
 import { reorderOrderItems } from './utils/reorderHelper';
 
 export const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [order, setOrder] = useState<Order | null>(null);
-  const [installment, setInstallment] = useState<InstallmentApplication | null>(null);
   const [loading, setLoading] = useState(() => Boolean(id));
 
   // Modals & Action States
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
-  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [reorderSuccessMsg, setReorderSuccessMsg] = useState<string | null>(null);
-
-  // Online prepay (VNPay) for approved installment applications
-  const [prepayLoading, setPrepayLoading] = useState(false);
-  const [prepayError, setPrepayError] = useState<string | null>(null);
-
-  // Monthly repayment schedule (read-only for customers)
-  const [scheduleTerms, setScheduleTerms] = useState<InstallmentPaymentTerm[]>([]);
 
   // Review states for delivered orders
   const [reviewedProducts, setReviewedProducts] = useState<
@@ -97,34 +79,9 @@ export const OrderDetailPage: React.FC = () => {
 
     orderService
       .getOrderById(id)
-      .then(async (orderData) => {
+      .then((orderData) => {
         if (!isMounted) return;
         setOrder(orderData);
-
-        // If order has embedded installment application or payment method is INSTALLMENT
-        if (orderData?.installmentApplication) {
-          setInstallment(orderData.installmentApplication);
-        } else if (orderData?.paymentMethod === 'INSTALLMENT') {
-          try {
-            const inst = await installmentService.getInstallmentByOrderId(orderData.id);
-            if (isMounted && inst) {
-              setInstallment(inst);
-            }
-          } catch {
-            // Not fatal if installment endpoint isn't ready or handled
-          }
-        }
-        // Monthly schedule for the customer view (best effort)
-        if (orderData?.installmentApplication || orderData?.paymentMethod === 'INSTALLMENT') {
-          try {
-            const schedule = await installmentService.getScheduleByOrder(orderData.id);
-            if (isMounted && Array.isArray(schedule?.terms)) {
-              setScheduleTerms(schedule.terms);
-            }
-          } catch {
-            // Schedule section simply hides when unavailable
-          }
-        }
       })
       .catch((err) => {
         if (isMounted) {
@@ -142,40 +99,6 @@ export const OrderDetailPage: React.FC = () => {
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
-  };
-
-  const getInstallmentStatusBadge = (status?: InstallmentStatus) => {
-    switch (status) {
-      case 'APPROVED':
-        return (
-          <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-lg flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>Hồ sơ đã được phê duyệt</span>
-          </span>
-        );
-      case 'REJECTED':
-        return (
-          <span className="px-3 py-1 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold rounded-lg flex items-center gap-1.5">
-            <XCircle className="w-4 h-4 text-rose-600" />
-            <span>Hồ sơ bị từ chối</span>
-          </span>
-        );
-      case 'CANCELLED':
-        return (
-          <span className="px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-lg flex items-center gap-1.5">
-            <AlertCircle className="w-4 h-4 text-slate-500" />
-            <span>Đã hủy</span>
-          </span>
-        );
-      case 'PENDING':
-      default:
-        return (
-          <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold rounded-lg flex items-center gap-1.5 animate-pulse">
-            <Clock className="w-4 h-4 text-amber-600" />
-            <span>Chờ thẩm định hồ sơ (24h)</span>
-          </span>
-        );
-    }
   };
 
   if (loading) {
@@ -212,45 +135,13 @@ export const OrderDetailPage: React.FC = () => {
     );
   }
 
-  const isInstallment = order.paymentMethod === 'INSTALLMENT' || Boolean(installment);
-  const instApp = installment || order.installmentApplication;
-
   const canCancel = ['PENDING', 'CONFIRMED'].includes(order.status) && order.paymentStatus !== 'PAID';
-  const isReturnEligible =
-    ['DELIVERED', 'COMPLETED'].includes(order.status) &&
-    Date.now() - new Date(order.deliveredAt || order.completedAt || order.createdAt).getTime() <=
-      7 * 24 * 60 * 60 * 1000;
 
   const handleReorder = () => {
     const result = reorderOrderItems(order);
     setReorderSuccessMsg(`Đã thêm ${result.addedCount} sản phẩm vào giỏ hàng`);
     setTimeout(() => setReorderSuccessMsg(null), 4000);
     navigate('/cart');
-  };
-
-  const handlePrepayOnline = async () => {
-    if (!order) return;
-    setPrepayError(null);
-    setPrepayLoading(true);
-    try {
-      const res = await paymentService.createPrepayUrl({ orderId: order.id });
-      if (res?.paymentUrl) {
-        window.location.href = res.paymentUrl;
-      } else {
-        const msg = 'Không nhận được đường dẫn thanh toán từ VNPay. Vui lòng thử lại.';
-        setPrepayError(msg);
-        notifyError(msg);
-      }
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Không thể kết nối cổng thanh toán VNPay lúc này. Vui lòng thử lại sau.';
-      setPrepayError(msg);
-      notifyError(err, msg);
-    } finally {
-      setPrepayLoading(false);
-    }
   };
 
   return (
@@ -317,17 +208,6 @@ export const OrderDetailPage: React.FC = () => {
               </button>
             )}
 
-            {isReturnEligible && (
-              <button
-                type="button"
-                onClick={() => setIsReturnModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-200 transition cursor-pointer"
-              >
-                <Undo2 className="w-3.5 h-3.5" />
-                <span>Yêu cầu đổi trả</span>
-              </button>
-            )}
-
             <button
               type="button"
               onClick={() => navigate(`/profile?tab=tickets&orderId=${order.id}#tickets`)}
@@ -351,199 +231,6 @@ export const OrderDetailPage: React.FC = () => {
 
         {/* ORDER TRACKING TIMELINE */}
         <OrderTrackingTimeline order={order} />
-
-        {/* ELEVATED INSTALLMENT STATUS BANNER */}
-        {isInstallment && (
-          <div className="bg-white rounded-3xl border-2 border-blue-300 p-6 sm:p-7 shadow-md shadow-blue-500/5 space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl border border-blue-200">
-                  <Building2 className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-slate-900">
-                      Hồ sơ trả góp 0% qua{' '}
-                      {instApp?.provider === 'FE_CREDIT' ? 'FE Credit' : 'Home Credit'}
-                    </h3>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Mã hồ sơ thẩm định tài chính liên kết đơn hàng
-                  </p>
-                </div>
-              </div>
-              <div>{getInstallmentStatusBadge(instApp?.status)}</div>
-            </div>
-
-            {/* Financial Package Details Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-                <span className="text-slate-400 text-[10px] uppercase font-bold block">
-                  Đối tác tài chính
-                </span>
-                <span className="font-bold text-slate-900 text-sm mt-0.5 block">
-                  {instApp?.provider === 'FE_CREDIT' ? 'FE Credit' : 'Home Credit'}
-                </span>
-                <span className="text-[10px] text-emerald-600 font-semibold">0% Lãi suất</span>
-              </div>
-
-              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-                <span className="text-slate-400 text-[10px] uppercase font-bold block">
-                  Kỳ hạn vay
-                </span>
-                <span className="font-bold text-slate-900 text-sm mt-0.5 block">
-                  {instApp?.termMonths || 6} Tháng
-                </span>
-                <span className="text-[10px] text-slate-500">Kỳ trả cố định</span>
-              </div>
-
-              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-                <span className="text-slate-400 text-[10px] uppercase font-bold block">
-                  Trả trước (Thu khi nhận)
-                </span>
-                <span className="font-bold text-emerald-700 text-sm mt-0.5 block font-mono">
-                  {formatPrice(
-                    instApp?.prepayAmount ??
-                      Math.round((order.totalAmount * (instApp?.prepayPercent ?? 20)) / 100)
-                  )}
-                </span>
-                <span className="text-[10px] text-slate-500">
-                  {instApp?.prepayPercent ?? 20}% Giá trị máy
-                </span>
-              </div>
-
-              <div className="p-3.5 bg-blue-50/70 rounded-2xl border border-blue-200">
-                <span className="text-blue-600 text-[10px] uppercase font-bold block">
-                  Góp mỗi tháng
-                </span>
-                <span className="font-mono font-black text-red-600 text-base mt-0.5 block">
-                  {formatPrice(
-                    instApp?.monthlyAmount ??
-                      Math.round(
-                        (order.totalAmount -
-                          Math.round((order.totalAmount * (instApp?.prepayPercent ?? 20)) / 100)) /
-                          (instApp?.termMonths || 6)
-                      )
-                  )}
-                </span>
-                <span className="text-[10px] text-blue-700 font-semibold">Đã gồm lãi 0%</span>
-              </div>
-            </div>
-
-            {/* Monthly repayment schedule (read-only — money goes to the finance company) */}
-            {scheduleTerms.length > 0 && (
-              <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Lịch trả góp hằng tháng
-                  </span>
-                  <span className="text-[11px] text-slate-500">
-                    Đã thu {scheduleTerms.filter((t) => t.status === 'PAID').length}/
-                    {scheduleTerms.length} kỳ
-                  </span>
-                </div>
-                <div className="divide-y divide-slate-100">
-                  {scheduleTerms.map((t) => {
-                    const overdue = t.status === 'PENDING' && isInstallmentTermOverdue(t);
-                    return (
-                      <div key={t.id} className="px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
-                        <span className="font-bold text-slate-900">Kỳ {t.termNo}</span>
-                        <span className="text-slate-500">
-                          Hạn {t.dueDate ? new Date(t.dueDate).toLocaleDateString('vi-VN') : '—'}
-                        </span>
-                        <span className="font-mono font-bold text-slate-900 tabular-nums">
-                          {formatPrice(Number(t.amount) || 0)}
-                        </span>
-                        {t.status === 'PAID' ? (
-                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold rounded-md">
-                            Đã thu
-                          </span>
-                        ) : overdue ? (
-                          <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold rounded-md">
-                            Quá hạn
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold rounded-md">
-                            Chờ đến hạn
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="px-4 py-2 text-[11px] text-slate-400 bg-slate-50/60">
-                  Các kỳ góp thanh toán cho công ty tài chính. Liên hệ hotline 1800 6868 nếu cần hỗ trợ.
-                </p>
-              </div>
-            )}
-
-            {/* Online prepay (VNPay) — approved applications, before shipment */}
-            {(() => {
-              if (instApp?.status !== 'APPROVED') return null;
-              const prepay = Math.round(Number(instApp?.prepayAmount ?? 0));
-              if (!(prepay > 0)) return null;
-              if (!['CONFIRMED', 'PROCESSING', 'PACKED'].includes(order.status)) return null;
-              const pays: any[] = (order as any).payments ?? [];
-              const paid = pays.some((p) => p?.method === 'VNPAY' && p?.status === 'PAID');
-              if (paid) {
-                return (
-                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3 text-xs text-emerald-800">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                    <span>
-                      Đã thanh toán trả trước <strong>{formatPrice(prepay)}</strong> online qua
-                      VNPay. Phần còn lại góp {instApp?.termMonths || 6} tháng qua công ty tài chính.
-                    </span>
-                  </div>
-                );
-              }
-              return (
-                <div className="p-4 bg-indigo-50/70 border border-indigo-200 rounded-2xl space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="text-xs text-slate-600">
-                      <span className="font-bold text-slate-900 block text-sm">
-                        Thanh toán trả trước online
-                      </span>
-                      <span>
-                        Trả ngay {formatPrice(prepay)} qua VNPay, phần còn lại góp{' '}
-                        {instApp?.termMonths || 6} tháng.
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handlePrepayOnline}
-                      disabled={prepayLoading}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-md transition shrink-0 cursor-pointer"
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      <span>{prepayLoading ? 'Đang kết nối VNPay...' : 'Trả trước qua VNPay'}</span>
-                    </button>
-                  </div>
-                  {prepayError && <p className="text-xs text-rose-600">{prepayError}</p>}
-                </div>
-              );
-            })()}
-
-            {/* Rejection notice if rejected */}
-            {instApp?.status === 'REJECTED' && instApp?.rejectionReason && (
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-700 space-y-1">
-                <span className="font-bold text-sm block text-slate-900">Lý do từ chối hồ sơ:</span>
-                <p>{instApp.rejectionReason}</p>
-              </div>
-            )}
-
-            {/* Official Review Note */}
-            <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl flex items-start gap-3 text-xs text-amber-900">
-              <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <span className="font-bold block">Quy trình thẩm định hồ sơ:</span>
-                <p className="text-amber-800 leading-relaxed">
-                  Nhân viên thẩm định sẽ liên hệ qua số điện thoại để xác nhận thông tin trước khi giao máy.
-                  Thiết bị của bạn đang được khóa giữ ưu tiên tại kho trong vòng 24 giờ.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Order Items & Summary */}
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
@@ -758,10 +445,8 @@ export const OrderDetailPage: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span>Phương thức:</span>
                 <span className="font-bold text-slate-900">
-                  {order.paymentMethod === 'INSTALLMENT'
-                    ? 'Trả góp 0% qua công ty tài chính'
-                    : order.paymentMethod === 'VIETQR' ||
-                      (order as any).paymentMethod === 'BANK_TRANSFER'
+                  {order.paymentMethod === 'VIETQR' ||
+                  (order as any).paymentMethod === 'BANK_TRANSFER'
                     ? 'Chuyển khoản VietQR'
                     : order.paymentMethod === 'VNPAY'
                     ? 'Cổng trực tuyến VNPAY'
@@ -801,17 +486,6 @@ export const OrderDetailPage: React.FC = () => {
           order={order}
           isOpen={isInvoiceModalOpen}
           onClose={() => setIsInvoiceModalOpen(false)}
-        />
-
-        <ReturnRequestModal
-          order={order}
-          isOpen={isReturnModalOpen}
-          onClose={() => setIsReturnModalOpen(false)}
-          onSubmitted={() => {
-            if (id) {
-              orderService.getOrderById(id).then(setOrder).catch(() => {});
-            }
-          }}
         />
       </div>
 

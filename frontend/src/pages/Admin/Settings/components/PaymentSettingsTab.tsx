@@ -202,7 +202,7 @@ export const PaymentSettingsTab: React.FC<PaymentSettingsTabProps> = ({ form }) 
               name="VNPAY_RETURN_URL"
             >
               <Input
-                placeholder="http://localhost:5173/order/vnpay-return"
+                placeholder="https://app.tutorhub.id.vn/order/vnpay-return"
                 style={{ borderRadius: 8 }}
               />
             </Form.Item>

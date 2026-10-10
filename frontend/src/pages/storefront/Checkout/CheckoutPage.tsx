@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   Loader2,
   Sparkles,
-  Building2,
   MapPin,
 } from 'lucide-react';
 import { useCartStore } from '../../../stores/useCartStore';
@@ -19,7 +18,6 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { orderService } from '../../../services/orderService';
 import { addressService } from '../../../services/addressService';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
-import { InstallmentFormCard } from '../../../components/storefront/checkout/InstallmentFormCard';
 import { AddressSelectModal } from '../../../components/storefront/checkout/AddressSelectModal';
 import {
   ShippingMethodSelector,
@@ -27,7 +25,7 @@ import {
 } from '../../../components/storefront/checkout/ShippingMethodSelector';
 import { CheckoutCouponSection } from '../../../components/storefront/checkout/CheckoutCouponSection';
 import { notifyError } from '../../../utils/notify';
-import type { PaymentMethod, InstallmentFormData, Address, ShippingMethod } from '../../../types';
+import type { PaymentMethod, Address, ShippingMethod } from '../../../types';
 
 export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
@@ -44,8 +42,7 @@ export const CheckoutPage: React.FC = () => {
   const [shippingAddress, setShippingAddress] = useState('');
   const [manualCity, setManualCity] = useState('');
   const [notes, setNotes] = useState('');
-  // "Buy now" entry points (e.g. PDP installment modal) can stash a checkout
-  // preference here; consumed once below, then cleared.
+  // "Buy now" entry points can stash a checkout preference here; consumed once below, then cleared.
   const readCheckoutPref = <T,>(key: string): T | null => {
     try {
       const raw = sessionStorage.getItem('phoneshop_checkout_pref');
@@ -57,7 +54,7 @@ export const CheckoutPage: React.FC = () => {
   };
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() => {
     const pref = readCheckoutPref<PaymentMethod>('paymentMethod');
-    return pref === 'VIETQR' || pref === 'VNPAY' || pref === 'COD' || pref === 'INSTALLMENT'
+    return pref === 'VIETQR' || pref === 'VNPAY' || pref === 'COD'
       ? pref
       : 'VIETQR';
   });
@@ -70,38 +67,6 @@ export const CheckoutPage: React.FC = () => {
 
   // Shipping Method State
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('STANDARD');
-
-  // Installment State
-  const [installmentData, setInstallmentData] = useState<InstallmentFormData>(() => {
-    const plan = readCheckoutPref<{ prepayPercent?: unknown; termMonths?: unknown }>(
-      'installmentPlan'
-    );
-    const termMonths =
-      typeof plan?.termMonths === 'number' && [3, 6, 9, 12].includes(plan.termMonths)
-        ? plan.termMonths
-        : 6;
-    const prepayPercent =
-      typeof plan?.prepayPercent === 'number' && [0, 20, 30, 50].includes(plan.prepayPercent)
-        ? plan.prepayPercent
-        : 20;
-    return {
-      provider: 'HOME_CREDIT',
-      termMonths,
-      prepayPercent,
-      fullName: user?.fullName || '',
-      citizenId: '',
-      birthDate: '',
-      phoneNumber: user?.phone || '',
-      currentAddress: '',
-      incomeRange: '10 - 20 triệu',
-      cccdFrontUrl: '',
-      cccdBackUrl: '',
-    };
-  });
-  const [installmentErrors, setInstallmentErrors] = useState<Record<string, string>>({});
-  // True while a CCCD image is still uploading — submitting then would either
-  // fail validation spuriously or send an empty URL.
-  const [installmentUploading, setInstallmentUploading] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
@@ -161,7 +126,7 @@ export const CheckoutPage: React.FC = () => {
 
   const totalAmountDue = Math.max(0, subtotal - discountAmount + shippingFee);
 
-  // One-shot buy-now preference (payment method + installment plan) — the
+  // One-shot buy-now preference (payment method) — the
   // state initializers above already consumed it, so clear it on mount and
   // a later manual visit to /checkout starts with clean defaults.
   useEffect(() => {
@@ -246,57 +211,6 @@ export const CheckoutPage: React.FC = () => {
       return;
     }
 
-    // Validate installment fields if method is INSTALLMENT
-    if (paymentMethod === 'INSTALLMENT') {
-      if (installmentUploading) {
-        notifyError('Ảnh CCCD đang tải lên, bạn chờ xong rồi đặt hàng nhé.');
-        return;
-      }
-      const fieldErrors: Record<string, string> = {};
-      if (!installmentData.fullName.trim() || installmentData.fullName.trim().length < 2) {
-        fieldErrors.fullName = 'Vui lòng nhập họ và tên đầy đủ theo CCCD.';
-      }
-      if (!installmentData.citizenId.trim() || !/^[0-9]{12}$/.test(installmentData.citizenId.trim())) {
-        fieldErrors.citizenId = 'Số CCCD gắn chip phải đúng 12 chữ số.';
-      }
-      if (!installmentData.birthDate) {
-        fieldErrors.birthDate = 'Vui lòng chọn ngày sinh.';
-      } else {
-        const dob = new Date(installmentData.birthDate);
-        const now = new Date();
-        let age = now.getFullYear() - dob.getFullYear();
-        const m = now.getMonth() - dob.getMonth();
-        if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) {
-          age--;
-        }
-        if (isNaN(dob.getTime()) || age < 18) {
-          fieldErrors.birthDate = 'Khách hàng phải từ đủ 18 tuổi trở lên để làm hồ sơ trả góp.';
-        }
-      }
-      if (
-        !installmentData.phoneNumber.trim() ||
-        !/^(0[35789])[0-9]{8}$/.test(installmentData.phoneNumber.trim())
-      ) {
-        fieldErrors.phoneNumber = 'Vui lòng nhập số điện thoại di động Việt Nam (10 số).';
-      }
-      if (!installmentData.currentAddress.trim() || installmentData.currentAddress.trim().length < 5) {
-        fieldErrors.currentAddress = 'Vui lòng nhập địa chỉ thường trú/tạm trú chi tiết (tối thiểu 5 ký tự).';
-      }
-      if (!installmentData.cccdFrontUrl) {
-        fieldErrors.cccdFrontUrl = 'Vui lòng tải lên ảnh mặt trước CCCD.';
-      }
-      if (!installmentData.cccdBackUrl) {
-        fieldErrors.cccdBackUrl = 'Vui lòng tải lên ảnh mặt sau CCCD.';
-      }
-
-      if (Object.keys(fieldErrors).length > 0) {
-        setInstallmentErrors(fieldErrors);
-        notifyError('Vui lòng kiểm tra lại thông tin hồ sơ trả góp còn thiếu hoặc chưa hợp lệ.');
-        return;
-      }
-      setInstallmentErrors({});
-    }
-
     setLoading(true);
     try {
       const orderRes = await orderService.checkout({
@@ -306,7 +220,6 @@ export const CheckoutPage: React.FC = () => {
         city: manualCity.trim() || undefined,
         notes,
         paymentMethod,
-        installmentData: paymentMethod === 'INSTALLMENT' ? installmentData : undefined,
         voucherCode: appliedVoucher?.code,
         selectedItemIds: checkoutItems.map((i) => i.variantId || i.id),
         shippingMethod,
@@ -330,7 +243,6 @@ export const CheckoutPage: React.FC = () => {
           shippingPhone,
           shippingAddress,
           paymentMethod,
-          installmentData: paymentMethod === 'INSTALLMENT' ? installmentData : undefined,
           totalAmount: totalAmountDue,
           items: checkoutItems,
           discountAmount,
@@ -786,79 +698,19 @@ export const CheckoutPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* INSTALLMENT Option */}
-                  <div
-                    onClick={() => setPaymentMethod('INSTALLMENT')}
-                    className={`p-4 rounded-2xl border-2 transition cursor-pointer ${
-                      paymentMethod === 'INSTALLMENT'
-                        ? 'border-blue-600 bg-blue-50/40 shadow-xs ring-1 ring-blue-600'
-                        : 'border-slate-200 bg-white hover:border-blue-400'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3.5">
-                      <input
-                        type="radio"
-                        name="payment"
-                        checked={paymentMethod === 'INSTALLMENT'}
-                        onChange={() => setPaymentMethod('INSTALLMENT')}
-                        className="mt-1 accent-blue-600 cursor-pointer"
-                      />
-                      <div className="flex-1 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Building2 className="w-5 h-5 text-blue-600" />
-                          <span className="font-bold text-sm text-slate-900">
-                            Trả góp qua công ty tài chính
-                          </span>
-                          <span className="px-2 py-0.5 bg-red-500 text-white text-[10px] font-black rounded-md uppercase tracking-wider animate-pulse">
-                            HOT
-                          </span>
-                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold rounded-md">
-                            0% Lãi suất
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 leading-relaxed">
-                          Duyệt hồ sơ nhanh 24h - 0% lãi suất. Trả trước chỉ từ 0%, kỳ hạn linh hoạt 3 - 12 tháng qua Home Credit hoặc FE Credit.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* When INSTALLMENT is selected: Render InstallmentFormCard */}
-                    {paymentMethod === 'INSTALLMENT' && (
-                      <div className="mt-4 pt-4 border-t border-blue-200/80" onClick={(e) => e.stopPropagation()}>
-                        <InstallmentFormCard
-                          totalAmount={totalAmountDue}
-                          value={installmentData}
-                          onChange={setInstallmentData}
-                          errors={installmentErrors}
-                          onUploadingChange={setInstallmentUploading}
-                        />
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
 
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || secondsRemaining <= 0 || (paymentMethod === 'INSTALLMENT' && installmentUploading)}
+                disabled={loading || secondsRemaining <= 0}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold text-sm rounded-2xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
                     <span>Đang tạo đơn hàng cho bạn...</span>
-                  </>
-                ) : paymentMethod === 'INSTALLMENT' ? (
-                  <>
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span>
-                      Xác nhận nộp hồ sơ trả góp (Trả trước{' '}
-                      {formatPrice(
-                        Math.round((totalAmountDue * (installmentData.prepayPercent ?? 0)) / 100)
-                      )}
-                      )
-                    </span>
                   </>
                 ) : (
                   <>
@@ -982,58 +834,6 @@ export const CheckoutPage: React.FC = () => {
                     {formatPrice(totalAmountDue)}
                   </span>
                 </div>
-
-                {paymentMethod === 'INSTALLMENT' && (
-                  <div className="pt-3 border-t border-blue-200/80 space-y-2 text-xs bg-blue-50/50 p-3 rounded-xl">
-                    <div className="flex items-center gap-1.5 font-bold text-blue-700">
-                      <Building2 className="w-3.5 h-3.5" />
-                      <span>
-                        Gói trả góp 0% (
-                        {installmentData.provider === 'HOME_CREDIT' ? 'Home Credit' : 'FE Credit'}
-                        )
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>Thu khi nhận máy ({installmentData.prepayPercent}%):</span>
-                      <span className="font-mono font-bold text-emerald-700">
-                        {formatPrice(
-                          Math.round((totalAmountDue * (installmentData.prepayPercent ?? 0)) / 100)
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>Số tiền vay tài chính:</span>
-                      <span className="font-mono font-bold text-blue-700">
-                        {formatPrice(
-                          Math.max(
-                            0,
-                            totalAmountDue -
-                              Math.round(
-                                (totalAmountDue * (installmentData.prepayPercent ?? 0)) / 100
-                              )
-                          )
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-slate-900 font-bold pt-1 border-t border-blue-200/60">
-                      <span>Góp mỗi tháng ({installmentData.termMonths} tháng):</span>
-                      <span className="font-mono font-black text-red-600">
-                        {formatPrice(
-                          installmentData.termMonths > 0
-                            ? Math.round(
-                                (totalAmountDue -
-                                  Math.round(
-                                    (totalAmountDue * (installmentData.prepayPercent ?? 0)) / 100
-                                  )) /
-                                  installmentData.termMonths
-                              )
-                            : 0
-                        )}
-                        /tháng
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Safety guarantee */}

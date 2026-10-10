@@ -4,7 +4,6 @@ import {
   User as UserIcon,
   Package,
   MapPin,
-  RotateCcw,
   Headphones,
   Lock,
   LogOut,
@@ -13,7 +12,7 @@ import {
 } from 'lucide-react';
 import type { User } from '../../../../types';
 
-export type ProfileTabKey = 'profile' | 'orders' | 'addresses' | 'returns' | 'tickets' | 'password';
+export type ProfileTabKey = 'profile' | 'orders' | 'addresses' | 'tickets' | 'password';
 
 export interface ProfileSidebarProps {
   user: User;
@@ -21,7 +20,6 @@ export interface ProfileSidebarProps {
   onTabChange: (tab: ProfileTabKey) => void;
   orderCount?: number;
   addressCount?: number;
-  returnCount?: number;
   onLogout: () => void;
 }
 
@@ -38,7 +36,6 @@ export const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
   onTabChange,
   orderCount,
   addressCount,
-  returnCount,
   onLogout,
 }) => {
   const avatarSrc = user.avatar || user.avatarUrl;
@@ -84,12 +81,6 @@ export const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
           label: 'Sổ địa chỉ',
           icon: MapPin,
           badge: addressCount,
-        },
-        {
-          key: 'returns',
-          label: 'Đổi trả & Hoàn tiền',
-          icon: RotateCcw,
-          badge: returnCount,
         },
         {
           key: 'tickets',

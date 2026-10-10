@@ -258,81 +258,8 @@ export type OrderStatus =
   | 'CANCELLED'
   | 'RETURNED';
 
-export type PaymentMethod = 'COD' | 'VIETQR' | 'VNPAY' | 'INSTALLMENT' | 'BANK_TRANSFER';
+export type PaymentMethod = 'COD' | 'VIETQR' | 'VNPAY' | 'BANK_TRANSFER';
 export type ShippingMethod = 'ECONOMY' | 'STANDARD' | 'EXPRESS_2H';
-
-export type InstallmentProvider = 'HOME_CREDIT' | 'FE_CREDIT';
-export type InstallmentStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-
-export interface InstallmentApplication {
-  id: string;
-  orderId: string;
-  userId: string;
-  provider: InstallmentProvider;
-  status: InstallmentStatus;
-  termMonths: number;
-  prepayPercent: number;
-  prepayAmount: number;
-  loanAmount: number;
-  monthlyAmount: number;
-  fullName: string;
-  citizenId: string;
-  birthDate: string;
-  phoneNumber: string;
-  currentAddress: string;
-  incomeRange: string;
-  cccdFrontUrl: string;
-  cccdBackUrl: string;
-  reviewedBy?: string | null;
-  reviewedAt?: string | null;
-  staffNotes?: string | null;
-  rejectionReason?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  order?: any;
-  user?: any;
-  reviewer?: any;
-  paymentTerms?: InstallmentPaymentTerm[];
-}
-
-export type InstallmentTermStatus = 'PENDING' | 'PAID';
-
-export interface InstallmentPaymentTerm {
-  id: string;
-  applicationId: string;
-  termNo: number;
-  dueDate: string;
-  amount: number;
-  status: InstallmentTermStatus;
-  paidAt?: string | null;
-  paidNote?: string | null;
-  markedBy?: string | null;
-  /** Derived on read: PENDING + past dueDate. Never stored. */
-  isOverdue?: boolean;
-}
-
-export const isInstallmentTermOverdue = (term: Pick<InstallmentPaymentTerm, 'status' | 'dueDate'>): boolean => {
-  if (term.status !== 'PENDING') return false;
-  const due = new Date(term.dueDate);
-  due.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return due.getTime() < today.getTime();
-};
-
-export interface InstallmentFormData {
-  provider: InstallmentProvider;
-  termMonths: number;
-  prepayPercent: number;
-  fullName: string;
-  citizenId: string;
-  birthDate: string;
-  phoneNumber: string;
-  currentAddress: string;
-  incomeRange: string;
-  cccdFrontUrl: string;
-  cccdBackUrl: string;
-}
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
 
@@ -411,9 +338,7 @@ export interface Order {
   totalAmount: number;
   holdExpiresAt?: string;
   items: OrderItem[];
-  installmentApplication?: InstallmentApplication;
   shipping?: Shipping;
-  returns?: ReturnRequest[];
   packedAt?: string;
   deliveredAt?: string;
   completedAt?: string;
@@ -444,68 +369,6 @@ export interface Shipping {
   deliveredAt?: string;
   createdAt: string;
   updatedAt?: string;
-}
-
-export type ReturnStatus =
-  | 'REQUESTED'
-  | 'APPROVED'
-  | 'REJECTED'
-  | 'SHIPPING'
-  | 'RECEIVED'
-  | 'INSPECTING'
-  | 'COMPLETED'
-  | 'CANCELLED';
-
-export interface ReturnItem {
-  id: string;
-  returnId: string;
-  orderItemId: string;
-  quantity: number;
-  reason?: string;
-  condition?: string;
-  orderItem?: OrderItem;
-}
-
-export type RefundStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
-
-export interface ReturnUser {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-}
-
-export interface RefundItem {
-  id: string;
-  returnId: string;
-  refundNumber: string;
-  amount: number;
-  status: RefundStatus;
-  reason?: string;
-  providerRef?: string;
-  processedAt?: string;
-  createdAt: string;
-}
-
-export interface ReturnRequest {
-  id: string;
-  orderId: string;
-  userId: string;
-  returnNumber: string;
-  status: ReturnStatus;
-  reason: string;
-  customerNote?: string;
-  adminNote?: string;
-  requestedAt: string;
-  approvedAt?: string;
-  receivedAt?: string;
-  completedAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  items: ReturnItem[];
-  order?: Order;
-  user?: ReturnUser;
-  refunds?: RefundItem[];
 }
 
 export type ImeiStatus = 'AVAILABLE' | 'RESERVED' | 'SOLD' | 'RETURNED' | 'BLOCKED' | 'WARRANTY';
