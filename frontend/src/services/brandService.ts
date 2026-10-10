@@ -10,6 +10,18 @@ export const brandService = {
     return Array.isArray(data) ? data : data?.items ?? [];
   },
 
+  async getFeatured(): Promise<string[]> {
+    const response = await apiClient.get('/brands/featured');
+    const data = response.data?.data ?? response.data;
+    return Array.isArray(data) ? data : [];
+  },
+
+  async updateFeatured(slugs: string[]): Promise<string[]> {
+    const response = await apiClient.put('/brands/featured', { slugs });
+    const data = response.data?.data ?? response.data;
+    return Array.isArray(data) ? data : [];
+  },
+
   async getById(id: string): Promise<Brand> {
     const response = await apiClient.get(`/brands/${id}`);
     return response.data?.data ?? response.data;

@@ -35,6 +35,8 @@ vi.mock('../../../../services/brandService', () => ({
     delete: vi.fn(),
     activate: vi.fn(),
     deactivate: vi.fn(),
+    getFeatured: vi.fn(),
+    updateFeatured: vi.fn(),
   },
 }));
 
@@ -89,7 +91,10 @@ const mockBrandsData = [
 describe('AdminBrandsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     (brandService.getAllAdmin as any).mockResolvedValue(mockBrandsData);
+    (brandService.getFeatured as any).mockResolvedValue(['apple', 'samsung']);
+    (brandService.updateFeatured as any).mockResolvedValue(['samsung']);
   });
 
   it('renders KPI stats, toolbar and brand table with loaded data', async () => {
@@ -195,6 +200,56 @@ describe('AdminBrandsPage', () => {
 
     await waitFor(() => {
       expect(brandService.deactivate).toHaveBeenCalledWith('b-apple');
+    });
+  });
+
+  it('loads featured brands on mount and toggles featured status via API when clicked', async () => {
+    (brandService.updateFeatured as any).mockResolvedValue(['samsung']);
+
+    render(
+      <MemoryRouter>
+        <AdminBrandsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(brandService.getFeatured).toHaveBeenCalled();
+      expect(screen.getByText('Apple')).toBeDefined();
+    });
+
+    // Apple and Samsung are featured ('★ Nổi bật'), HTC is not ('☆ Thường')
+    const featuredButtons = screen.getAllByRole('button', { name: /★ Nổi bật/i });
+    expect(featuredButtons.length).toBe(2);
+
+    const normalButtons = screen.getAllByRole('button', { name: /☆ Thường/i });
+    expect(normalButtons.length).toBe(1);
+
+    // Click Apple's featured button to unfeature it
+    fireEvent.click(featuredButtons[0]);
+
+    await waitFor(() => {
+      expect(brandService.updateFeatured).toHaveBeenCalledWith(['samsung']);
+    });
+  });
+
+  it('adds brand to featured list via API when clicking non-featured button', async () => {
+    (brandService.updateFeatured as any).mockResolvedValue(['apple', 'samsung', 'htc']);
+
+    render(
+      <MemoryRouter>
+        <AdminBrandsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('HTC')).toBeDefined();
+    });
+
+    const normalButton = screen.getByRole('button', { name: /☆ Thường/i });
+    fireEvent.click(normalButton);
+
+    await waitFor(() => {
+      expect(brandService.updateFeatured).toHaveBeenCalledWith(['apple', 'samsung', 'htc']);
     });
   });
 });

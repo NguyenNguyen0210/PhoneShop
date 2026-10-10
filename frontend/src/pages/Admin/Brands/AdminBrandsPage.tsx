@@ -182,6 +182,7 @@ export const AdminBrandsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [toggleLoadingId, setToggleLoadingId] = useState<string | null>(null);
+  const [featuredLoadingSlug, setFeaturedLoadingSlug] = useState<string | null>(null);
 
   // Featured toggle map (synced with localStorage)
   const [featuredMap, setFeaturedMap] = useState<Record<string, boolean>>(() => {
@@ -201,18 +202,31 @@ export const AdminBrandsPage: React.FC = () => {
     };
   });
 
-  const toggleFeatured = (brand: Brand) => {
+  const toggleFeatured = async (brand: Brand) => {
     const slug = (brand.slug || brand.name).toLowerCase();
-    setFeaturedMap((prev) => {
-      const next = { ...prev, [slug]: !prev[slug] };
+    const next = { ...featuredMap, [slug]: !featuredMap[slug] };
+    const activeSlugs = Object.entries(next)
+      .filter(([_, v]) => v)
+      .map(([k]) => k);
+
+    setFeaturedLoadingSlug(slug);
+    try {
+      await brandService.updateFeatured(activeSlugs);
+      setFeaturedMap(next);
       try {
         localStorage.setItem('admin_featured_brands', JSON.stringify(next));
       } catch (_) {}
-      message.info(
+      message.success(
         `Đã ${next[slug] ? 'đưa' : 'bỏ'} "${brand.name}" ${next[slug] ? 'vào' : 'khỏi'} danh sách nổi bật Trang chủ`,
       );
-      return next;
-    });
+    } catch (err: any) {
+      console.error('Update featured brands error:', err);
+      message.error(
+        err.response?.data?.message || err.message || 'Không thể cập nhật danh sách thương hiệu nổi bật',
+      );
+    } finally {
+      setFeaturedLoadingSlug(null);
+    }
   };
 
   // Filters & search
@@ -226,8 +240,24 @@ export const AdminBrandsPage: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await brandService.getAllAdmin();
+      const [data, featuredSlugs] = await Promise.all([
+        brandService.getAllAdmin(),
+        brandService.getFeatured().catch((err) => {
+          console.warn('Failed to load featured brands:', err);
+          return null;
+        }),
+      ]);
       setBrands(data);
+      if (featuredSlugs && Array.isArray(featuredSlugs)) {
+        const nextMap: Record<string, boolean> = {};
+        for (const slug of featuredSlugs) {
+          nextMap[slug.toLowerCase()] = true;
+        }
+        setFeaturedMap(nextMap);
+        try {
+          localStorage.setItem('admin_featured_brands', JSON.stringify(nextMap));
+        } catch (_) {}
+      }
     } catch (err: any) {
       console.error('Failed to load brands:', err);
       message.error(err.response?.data?.message || err.message || 'Không thể tải danh sách thương hiệu');
@@ -471,7 +501,7 @@ export const AdminBrandsPage: React.FC = () => {
       align: 'center',
       render: (_, record: Brand) => {
         const slug = (record.slug || record.name).toLowerCase();
-        const isFeatured = featuredMap[slug] ?? getBrandMeta(slug, record.name).featured;
+        const isFeatured = Boolean(featuredMap[slug]);
         return (
           <Tooltip
             title={
@@ -482,12 +512,13 @@ export const AdminBrandsPage: React.FC = () => {
           >
             <button
               type="button"
-              onClick={() => toggleFeatured(record)}
+              disabled={featuredLoadingSlug === slug}
+              onClick={() => void toggleFeatured(record)}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold cursor-pointer transition ${
                 isFeatured
                   ? 'text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200'
                   : 'text-slate-400 bg-slate-50 hover:bg-slate-100 hover:text-slate-600 border border-dashed border-slate-200'
-              }`}
+              } ${featuredLoadingSlug === slug ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <span>{isFeatured ? '★ Nổi bật' : '☆ Thường'}</span>
             </button>
