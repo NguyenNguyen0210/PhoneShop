@@ -289,3 +289,80 @@ describe('ProductDetailPage dependent selectors (regression)', () => {
     expect(screen.getAllByText(/29\.000\.000\s*₫/i).length).toBeGreaterThan(0);
   });
 });
+
+describe('ProductDetailPage inactive brand handling', () => {
+  const originalScrollTo = window.scrollTo;
+
+  const mockProductInactiveBrand = {
+    id: 'prod-inactive-brand',
+    name: 'Sony Xperia 1 VI',
+    slug: 'sony-xperia-1-vi',
+    brandId: 'b-off',
+    categoryId: 'c1',
+    status: 'ACTIVE',
+    brand: {
+      id: 'b-off',
+      name: 'Sony',
+      slug: 'sony',
+      isActive: false,
+    },
+    variants: [
+      {
+        id: 'var-sony-1',
+        productId: 'prod-inactive-brand',
+        color: 'Đen',
+        storage: '256GB',
+        price: 25000000,
+        sku: 'SONY-1-BLK',
+        stock: 5,
+      },
+    ],
+    specs: {},
+    images: ['/images/sony-1.webp'],
+  };
+
+  beforeEach(() => {
+    window.scrollTo = vi.fn();
+    vi.mocked(productService.getProductById).mockResolvedValue(mockProductInactiveBrand as any);
+    vi.mocked(flashSaleService.getActiveCampaign).mockResolvedValue(null);
+  });
+
+  afterEach(() => {
+    window.scrollTo = originalScrollTo;
+    vi.restoreAllMocks();
+  });
+
+  it('renders deactivated empty state and link to /products when product brand is inactive', async () => {
+    render(
+      <MemoryRouter initialEntries={['/products/prod-inactive-brand']}>
+        <Routes>
+          <Route path="/products/:id" element={<ProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Sản phẩm tạm ngừng kinh doanh')).toBeTruthy();
+    });
+
+    expect(
+      screen.getByText(
+        'Thương hiệu này hiện đang tạm ẩn hoặc ngừng kinh doanh trên hệ thống. Vui lòng quay lại danh mục để chọn sản phẩm khác.'
+      )
+    ).toBeTruthy();
+
+    const link = screen.getByRole('link', { name: 'Khám phá sản phẩm khác' });
+    expect(link).toBeTruthy();
+    expect(link.getAttribute('href')).toBe('/products');
+
+    // Ensure normal PDP content and sticky bar are not rendered
+    expect(screen.queryByText('Sony Xperia 1 VI')).toBeNull();
+    expect(screen.queryByText(/Thêm vào giỏ/i)).toBeNull();
+    expect(screen.queryByText(/Mua ngay/i)).toBeNull();
+
+    // Verify sticky purchase bar is not rendered even on scroll
+    Object.defineProperty(window, 'scrollY', { value: 600, writable: true });
+    fireEvent.scroll(window);
+    expect(screen.queryByText('Điện thoại Sony Xperia 1 VI')).toBeNull();
+  });
+});

@@ -15,7 +15,7 @@ import {
   Heart,
   ArrowLeft,
 } from 'lucide-react';
-import { message } from 'antd';
+import { message, Empty } from 'antd';
 import { productService } from '../../../services/productService';
 import { flashSaleService } from '../../../services/flashSaleService';
 import type { Product, ProductVariant, FlashSaleCampaign } from '../../../types';
@@ -249,6 +249,29 @@ export const ProductDetailPage: React.FC = () => {
           <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
           <p className="font-mono text-xs text-slate-600">Đang tải thông tin sản phẩm PhoneShop...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (product && product.brand && product.brand.isActive === false) {
+    return (
+      <div className="min-h-[500px] flex flex-col items-center justify-center text-center p-8 bg-white rounded-2xl shadow-sm border border-slate-200 my-8 max-w-4xl mx-auto">
+        <Empty
+          description={
+            <div className="space-y-2 mt-4">
+              <h2 className="text-xl font-bold text-slate-900">Sản phẩm tạm ngừng kinh doanh</h2>
+              <p className="text-sm text-slate-500 max-w-md mx-auto">
+                Thương hiệu này hiện đang tạm ẩn hoặc ngừng kinh doanh trên hệ thống. Vui lòng quay lại danh mục để chọn sản phẩm khác.
+              </p>
+            </div>
+          }
+        />
+        <Link
+          to="/products"
+          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-xs transition-colors"
+        >
+          Khám phá sản phẩm khác
+        </Link>
       </div>
     );
   }
