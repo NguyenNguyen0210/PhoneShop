@@ -178,6 +178,8 @@ describe('ProductDetailDrawer', () => {
     expect(screen.getByText(/Nguyễn Văn A/i)).toBeDefined();
     expect(screen.getByText(/0901234567/i)).toBeDefined();
     expect(screen.getByText(/50/i)).toBeDefined();
+    expect(screen.getByText('Giá nhập')).toBeDefined();
+    expect(screen.getAllByText(/26\.000\.000/).length).toBeGreaterThanOrEqual(1);
 
     cleanup();
 
@@ -217,7 +219,7 @@ describe('ProductDetailDrawer', () => {
     expect(screen.getByText('Titan Tự Nhiên')).toBeDefined();
     expect(screen.getByText('8GB / 256GB')).toBeDefined();
     expect(screen.getByText(/29\.990\.000/)).toBeDefined();
-    expect(screen.getByText(/26\.000\.000/)).toBeDefined();
+    expect(screen.getAllByText(/26\.000\.000/).length).toBeGreaterThanOrEqual(1);
 
     // Specs
     expect(screen.getByText('Màn hình')).toBeDefined();
@@ -227,6 +229,28 @@ describe('ProductDetailDrawer', () => {
 
     // Description
     expect(screen.getByText(/Flagship siêu phẩm từ Apple với chip A18 Pro mạnh mẽ\./i)).toBeDefined();
+  });
+
+  it('displays shortDescription when description is not provided', async () => {
+    vi.mocked(productService.getProductById).mockResolvedValueOnce({
+      ...mockProduct,
+      description: '',
+      shortDescription: 'Mô tả ngắn gọn của sản phẩm',
+    } as any);
+
+    render(
+      <ProductDetailDrawer
+        open={true}
+        productId="prod-101"
+        onClose={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('iPhone 16 Pro Max')).toBeDefined();
+    });
+
+    expect(screen.getByText('Mô tả ngắn gọn của sản phẩm')).toBeDefined();
   });
 
   it('triggers onOpenEdit and onClose when clicking "Chỉnh sửa sản phẩm"', async () => {

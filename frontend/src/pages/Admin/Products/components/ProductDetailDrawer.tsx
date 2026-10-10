@@ -48,11 +48,14 @@ interface LatestSupplierInfo {
   email?: string | null;
   inboundDate?: string;
   inboundQuantity?: number;
+  inboundUnitPrice?: number | string;
 }
 
-const formatPrice = (val?: number | null): string => {
-  if (val === undefined || val === null) return '-';
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+const formatPrice = (val?: number | string | null): string => {
+  if (val === undefined || val === null || val === '') return '-';
+  const num = typeof val === 'string' ? Number(val) : val;
+  if (isNaN(num)) return '-';
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
 };
 
 export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
@@ -149,6 +152,13 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
                 extractedName ||
                 (m.referenceType === 'SUPPLIER' && m.referenceId ? m.referenceId : 'Nhà cung cấp');
 
+              const inboundUnitPrice =
+                (m as any).unitPrice !== undefined && (m as any).unitPrice !== null
+                  ? (m as any).unitPrice
+                  : (m as any).unit_price !== undefined && (m as any).unit_price !== null
+                  ? (m as any).unit_price
+                  : undefined;
+
               resolvedSupplier = {
                 name: supplierName,
                 contactName: matchedSupplier?.contactName,
@@ -156,6 +166,7 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
                 email: matchedSupplier?.email,
                 inboundDate: m.createdAt,
                 inboundQuantity: m.quantity,
+                inboundUnitPrice,
               };
               break;
             }
@@ -458,8 +469,13 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
                       : '-'}
                   </Text>
                 </Descriptions.Item>
-                <Descriptions.Item label="Số lượng nhập gần nhất" span={2}>
+                <Descriptions.Item label="Số lượng nhập gần nhất">
                   <Tag color="cyan">{supplierInfo.inboundQuantity ?? '-'}</Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="Giá nhập">
+                  <Text strong style={{ color: '#059669' }}>
+                    {formatPrice(supplierInfo.inboundUnitPrice)}
+                  </Text>
                 </Descriptions.Item>
               </Descriptions>
             ) : (
@@ -533,10 +549,10 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               style={{
                 margin: 0,
                 whiteSpace: 'pre-line',
-                color: product.description ? undefined : '#9ca3af',
+                color: (product.description || (product as any).shortDescription) ? undefined : '#9ca3af',
               }}
             >
-              {product.description || 'Chưa có mô tả cho sản phẩm này.'}
+              {product.description || (product as any).shortDescription || 'Chưa có mô tả cho sản phẩm này.'}
             </Paragraph>
           </Card>
         </Space>
