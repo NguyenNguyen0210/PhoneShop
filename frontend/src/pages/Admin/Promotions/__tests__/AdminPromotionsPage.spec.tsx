@@ -55,6 +55,7 @@ vi.mock('../../../../services/flashSaleService', () => ({
     getActiveCampaign: vi.fn(),
     getCampaignDetail: vi.fn(),
     createCampaign: vi.fn(),
+    updateCampaign: vi.fn(),
     endEarly: vi.fn(),
     deleteCampaign: vi.fn(),
   },
@@ -163,6 +164,7 @@ describe('AdminPromotionsPage', () => {
 
     vi.mocked(flashSaleService.getAdminCampaigns).mockResolvedValue(mockCampaigns);
     vi.mocked(flashSaleService.getCampaignDetail).mockResolvedValue(mockCampaigns[0] as any);
+    vi.mocked(flashSaleService.updateCampaign).mockResolvedValue(mockCampaigns[0] as any);
   });
 
   it('renders KPI summary cards and promotion tabs', async () => {
@@ -290,5 +292,94 @@ describe('AdminPromotionsPage', () => {
     });
 
     expect(screen.queryByText(/NaN/)).toBeNull();
+  });
+
+  it('renders "Sửa" button in the Flash Sale tab and disables it for ended campaigns', async () => {
+    const endedCampaign = {
+      id: 'camp-ended',
+      name: 'Flash Sale Đã Kết Thúc',
+      description: 'Hết hạn',
+      startAt: new Date(Date.now() - 7200000).toISOString(),
+      endAt: new Date(Date.now() - 3600000).toISOString(),
+      isActive: false,
+      items: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    vi.mocked(flashSaleService.getAdminCampaigns).mockResolvedValue([
+      mockCampaigns[0],
+      endedCampaign as any,
+    ]);
+
+    render(
+      <BrowserRouter>
+        <AdminPromotionsPage />
+      </BrowserRouter>
+    );
+
+    const flashSaleTab = screen.getByText(/Flash Sale & Khung giờ vàng/i);
+    fireEvent.click(flashSaleTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('Flash Sale Cuối Tuần')).toBeDefined();
+      expect(screen.getByText('Flash Sale Đã Kết Thúc')).toBeDefined();
+    });
+
+    const editButtons = screen.getAllByText('Sửa').map((el) => el.closest('button'));
+    expect(editButtons.length).toBe(2);
+    // Active campaign edit button is enabled
+    expect(editButtons[0]?.hasAttribute('disabled')).toBe(false);
+    // Ended campaign edit button is disabled
+    expect(editButtons[1]?.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('opens FlashSaleFormModal in edit mode when clicking "Sửa" and submits update', async () => {
+    render(
+      <BrowserRouter>
+        <AdminPromotionsPage />
+      </BrowserRouter>
+    );
+
+    const flashSaleTab = screen.getByText(/Flash Sale & Khung giờ vàng/i);
+    fireEvent.click(flashSaleTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('Sửa')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText('Sửa'));
+
+    await waitFor(() => {
+      expect(flashSaleService.getCampaignDetail).toHaveBeenCalledWith('camp-1');
+      expect(screen.getByText('Chỉnh sửa chiến dịch Flash Sale')).toBeDefined();
+      expect(screen.getByDisplayValue('Flash Sale Cuối Tuần')).toBeDefined();
+      expect(screen.getByText('iPhone 15 128GB')).toBeDefined();
+      expect(screen.getAllByText(/Đã bán: 4/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('Lưu thay đổi')).toBeDefined();
+    });
+
+    // Check item delete button is disabled due to soldCount > 0 in active campaign
+    const deleteButtons = screen.getAllByText('Xóa');
+    const itemDeleteButton = deleteButtons.find((btn) => btn.closest('button')?.hasAttribute('disabled'));
+    expect(itemDeleteButton).toBeDefined();
+
+    fireEvent.click(screen.getByText('Lưu thay đổi'));
+
+    await waitFor(() => {
+      expect(flashSaleService.updateCampaign).toHaveBeenCalledWith(
+        'camp-1',
+        expect.objectContaining({
+          name: 'Flash Sale Cuối Tuần',
+          items: expect.arrayContaining([
+            expect.objectContaining({
+              variantId: 'var-1',
+              flashPrice: 15000000,
+              stockLimit: 10,
+            }),
+          ]),
+        })
+      );
+    });
   });
 });

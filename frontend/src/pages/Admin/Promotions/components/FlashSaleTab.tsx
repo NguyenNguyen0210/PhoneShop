@@ -20,6 +20,7 @@ import {
   DeleteOutlined,
   ReloadOutlined,
   ThunderboltOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import { flashSaleService } from '../../../../services/flashSaleService';
 import type { FlashSaleCampaign, FlashSaleItem } from '../../../../types';
@@ -38,6 +39,7 @@ export const FlashSaleTab: React.FC<FlashSaleTabProps> = ({ onDataChanged }) => 
 
   // Modals
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState<FlashSaleCampaign | null>(null);
   const [selectedCampaignForDetail, setSelectedCampaignForDetail] =
     useState<FlashSaleCampaign | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -224,6 +226,30 @@ export const FlashSaleTab: React.FC<FlashSaleTabProps> = ({ onDataChanged }) => 
               </Button>
             </Tooltip>
 
+            {status === 'ENDED' ? (
+              <Tooltip title="Chiến dịch đã kết thúc, không thể chỉnh sửa">
+                <Button type="text" disabled icon={<EditOutlined />}>
+                  Sửa
+                </Button>
+              </Tooltip>
+            ) : (
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                onClick={async () => {
+                  try {
+                    const full = await flashSaleService.getCampaignDetail(record.id);
+                    setEditingCampaign(full || record);
+                    setCreateModalOpen(true);
+                  } catch {
+                    message.error('Không thể tải chi tiết chiến dịch');
+                  }
+                }}
+              >
+                Sửa
+              </Button>
+            )}
+
             {canEndEarly && (
               <Popconfirm
                 title="Kết thúc chiến dịch sớm?"
@@ -391,7 +417,10 @@ export const FlashSaleTab: React.FC<FlashSaleTabProps> = ({ onDataChanged }) => 
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          onClick={() => setCreateModalOpen(true)}
+          onClick={() => {
+            setEditingCampaign(null);
+            setCreateModalOpen(true);
+          }}
           style={{ background: '#e11d48', borderColor: '#e11d48' }}
         >
           Tạo chiến dịch Flash Sale
@@ -410,7 +439,11 @@ export const FlashSaleTab: React.FC<FlashSaleTabProps> = ({ onDataChanged }) => 
       {/* Create Modal */}
       <FlashSaleFormModal
         open={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
+        campaignToEdit={editingCampaign}
+        onClose={() => {
+          setCreateModalOpen(false);
+          setEditingCampaign(null);
+        }}
         onSuccess={() => {
           fetchCampaigns();
           onDataChanged?.();
