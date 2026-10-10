@@ -23,7 +23,7 @@ import { productService } from '../../../services/productService';
 import type { Product, FlashSaleCampaign } from '../../../types';
 import { resolveColorHex } from '../../../utils/colorHelper';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
-import { notifyError } from '../../../utils/notify';
+import { notifyError, notifySuccess } from '../../../utils/notify';
 
 export const CartPage: React.FC = () => {
   const navigate = useNavigate();
@@ -156,6 +156,10 @@ export const CartPage: React.FC = () => {
         setAppliedVoucher(voucherData);
         setVoucherCode(res.voucher.code);
         sessionStorage.setItem('phoneshop_voucher', JSON.stringify(voucherData));
+        notifySuccess('Áp dụng mã giảm giá thành công!');
+      } else {
+        const fallbackMsg = (res as any)?.message || 'Mã giảm giá không đủ điều kiện áp dụng cho các sản phẩm đã chọn.';
+        notifyError(fallbackMsg);
       }
     } catch (err: any) {
       notifyError(err, 'Mã giảm giá không hợp lệ hoặc không đủ điều kiện đơn hàng tối thiểu.');
