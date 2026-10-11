@@ -27,25 +27,25 @@
 ## Tasks
 
 ### Phase 0: Core Grouping Helper & Unit Tests
-- [ ] Implement `frontend/src/utils/orderGroupHelper.ts`
-- [ ] Implement `frontend/src/utils/__tests__/orderGroupHelper.spec.ts`
-- [ ] Run vitest tests and verify 100% pass rate.
+- [x] Implement `frontend/src/utils/orderGroupHelper.ts`
+- [x] Implement `frontend/src/utils/__tests__/orderGroupHelper.spec.ts`
+- [x] Run vitest tests and verify 100% pass rate.
 
 ### Phase 1: Parallel Streams (3 Independent Agents)
-- [ ] **Stream 1 (Admin Agent):**
+- [x] **Stream 1 (Admin Agent):**
   - Update `AdminOrdersPage.tsx` to group order items using `groupOrderItems`.
   - Add collapsible IMEI chips when count > 3.
   - Update `AdminOrdersPage.spec.tsx` and run tests.
-- [ ] **Stream 2 (Storefront Agent):**
+- [x] **Stream 2 (Storefront Agent):**
   - Update `OrderDetailPage.tsx` to group order items using `groupOrderItems`.
   - Add collapsible IMEI badges when count > 3.
   - Update `OrderDetailPage.spec.tsx` and run tests.
-- [ ] **Stream 3 (Invoice Agent):**
+- [x] **Stream 3 (Invoice Agent):**
   - Update `OrderInvoiceModal.tsx` to group order items using `groupOrderItems`.
   - Display aggregate quantity, unit price, total price, and all assigned IMEIs.
   - Verify and run tests.
 
 ### Phase 2: Consolidation & Verification
-- [ ] Run complete frontend test suite (`npm test`).
-- [ ] Run production build (`npm run build`).
-- [ ] Review code quality and merge to main branch.
+- [x] Run complete frontend test suite (`npm test`).
+- [x] Run production build (`npm run build`).
+- [x] Review code quality and merge to main branch.
