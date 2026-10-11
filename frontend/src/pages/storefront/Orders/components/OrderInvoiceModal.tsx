@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Printer, X, ShieldCheck } from 'lucide-react';
 import type { Order } from '../../../../types';
+import { groupOrderItems } from '../../../../utils/orderGroupHelper';
 
 interface OrderInvoiceModalProps {
   order: Order;
@@ -145,33 +146,40 @@ export const OrderInvoiceModal: React.FC<OrderInvoiceModalProps> = ({ order, isO
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {order.items?.map((item, index) => {
-                  const imeiNum = item.imeiDevice?.imeiNumber || item.imeiDevice?.imei;
+                {groupOrderItems(order.items).map((item, index) => {
+                  const attributes = [item.variant?.color, item.variant?.storage].filter(Boolean).join(' • ');
                   return (
-                    <tr key={item.id} className="align-top">
+                    <tr key={item.groupKey} className="align-top">
                       <td className="py-3 px-3 text-center text-slate-500 font-medium">{index + 1}</td>
                       <td className="py-3 px-3 space-y-1">
                         <div className="font-bold text-slate-900">
-                          {item.productName || item.variant?.product?.name || 'Điện thoại'}
+                          {item.productName}
                         </div>
-                        {(item.variant?.color || item.variant?.storage) && (
+                        {attributes && (
                           <div className="text-[11px] text-slate-500">
-                            {[item.variant?.color, item.variant?.storage].filter(Boolean).join(' • ')}
+                            {attributes}
                           </div>
                         )}
-                        {imeiNum && (
-                          <div className="inline-flex items-center gap-1 font-mono text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200 font-bold">
-                            <ShieldCheck className="w-3 h-3 text-blue-600 shrink-0" />
-                            <span>IMEI: {imeiNum}</span>
+                        {item.imeis && item.imeis.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {item.imeis.map((im) => (
+                              <div
+                                key={im.id}
+                                className="inline-flex items-center gap-1 font-mono text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200 font-bold"
+                              >
+                                <ShieldCheck className="w-3 h-3 text-blue-600 shrink-0" />
+                                <span>IMEI: {im.imeiNumber}</span>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-3 text-center font-bold text-slate-900">{item.quantity}</td>
+                      <td className="py-3 px-3 text-center font-bold text-slate-900">{item.totalQuantity}</td>
                       <td className="py-3 px-3 text-right font-mono text-slate-700">
                         {formatPrice(item.unitPrice)}
                       </td>
                       <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
-                        {formatPrice(item.totalPrice || item.unitPrice * item.quantity)}
+                        {formatPrice(item.totalPrice)}
                       </td>
                     </tr>
                   );
