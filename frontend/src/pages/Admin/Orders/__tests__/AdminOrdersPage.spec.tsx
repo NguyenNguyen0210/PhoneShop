@@ -71,6 +71,9 @@ describe('AdminOrdersPage - Grouped order items and IMEI display', () => {
         totalPrice: 30000000,
         variant: {
           id: 'var-iphone-15-pm',
+          productId: 'prod-iphone-15-pm',
+          sku: 'IP15PM-256-NAT',
+          price: 30000000,
           color: 'Titan Tự Nhiên',
           storage: '256GB',
           product: {
@@ -94,6 +97,9 @@ describe('AdminOrdersPage - Grouped order items and IMEI display', () => {
         totalPrice: 30000000,
         variant: {
           id: 'var-iphone-15-pm',
+          productId: 'prod-iphone-15-pm',
+          sku: 'IP15PM-256-NAT',
+          price: 30000000,
           color: 'Titan Tự Nhiên',
           storage: '256GB',
           product: {
@@ -116,6 +122,7 @@ describe('AdminOrdersPage - Grouped order items and IMEI display', () => {
       total: 1,
       page: 1,
       limit: 10,
+      totalPages: 1,
     });
     vi.mocked(orderService.getOrderById).mockResolvedValue(mockOrderWithIdenticalVariants);
 
@@ -181,6 +188,9 @@ describe('AdminOrdersPage - Grouped order items and IMEI display', () => {
           totalPrice: 30000000,
           variant: {
             id: 'var-iphone-15-pm',
+            productId: 'prod-iphone-15-pm',
+            sku: 'IP15PM-256-NAT',
+            price: 30000000,
             color: 'Titan Tự Nhiên',
             storage: '256GB',
           },
@@ -200,6 +210,9 @@ describe('AdminOrdersPage - Grouped order items and IMEI display', () => {
           totalPrice: 30000000,
           variant: {
             id: 'var-iphone-15-pm',
+            productId: 'prod-iphone-15-pm',
+            sku: 'IP15PM-256-NAT',
+            price: 30000000,
             color: 'Titan Tự Nhiên',
             storage: '256GB',
           },
@@ -217,6 +230,7 @@ describe('AdminOrdersPage - Grouped order items and IMEI display', () => {
       total: 1,
       page: 1,
       limit: 10,
+      totalPages: 1,
     });
     vi.mocked(orderService.getOrderById).mockResolvedValue(mockOrderWith4Imeis);
 
