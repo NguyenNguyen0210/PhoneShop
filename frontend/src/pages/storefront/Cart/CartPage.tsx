@@ -488,6 +488,15 @@ export const CartPage: React.FC = () => {
                   const unitPrice = item.unitPrice ?? item.price ?? 0;
                   const origPrice = item.originalPrice || item.variant?.price || unitPrice;
 
+                  const availableQty = Number(item.variant?.inventory?.availableQty ?? 0);
+                  const maxLimit = item.isFlashSale
+                    ? Math.min(
+                        item.flashQuotaLeft ?? (availableQty > 0 ? availableQty : Infinity),
+                        availableQty > 0 ? availableQty : Infinity
+                      )
+                    : (availableQty > 0 ? availableQty : Infinity);
+                  const isMaxReached = Number.isFinite(maxLimit) && item.quantity >= maxLimit;
+
                   return (
                     <div
                       key={item.id}
@@ -567,6 +576,14 @@ export const CartPage: React.FC = () => {
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             <span>Còn hàng • Giao hàng hoả tốc 2h</span>
                           </div>
+
+                          {isMaxReached && (
+                            <div className="text-[11px] text-amber-600 font-medium flex items-center gap-1 mt-0.5">
+                              {item.isFlashSale
+                                ? `⚡ Đã đạt tối đa ${maxLimit} suất Flash Sale`
+                                : `Đã đạt số lượng tồn kho tối đa (${maxLimit} máy)`}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -587,8 +604,9 @@ export const CartPage: React.FC = () => {
                           </span>
                           <button
                             type="button"
+                            disabled={isMaxReached}
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            className="w-8 h-full bg-slate-50 hover:bg-slate-100 text-gray-600 font-bold text-sm flex items-center justify-center transition cursor-pointer active:scale-95"
+                            className={`w-8 h-full font-bold text-sm flex items-center justify-center transition select-none ${isMaxReached ? 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-50' : 'bg-slate-50 hover:bg-slate-100 text-gray-600 cursor-pointer active:scale-95'}`}
                             aria-label="Tăng số lượng"
                           >
                             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
