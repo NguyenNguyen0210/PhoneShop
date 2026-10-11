@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { CartItem, Product, ProductVariant } from '../types';
 import { cartService } from '../services/cartService';
-import { notifyWarning } from '../utils/notify';
+import { notifyError, notifyWarning } from '../utils/notify';
 
 const hasAccessToken = () =>
   typeof localStorage !== 'undefined' &&
@@ -86,19 +86,37 @@ export const useCartStore = create<CartState>()(
       ) => {
         const currentItems = get().items;
         const existingIndex = currentItems.findIndex((i) => i.variantId === variant.id);
-        const existingQty = existingIndex > -1 ? currentItems[existingIndex].quantity : 0;
+        const existingItem = existingIndex > -1 ? currentItems[existingIndex] : undefined;
+        const existingQty = existingItem ? existingItem.quantity : 0;
 
-        // Never let the merged cart exceed the live flash quota — checkout
-        // rejects the whole order otherwise. Clamp + warn instead.
+        const effectiveIsFlashSale = isFlashSale ?? existingItem?.isFlashSale;
+        const effectiveFlashQuotaLeft = flashQuotaLeft ?? existingItem?.flashQuotaLeft;
+
+        const availableQty = Number(variant.inventory?.availableQty ?? 0);
+        const maxLimit = effectiveIsFlashSale
+          ? Math.min(
+              effectiveFlashQuotaLeft ?? (availableQty > 0 ? availableQty : Infinity),
+              availableQty > 0 ? availableQty : Infinity
+            )
+          : (availableQty > 0 ? availableQty : Infinity);
+
         let qty = quantity;
-        if (isFlashSale && flashQuotaLeft !== undefined) {
-          const allowed = Math.max(0, flashQuotaLeft - existingQty);
+        if (maxLimit !== Infinity) {
+          const allowed = Math.max(0, maxLimit - existingQty);
           if (allowed < qty) {
-            notifyWarning(
-              `Chỉ còn ${flashQuotaLeft} suất flash sale cho phiên bản này` +
-                (existingQty > 0 ? ` (giỏ đã có ${existingQty})` : '') +
-                '.'
-            );
+            if (effectiveIsFlashSale) {
+              notifyWarning(
+                `Ưu đãi Flash Sale chỉ áp dụng tối đa ${maxLimit} suất cho phiên bản này` +
+                  (existingQty > 0 ? ` (giỏ đã có ${existingQty})` : '') +
+                  '.'
+              );
+            } else {
+              notifyWarning(
+                `Kho chỉ còn tối đa ${maxLimit} sản phẩm khả dụng` +
+                  (existingQty > 0 ? ` (giỏ đã có ${existingQty})` : '') +
+                  '.'
+              );
+            }
           }
           qty = Math.min(qty, allowed);
           if (qty <= 0) return;
@@ -114,7 +132,10 @@ export const useCartStore = create<CartState>()(
                   quantity: item.quantity + qty,
                   unitPrice: finalPrice,
                   price: finalPrice,
-                  isFlashSale: isFlashSale ?? item.isFlashSale,
+                  isFlashSale: effectiveIsFlashSale,
+                  flashQuotaLeft: effectiveIsFlashSale
+                    ? (flashQuotaLeft ?? item.flashQuotaLeft)
+                    : undefined,
                   originalPrice: item.originalPrice ?? variant.price,
                 }
               : item
@@ -129,6 +150,7 @@ export const useCartStore = create<CartState>()(
             product,
             variant,
             isFlashSale: !!isFlashSale,
+            flashQuotaLeft: isFlashSale ? flashQuotaLeft : undefined,
             originalPrice: variant.price,
           };
           newItems = [...currentItems, newItem];
@@ -156,15 +178,34 @@ export const useCartStore = create<CartState>()(
         const existing = currentItems.find((i) => i.variantId === variant.id);
         const existingQty = existing ? existing.quantity : 0;
 
+        const effectiveIsFlashSale = isFlashSale ?? existing?.isFlashSale;
+        const effectiveFlashQuotaLeft = flashQuotaLeft ?? existing?.flashQuotaLeft;
+
+        const availableQty = Number(variant.inventory?.availableQty ?? 0);
+        const maxLimit = effectiveIsFlashSale
+          ? Math.min(
+              effectiveFlashQuotaLeft ?? (availableQty > 0 ? availableQty : Infinity),
+              availableQty > 0 ? availableQty : Infinity
+            )
+          : (availableQty > 0 ? availableQty : Infinity);
+
         let qty = quantity;
-        if (isFlashSale && flashQuotaLeft !== undefined) {
-          const allowed = Math.max(0, flashQuotaLeft - existingQty);
+        if (maxLimit !== Infinity) {
+          const allowed = Math.max(0, maxLimit - existingQty);
           if (allowed < qty) {
-            notifyWarning(
-              `Chỉ còn ${flashQuotaLeft} suất flash sale cho phiên bản này` +
-                (existingQty > 0 ? ` (giỏ đã có ${existingQty})` : '') +
-                '.'
-            );
+            if (effectiveIsFlashSale) {
+              notifyWarning(
+                `Ưu đãi Flash Sale chỉ áp dụng tối đa ${maxLimit} suất cho phiên bản này` +
+                  (existingQty > 0 ? ` (giỏ đã có ${existingQty})` : '') +
+                  '.'
+              );
+            } else {
+              notifyWarning(
+                `Kho chỉ còn tối đa ${maxLimit} sản phẩm khả dụng` +
+                  (existingQty > 0 ? ` (giỏ đã có ${existingQty})` : '') +
+                  '.'
+              );
+            }
           }
           qty = Math.min(qty, allowed);
           if (qty <= 0) return;
@@ -182,7 +223,10 @@ export const useCartStore = create<CartState>()(
                   quantity: item.quantity + qty,
                   unitPrice: finalPrice,
                   price: finalPrice,
-                  isFlashSale: isFlashSale ?? item.isFlashSale,
+                  isFlashSale: effectiveIsFlashSale,
+                  flashQuotaLeft: effectiveIsFlashSale
+                    ? (flashQuotaLeft ?? item.flashQuotaLeft)
+                    : undefined,
                   originalPrice: item.originalPrice ?? variant.price,
                 }
               : item
@@ -200,6 +244,7 @@ export const useCartStore = create<CartState>()(
               product,
               variant,
               isFlashSale: !!isFlashSale,
+              flashQuotaLeft: isFlashSale ? flashQuotaLeft : undefined,
               originalPrice: variant.price,
             },
           ];
@@ -229,20 +274,47 @@ export const useCartStore = create<CartState>()(
       },
 
       updateQuantity: (itemId: string, quantity: number) => {
+        const item = get().items.find((i) => i.id === itemId);
+        if (!item) return;
+
         if (quantity <= 0) {
           get().removeItem(itemId);
           return;
         }
 
+        const availableQty = Number(item.variant?.inventory?.availableQty ?? 0);
+        const maxLimit = item.isFlashSale
+          ? Math.min(
+              item.flashQuotaLeft ?? (availableQty > 0 ? availableQty : Infinity),
+              availableQty > 0 ? availableQty : Infinity
+            )
+          : (availableQty > 0 ? availableQty : Infinity);
+
+        if (quantity > maxLimit) {
+          if (item.isFlashSale) {
+            notifyWarning(`Ưu đãi Flash Sale chỉ áp dụng tối đa ${maxLimit} suất cho phiên bản này.`);
+          } else {
+            notifyWarning(`Kho chỉ còn tối đa ${maxLimit} sản phẩm khả dụng.`);
+          }
+          return;
+        }
+
+        const previousQty = item.quantity;
         set((state) => ({
-          items: state.items.map((item) =>
-            item.id === itemId ? { ...item, quantity } : item
+          items: state.items.map((i) =>
+            i.id === itemId ? { ...i, quantity } : i
           ),
         }));
 
-        const item = get().items.find((i) => i.id === itemId);
         if (item && hasAccessToken()) {
-          cartService.updateCartItem(item.variantId, quantity).catch(() => {});
+          cartService.updateCartItem(item.variantId, quantity).catch((err) => {
+            set((state) => ({
+              items: state.items.map((i) =>
+                i.id === itemId ? { ...i, quantity: previousQty } : i
+              ),
+            }));
+            notifyError(err, 'Số lượng trong kho không đủ để đáp ứng.');
+          });
         }
       },
 

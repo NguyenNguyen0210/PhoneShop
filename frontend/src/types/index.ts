@@ -244,6 +244,7 @@ export interface CartItem {
   product: Product;
   variant: ProductVariant;
   isFlashSale?: boolean;
+  flashQuotaLeft?: number;
   originalPrice?: number;
 }
 
