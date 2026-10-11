@@ -29,12 +29,14 @@ import {
   InboxOutlined,
   CopyOutlined,
   DownOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { orderService } from '../../../services/orderService';
 import { paymentService } from '../../../services/paymentService';
 import type { Order, OrderStatus, Payment } from '../../../types';
 import { ShippingDispatchModal } from './components/ShippingDispatchModal';
 import { ReconciliationModal } from '../Payments/components/ReconciliationModal';
+import { groupOrderItems } from '../../../utils/orderGroupHelper';
 
 const { Title, Text } = Typography;
 
@@ -130,6 +132,14 @@ export const AdminOrdersPage: React.FC = () => {
   const [shippingModalOrder, setShippingModalOrder] = useState<Order | null>(null);
   const [isShippingModalOpen, setIsShippingModalOpen] = useState(false);
   const [isShippingTransition, setIsShippingTransition] = useState(false);
+  const [expandedImeis, setExpandedImeis] = useState<Record<string, boolean>>({});
+
+  const toggleExpandImeis = (groupKey: string) => {
+    setExpandedImeis((prev) => ({
+      ...prev,
+      [groupKey]: !prev[groupKey],
+    }));
+  };
 
   // In-flight guard: the row Select stays interactive while the PUT is
   // pending, so a second change event used to fire a duplicate transition —
@@ -266,6 +276,7 @@ export const AdminOrdersPage: React.FC = () => {
   const handleCloseDetailModal = () => {
     setIsDetailModalOpen(false);
     setSelectedOrder(null);
+    setExpandedImeis({});
     if (searchParams.has('id') || searchParams.has('orderId')) {
       const nextParams = new URLSearchParams(searchParams);
       nextParams.delete('id');
@@ -1028,55 +1039,116 @@ export const AdminOrdersPage: React.FC = () => {
             </Divider>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {selectedOrder.items?.map((item) => (
-                <Card
-                  key={item.id}
-                  size="small"
-                  style={{ borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0' }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <Text strong style={{ fontSize: 13 }}>
-                        {item.variant?.product?.name || item.productName || 'Điện thoại thông minh'}
-                      </Text>
-                      <div style={{ fontSize: 12, color: '#64748b' }}>
-                        Biến thể: {item.variant?.color} - {item.variant?.storage} (Số lượng: {item.quantity})
+              {groupOrderItems(selectedOrder.items).map((item) => {
+                const isExpanded = !!expandedImeis[item.groupKey];
+                const displayedImeis =
+                  isExpanded || item.imeis.length <= 3
+                    ? item.imeis
+                    : item.imeis.slice(0, 3);
+
+                return (
+                  <Card
+                    key={item.groupKey}
+                    size="small"
+                    style={{ borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <Space size={8} align="center" wrap>
+                          <Text strong style={{ fontSize: 13 }}>
+                            {item.productName}
+                          </Text>
+                          <Tag color="blue" style={{ borderRadius: 10, fontWeight: 600 }}>
+                            x{item.totalQuantity} máy
+                          </Tag>
+                        </Space>
+                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                          Biến thể: {item.variant?.color || ''} - {item.variant?.storage || ''} • Đơn giá: {formatPrice(item.unitPrice)}
+                        </div>
+                      </div>
+
+                      <div style={{ textAlign: 'right' }}>
+                        <Text strong style={{ color: '#dc2626', fontWeight: 'bold' }}>
+                          {formatPrice(item.totalPrice)}
+                        </Text>
                       </div>
                     </div>
 
-                    <div style={{ textAlign: 'right' }}>
-                      <Text strong style={{ color: '#dc2626' }}>
-                        {formatPrice(item.totalPrice || item.unitPrice * item.quantity)}
-                      </Text>
-                    </div>
-                  </div>
+                    {/* Assigned IMEI section */}
+                    {item.imeis && item.imeis.length > 0 && (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          padding: '8px 12px',
+                          background: '#fff',
+                          borderRadius: 8,
+                          border: '1px dashed #cbd5e1',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            marginBottom: 8,
+                          }}
+                        >
+                          <SafetyCertificateOutlined style={{ color: '#2563eb', fontSize: 14 }} />
+                          <Text strong style={{ fontSize: 12, color: '#334155' }}>
+                            Danh sách {item.imeis.length} mã IMEI định danh đã khóa (Đã gán {item.imeis.length}/{item.totalQuantity} máy)
+                          </Text>
+                        </div>
 
-                  {/* Assigned IMEI box */}
-                  {(item.imeiDevice?.imeiNumber || item.imeiDevice?.imei) && (
-                    <div
-                      style={{
-                        marginTop: 10,
-                        padding: '8px 12px',
-                        background: '#fff',
-                        borderRadius: 8,
-                        border: '1px dashed #cbd5e1',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                      }}
-                    >
-                      <BarcodeOutlined style={{ color: '#2563eb', fontSize: 16 }} />
-                      <span style={{ fontSize: 12, color: '#475569' }}>Mã IMEI đã khóa cho máy này:</span>
-                      <Text code strong style={{ fontSize: 13, color: '#0f172a' }}>
-                        {item.imeiDevice?.imeiNumber || item.imeiDevice?.imei}
-                      </Text>
-                      <Tag color="green" style={{ fontSize: 10 }}>
-                        ĐÃ GÁN ĐƠN
-                      </Tag>
-                    </div>
-                  )}
-                </Card>
-              ))}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {displayedImeis.map((imei, idx) => (
+                            <div
+                              key={imei.id || imei.imeiNumber || idx}
+                              style={{
+                                padding: '6px 10px',
+                                background: '#f8fafc',
+                                borderRadius: 6,
+                                border: '1px solid #e2e8f0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 8,
+                              }}
+                            >
+                              <Space size={8} wrap>
+                                <Tag color="default" style={{ fontSize: 11, margin: 0, fontWeight: 500 }}>
+                                  Máy {idx + 1}
+                                </Tag>
+                                <BarcodeOutlined style={{ color: '#2563eb', fontSize: 14 }} />
+                                <Text code strong style={{ fontSize: 12, color: '#0f172a' }}>
+                                  {imei.imeiNumber}
+                                </Text>
+                              </Space>
+                              <Tag color="green" style={{ fontSize: 10, margin: 0 }}>
+                                ĐÃ GÁN ĐƠN
+                              </Tag>
+                            </div>
+                          ))}
+                        </div>
+
+                        {item.imeis.length > 3 && (
+                          <div style={{ marginTop: 8, textAlign: 'center' }}>
+                            <Button
+                              type="link"
+                              size="small"
+                              onClick={() => toggleExpandImeis(item.groupKey)}
+                              style={{ fontSize: 12, padding: 0 }}
+                            >
+                              {isExpanded
+                                ? 'Thu gọn ▴'
+                                : `Xem thêm (${item.imeis.length - 3} máy) ▾`}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
             </div>
 
             <div
