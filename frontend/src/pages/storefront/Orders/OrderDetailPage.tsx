@@ -14,6 +14,8 @@ import {
   Phone,
   MapPin,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   ShieldCheck,
   Printer,
   RotateCcw,
@@ -38,6 +40,7 @@ import { OrderInvoiceModal } from './components/OrderInvoiceModal';
 import { OrderCancelModal } from './components/OrderCancelModal';
 import { ReturnRequestModal } from './components/ReturnRequestModal';
 import { reorderOrderItems } from './utils/reorderHelper';
+import { groupOrderItems } from '../../../utils/orderGroupHelper';
 
 export const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -51,6 +54,14 @@ export const OrderDetailPage: React.FC = () => {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [reorderSuccessMsg, setReorderSuccessMsg] = useState<string | null>(null);
+  const [expandedImeis, setExpandedImeis] = useState<Record<string, boolean>>({});
+
+  const toggleExpandImeis = (groupKey: string) => {
+    setExpandedImeis((prev) => ({
+      ...prev,
+      [groupKey]: !prev[groupKey],
+    }));
+  };
 
   // Online prepay (VNPay) for approved installment applications
   const [prepayLoading, setPrepayLoading] = useState(false);
@@ -555,69 +566,84 @@ export const OrderDetailPage: React.FC = () => {
           </div>
 
           <div className="divide-y divide-slate-100">
-            {order.items?.map((item) => {
-              const pId = item.variant?.productId || item.variant?.product?.id;
+            {groupOrderItems(order.items).map((item) => {
+              const pId = (item.variant as any)?.productId || item.variant?.product?.id;
               const reviewInfo = pId ? reviewedProducts[pId] : null;
               const isDelivered = order.status === 'DELIVERED' || order.status === 'COMPLETED';
+              const subtitleParts = [
+                item.variant?.color,
+                item.variant?.storage,
+                `Số lượng: x${item.totalQuantity}`,
+                ...(item.totalQuantity > 1 ? [`Đơn giá: ${formatPrice(item.unitPrice)}`] : []),
+              ].filter(Boolean);
 
               return (
                 <div
-                  key={item.id}
+                  key={item.groupKey}
                   className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs"
                 >
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden">
-                      {pId ? (
-                        <Link
-                          to={`/products/${pId}`}
-                          title="Xem chi tiết sản phẩm"
-                          className="w-full h-full flex items-center justify-center"
-                        >
-                          <img
-                            src={
-                              item.variant?.images?.[0] ||
-                              item.variant?.imageUrl ||
-                              item.variant?.product?.thumbnail ||
-                              FALLBACK_PRODUCT_IMAGE
-                            }
-                            alt={item.productName || 'Sản phẩm'}
-                            className="w-full h-full object-contain hover:scale-105 transition-transform"
-                          />
-                        </Link>
-                      ) : (
+                      <Link
+                        to={`/products/${pId || item.groupKey}`}
+                        title="Xem chi tiết sản phẩm"
+                        className="w-full h-full flex items-center justify-center"
+                      >
                         <img
                           src={
-                            item.variant?.images?.[0] ||
+                            (item.variant as any)?.images?.[0] ||
                             item.variant?.imageUrl ||
-                            item.variant?.product?.thumbnail ||
+                            (item.variant as any)?.product?.thumbnail ||
+                            item.variant?.product?.thumbnailUrl ||
                             FALLBACK_PRODUCT_IMAGE
                           }
                           alt={item.productName || 'Sản phẩm'}
-                          className="w-full h-full object-contain"
+                          className="w-full h-full object-contain hover:scale-105 transition-transform"
                         />
-                      )}
+                      </Link>
                     </div>
                     <div className="flex-1 min-w-0">
-                      {pId ? (
-                        <Link
-                          to={`/products/${pId}`}
-                          title="Xem chi tiết sản phẩm"
-                          className="font-bold text-sm text-slate-900 truncate hover:text-blue-600 hover:underline transition-colors block"
-                        >
-                          {item.productName || item.variant?.product?.name || 'Điện thoại'}
-                        </Link>
-                      ) : (
-                        <h4 className="font-bold text-sm text-slate-900 truncate">
-                          {item.productName || item.variant?.product?.name || 'Điện thoại'}
-                        </h4>
-                      )}
+                      <Link
+                        to={`/products/${pId || item.groupKey}`}
+                        title="Xem chi tiết sản phẩm"
+                        className="font-bold text-sm text-slate-900 truncate hover:text-blue-600 hover:underline transition-colors block"
+                      >
+                        {item.productName}
+                      </Link>
                       <p className="text-slate-500 mt-0.5">
-                        {item.variant?.color} • {item.variant?.storage} • Số lượng: x{item.quantity}
+                        {subtitleParts.join(' • ')}
                       </p>
-                      {item.imeiDevice && (
-                        <span className="inline-block mt-1 font-mono text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                          IMEI: {item.imeiDevice.imeiNumber || item.imeiDevice.imei}
-                        </span>
+                      {item.imeis && item.imeis.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          {(expandedImeis[item.groupKey] ? item.imeis : item.imeis.slice(0, 3)).map((im) => (
+                            <span
+                              key={im.id || im.imeiNumber}
+                              className="inline-flex items-center gap-1 font-mono text-[10px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 font-medium"
+                            >
+                              <ShieldCheck className="w-3 h-3 text-blue-600 shrink-0" />
+                              <span>IMEI: {im.imeiNumber}</span>
+                            </span>
+                          ))}
+                          {item.imeis.length > 3 && (
+                            <button
+                              type="button"
+                              onClick={() => toggleExpandImeis(item.groupKey)}
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/50 hover:bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200 transition-colors cursor-pointer"
+                            >
+                              {expandedImeis[item.groupKey] ? (
+                                <>
+                                  <ChevronUp className="w-3 h-3" />
+                                  <span>Thu gọn</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="w-3 h-3" />
+                                  <span>+{item.imeis.length - 3} IMEI khác</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -625,10 +651,7 @@ export const OrderDetailPage: React.FC = () => {
                   <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
                     <div className="text-right">
                       <span className="font-mono font-bold text-sm text-blue-600 block">
-                        {formatPrice(item.totalPrice || item.unitPrice * item.quantity)}
-                      </span>
-                      <span className="text-[11px] text-slate-400">
-                        {formatPrice(item.unitPrice)} / cái
+                        {formatPrice(item.totalPrice)}
                       </span>
                     </div>
 
@@ -641,11 +664,12 @@ export const OrderDetailPage: React.FC = () => {
                               setSelectedReviewProduct({
                                 productId: pId,
                                 productName:
-                                  item.productName || item.variant?.product?.name || 'Sản phẩm',
+                                  item.productName || (item.variant as any)?.product?.name || 'Sản phẩm',
                                 productImage:
-                                  item.variant?.images?.[0] ||
+                                  (item.variant as any)?.images?.[0] ||
                                   item.variant?.imageUrl ||
-                                  item.variant?.product?.thumbnail,
+                                  (item.variant as any)?.product?.thumbnail ||
+                                  item.variant?.product?.thumbnailUrl,
                                 initialData: reviewInfo.myReview,
                               });
                               setIsReviewModalOpen(true);
@@ -662,11 +686,12 @@ export const OrderDetailPage: React.FC = () => {
                               setSelectedReviewProduct({
                                 productId: pId,
                                 productName:
-                                  item.productName || item.variant?.product?.name || 'Sản phẩm',
+                                  item.productName || (item.variant as any)?.product?.name || 'Sản phẩm',
                                 productImage:
-                                  item.variant?.images?.[0] ||
+                                  (item.variant as any)?.images?.[0] ||
                                   item.variant?.imageUrl ||
-                                  item.variant?.product?.thumbnail,
+                                  (item.variant as any)?.product?.thumbnail ||
+                                  item.variant?.product?.thumbnailUrl,
                                 initialData: null,
                               });
                               setIsReviewModalOpen(true);
