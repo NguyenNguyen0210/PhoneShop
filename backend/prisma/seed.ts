@@ -41,12 +41,8 @@ async function cleanTransactionsAndCustomers() {
   await prisma.auditLog.deleteMany({});
   await prisma.ticketMessage.deleteMany({});
   await prisma.ticket.deleteMany({});
-  await prisma.idempotencyRecord.deleteMany({});
   await prisma.notification.deleteMany({});
   await prisma.warranty.deleteMany({});
-  await prisma.refund.deleteMany({});
-  await prisma.returnItem.deleteMany({});
-  await prisma.return.deleteMany({});
   await prisma.reviewReply.deleteMany({});
   await prisma.review.deleteMany({});
   await prisma.voucherUsage.deleteMany({});
@@ -54,7 +50,6 @@ async function cleanTransactionsAndCustomers() {
   await prisma.wishlist.deleteMany({});
   await prisma.cartItem.deleteMany({});
   await prisma.cart.deleteMany({});
-  await prisma.installmentApplication.deleteMany({});
   await prisma.paymentTransaction.deleteMany({});
   await prisma.payment.deleteMany({});
   await prisma.shipping.deleteMany({});

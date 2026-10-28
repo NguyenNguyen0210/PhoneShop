@@ -208,10 +208,6 @@ export class OrdersService {
       }
     }
 
-    if (dto.paymentMethod === PaymentMethod.INSTALLMENT) {
-      throw new BadRequestException('Phương thức thanh toán trả góp không được hỗ trợ');
-    }
-
     // 3. Fresh catalog prices are resolved INSIDE the transaction (M1);
     // subtotal is computed there, never from stale cart snapshots.
     const holdDurationMs = 15 * 60 * 1000;

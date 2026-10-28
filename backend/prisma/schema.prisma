@@ -91,19 +91,6 @@ enum PaymentMethod {
   ZALOPAY
   CREDIT_CARD
   DEBIT_CARD
-  INSTALLMENT
-}
-
-enum InstallmentProvider {
-  HOME_CREDIT
-  FE_CREDIT
-}
-
-enum InstallmentStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  CANCELLED
 }
 
 enum TransactionType {
@@ -228,10 +215,6 @@ model User {
   notifications Notification[]
   auditLogs     AuditLog[]
   warranties    Warranty[]
-  returns       Return[]
-  installmentApplications InstallmentApplication[]
-  reviewedInstallments    InstallmentApplication[] @relation("StaffReviewedInstallments")
-  markedInstallmentTerms  InstallmentPaymentTerm[] @relation("StaffMarkedInstallmentTerms")
 
   tickets                 Ticket[]                 @relation("UserTickets")
   assignedTickets         Ticket[]                 @relation("StaffAssignedTickets")
@@ -534,9 +517,7 @@ model Order {
 
   items    OrderItem[]
   payments Payment[]
-  returns  Return[]
   shipping Shipping?
-  installmentApplication InstallmentApplication?
   tickets  Ticket[]
 
   @@index([userId])
@@ -806,80 +787,6 @@ model Warranty {
 }
 
 // ============================================================
-// RETURNS
-// ============================================================
-
-model Return {
-  id           String       @id @default(uuid()) @db.Uuid
-  orderId      String       @map("order_id") @db.Uuid
-  userId       String       @map("user_id") @db.Uuid
-  returnNumber String       @unique @map("return_number") @db.VarChar(50)
-  status       ReturnStatus @default(REQUESTED)
-  reason       String       @db.Text
-  customerNote String?      @map("customer_note") @db.Text
-  adminNote    String?      @map("admin_note") @db.Text
-  requestedAt  DateTime     @default(now()) @map("requested_at")
-  approvedAt   DateTime?    @map("approved_at")
-  receivedAt   DateTime?    @map("received_at")
-  completedAt  DateTime?    @map("completed_at")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
-
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Restrict)
-
-  items   ReturnItem[]
-  refunds Refund[]
-
-  @@index([orderId])
-  @@index([userId])
-  @@index([status])
-  @@map("returns")
-}
-
-model ReturnItem {
-  id          String   @id @default(uuid()) @db.Uuid
-  returnId    String   @map("return_id") @db.Uuid
-  orderItemId String   @map("order_item_id") @db.Uuid
-  quantity    Int
-  reason      String?  @db.Text
-  condition   String?  @db.VarChar(100)
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  return Return @relation(fields: [returnId], references: [id], onDelete: Cascade)
-
-  @@unique([returnId, orderItemId])
-  @@index([returnId])
-  @@index([orderItemId])
-  @@map("return_items")
-}
-
-// ============================================================
-// REFUNDS
-// ============================================================
-
-model Refund {
-  id           String       @id @default(uuid()) @db.Uuid
-  returnId     String?      @map("return_id") @db.Uuid
-  paymentId    String?      @map("payment_id") @db.Uuid
-  refundNumber String       @unique @map("refund_number") @db.VarChar(50)
-  amount       Decimal      @db.Decimal(15, 2)
-  status       RefundStatus @default(PENDING)
-  reason       String?      @db.Text
-  providerRef  String?      @map("provider_ref") @db.VarChar(255)
-  processedAt  DateTime?    @map("processed_at")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
-
-  return Return? @relation(fields: [returnId], references: [id], onDelete: SetNull)
-
-  @@index([returnId])
-  @@index([paymentId])
-  @@index([status])
-  @@map("refunds")
-}
-
-// ============================================================
 // NOTIFICATIONS
 // ============================================================
 
@@ -926,28 +833,6 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
-}
-
-// ============================================================
-// IDEMPOTENCY
-// ============================================================
-
-model IdempotencyRecord {
-  id             String   @id @default(uuid()) @db.Uuid
-  key            String   @unique @db.VarChar(255)
-  userId         String?  @map("user_id") @db.Uuid
-  endpoint       String   @db.VarChar(255)
-  requestHash    String?  @map("request_hash") @db.VarChar(255)
-  responseStatus Int?     @map("response_status")
-  responseBody   Json?    @map("response_body")
-  expiresAt      DateTime @map("expires_at")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-
-  @@index([userId])
-  @@index([expiresAt])
-  @@index([endpoint])
-  @@map("idempotency_records")
 }
 
 // ============================================================
@@ -1045,87 +930,6 @@ model Shipping {
   @@index([status])
   @@index([trackingNumber])
   @@map("shippings")
-}
-
-// ============================================================
-// INSTALLMENT APPLICATIONS
-// ============================================================
-
-model InstallmentApplication {
-  id              String              @id @default(uuid()) @db.Uuid
-  orderId         String              @unique @map("order_id") @db.Uuid
-  userId          String              @map("user_id") @db.Uuid
-  provider        InstallmentProvider @default(HOME_CREDIT)
-  status          InstallmentStatus   @default(PENDING)
-
-  // Financial Package
-  termMonths      Int                 @map("term_months")
-  prepayPercent   Int                 @map("prepay_percent")
-  prepayAmount    Decimal             @map("prepay_amount") @db.Decimal(15, 2)
-  loanAmount      Decimal             @map("loan_amount") @db.Decimal(15, 2)
-  monthlyAmount   Decimal             @map("monthly_amount") @db.Decimal(15, 2)
-
-  // Identity & Citizen Card Info
-  fullName        String              @map("full_name") @db.VarChar(255)
-  citizenId       String              @map("citizen_id") @db.VarChar(20)
-  birthDate       DateTime            @map("birth_date") @db.Date
-  phoneNumber     String              @map("phone_number") @db.VarChar(20)
-  currentAddress  String              @map("current_address") @db.Text
-  incomeRange     String              @map("income_range") @db.VarChar(50)
-
-  // Cloudflare R2 URLs
-  cccdFrontUrl    String              @map("cccd_front_url") @db.Text
-  cccdBackUrl     String              @map("cccd_back_url") @db.Text
-
-  // Staff Review
-  reviewedBy      String?             @map("reviewed_by") @db.Uuid
-  reviewedAt      DateTime?           @map("reviewed_at")
-  staffNotes      String?             @map("staff_notes") @db.Text
-  rejectionReason String?             @map("rejection_reason") @db.Text
-
-  createdAt       DateTime            @default(now()) @map("created_at")
-  updatedAt       DateTime            @updatedAt @map("updated_at")
-
-  order           Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user            User                @relation(fields: [userId], references: [id], onDelete: Restrict)
-  reviewer        User?               @relation("StaffReviewedInstallments", fields: [reviewedBy], references: [id], onDelete: SetNull)
-  paymentTerms    InstallmentPaymentTerm[]
-
-  @@index([userId])
-  @@index([status])
-  @@index([citizenId])
-  @@map("installment_applications")
-}
-
-// Monthly repayment schedule of an APPROVED installment application.
-// Money itself moves through the finance company — rows here only record
-// what is due when and whether staff confirmed its collection. OVERDUE is
-// derived on read (PENDING + past dueDate), never stored, so no cron needed.
-enum InstallmentTermStatus {
-  PENDING
-  PAID
-}
-
-model InstallmentPaymentTerm {
-  id            String                @id @default(uuid()) @db.Uuid
-  applicationId String                @map("application_id") @db.Uuid
-  termNo        Int                   @map("term_no")
-  dueDate       DateTime              @map("due_date") @db.Date
-  amount        Decimal               @db.Decimal(15, 2)
-  status        InstallmentTermStatus @default(PENDING)
-  paidAt        DateTime?             @map("paid_at")
-  paidNote      String?               @map("paid_note") @db.VarChar(255)
-  markedBy      String?               @map("marked_by") @db.Uuid
-  createdAt     DateTime              @default(now()) @map("created_at")
-  updatedAt     DateTime              @updatedAt @map("updated_at")
-
-  application   InstallmentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  marker        User?                  @relation("StaffMarkedInstallmentTerms", fields: [markedBy], references: [id], onDelete: SetNull)
-
-  @@unique([applicationId, termNo])
-  @@index([applicationId])
-  @@index([status])
-  @@map("installment_payment_terms")
 }
 
 // ============================================================
