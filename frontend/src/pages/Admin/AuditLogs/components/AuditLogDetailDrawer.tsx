@@ -88,10 +88,12 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
 }) => {
   const [messageApi, contextHolder] = message.useMessage();
 
-  const handleCopy = (text: string, label: string) => {
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(text);
+  const handleCopy = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
       messageApi.success(`Đã sao chép ${label}`);
+    } catch {
+      messageApi.error(`Không thể sao chép ${label}. Vui lòng thử lại.`);
     }
   };
 
@@ -197,33 +199,6 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
             />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {hasNew && (
-                <div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: 8,
-                    }}
-                  >
-                    <Text strong style={{ color: '#389e0d' }}>
-                      Dữ liệu mới (newData)
-                    </Text>
-                    <Button
-                      size="small"
-                      icon={<CopyOutlined />}
-                      onClick={() =>
-                        handleCopy(JSON.stringify(log.newData, null, 2), 'dữ liệu mới')
-                      }
-                    >
-                      Sao chép
-                    </Button>
-                  </div>
-                  <pre style={codeBlockStyle}>{JSON.stringify(log.newData, null, 2)}</pre>
-                </div>
-              )}
-
               {hasOld && (
                 <div>
                   <div
@@ -248,6 +223,33 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
                     </Button>
                   </div>
                   <pre style={codeBlockStyle}>{JSON.stringify(log.oldData, null, 2)}</pre>
+                </div>
+              )}
+
+              {hasNew && (
+                <div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Text strong style={{ color: '#389e0d' }}>
+                      Dữ liệu mới (newData)
+                    </Text>
+                    <Button
+                      size="small"
+                      icon={<CopyOutlined />}
+                      onClick={() =>
+                        handleCopy(JSON.stringify(log.newData, null, 2), 'dữ liệu mới')
+                      }
+                    >
+                      Sao chép
+                    </Button>
+                  </div>
+                  <pre style={codeBlockStyle}>{JSON.stringify(log.newData, null, 2)}</pre>
                 </div>
               )}
             </div>

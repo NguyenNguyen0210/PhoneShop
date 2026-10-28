@@ -20,14 +20,19 @@ import {
   EyeOutlined,
   SafetyCertificateOutlined,
   UserOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { auditLogService } from '../../../services/auditLogService';
-import type { AuditLogEntry, AuditAction } from '../../../types/auditLog';
-import { AuditLogDetailDrawer, getAuditActionColor } from './components/AuditLogDetailDrawer';
+import type { AuditLogEntry, AuditAction, AuditLogFilterParams } from '../../../types/auditLog';
+import {
+  AuditLogDetailDrawer,
+  getAuditActionColor,
+  formatDateTime,
+} from './components/AuditLogDetailDrawer';
 
 const { Title, Paragraph, Text } = Typography;
 
-const ACTION_OPTIONS = [
+const ACTION_OPTIONS: Array<{ label: string; value: AuditAction | '' }> = [
   { label: 'Tất cả hành động', value: '' },
   { label: 'Tạo mới (CREATE)', value: 'CREATE' },
   { label: 'Cập nhật (UPDATE)', value: 'UPDATE' },
@@ -82,7 +87,7 @@ export const AdminAuditLogsPage: React.FC = () => {
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const params: any = {
+      const params: AuditLogFilterParams = {
         page,
         limit,
       };
@@ -91,9 +96,8 @@ export const AdminAuditLogsPage: React.FC = () => {
       if (debouncedSearch) params.search = debouncedSearch;
 
       const res = await auditLogService.getAuditLogs(params);
-      const rows = (res as any)?.data?.data ?? (res as any)?.data ?? [];
-      setLogs(Array.isArray(rows) ? rows : []);
-      setTotal(((res as any)?.data?.total ?? (res as any)?.total) || 0);
+      setLogs(res.data || []);
+      setTotal(res.total || 0);
     } catch {
       message.error('Không thể tải danh sách nhật ký kiểm toán. Vui lòng thử lại.');
       setLogs([]);
@@ -114,14 +118,7 @@ export const AdminAuditLogsPage: React.FC = () => {
       key: 'createdAt',
       width: 170,
       render: (val: string) => (
-        <Space direction="vertical" size={2}>
-          <Text strong style={{ fontSize: 13 }}>
-            {new Date(val).toLocaleDateString('vi-VN')}
-          </Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {new Date(val).toLocaleTimeString('vi-VN')}
-          </Text>
-        </Space>
+        <Text style={{ fontSize: 13 }}>{formatDateTime(val)}</Text>
       ),
     },
     {
@@ -132,25 +129,47 @@ export const AdminAuditLogsPage: React.FC = () => {
         if (!record.user && !record.userId) {
           return (
             <Space size={8}>
-              <Avatar size="small" icon={<UserOutlined />} style={{ backgroundColor: '#8c8c8c' }} />
-              <Text italic type="secondary">Hệ thống</Text>
+              <Avatar size="small" icon={<SettingOutlined />} style={{ backgroundColor: '#8c8c8c' }} />
+              <Text italic type="secondary">
+                Hệ thống
+              </Text>
             </Space>
           );
         }
-        const name = [record.user?.firstName, record.user?.lastName].filter(Boolean).join(' ') || record.user?.email || 'Người dùng';
+
+        if (record.user) {
+          const fullName = [record.user.firstName, record.user.lastName].filter(Boolean).join(' ');
+          return (
+            <Space size={8}>
+              <Avatar size="small" icon={<UserOutlined />} style={{ backgroundColor: '#1677ff' }} />
+              <div>
+                {fullName ? (
+                  <>
+                    <Text strong style={{ display: 'block', fontSize: 13 }}>
+                      {fullName}
+                    </Text>
+                    {record.user.email && (
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {record.user.email}
+                      </Text>
+                    )}
+                  </>
+                ) : (
+                  <Text strong style={{ display: 'block', fontSize: 13 }}>
+                    {record.user.email}
+                  </Text>
+                )}
+              </div>
+            </Space>
+          );
+        }
+
         return (
           <Space size={8}>
-            <Avatar size="small" icon={<UserOutlined />} style={{ backgroundColor: '#1677ff' }} />
-            <div>
-              <Text strong style={{ display: 'block', fontSize: 13 }}>
-                {name}
-              </Text>
-              {record.user?.email && (
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  {record.user.email}
-                </Text>
-              )}
-            </div>
+            <Avatar size="small" icon={<UserOutlined />} style={{ backgroundColor: '#8c8c8c' }} />
+            <Text code style={{ fontSize: 12 }}>
+              ID: {record.userId}
+            </Text>
           </Space>
         );
       },
@@ -223,16 +242,12 @@ export const AdminAuditLogsPage: React.FC = () => {
       >
         <Row gutter={[12, 12]} align="middle">
           <Col xs={24} sm={12} md={10}>
-            <Input.Search
+            <Input
               allowClear
               placeholder="Tìm kiếm theo email, thực thể, IP..."
               prefix={<SearchOutlined />}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onSearch={(val) => {
-                setDebouncedSearch(val);
-                setPage(1);
-              }}
               style={{ width: '100%' }}
             />
           </Col>
@@ -282,7 +297,7 @@ export const AdminAuditLogsPage: React.FC = () => {
           dataSource={logs}
           rowKey="id"
           loading={loading}
-          scroll={{ x: 800 }}
+          scroll={{ x: 850 }}
           pagination={{
             current: page,
             pageSize: limit,
