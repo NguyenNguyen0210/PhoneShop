@@ -1,7 +1,7 @@
 # 📱 PhoneShop — Cửa Hàng Điện Thoại Trực Tuyến
 
 <p align="center">
-  <img src="https://pub-dcd7bf5fa7c74b97a10cdc8dfadc4064.r2.dev/products/iphone-16-pro-max.webp" alt="PhoneShop Banner" width="200" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.1);" />
+  <img src="frontend/public/logo.png" alt="PhoneShop Logo" width="220" />
 </p>
 
 <p align="center">
