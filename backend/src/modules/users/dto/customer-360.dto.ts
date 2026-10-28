@@ -1,12 +1,27 @@
 export interface Customer360Metrics {
   totalSpent: number;
   totalOrders: number;
-  completedOrders: number;
-  processingOrders: number;
-  cancelledOrders: number;
-  totalTickets: number;
-  openTickets: number;
-  activeWarranties: number;
+}
+
+export interface Customer360AddressItem {
+  id: string;
+  recipientName: string;
+  phone: string;
+  addressLine1: string;
+  ward: string;
+  district: string;
+  city: string;
+  isDefault: boolean;
+}
+
+export interface Customer360OrderItem {
+  id: string;
+  orderNumber: string;
+  status: string;
+  paymentStatus: string;
+  totalAmount: number;
+  createdAt: Date;
+  itemCount: number;
 }
 
 export interface Customer360Response {
@@ -19,11 +34,8 @@ export interface Customer360Response {
     avatarUrl: string | null;
     status: string;
     createdAt: Date;
-    lastLoginAt: Date | null;
   };
   metrics: Customer360Metrics;
-  addresses: any[];
-  recentOrders: any[];
-  warranties: any[];
-  tickets: any[];
+  addresses: Customer360AddressItem[];
+  recentOrders: Customer360OrderItem[];
 }

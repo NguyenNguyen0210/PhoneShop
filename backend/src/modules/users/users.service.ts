@@ -6,7 +6,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
-import { Customer360Metrics, Customer360Response } from './dto/customer-360.dto';
+import { Customer360OrderItem, Customer360Response } from './dto/customer-360.dto';
 import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
 
 @Injectable()
@@ -242,11 +242,11 @@ export class UsersService {
   async getCustomer360(id: string, currentUser: any): Promise<Customer360Response> {
     const user = await this.findOne(id, currentUser);
 
-    const [orders, warranties, tickets] = await Promise.all([
+    const [orders, addresses] = await Promise.all([
       this.prisma.order.findMany({
         where: { userId: id },
         orderBy: { createdAt: 'desc' },
-        take: 10,
+        take: 20,
         select: {
           id: true,
           orderNumber: true,
@@ -255,99 +255,45 @@ export class UsersService {
           createdAt: true,
           payments: {
             take: 1,
-            select: {
-              id: true,
-              status: true,
-              method: true,
-              amount: true,
-            },
+            select: { status: true },
           },
           items: {
-            take: 3,
-            select: {
-              id: true,
-              productName: true,
-              quantity: true,
-              unitPrice: true,
-              totalPrice: true,
-            },
+            select: { quantity: true },
           },
         },
       }),
-      this.prisma.warranty.findMany({
+      this.prisma.address.findMany({
         where: { userId: id },
-        orderBy: { createdAt: 'desc' },
-        include: {
-          imeiDevice: true,
-          orderItem: {
-            select: {
-              productName: true,
-              variant: { select: { sku: true, color: true, storage: true } },
-            },
-          },
-        },
-      }),
-      this.prisma.ticket.findMany({
-        where: { userId: id },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
+        orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
         select: {
           id: true,
-          code: true,
-          title: true,
-          category: true,
-          priority: true,
-          status: true,
-          createdAt: true,
-          lastRepliedAt: true,
+          recipientName: true,
+          phone: true,
+          addressLine1: true,
+          ward: true,
+          district: true,
+          city: true,
+          isDefault: true,
         },
       }),
     ]);
 
-    // Aggregate metrics across all user orders
-    const allUserOrders = await this.prisma.order.findMany({
-      where: { userId: id },
-      select: {
-        status: true,
-        totalAmount: true,
-        payments: { select: { status: true } },
-      },
-    });
-
-    const totalSpent = allUserOrders
+    const totalOrders = orders.length;
+    const totalSpent = orders
       .filter((o: any) => {
-        const isPaid = o.paymentStatus === 'PAID' || o.payments?.some((p: any) => p.status === 'PAID');
+        const isPaid = o.payments?.[0]?.status === 'PAID';
         return isPaid || o.status === 'COMPLETED';
       })
-      .reduce((sum, o: any) => sum + Number(o.totalAmount || 0), 0);
+      .reduce((sum: number, o: any) => sum + Number(o.totalAmount || 0), 0);
 
-    const metrics: Customer360Metrics = {
-      totalSpent,
-      totalOrders: allUserOrders.length,
-      completedOrders: allUserOrders.filter((o: any) => o.status === 'COMPLETED').length,
-      processingOrders: allUserOrders.filter((o: any) =>
-        ['PENDING', 'CONFIRMED', 'PROCESSING', 'PACKED', 'SHIPPING'].includes(o.status),
-      ).length,
-      cancelledOrders: allUserOrders.filter((o: any) => o.status === 'CANCELLED').length,
-      totalTickets: tickets.length,
-      openTickets: tickets.filter((t: any) => ['OPEN', 'IN_PROGRESS'].includes(t.status)).length,
-      activeWarranties: warranties.filter((w: any) => w.status === 'ACTIVE').length,
-    };
-
-    const recentOrders = orders.map((o: any) => ({
-      ...o,
-      paymentStatus: o.paymentStatus || o.payments?.[0]?.status || 'PENDING',
-      items:
-        o.items?.map((it: any) => ({
-          ...it,
-          price: it.price ?? it.unitPrice,
-        })) || [],
-    }));
-
-    const mappedWarranties = warranties.map((w: any) => ({
-      ...w,
-      imei: w.imeiDevice?.imei || (w as any).imei || null,
-      deviceSerial: w.imeiDevice?.serialNumber || null,
+    const recentOrders: Customer360OrderItem[] = orders.map((o: any) => ({
+      id: o.id,
+      orderNumber: o.orderNumber,
+      status: o.status,
+      paymentStatus: o.payments?.[0]?.status || 'PENDING',
+      totalAmount: Number(o.totalAmount || 0),
+      createdAt: o.createdAt,
+      itemCount: o.items?.reduce((cnt: number, it: any) => cnt + (it.quantity || 1), 0) || 0,
     }));
 
     return {
@@ -360,13 +306,22 @@ export class UsersService {
         avatarUrl: user.avatarUrl,
         status: user.status,
         createdAt: user.createdAt,
-        lastLoginAt: user.lastLoginAt,
       },
-      metrics,
-      addresses: user.addresses || [],
+      metrics: {
+        totalSpent,
+        totalOrders,
+      },
+      addresses: addresses.map((a: any) => ({
+        id: a.id,
+        recipientName: a.recipientName,
+        phone: a.phone,
+        addressLine1: a.addressLine1,
+        ward: a.ward || '',
+        district: a.district || '',
+        city: a.city,
+        isDefault: a.isDefault,
+      })),
       recentOrders,
-      warranties: mappedWarranties,
-      tickets,
     };
   }
 
