@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "directories": {
-    "test": "test"
-  },
   "scripts": {
     "build": "nest build",
     "start": "nest start",
@@ -18,8 +15,7 @@
     "prisma:seed": "prisma db seed",
     "seed:catalog": "tsx prisma/seed.ts",
     "seed:phones": "tsx prisma/seed.ts",
-    "stock:backfill": "tsx prisma/scripts/backfill-stock-movements.ts",
-    "test": "jest"
+    "stock:backfill": "tsx prisma/scripts/backfill-stock-movements.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -60,15 +56,12 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",
     "@types/bcrypt": "^6.0.0",
-    "@types/jest": "^30.0.0",
     "@types/multer": "^2.3.0",
     "@types/node": "^26.2.0",
     "@types/nodemailer": "^8.0.1",
     "@types/passport-jwt": "^4.0.1",
     "@types/pg": "^8.23.1",
     "@types/sharp": "^0.31.1",
-    "jest": "^30.5.2",
-    "ts-jest": "^29.4.14",
     "ts-node": "^10.9.2",
     "tsx": "^4.23.12",
     "typescript": "^6.0.3"

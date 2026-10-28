@@ -26,7 +26,7 @@
   - [7.5. Khởi Động Ứng Dụng](#75-khởi-động-ứng-dụng)
   - [7.6. Tài Khoản Đăng Nhập Mặc Định](#76-tài-khoản-đăng-nhập-mặc-định)
 - [8. Danh Sách API Chính (API Endpoints Reference)](#8-danh-sách-api-chính-api-endpoints-reference)
-- [9. Kiểm Thử & Đảm Bảo Chất Lượng (Testing & QA)](#9-kiểm-thử--đảm-bảo-chất-lượng-testing--qa)
+- [9. Kiểm Tra Bản Đóng Gói Production (Build Verification)](#9-kiểm-tra-bản-đóng-gói-production-build-verification)
 - [10. Tiêu Chuẩn Bảo Mật & Best Practices](#10-tiêu-chuẩn-bảo-mật--best-practices)
 
 ---
@@ -234,8 +234,7 @@ Khi Quản trị viên tải ảnh sản phẩm hoặc người dùng cập nh�
 | | Lucide React | 1.x | Bộ icon SVG hiện đại, tối giản và sắc nét |
 | **State & API** | Zustand | 5.x | Quản lý state toàn cục nhẹ và hiệu quả (Auth, Cart) |
 | | Axios | 1.x | HTTP Client với Interceptor tự động gắn Bearer Token |
-| **DevOps & Testing**| Docker & Compose | 3.8+ | Đóng gói môi trường Backend nhất quán |
-| | Jest & Ts-Jest | 30.x | Khung kiểm thử tự động Unit Tests cho nghiệp vụ cốt lõi |
+| **DevOps** | Docker & Compose | 3.8+ | Đóng gói môi trường Backend nhất quán |
 
 ---
 
@@ -286,9 +285,6 @@ PhoneShop/
 │   │       ├── storage/            # StorageService nén Sharp WebP & upload R2
 │   │       ├── security/           # Helmet, CORS cấu hình an toàn
 │   │       └── rate-limiting/      # Throttler bảo vệ API
-│   │
-│   └── test/                       # Kiểm thử tự động (Automated Tests)
-│       └── unit/                   # Unit test suites (IMEI, Orders, Storage, Payments)
 │
 └── frontend/                       # Ứng dụng Frontend React SPA
     ├── package.json                # Dependencies & script quản lý frontend
@@ -485,37 +481,8 @@ Toàn bộ API tuân thủ chuẩn RESTful với tiền tố `/api`:
 
 ---
 
-## 9. Kiểm Thử & Đảm Bảo Chất Lượng (Testing & QA)
+## 9. Kiểm Tra Bản Đóng Gói Production (Build Verification)
 
-Dự án áp dụng quy trình kiểm thử tự động nghiêm ngặt nhằm đảm bảo tính ổn định và tính toàn vẹn của dữ liệu trong các kịch bản cạnh tranh tài nguyên cao (High Concurrency):
-
-### 9.1. Chạy Bộ Unit Test (Jest)
-Bộ kiểm thử đơn vị bao gồm 4 test suites chuyên sâu:
-* `imei.spec.ts`: Xác thực thuật toán Luhn, định dạng 15 chữ số và chuyển đổi trạng thái IMEI.
-* `orders-concurrency.spec.ts`: Kiểm tra cơ chế Pessimistic Locking chống tranh chấp kho và hoàn trả IMEI khi hủy đơn.
-* `storage.spec.ts`: Kiểm tra tính năng nén ảnh WebP bằng Sharp và cơ chế chặn các tệp tin nguy hại / không hợp lệ (như SVG chứa mã độc).
-* `payments.spec.ts`: Kiểm tra tính toàn vẹn của checksum chữ ký HMAC-SHA512 VNPay và xử lý Webhook IPN an toàn.
-
-Thực thi lệnh kiểm thử:
-```bash
-npm --prefix backend test
-```
-**Kết quả kiểm thử đạt chuẩn:**
-```text
-PASS test/unit/imei.spec.ts
-PASS test/unit/orders-concurrency.spec.ts
-PASS test/unit/storage.spec.ts
-PASS test/unit/payments.spec.ts
-
-Test Suites: 4 passed, 4 total
-Tests:       38 passed, 38 total
-Snapshots:   0 total
-Time:        5.4 s
-```
-
----
-
-### 9.2. Kiểm Tra Bản Đóng Gói Production (Build Verification)
 Kiểm tra tính tương thích và bảo đảm không có lỗi cú pháp hoặc Type mismatch trong TypeScript:
 ```bash
 # Kiểm tra build Backend
