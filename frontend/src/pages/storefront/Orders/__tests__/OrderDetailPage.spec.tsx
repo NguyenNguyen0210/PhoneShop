@@ -4,7 +4,15 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { OrderDetailPage } from '../OrderDetailPage';
 import { orderService } from '../../../../services/orderService';
+import { paymentService } from '../../../../services/paymentService';
 import type { Order } from '../../../../types';
+
+vi.mock('../../../../services/paymentService', () => ({
+  paymentService: {
+    createVnpayUrl: vi.fn(),
+    reportTransfer: vi.fn(),
+  },
+}));
 
 vi.mock('../../../../services/orderService', () => ({
   orderService: {
@@ -360,5 +368,72 @@ describe('OrderDetailPage - Grouped Order Items Surface', () => {
 
     // Subtitle for variant 2 has quantity x1
     expect(screen.getByText('Hồng • 128GB • Số lượng: x1')).toBeTruthy();
+  });
+
+  it('renders payment actions for pending VNPay order and allows reporting transfer', async () => {
+    const pendingOrder: Order = {
+      id: 'ord-vnpay-pending',
+      orderNumber: 'ORD-VNP-999',
+      customerName: 'Hoang E',
+      shippingPhone: '0908888888',
+      shippingAddress: '456 Nguyen Hue',
+      status: 'PENDING',
+      paymentMethod: 'VNPAY',
+      paymentStatus: 'PENDING',
+      subtotal: 15000000,
+      shippingFee: 0,
+      discount: 0,
+      totalAmount: 15000000,
+      createdAt: '2026-10-10T10:00:00Z',
+      items: [],
+      customerReportedTransfer: false,
+    };
+
+    vi.mocked(orderService.getOrderById).mockResolvedValue(pendingOrder);
+    vi.mocked(paymentService.reportTransfer).mockResolvedValue({ id: 'txn-rpt-1' });
+
+    renderComponent('ord-vnpay-pending');
+
+    await waitFor(() => {
+      expect(screen.getByText('Thanh toán ngay qua VNPay')).toBeTruthy();
+      expect(screen.getByText('Tôi đã thanh toán qua VNPay')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText('Tôi đã thanh toán qua VNPay'));
+
+    await waitFor(() => {
+      expect(paymentService.reportTransfer).toHaveBeenCalledWith('ord-vnpay-pending');
+      expect(screen.getByText('Đã báo thanh toán VNPay (đang chờ đối soát)')).toBeTruthy();
+    });
+  });
+
+  it('renders reported transfer banner when customerReportedTransfer is already true', async () => {
+    const reportedOrder: Order = {
+      id: 'ord-vnpay-reported',
+      orderNumber: 'ORD-VNP-888',
+      customerName: 'Le F',
+      shippingPhone: '0909999999',
+      shippingAddress: '789 Le Duan',
+      status: 'PENDING',
+      paymentMethod: 'VNPAY',
+      paymentStatus: 'PENDING',
+      subtotal: 20000000,
+      shippingFee: 0,
+      discount: 0,
+      totalAmount: 20000000,
+      createdAt: '2026-10-10T10:00:00Z',
+      items: [],
+      customerReportedTransfer: true,
+    };
+
+    vi.mocked(orderService.getOrderById).mockResolvedValue(reportedOrder);
+
+    renderComponent('ord-vnpay-reported');
+
+    await waitFor(() => {
+      expect(screen.getByText('Đã báo thanh toán VNPay (đang chờ đối soát)')).toBeTruthy();
+    });
+
+    expect(screen.queryByText('Thanh toán ngay qua VNPay')).toBeNull();
   });
 });

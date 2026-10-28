@@ -17,16 +17,19 @@ import {
   RotateCcw,
   Ban,
   Check,
+  CheckCircle,
+  ExternalLink,
   Star,
   Edit3,
   Headphones,
 } from 'lucide-react';
 import { orderService } from '../../../services/orderService';
+import { paymentService } from '../../../services/paymentService';
 import { reviewService } from '../../../services/reviewService';
 import { ReviewModal } from '../../../components/storefront/reviews';
 import type { Order, Review } from '../../../types';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
-import { notifyError } from '../../../utils/notify';
+import { notifyError, notifySuccess, notifyInfo } from '../../../utils/notify';
 import { OrderTrackingTimeline } from './components/OrderTrackingTimeline';
 import { OrderInvoiceModal } from './components/OrderInvoiceModal';
 import { OrderCancelModal } from './components/OrderCancelModal';
@@ -63,6 +66,80 @@ export const OrderDetailPage: React.FC = () => {
     initialData?: Review | null;
   } | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+
+  // Payment action states
+  const [reportingPayment, setReportingPayment] = useState(false);
+  const [refreshingOrder, setRefreshingOrder] = useState(false);
+  const [vnpayLoading, setVnpayLoading] = useState(false);
+
+  const handleReportPayment = async () => {
+    if (!order?.id) return;
+    setReportingPayment(true);
+    try {
+      await paymentService.reportTransfer(order.id);
+      setOrder((prev) => (prev ? { ...prev, customerReportedTransfer: true } : prev));
+      notifySuccess(
+        order.paymentMethod === 'VNPAY'
+          ? 'Đã ghi nhận thông báo thanh toán VNPay! Shop sẽ kiểm tra đối soát.'
+          : 'Đã ghi nhận thông báo chuyển khoản! Shop sẽ kiểm tra đối soát.',
+      );
+    } catch (err: any) {
+      notifyError(err, 'Không thể ghi nhận lúc này. Vui lòng thử lại sau.');
+    } finally {
+      setReportingPayment(false);
+    }
+  };
+
+  const handlePayWithVNPay = async () => {
+    if (!order?.id) return;
+    setVnpayLoading(true);
+    try {
+      const res = await paymentService.createVnpayUrl({ orderId: order.id });
+      if (res.paymentUrl) {
+        window.location.href = res.paymentUrl;
+      } else {
+        notifyError('Không nhận được đường dẫn thanh toán từ VNPay.');
+      }
+    } catch (err: any) {
+      const rawMsg = err?.response?.data?.message || err?.message || '';
+      if (/already.*paid/i.test(rawMsg) || /already been paid/i.test(rawMsg)) {
+        setOrder((prev) =>
+          prev
+            ? {
+                ...prev,
+                paymentStatus: 'PAID',
+                status: prev.status === 'PENDING' ? 'CONFIRMED' : prev.status,
+              }
+            : prev,
+        );
+        notifySuccess('Đơn hàng của bạn đã được thanh toán thành công trước đó!');
+        return;
+      }
+      notifyError(err, 'Không thể kết nối cổng thanh toán VNPay lúc này.');
+    } finally {
+      setVnpayLoading(false);
+    }
+  };
+
+  const handleRefreshOrder = async () => {
+    if (!id) return;
+    setRefreshingOrder(true);
+    try {
+      const fresh = await orderService.getOrderById(id);
+      if (fresh) {
+        setOrder(fresh);
+        if (fresh.paymentStatus === 'PAID') {
+          notifySuccess('Đơn hàng đã được xác nhận thanh toán thành công!');
+        } else {
+          notifyInfo('Đơn hàng hiện vẫn đang chờ thanh toán.');
+        }
+      }
+    } catch (err) {
+      notifyError(err, 'Không thể kiểm tra trạng thái đơn hàng.');
+    } finally {
+      setRefreshingOrder(false);
+    }
+  };
 
   useEffect(() => {
     if (order && (order.status === 'DELIVERED' || order.status === 'COMPLETED')) {
@@ -484,6 +561,72 @@ export const OrderDetailPage: React.FC = () => {
                   {order.paymentStatus}
                 </span>
               </div>
+
+              {/* Actions for pending payment */}
+              {order.paymentStatus !== 'PAID' && order.status === 'PENDING' && (
+                <div className="pt-3 border-t border-slate-100 space-y-2.5">
+                  {order.customerReportedTransfer ? (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>
+                          {order.paymentMethod === 'VNPAY'
+                            ? 'Đã báo thanh toán VNPay (đang chờ đối soát)'
+                            : 'Đã báo chuyển khoản (đang chờ đối soát)'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRefreshOrder}
+                        disabled={refreshingOrder}
+                        className="p-1 hover:bg-emerald-100 text-emerald-700 rounded-lg transition cursor-pointer"
+                        title="Kiểm tra lại trạng thái thanh toán"
+                      >
+                        <RotateCcw className={`w-3.5 h-3.5 ${refreshingOrder ? 'animate-spin' : ''}`} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {order.paymentMethod === 'VNPAY' && (
+                        <button
+                          type="button"
+                          onClick={handlePayWithVNPay}
+                          disabled={vnpayLoading}
+                          className="w-full py-2.5 px-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>{vnpayLoading ? 'Đang mở VNPay...' : 'Thanh toán ngay qua VNPay'}</span>
+                        </button>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleReportPayment}
+                          disabled={reportingPayment}
+                          className="flex-1 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>
+                            {order.paymentMethod === 'VNPAY'
+                              ? 'Tôi đã thanh toán qua VNPay'
+                              : 'Tôi đã chuyển khoản'}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRefreshOrder}
+                          disabled={refreshingOrder}
+                          title="Kiểm tra lại trạng thái thanh toán"
+                          className="py-2 px-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center cursor-pointer"
+                        >
+                          <RotateCcw className={`w-3.5 h-3.5 ${refreshingOrder ? 'animate-spin' : ''}`} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="pt-2">
                 <Link
                   to="/warranty-lookup"

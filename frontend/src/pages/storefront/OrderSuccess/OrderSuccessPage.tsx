@@ -10,10 +10,11 @@ import {
   ArrowRight,
   ExternalLink,
   Check,
+  RotateCcw,
 } from 'lucide-react';
 import { paymentService, type VietQrData } from '../../../services/paymentService';
 import { orderService } from '../../../services/orderService';
-import { notifyError } from '../../../utils/notify';
+import { notifyError, notifySuccess, notifyInfo } from '../../../utils/notify';
 import type { Order } from '../../../types';
 
 export const OrderSuccessPage: React.FC = () => {
@@ -134,6 +135,38 @@ export const OrderSuccessPage: React.FC = () => {
     }
   };
 
+  const [refreshingStatus, setRefreshingStatus] = useState(false);
+
+  const handleRefreshStatus = async () => {
+    const oid = order?.id || id;
+    if (!oid) return;
+    setRefreshingStatus(true);
+    try {
+      const fresh = await orderService.getOrderById(oid);
+      if (fresh) {
+        setOrder(fresh);
+        const nowPaid =
+          fresh.paymentStatus === 'PAID' ||
+          (Boolean(fresh.status) &&
+            ['CONFIRMED', 'PROCESSING', 'PACKED', 'SHIPPING', 'DELIVERING', 'DELIVERED', 'COMPLETED'].includes(
+              fresh.status,
+            ));
+        if (nowPaid) {
+          notifySuccess('Đơn hàng đã được xác nhận thanh toán thành công!');
+        } else if (fresh.customerReportedTransfer) {
+          setTransferConfirmed(true);
+          notifyInfo('Hệ thống đã nhận thông báo thanh toán và đang đối soát.');
+        } else {
+          notifyInfo('Đơn hàng hiện đang chờ thanh toán.');
+        }
+      }
+    } catch (err: any) {
+      notifyError(err, 'Không thể kiểm tra trạng thái lúc này.');
+    } finally {
+      setRefreshingStatus(false);
+    }
+  };
+
   const handleVNPayRedirect = async () => {
     if (!order) return;
     setVnpayError(null);
@@ -150,6 +183,22 @@ export const OrderSuccessPage: React.FC = () => {
         notifyError(msg);
       }
     } catch (err: any) {
+      const rawMsg = err?.response?.data?.message || err?.message || '';
+      if (/already.*paid/i.test(rawMsg) || /already been paid/i.test(rawMsg)) {
+        // Self-heal: the order was actually settled in the backend!
+        setOrder((prev) =>
+          prev
+            ? {
+                ...prev,
+                paymentStatus: 'PAID',
+                status: prev.status === 'PENDING' ? 'CONFIRMED' : prev.status,
+              }
+            : prev,
+        );
+        notifySuccess('Đơn hàng của bạn đã được thanh toán thành công trước đó!');
+        return;
+      }
+
       const msg =
         err?.response?.data?.message ||
         err?.message ||
@@ -173,6 +222,12 @@ export const OrderSuccessPage: React.FC = () => {
   const total = order?.totalAmount || 0;
   const rawMethod = (order as any)?.paymentMethod;
   const method = rawMethod === 'BANK_TRANSFER' ? 'VIETQR' : rawMethod || 'VIETQR';
+  const isPaid =
+    order?.paymentStatus === 'PAID' ||
+    (Boolean(order?.status) &&
+      ['CONFIRMED', 'PROCESSING', 'PACKED', 'SHIPPING', 'DELIVERING', 'DELIVERED', 'COMPLETED'].includes(
+        order!.status,
+      ));
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -210,7 +265,44 @@ export const OrderSuccessPage: React.FC = () => {
       </div>
 
       {/* Payment Specific Section */}
-      {method === 'VIETQR' && (
+      {isPaid ? (
+        <div className="bg-white rounded-3xl border border-emerald-200 p-8 shadow-md shadow-emerald-500/5 text-center space-y-4">
+          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-md shadow-emerald-500/10">
+            <CheckCircle className="w-9 h-9" />
+          </div>
+          <div className="space-y-1">
+            <span className="text-xs uppercase font-extrabold tracking-widest text-emerald-600">
+              Giao dịch hoàn tất
+            </span>
+            <h3 className="text-xl font-bold text-slate-900">
+              Đơn hàng đã được xác nhận thanh toán!
+            </h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              Phone Shop đã ghi nhận thanh toán thành công cho đơn hàng{' '}
+              <span className="font-mono font-bold text-slate-800">{orderNum}</span> qua{' '}
+              {method === 'VNPAY' ? 'cổng thanh toán VNPay' : method === 'VIETQR' ? 'chuyển khoản VietQR' : method}.
+              Nhân viên sẽ sớm xử lý và giao hàng tới bạn.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              to={`/orders/${order?.id || id}`}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+            >
+              <span>Xem chi tiết đơn hàng</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+            >
+              <span>Tiếp tục mua sắm</span>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
+          {method === 'VIETQR' && (
         <div className="bg-white rounded-3xl border border-blue-200 p-6 sm:p-8 shadow-md shadow-blue-500/5 space-y-6">
           <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
             <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl">
@@ -363,29 +455,73 @@ export const OrderSuccessPage: React.FC = () => {
       )}
 
       {method === 'VNPAY' && (
-        <div className="bg-white rounded-3xl border border-indigo-200 p-8 shadow-md shadow-indigo-500/5 text-center space-y-4">
+        <div className="bg-white rounded-3xl border border-indigo-200 p-8 shadow-md shadow-indigo-500/5 text-center space-y-5">
           <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
             <CreditCard className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-bold text-slate-900">
-            Thanh toán online qua VNPay
-          </h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Nhấn nút bên dưới để qua trang VNPay và hoàn tất thanh toán nhé.
-          </p>
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold text-slate-900">
+              Thanh toán online qua VNPay
+            </h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              Nếu bạn chưa hoàn tất thanh toán trên cổng VNPay, hãy nhấn nút bên dưới để thanh toán nhé.
+            </p>
+          </div>
+
           {vnpayError && (
-            <p className="text-xs text-slate-600 max-w-md mx-auto">
+            <p className="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-xl p-2.5 max-w-md mx-auto font-medium">
               {vnpayError}
             </p>
           )}
-          <button
-            onClick={handleVNPayRedirect}
-            disabled={vnpayLoading}
-            className="inline-flex items-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-md transition"
-          >
-            <span>{vnpayLoading ? 'Đang kết nối VNPay...' : 'Tiếp tục thanh toán với VNPay'}</span>
-            <ExternalLink className="w-4 h-4" />
-          </button>
+
+          {transferConfirmed ? (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs flex flex-col sm:flex-row items-center justify-between gap-3 font-medium text-left">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span>
+                  Đã nhận được thông báo thanh toán qua VNPay của bạn! Shop đang kiểm tra đối soát và sẽ cập nhật sang ĐÃ THANH TOÁN trong giây lát.
+                </span>
+              </div>
+              <button
+                onClick={handleRefreshStatus}
+                disabled={refreshingStatus}
+                className="px-3.5 py-2 bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-xs"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${refreshingStatus ? 'animate-spin' : ''}`} />
+                <span>Kiểm tra trạng thái</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3 max-w-md mx-auto">
+              <button
+                onClick={handleVNPayRedirect}
+                disabled={vnpayLoading}
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/10 transition cursor-pointer"
+              >
+                <span>{vnpayLoading ? 'Đang kết nối VNPay...' : 'Tiếp tục thanh toán với VNPay'}</span>
+                <ExternalLink className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={handleReportTransfer}
+                  className="flex-1 py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <span>Tôi đã thanh toán qua VNPay</span>
+                </button>
+                <button
+                  onClick={handleRefreshStatus}
+                  disabled={refreshingStatus}
+                  title="Kiểm tra lại trạng thái đơn hàng từ hệ thống"
+                  className="py-2.5 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 text-slate-500 ${refreshingStatus ? 'animate-spin' : ''}`} />
+                  <span>Kiểm tra trạng thái</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -405,6 +541,8 @@ export const OrderSuccessPage: React.FC = () => {
             </p>
           </div>
         </div>
+      )}
+        </>
       )}
 
       {/* Customer Info & Next steps */}

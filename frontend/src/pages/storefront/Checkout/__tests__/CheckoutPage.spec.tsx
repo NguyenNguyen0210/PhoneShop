@@ -127,4 +127,32 @@ describe('CheckoutPage Integration', () => {
     // But page renders without crashing
     expect(html).toBeDefined();
   });
+
+  it('renders Flash Sale badge and flash price in Checkout summary', () => {
+    useCartStore.setState({
+      items: [
+        {
+          id: 'cart-item-flash',
+          variantId: 'v-flash',
+          quantity: 1,
+          price: 15000000,
+          unitPrice: 15000000,
+          originalPrice: 20000000,
+          isFlashSale: true,
+          product: { id: 'p-flash', name: 'iPhone Flash Sale', thumbnail: '' } as any,
+          variant: { id: 'v-flash', color: 'Đen', storage: '128GB', price: 20000000 } as any,
+        },
+      ],
+      selectedItemIds: ['cart-item-flash'],
+    });
+
+    const html = renderToString(
+      <MemoryRouter>
+        <CheckoutPage />
+      </MemoryRouter>
+    );
+
+    expect(html).toContain('⚡ Flash Sale');
+    expect(html).toContain('iPhone Flash Sale');
+  });
 });

@@ -68,6 +68,7 @@ interface CartState {
   selectedTotalCount: () => number;
   isAllSelected: () => boolean;
   syncWithBackend: () => Promise<void>;
+  reconcileWithFlashSale: (campaign: any) => void;
 }
 
 export const useCartStore = create<CartState>()(
@@ -407,20 +408,117 @@ export const useCartStore = create<CartState>()(
           localStorage.setItem(PENDING_KEY, JSON.stringify(failed));
           const backendCart = await cartService.getCart();
           if (backendCart && Array.isArray(backendCart.items)) {
-            const mappedItems: CartItem[] = backendCart.items.map((bItem: any) => ({
-              id: bItem.id,
-              variantId: bItem.variantId,
-              quantity: bItem.quantity,
-              unitPrice: Number(bItem.unitPrice || bItem.price || bItem.variant?.price || 0),
-              price: Number(bItem.unitPrice || bItem.price || bItem.variant?.price || 0),
-              product: bItem.variant?.product,
-              variant: bItem.variant,
-              originalPrice: Number(bItem.variant?.price || 0),
-            }));
-            set({ items: mappedItems });
+            const prevItems = get().items;
+            const mappedItems: CartItem[] = backendCart.items.map((bItem: any) => {
+              const existing = prevItems.find((i) => i.variantId === bItem.variantId);
+              const isFlashSale = bItem.isFlashSale ?? existing?.isFlashSale ?? false;
+              const flashQuotaLeft = bItem.flashQuotaLeft ?? existing?.flashQuotaLeft;
+              const originalPrice = Number(
+                bItem.originalPrice || bItem.variant?.price || existing?.originalPrice || 0
+              );
+              const unitPrice = Number(
+                bItem.unitPrice ||
+                  bItem.price ||
+                  (isFlashSale && existing?.unitPrice ? existing.unitPrice : undefined) ||
+                  bItem.variant?.price ||
+                  0
+              );
+              return {
+                id: bItem.id,
+                variantId: bItem.variantId,
+                quantity: bItem.quantity,
+                unitPrice,
+                price: unitPrice,
+                product: bItem.variant?.product || existing?.product,
+                variant: bItem.variant || existing?.variant,
+                originalPrice,
+                isFlashSale,
+                flashQuotaLeft,
+              };
+            });
+
+            const prevSelectedSet = new Set(get().selectedItemIds);
+            const prevSelectedVariantIds = new Set(
+              prevItems
+                .filter((i) => prevSelectedSet.has(i.id) || prevSelectedSet.has(i.variantId))
+                .map((i) => i.variantId)
+            );
+            const preservedSelectedIds = mappedItems
+              .filter(
+                (i) => prevSelectedVariantIds.has(i.variantId) || prevSelectedSet.has(i.id)
+              )
+              .map((i) => i.id);
+
+            set({
+              items: mappedItems,
+              selectedItemIds:
+                preservedSelectedIds.length > 0 || prevSelectedSet.size === 0
+                  ? preservedSelectedIds
+                  : get().selectedItemIds,
+            });
           }
         } catch {
           // Keep local state on network error
+        }
+      },
+
+      reconcileWithFlashSale: (campaign: any) => {
+        const currentItems = get().items;
+        if (!currentItems || currentItems.length === 0) return;
+
+        const isCampaignActive = Boolean(
+          campaign && campaign.isActive !== false && Array.isArray(campaign.items)
+        );
+
+        let changed = false;
+        const newItems = currentItems.map((item) => {
+          const flashItem = isCampaignActive
+            ? campaign.items.find((fi: any) => fi.variantId === item.variantId)
+            : null;
+          const quotaLeft = flashItem
+            ? Math.max(0, Number(flashItem.stockLimit || 0) - Number(flashItem.soldCount || 0))
+            : 0;
+
+          if (flashItem && quotaLeft > 0) {
+            const flashPrice = Number(flashItem.flashPrice);
+            const origPrice = Number(
+              item.originalPrice || item.variant?.price || item.unitPrice || flashPrice
+            );
+            if (
+              item.unitPrice !== flashPrice ||
+              item.isFlashSale !== true ||
+              item.flashQuotaLeft !== quotaLeft ||
+              item.originalPrice !== origPrice
+            ) {
+              changed = true;
+              return {
+                ...item,
+                unitPrice: flashPrice,
+                price: flashPrice,
+                isFlashSale: true,
+                flashQuotaLeft: quotaLeft,
+                originalPrice: origPrice,
+              };
+            }
+          } else if (item.isFlashSale) {
+            const normalPrice = Number(
+              item.originalPrice || item.variant?.price || item.unitPrice || 0
+            );
+            changed = true;
+            return {
+              ...item,
+              unitPrice: normalPrice,
+              price: normalPrice,
+              isFlashSale: false,
+              flashQuotaLeft: undefined,
+              originalPrice: normalPrice,
+            };
+          }
+          return item;
+        });
+
+        if (changed) {
+          set({ items: newItems });
         }
       },
     }),

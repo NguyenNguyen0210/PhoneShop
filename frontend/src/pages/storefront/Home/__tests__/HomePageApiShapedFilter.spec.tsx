@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // Repro: storefront filter does not work with REAL API-shaped data.
 // Prisma Decimal serializes to STRING in JSON, e.g. price: "25000000".
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { HomePage } from '../HomePage';
@@ -112,6 +112,7 @@ const mockBrands = [
 
 describe('HomePage filter with API-shaped data', () => {
   beforeEach(() => {
+    cleanup();
     vi.clearAllMocks();
     useCatalogStore.getState().resetFilters();
     (productService.getProducts as any).mockResolvedValue({

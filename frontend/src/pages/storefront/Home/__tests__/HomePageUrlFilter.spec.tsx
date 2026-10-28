@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { HomePage } from '../HomePage';
@@ -104,6 +104,7 @@ describe('HomePage URL Params & Auto-Scroll Synchronization', () => {
   let scrollIntoViewMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    cleanup();
     vi.clearAllMocks();
     useCatalogStore.getState().resetFilters();
     useCatalogStore.setState({ hasLoaded: false });
@@ -142,6 +143,11 @@ describe('HomePage URL Params & Auto-Scroll Synchronization', () => {
     // Search input should have 'iphone' as its value
     const searchInput = screen.getByPlaceholderText('Lọc theo tên điện thoại...') as HTMLInputElement;
     expect(searchInput.value).toBe('iphone');
+
+    const clearButton = screen.getByRole('button', { name: /Xóa từ khóa tìm kiếm/i });
+    fireEvent.click(clearButton);
+
+    expect(searchInput.value).toBe('');
 
     // scrollIntoView should have been triggered with smooth behavior
     expect(scrollIntoViewMock).toHaveBeenCalledWith({

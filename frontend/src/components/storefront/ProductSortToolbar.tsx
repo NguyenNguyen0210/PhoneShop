@@ -46,6 +46,7 @@ export const ProductSortToolbar: React.FC<ProductSortToolbarProps> = ({
         {searchKeyword && (
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => onSearchChange('')}
             aria-label="Xóa từ khóa tìm kiếm"
             className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors cursor-pointer"

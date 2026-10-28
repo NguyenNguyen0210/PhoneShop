@@ -28,12 +28,63 @@ export class CartService {
     return cart;
   }
 
+  private async resolveActiveFlashSale(variantId: string) {
+    if (!this.prisma.flashSaleItem?.findFirst) return null;
+    const now = new Date();
+    const flashItem = await this.prisma.flashSaleItem.findFirst({
+      where: {
+        variantId,
+        campaign: {
+          isActive: true,
+          startAt: { lte: now },
+          endAt: { gte: now },
+        },
+      },
+      orderBy: { id: 'asc' },
+    });
+    if (!flashItem) return null;
+    const quotaLeft = Math.max(0, flashItem.stockLimit - (flashItem.soldCount || 0));
+    if (quotaLeft <= 0) return null;
+    return {
+      flashPrice: Number(flashItem.flashPrice),
+      stockLimit: flashItem.stockLimit,
+      soldCount: flashItem.soldCount || 0,
+      quotaLeft,
+    };
+  }
+
   async getCart(userId: string) {
     const cart = await this.getOrCreateCart(userId);
-    const subtotal = cart.items.reduce(
-      (acc, item) => acc + Number(item.unitPrice) * item.quantity, 0,
+    let subtotal = 0;
+    const enrichedItems = await Promise.all(
+      cart.items.map(async (item) => {
+        const flash = await this.resolveActiveFlashSale(item.variantId);
+        const effectiveUnitPrice = flash
+          ? flash.flashPrice
+          : Number(item.variant?.price ?? item.unitPrice);
+        const originalPrice = Number(item.variant?.price ?? item.unitPrice);
+        const isFlashSale = Boolean(flash);
+        const flashQuotaLeft = flash ? flash.quotaLeft : undefined;
+
+        if (item.id && effectiveUnitPrice !== Number(item.unitPrice)) {
+          await this.prisma.cartItem.update({
+            where: { id: item.id },
+            data: { unitPrice: effectiveUnitPrice },
+          }).catch(() => {});
+        }
+
+        subtotal += effectiveUnitPrice * item.quantity;
+        return {
+          ...item,
+          unitPrice: effectiveUnitPrice,
+          originalPrice,
+          isFlashSale,
+          flashPrice: flash ? flash.flashPrice : null,
+          flashQuotaLeft,
+        };
+      }),
     );
-    return { ...cart, subtotal };
+    return { ...cart, items: enrichedItems, subtotal };
   }
 
   async addItem(userId: string, dto: AddCartItemDto) {
@@ -60,6 +111,9 @@ export class CartService {
       throw new BadRequestException('Thương hiệu của sản phẩm này hiện đã tạm ngừng hoạt động');
     }
 
+    const flash = await this.resolveActiveFlashSale(dto.variantId);
+    const unitPrice = flash ? flash.flashPrice : variant.price;
+
     const existing = await this.prisma.cartItem.findUnique({
       where: { cartId_variantId: { cartId: cart.id, variantId: dto.variantId } },
     });
@@ -71,7 +125,7 @@ export class CartService {
       }
       return this.prisma.cartItem.update({
         where: { id: existing.id },
-        data: { quantity: newQty, unitPrice: variant.price },
+        data: { quantity: newQty, unitPrice },
       });
     }
 
@@ -80,7 +134,7 @@ export class CartService {
         cartId: cart.id,
         variantId: dto.variantId,
         quantity: dto.quantity,
-        unitPrice: variant.price,
+        unitPrice,
       },
     });
   }
@@ -118,9 +172,12 @@ export class CartService {
       throw new BadRequestException('Insufficient stock');
     }
 
+    const flash = await this.resolveActiveFlashSale(item.variantId);
+    const unitPrice = flash ? flash.flashPrice : variant.price;
+
     return this.prisma.cartItem.update({
       where: { id: item.id },
-      data: { quantity: dto.quantity, unitPrice: variant.price },
+      data: { quantity: dto.quantity, unitPrice },
     });
   }
 

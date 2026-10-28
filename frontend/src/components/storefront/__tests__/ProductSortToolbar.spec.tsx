@@ -25,4 +25,22 @@ describe('ProductSortToolbar', () => {
     fireEvent.change(select, { target: { value: 'top-discount' } });
     expect(onSortChange).toHaveBeenCalledWith('top-discount');
   });
+
+  it('renders X clear button when searchKeyword is non-empty and clicking it calls onSearchChange with empty string', () => {
+    const onSearchChange = vi.fn();
+    render(
+      <ProductSortToolbar
+        searchKeyword="iphone"
+        onSearchChange={onSearchChange}
+        sortBy="default"
+        onSortChange={vi.fn()}
+        totalCount={1}
+      />
+    );
+    const clearButton = screen.getByRole('button', { name: /Xóa từ khóa tìm kiếm/i });
+    expect(clearButton).toBeDefined();
+
+    fireEvent.click(clearButton);
+    expect(onSearchChange).toHaveBeenCalledWith('');
+  });
 });

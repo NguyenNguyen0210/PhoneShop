@@ -310,7 +310,26 @@ export const HomePage: React.FC = () => {
 
   const handleSearchChange = (kw: string) => {
     setSearchKeyword(kw);
-    resetPageToFirst();
+    setSearchParams(
+      (prev) => {
+        const hasSearch = prev.has('search');
+        const hasPageToReset = prev.has('page') && prev.get('page') !== '1';
+        if (!hasSearch && !kw && !hasPageToReset) {
+          return prev;
+        }
+        const next = new URLSearchParams(prev);
+        if (kw) {
+          next.set('search', kw);
+        } else {
+          next.delete('search');
+        }
+        if (hasPageToReset) {
+          next.set('page', '1');
+        }
+        return next;
+      },
+      { replace: true }
+    );
   };
 
   const handleSortChange = (sort: ProductSortOption) => {
@@ -338,12 +357,16 @@ export const HomePage: React.FC = () => {
   const resetFilters = () => {
     resetStoreFilters();
     setSelectedBrands([]);
-    setSearchParams((prev) => {
-      if (!prev.has('page')) return prev;
-      const next = new URLSearchParams(prev);
-      next.delete('page');
-      return next;
-    });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('search');
+        next.delete('brand');
+        next.delete('page');
+        return next;
+      },
+      { replace: true }
+    );
   };
 
   const toPriceNumber = (val: unknown): number | null => {

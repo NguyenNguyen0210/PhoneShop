@@ -35,6 +35,9 @@ describe('CartService - Brand Deactivation Validation', () => {
         create: mockFn().mockResolvedValue({ id: 'ci-1', quantity: 1 }),
         update: mockFn().mockResolvedValue({ id: 'ci-1', quantity: 2 }),
       },
+      flashSaleItem: {
+        findFirst: mockFn().mockResolvedValue(null),
+      },
     };
 
     service = new CartService(prisma);
@@ -206,6 +209,73 @@ describe('CartService - Brand Deactivation Validation', () => {
       await expect(
         service.updateQuantity('user-1', 'ci-1', { quantity: 2 }),
       ).rejects.toThrow('Thương hiệu của sản phẩm này hiện đã tạm ngừng hoạt động');
+    });
+  });
+
+  describe('Flash Sale dynamic pricing in Cart', () => {
+    it('sets unitPrice to flashPrice when adding an item in an active flash sale', async () => {
+      prisma.productVariant.findUnique.mockResolvedValue({
+        id: 'var-1',
+        isActive: true,
+        price: 20000000,
+        product: { id: 'prod-1', name: 'Flash Phone', brand: { id: 'b1', isActive: true } },
+      });
+
+      prisma.flashSaleItem.findFirst.mockResolvedValue({
+        id: 'fsi-1',
+        variantId: 'var-1',
+        flashPrice: 15000000,
+        stockLimit: 10,
+        soldCount: 2,
+      });
+
+      await service.addItem('user-1', { variantId: 'var-1', quantity: 1 });
+
+      expect(prisma.cartItem.create).toHaveBeenCalledWith({
+        data: {
+          cartId: 'cart-1',
+          variantId: 'var-1',
+          quantity: 1,
+          unitPrice: 15000000,
+        },
+      });
+    });
+
+    it('returns flashPrice, isFlashSale, flashQuotaLeft and correct subtotal in getCart', async () => {
+      const cartWithItem = {
+        id: 'cart-1',
+        userId: 'user-1',
+        items: [
+          {
+            id: 'ci-1',
+            variantId: 'var-1',
+            quantity: 2,
+            unitPrice: 20000000,
+            variant: {
+              id: 'var-1',
+              price: 20000000,
+              product: { id: 'prod-1', name: 'Phone' },
+            },
+          },
+        ],
+      };
+      prisma.cart.findUnique.mockResolvedValue(cartWithItem);
+
+      prisma.flashSaleItem.findFirst.mockResolvedValue({
+        id: 'fsi-1',
+        variantId: 'var-1',
+        flashPrice: 15000000,
+        stockLimit: 10,
+        soldCount: 3,
+      });
+
+      const res = await service.getCart('user-1');
+      const firstItem = res.items[0] as any;
+      expect(firstItem.unitPrice).toBe(15000000);
+      expect(firstItem.originalPrice).toBe(20000000);
+      expect(firstItem.isFlashSale).toBe(true);
+      expect(firstItem.flashQuotaLeft).toBe(7);
+      expect(res.subtotal).toBe(30000000); // 15,000,000 * 2
     });
   });
 });

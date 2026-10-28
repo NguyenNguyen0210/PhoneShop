@@ -17,6 +17,7 @@ import { useCartStore } from '../../../stores/useCartStore';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { orderService } from '../../../services/orderService';
 import { addressService } from '../../../services/addressService';
+import { flashSaleService } from '../../../services/flashSaleService';
 import { FALLBACK_PRODUCT_IMAGE } from '../../../utils/imageFallback';
 import { AddressSelectModal } from '../../../components/storefront/checkout/AddressSelectModal';
 import {
@@ -135,6 +136,17 @@ export const CheckoutPage: React.FC = () => {
     } catch {
       // Storage unavailable — nothing to clear.
     }
+  }, []);
+
+  useEffect(() => {
+    flashSaleService
+      .getActiveCampaign()
+      .then((campaign) => {
+        if (campaign) {
+          useCartStore.getState().reconcileWithFlashSale(campaign);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Fetch saved addresses if user is logged in

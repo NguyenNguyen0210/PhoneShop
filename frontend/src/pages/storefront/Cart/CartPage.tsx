@@ -64,8 +64,30 @@ export const CartPage: React.FC = () => {
   const shippingFee = subtotal === 0 ? 0 : (isFreeShipping ? 0 : 30000);
 
   useEffect(() => {
-    // Giỏ có thể đổi từ nơi khác (chatbot AI, tab khác) → luôn tải mới khi mở trang.
-    useCartStore.getState().syncWithBackend().catch(() => {});
+    // 1.5. Fetch active flash sale campaign
+    flashSaleService
+      .getActiveCampaign()
+      .then((data) => {
+        if (data) {
+          setActiveFlashSale(data);
+          useCartStore.getState().reconcileWithFlashSale(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load active flash sale campaign in cart:', err);
+      })
+      .finally(() => {
+        // Giỏ có thể đổi từ nơi khác (chatbot AI, tab khác) → luôn tải mới khi mở trang.
+        useCartStore
+          .getState()
+          .syncWithBackend()
+          .then(() => {
+            flashSaleService.getActiveCampaign().then((fs) => {
+              if (fs) useCartStore.getState().reconcileWithFlashSale(fs);
+            }).catch(() => {});
+          })
+          .catch(() => {});
+      });
 
     // 1. Fetch active vouchers from database API
     voucherService
@@ -77,18 +99,6 @@ export const CartPage: React.FC = () => {
       })
       .catch((err) => {
         console.warn('Failed to load active vouchers:', err);
-      });
-
-    // 1.5. Fetch active flash sale campaign
-    flashSaleService
-      .getActiveCampaign()
-      .then((data) => {
-        if (data) {
-          setActiveFlashSale(data);
-        }
-      })
-      .catch((err) => {
-        console.warn('Failed to load active flash sale campaign in cart:', err);
       });
 
     // 2. Fetch suggested phones from database API for cross-selling & empty state
@@ -116,6 +126,12 @@ export const CartPage: React.FC = () => {
 
   const discountAmount = appliedVoucher ? appliedVoucher.discount : 0;
   const finalTotal = Math.max(0, subtotal - discountAmount + shippingFee);
+
+  useEffect(() => {
+    if (activeFlashSale) {
+      useCartStore.getState().reconcileWithFlashSale(activeFlashSale);
+    }
+  }, [activeFlashSale]);
 
   const formatPrice = (val: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);

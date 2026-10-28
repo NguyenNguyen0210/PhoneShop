@@ -39,6 +39,7 @@ vi.mock('../../../../services/paymentService', () => ({
   paymentService: {
     createVietQr: vi.fn(),
     reportTransfer: vi.fn(),
+    createVnpayUrl: vi.fn(),
   },
 }));
 
@@ -135,5 +136,99 @@ describe('OrderSuccessPage - VietQR Transfer Report Persistence', () => {
 
     // Should NOT show the "Tôi đã chuyển khoản thành công" button
     expect(screen.queryByText('Tôi đã chuyển khoản thành công')).toBeNull();
+  });
+
+  it('renders completed transaction message for PAID VNPay order and hides VNPay redirect button', async () => {
+    const paidVnpayOrder: Order = {
+      ...mockOrder,
+      id: 'ord-vnpay-paid',
+      orderNumber: 'ORD-VNPAY-001',
+      paymentMethod: 'VNPAY',
+      paymentStatus: 'PAID',
+      status: 'CONFIRMED',
+    };
+    vi.mocked(orderService.getOrderById).mockResolvedValue(paidVnpayOrder);
+
+    render(
+      <MemoryRouter initialEntries={['/order-success/ord-vnpay-paid']}>
+        <Routes>
+          <Route path="/order-success/:id" element={<OrderSuccessPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Đơn hàng đã được xác nhận thanh toán!')).toBeDefined();
+    });
+
+    // Does not show VNPay redirect or transfer report buttons
+    expect(screen.queryByText('Tiếp tục thanh toán với VNPay')).toBeNull();
+    expect(screen.queryByText('Tôi đã thanh toán qua VNPay')).toBeNull();
+  });
+
+  it('renders VNPay action buttons for PENDING VNPay order and handles reporting', async () => {
+    const pendingVnpayOrder: Order = {
+      ...mockOrder,
+      id: 'ord-vnpay-pending',
+      orderNumber: 'ORD-VNPAY-002',
+      paymentMethod: 'VNPAY',
+      paymentStatus: 'PENDING',
+      status: 'PENDING',
+    };
+    vi.mocked(orderService.getOrderById).mockResolvedValue(pendingVnpayOrder);
+    vi.mocked(paymentService.reportTransfer).mockResolvedValue({ id: 'txn-vnp-1' });
+
+    render(
+      <MemoryRouter initialEntries={['/order-success/ord-vnpay-pending']}>
+        <Routes>
+          <Route path="/order-success/:id" element={<OrderSuccessPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Tiếp tục thanh toán với VNPay')).toBeDefined();
+      expect(screen.getByText('Tôi đã thanh toán qua VNPay')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText('Tôi đã thanh toán qua VNPay'));
+
+    await waitFor(() => {
+      expect(paymentService.reportTransfer).toHaveBeenCalledWith('ord-vnpay-pending');
+      expect(screen.getByText(/Đã nhận được thông báo thanh toán qua VNPay của bạn/)).toBeDefined();
+    });
+  });
+
+  it('recovers cleanly when VNPay redirect returns already paid error', async () => {
+    const pendingVnpayOrder: Order = {
+      ...mockOrder,
+      id: 'ord-vnpay-pending2',
+      orderNumber: 'ORD-VNPAY-003',
+      paymentMethod: 'VNPAY',
+      paymentStatus: 'PENDING',
+      status: 'PENDING',
+    };
+    vi.mocked(orderService.getOrderById).mockResolvedValue(pendingVnpayOrder);
+    vi.mocked(paymentService.createVnpayUrl).mockRejectedValue({
+      response: { data: { message: 'Order has already been paid and confirmed' } },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/order-success/ord-vnpay-pending2']}>
+        <Routes>
+          <Route path="/order-success/:id" element={<OrderSuccessPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Tiếp tục thanh toán với VNPay')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText('Tiếp tục thanh toán với VNPay'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Đơn hàng đã được xác nhận thanh toán!')).toBeDefined();
+    });
   });
 });

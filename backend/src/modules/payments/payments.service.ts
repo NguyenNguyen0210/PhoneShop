@@ -176,6 +176,20 @@ export class PaymentsService {
       throw new BadRequestException('Unauthorized order access');
     }
 
+    if (order.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException('Đơn hàng đã bị hủy, không thể báo thanh toán');
+    }
+
+    // Extend hold duration by 24 hours so the order isn't auto-cancelled while awaiting verification
+    if (order.status === OrderStatus.PENDING && this.prisma.order?.update) {
+      await this.prisma.order.update({
+        where: { id: order.id },
+        data: {
+          holdExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
+      });
+    }
+
     let pending = order.payments.find(
       (p) => p.method === PaymentMethod.BANK_TRANSFER && p.status === PaymentStatus.PENDING,
     );
@@ -183,13 +197,14 @@ export class PaymentsService {
       pending = order.payments.find((p) => p.status === PaymentStatus.PENDING);
     }
     if (!pending) {
+      const isVnpay = (order as any).paymentMethod === PaymentMethod.VNPAY;
       pending = await this.prisma.payment.create({
         data: {
           orderId: order.id,
-          method: PaymentMethod.BANK_TRANSFER,
+          method: isVnpay ? PaymentMethod.VNPAY : PaymentMethod.BANK_TRANSFER,
           status: PaymentStatus.PENDING,
           amount: order.totalAmount,
-          provider: 'VIETQR',
+          provider: isVnpay ? 'VNPAY' : 'VIETQR',
         },
       });
     }

@@ -535,8 +535,8 @@ export const AdminOrdersPage: React.FC = () => {
                 <Tooltip
                   title={
                     record.customerReportedAt
-                      ? `Khách báo đã chuyển khoản lúc ${new Date(record.customerReportedAt).toLocaleString('vi-VN')}`
-                      : 'Khách đã bấm báo chuyển khoản trên web'
+                      ? `Khách báo đã thanh toán lúc ${new Date(record.customerReportedAt).toLocaleString('vi-VN')}`
+                      : 'Khách đã bấm báo thanh toán trên web'
                   }
                 >
                   <Tag
@@ -548,7 +548,7 @@ export const AdminOrdersPage: React.FC = () => {
                       handleOpenReconcile(record);
                     }}
                   >
-                    Khách đã báo CK
+                    {record.paymentMethod === 'VNPAY' ? 'Khách đã báo TT' : 'Khách đã báo CK'}
                   </Tag>
                 </Tooltip>
               ) : isVietQr ? (
@@ -845,13 +845,16 @@ export const AdminOrdersPage: React.FC = () => {
                   </Space>
                   {(selectedOrder.customerReportedTransfer ||
                     selectedOrder.paymentMethod === 'BANK_TRANSFER' ||
-                    selectedOrder.paymentMethod === 'VIETQR') &&
+                    selectedOrder.paymentMethod === 'VIETQR' ||
+                    selectedOrder.paymentMethod === 'VNPAY') &&
                     selectedOrder.paymentStatus === 'PENDING' && (
                       <div style={{ marginTop: 4 }}>
                         {selectedOrder.customerReportedTransfer && (
                           <div style={{ marginBottom: 6 }}>
                             <Tag color="cyan" icon={<CheckCircleOutlined />}>
-                              Khách đã báo chuyển khoản
+                              {selectedOrder.paymentMethod === 'VNPAY'
+                                ? 'Khách đã báo thanh toán VNPay'
+                                : 'Khách đã báo chuyển khoản'}
                               {selectedOrder.customerReportedAt &&
                                 ` (${new Date(selectedOrder.customerReportedAt).toLocaleTimeString('vi-VN')})`}
                             </Tag>
@@ -864,7 +867,9 @@ export const AdminOrdersPage: React.FC = () => {
                           icon={<CheckCircleOutlined />}
                           onClick={() => handleOpenReconcile(selectedOrder)}
                         >
-                          Xác nhận đã nhận tiền CK (VietQR)
+                          {selectedOrder.paymentMethod === 'VNPAY'
+                            ? 'Xác nhận đã nhận tiền (VNPay)'
+                            : 'Xác nhận đã nhận tiền CK (VietQR)'}
                         </Button>
                       </div>
                     )}
