@@ -382,6 +382,100 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
+  async googleLoginWithCredential(credential: string) {
+    if (!credential) {
+      throw new BadRequestException('Thiếu credential token từ Google');
+    }
+
+    let tokenInfo: any;
+    try {
+      const res = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`,
+      );
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Google token validation failed: ${errorText}`);
+      }
+      tokenInfo = await res.json();
+    } catch (err: any) {
+      throw new UnauthorizedException(
+        err.message || 'Xác thực Google ID Token không thành công',
+      );
+    }
+
+    const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+    if (clientId && tokenInfo.aud !== clientId) {
+      throw new UnauthorizedException('Google ID Token không khớp với Client ID của ứng dụng');
+    }
+
+    if (!tokenInfo.email) {
+      throw new BadRequestException('Tài khoản Google không có thông tin email khả dụng');
+    }
+
+    const isEmailVerified =
+      tokenInfo.email_verified === true || tokenInfo.email_verified === 'true';
+    if (!isEmailVerified) {
+      throw new BadRequestException('Email Google chưa được xác thực');
+    }
+
+    let user = await this.prisma.user.findUnique({
+      where: { email: tokenInfo.email },
+      include: {
+        roles: { include: { role: true } },
+      },
+    });
+
+    if (user) {
+      if (user.status !== 'ACTIVE') {
+        throw new UnauthorizedException('Tài khoản của bạn đã bị vô hiệu hóa');
+      }
+
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          lastLoginAt: new Date(),
+          avatarUrl: tokenInfo.picture || user.avatarUrl || null,
+          emailVerified: true,
+        },
+        include: {
+          roles: { include: { role: true } },
+        },
+      });
+    } else {
+      let userRole = await this.prisma.role.findUnique({
+        where: { name: 'USER' },
+      });
+
+      if (!userRole) {
+        userRole = await this.prisma.role.create({
+          data: { name: 'USER', description: 'Standard User Role' },
+        });
+      }
+
+      const randomPassword = crypto.randomBytes(32).toString('hex');
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      user = await this.prisma.user.create({
+        data: {
+          email: tokenInfo.email,
+          passwordHash: hashedPassword,
+          firstName: tokenInfo.given_name || tokenInfo.name || 'Google',
+          lastName: tokenInfo.family_name || 'User',
+          avatarUrl: tokenInfo.picture || null,
+          emailVerified: true,
+          roles: {
+            create: [{ roleId: userRole.id }],
+          },
+        },
+        include: {
+          roles: { include: { role: true } },
+        },
+      });
+    }
+
+    return this.generateTokens(user);
+  }
+
   private requireSecret(key: 'JWT_SECRET' | 'JWT_REFRESH_SECRET'): string {
     // M12: fail closed — the strategies already throw at boot, this guards
     // direct sign() calls from ever minting with a default secret.

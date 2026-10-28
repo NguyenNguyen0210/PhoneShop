@@ -6,6 +6,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
+import { GoogleCredentialDto } from './dto/google-credential.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -71,6 +72,15 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'User successfully authenticated via Google' })
   async googleCallback(@Body() dto: GoogleAuthDto) {
     return this.authService.googleLogin(dto.code, dto.state);
+  }
+
+  @Throttle(CREDENTIAL_THROTTLE)
+  @Post('google/credential')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Authenticate user via Google ID Token credential (popup flow)' })
+  @ApiResponse({ status: 200, description: 'User successfully authenticated via Google ID Token' })
+  async googleCredentialLogin(@Body() dto: GoogleCredentialDto) {
+    return this.authService.googleLoginWithCredential(dto.credential);
   }
 
   @Throttle(CREDENTIAL_THROTTLE)
