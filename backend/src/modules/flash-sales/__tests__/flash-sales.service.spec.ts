@@ -25,6 +25,7 @@ describe('FlashSalesService', () => {
       productVariant: {
         findUnique: jest.fn(),
       },
+      $queryRaw: jest.fn(),
       $transaction: jest.fn(async (cb: any) => cb(prisma)),
     };
 
@@ -610,6 +611,80 @@ describe('FlashSalesService', () => {
             campaignId: { not: 'camp-1' },
           }),
         }),
+      );
+    });
+  });
+
+  describe('C7: advisory lock serializes overlap check + write', () => {
+    it('create: takes pg_advisory_xact_lock and runs the overlap check + create inside one $transaction', async () => {
+      const now = Date.now();
+      const dto = {
+        name: 'Flash Sale Test',
+        startAt: new Date(now).toISOString(),
+        endAt: new Date(now + 3600000).toISOString(),
+        items: [{ variantId: 'var-1', flashPrice: 15000000, stockLimit: 5 }],
+      };
+
+      (prisma.productVariant.findUnique as any).mockResolvedValue({
+        id: 'var-1',
+        sku: 'IP15-BLK',
+        price: 19000000,
+        inventory: { quantity: 10, availableQty: 10 },
+      });
+      (prisma.flashSaleCampaign.create as any).mockResolvedValue({ id: 'camp-1' });
+
+      await service.create(dto as any);
+
+      // check + create must run inside a single transaction
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      // the advisory lock is taken first, then overlap check, then the write
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+      const sql: string = (prisma.$queryRaw as any).mock.calls[0][0][0];
+      expect(sql).toContain('pg_advisory_xact_lock');
+      expect(sql).toContain('flash_sale_overlap');
+      expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+        prisma.flashSaleItem.findFirst.mock.invocationCallOrder[0],
+      );
+      expect(
+        prisma.flashSaleItem.findFirst.mock.invocationCallOrder[0],
+      ).toBeLessThan(prisma.flashSaleCampaign.create.mock.invocationCallOrder[0]);
+    });
+
+    it('update: takes the advisory lock before the overlap check inside the transaction', async () => {
+      const now = Date.now();
+      (prisma.flashSaleCampaign.findUnique as any).mockResolvedValue({
+        id: 'camp-1',
+        name: 'Upcoming Sale',
+        isActive: true,
+        startAt: new Date(now + 100000),
+        endAt: new Date(now + 200000),
+        items: [],
+      });
+      (prisma.productVariant.findUnique as any).mockResolvedValue({
+        id: 'var-1',
+        sku: 'VAR-1',
+        price: 20000000,
+        isActive: true,
+        inventory: { availableQty: 10 },
+      });
+      (prisma.flashSaleCampaign.update as any).mockResolvedValue({ id: 'camp-1' });
+
+      const dto = {
+        name: 'Upcoming Sale',
+        startAt: new Date(now + 120000).toISOString(),
+        endAt: new Date(now + 250000).toISOString(),
+        items: [{ variantId: 'var-1', flashPrice: 15000000, stockLimit: 5 }],
+      };
+
+      await service.update('camp-1', dto as any);
+
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+      const sql: string = (prisma.$queryRaw as any).mock.calls[0][0][0];
+      expect(sql).toContain('pg_advisory_xact_lock');
+      expect(sql).toContain('flash_sale_overlap');
+      expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+        prisma.flashSaleItem.findFirst.mock.invocationCallOrder[0],
       );
     });
   });

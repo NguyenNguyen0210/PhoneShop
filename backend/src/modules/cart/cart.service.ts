@@ -7,7 +7,7 @@ export class CartService {
   constructor(private prisma: PrismaService) {}
 
   private async getOrCreateCart(userId: string) {
-    let cart = await this.prisma.cart.findUnique({
+    const existing = await this.prisma.cart.findUnique({
       where: { userId },
       include: {
         items: {
@@ -15,8 +15,9 @@ export class CartService {
         },
       },
     });
-    if (!cart) {
-      cart = await this.prisma.cart.create({
+    if (existing) return existing;
+    try {
+      return await this.prisma.cart.create({
         data: { userId },
         include: {
           items: {
@@ -24,8 +25,21 @@ export class CartService {
           },
         },
       });
+    } catch (e: any) {
+      // Lost a create race on the unique userId: the concurrent request owns
+      // the cart row — re-fetch it instead of failing the request.
+      if (e?.code !== 'P2002') throw e;
+      const refetched = await this.prisma.cart.findUnique({
+        where: { userId },
+        include: {
+          items: {
+            include: { variant: { include: { product: { include: { brand: true } }, inventory: true } } },
+          },
+        },
+      });
+      if (!refetched) throw e;
+      return refetched;
     }
-    return cart;
   }
 
   private async resolveActiveFlashSale(variantId: string) {
@@ -66,12 +80,8 @@ export class CartService {
         const isFlashSale = Boolean(flash);
         const flashQuotaLeft = flash ? flash.quotaLeft : undefined;
 
-        if (item.id && effectiveUnitPrice !== Number(item.unitPrice)) {
-          await this.prisma.cartItem.update({
-            where: { id: item.id },
-            data: { unitPrice: effectiveUnitPrice },
-          }).catch(() => {});
-        }
+        // Read-only enrichment: getCart must never write to the DB (the stale
+        // unitPrice is corrected by addItem/updateItem/checkout instead).
 
         subtotal += effectiveUnitPrice * item.quantity;
         return {
@@ -85,6 +95,31 @@ export class CartService {
       }),
     );
     return { ...cart, items: enrichedItems, subtotal };
+  }
+
+  /**
+   * Merge an extra quantity into an existing cart item, re-checking stock and
+   * the flash-sale quota against the COMBINED quantity.
+   */
+  private async mergeCartItem(
+    existing: { id: string; quantity: number },
+    dto: AddCartItemDto,
+    inventory: { availableQty: number } | null,
+    variant: { price: any },
+    flash: { flashPrice: number; quotaLeft: number } | null,
+  ) {
+    const newQty = existing.quantity + dto.quantity;
+    if (!inventory || inventory.availableQty < newQty) {
+      throw new BadRequestException('Insufficient stock for requested quantity');
+    }
+    if (flash && newQty > flash.quotaLeft) {
+      throw new BadRequestException(`Flash Sale chỉ còn ${flash.quotaLeft} suất cho phiên bản này`);
+    }
+    const unitPrice = flash ? flash.flashPrice : variant.price;
+    return this.prisma.cartItem.update({
+      where: { id: existing.id },
+      data: { quantity: newQty, unitPrice },
+    });
   }
 
   async addItem(userId: string, dto: AddCartItemDto) {
@@ -112,6 +147,10 @@ export class CartService {
     }
 
     const flash = await this.resolveActiveFlashSale(dto.variantId);
+    // Flash quota is a hard cap independent of inventory.availableQty.
+    if (flash && dto.quantity > flash.quotaLeft) {
+      throw new BadRequestException(`Flash Sale chỉ còn ${flash.quotaLeft} suất cho phiên bản này`);
+    }
     const unitPrice = flash ? flash.flashPrice : variant.price;
 
     const existing = await this.prisma.cartItem.findUnique({
@@ -119,24 +158,29 @@ export class CartService {
     });
 
     if (existing) {
-      const newQty = existing.quantity + dto.quantity;
-      if (inventory.availableQty < newQty) {
-        throw new BadRequestException('Insufficient stock for requested quantity');
-      }
-      return this.prisma.cartItem.update({
-        where: { id: existing.id },
-        data: { quantity: newQty, unitPrice },
-      });
+      return this.mergeCartItem(existing, dto, inventory, variant, flash);
     }
 
-    return this.prisma.cartItem.create({
-      data: {
-        cartId: cart.id,
-        variantId: dto.variantId,
-        quantity: dto.quantity,
-        unitPrice,
-      },
-    });
+    try {
+      return await this.prisma.cartItem.create({
+        data: {
+          cartId: cart.id,
+          variantId: dto.variantId,
+          quantity: dto.quantity,
+          unitPrice,
+        },
+      });
+    } catch (e: any) {
+      // Concurrent add of the same variant hit the unique (cartId, variantId)
+      // constraint — retry the merge path once with a fresh read.
+      if (e?.code !== 'P2002') throw e;
+      const raced = await this.prisma.cartItem.findUnique({
+        where: { cartId_variantId: { cartId: cart.id, variantId: dto.variantId } },
+      });
+      if (!raced) throw e;
+      const flashNow = await this.resolveActiveFlashSale(dto.variantId);
+      return this.mergeCartItem(raced, dto, inventory, variant, flashNow);
+    }
   }
 
   async addToCart(userId: string, dto: AddCartItemDto) {
@@ -173,6 +217,10 @@ export class CartService {
     }
 
     const flash = await this.resolveActiveFlashSale(item.variantId);
+    // Flash quota is a hard cap independent of inventory.availableQty.
+    if (flash && dto.quantity > flash.quotaLeft) {
+      throw new BadRequestException(`Flash Sale chỉ còn ${flash.quotaLeft} suất cho phiên bản này`);
+    }
     const unitPrice = flash ? flash.flashPrice : variant.price;
 
     return this.prisma.cartItem.update({
@@ -199,10 +247,11 @@ export class CartService {
 
   async removeItemsBulk(userId: string, itemIds: string[]) {
     const cart = await this.getOrCreateCart(userId);
+    // FE sends either cart-item ids or variant ids — match both.
     return this.prisma.cartItem.deleteMany({
       where: {
         cartId: cart.id,
-        id: { in: itemIds },
+        OR: [{ id: { in: itemIds } }, { variantId: { in: itemIds } }],
       },
     });
   }
@@ -220,6 +269,9 @@ export class CartService {
     for (const item of cart.items) {
       if (!item.variant.isActive) {
         issues.push(`Variant ${item.variant.name} is no longer available`);
+      }
+      if (item.variant.product?.brand && item.variant.product.brand.isActive === false) {
+        issues.push('Thương hiệu của sản phẩm này hiện đã tạm ngừng hoạt động');
       }
       if (!item.variant.inventory || item.variant.inventory.availableQty < item.quantity) {
         issues.push(`Insufficient stock for ${item.variant.name}`);

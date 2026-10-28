@@ -135,39 +135,48 @@ export class FlashSalesService {
       }
     }
 
-    // Reject overlapping active campaigns on the same variants.
-    const overlapping = await this.prisma.flashSaleItem.findFirst({
-      where: {
-        variantId: { in: variantIds },
-        campaign: {
-          isActive: true,
-          startAt: { lte: endAt },
-          endAt: { gte: startAt },
-        },
-      },
-      select: { id: true },
-    });
-    if (overlapping) {
-      throw new BadRequestException('Một số biến thể đã thuộc chiến dịch Flash Sale khác trong cùng thời gian');
-    }
+    // Serialize the overlap check + create inside one transaction guarded by a
+    // transaction-scoped advisory lock, so two concurrent campaigns for the
+    // same variants cannot both pass the check and commit.
+    return this.prisma.$transaction(async (tx) => {
+      if (typeof tx?.$queryRaw === 'function') {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('flash_sale_overlap'))`;
+      }
 
-    return this.prisma.flashSaleCampaign.create({
-      data: {
-        name: dto.name,
-        description: dto.description,
-        startAt,
-        endAt,
-        items: {
-          create: dto.items.map((i) => ({
-            variantId: i.variantId,
-            flashPrice: i.flashPrice,
-            stockLimit: i.stockLimit,
-          })),
+      // Reject overlapping active campaigns on the same variants.
+      const overlapping = await tx.flashSaleItem.findFirst({
+        where: {
+          variantId: { in: variantIds },
+          campaign: {
+            isActive: true,
+            startAt: { lte: endAt },
+            endAt: { gte: startAt },
+          },
         },
-      },
-      include: {
-        items: true,
-      },
+        select: { id: true },
+      });
+      if (overlapping) {
+        throw new BadRequestException('Một số biến thể đã thuộc chiến dịch Flash Sale khác trong cùng thời gian');
+      }
+
+      return tx.flashSaleCampaign.create({
+        data: {
+          name: dto.name,
+          description: dto.description,
+          startAt,
+          endAt,
+          items: {
+            create: dto.items.map((i) => ({
+              variantId: i.variantId,
+              flashPrice: i.flashPrice,
+              stockLimit: i.stockLimit,
+            })),
+          },
+        },
+        include: {
+          items: true,
+        },
+      });
     });
   }
 
@@ -253,26 +262,32 @@ export class FlashSalesService {
       }
     }
 
-    // Check overlapping active campaigns excluding current campaign
-    if (variantIds.length > 0) {
-      const overlapping = await this.prisma.flashSaleItem.findFirst({
-        where: {
-          campaignId: { not: id },
-          variantId: { in: variantIds },
-          campaign: {
-            isActive: true,
-            startAt: { lte: endAt },
-            endAt: { gte: startAt },
-          },
-        },
-        select: { id: true },
-      });
-      if (overlapping) {
-        throw new BadRequestException('Một số biến thể đã thuộc chiến dịch Flash Sale khác trong cùng thời gian');
-      }
-    }
-
     return this.prisma.$transaction(async (tx) => {
+      if (typeof tx?.$queryRaw === 'function') {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('flash_sale_overlap'))`;
+      }
+
+      // Check overlapping active campaigns excluding current campaign — inside
+      // the lock, so a concurrent create/update for the same variant cannot
+      // slip past the check between it and the writes below.
+      if (variantIds.length > 0) {
+        const overlapping = await tx.flashSaleItem.findFirst({
+          where: {
+            campaignId: { not: id },
+            variantId: { in: variantIds },
+            campaign: {
+              isActive: true,
+              startAt: { lte: endAt },
+              endAt: { gte: startAt },
+            },
+          },
+          select: { id: true },
+        });
+        if (overlapping) {
+          throw new BadRequestException('Một số biến thể đã thuộc chiến dịch Flash Sale khác trong cùng thời gian');
+        }
+      }
+
       const deleteIds = campaign.items
         .filter((it) => !dto.items.some((d) => d.variantId === it.variantId))
         .map((it) => it.id);

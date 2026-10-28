@@ -37,7 +37,10 @@ describe('CartService - removeItemsBulk', () => {
     expect(prisma.cartItem.deleteMany).toHaveBeenCalledWith({
       where: {
         cartId: 'cart-uuid-1',
-        id: { in: itemIds },
+        OR: [
+          { id: { in: itemIds } },
+          { variantId: { in: itemIds } },
+        ],
       },
     });
     expect(result).toEqual({ count: 2 });
@@ -54,7 +57,10 @@ describe('CartService - removeItemsBulk', () => {
     expect(prisma.cartItem.deleteMany).toHaveBeenCalledWith({
       where: {
         cartId: 'cart-uuid-1',
-        id: { in: mixedItemIds },
+        OR: [
+          { id: { in: mixedItemIds } },
+          { variantId: { in: mixedItemIds } },
+        ],
       },
     });
     expect(result).toEqual({ count: 1 });
