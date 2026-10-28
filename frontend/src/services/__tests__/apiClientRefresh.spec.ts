@@ -55,4 +55,41 @@ describe('ensureFreshAccessToken', () => {
 
     expect(mockedPost()).not.toHaveBeenCalled();
   });
+
+  it('joins the in-flight refresh so concurrent proactive calls hit the endpoint once (E9)', async () => {
+    localStorage.setItem('phoneshop_access_token', makeJwt(Math.floor(Date.now() / 1000) - 10));
+    localStorage.setItem('phoneshop_refresh_token', 'refresh-123');
+
+    let resolvePost!: (value: unknown) => void;
+    mockedPost().mockImplementationOnce(
+      () => new Promise((resolve) => { resolvePost = resolve; })
+    );
+
+    const p1 = ensureFreshAccessToken();
+    const p2 = ensureFreshAccessToken();
+    resolvePost({ data: { data: { accessToken: 'a2', refreshToken: 'r2' } } });
+    await Promise.all([p1, p2]);
+
+    expect(mockedPost()).toHaveBeenCalledOnce();
+    expect(localStorage.getItem('phoneshop_access_token')).toBe('a2');
+    expect(localStorage.getItem('phoneshop_refresh_token')).toBe('r2');
+  });
+
+  it('rejects every concurrent caller with a single failed refresh request (E9)', async () => {
+    localStorage.setItem('phoneshop_access_token', makeJwt(Math.floor(Date.now() / 1000) - 10));
+    localStorage.setItem('phoneshop_refresh_token', 'refresh-123');
+
+    let rejectPost!: (reason?: unknown) => void;
+    mockedPost().mockImplementationOnce(
+      () => new Promise((_resolve, reject) => { rejectPost = reject; })
+    );
+
+    const p1 = ensureFreshAccessToken();
+    const p2 = ensureFreshAccessToken();
+    rejectPost(new Error('invalid refresh token'));
+
+    await expect(p1).rejects.toThrow('invalid refresh token');
+    await expect(p2).rejects.toThrow('invalid refresh token');
+    expect(mockedPost()).toHaveBeenCalledOnce();
+  });
 });

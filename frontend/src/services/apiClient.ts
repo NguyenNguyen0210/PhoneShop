@@ -9,7 +9,7 @@ export const apiClient = axios.create({
   },
 });
 
-let isRefreshing = false;
+let refreshPromise: Promise<{ accessToken: string; refreshToken: string }> | null = null;
 let failedQueue: Array<{
   resolve: (token: string) => void;
   reject: (err: unknown) => void;
@@ -72,10 +72,36 @@ const doRefreshTokens = async (
   return { accessToken: newAccessToken, refreshToken: newRefreshToken };
 };
 
+// Kick off (or join) the shared refresh. The queue is flushed with the new
+// token on success and rejected on failure; refreshPromise is
+// always cleared so the next caller starts a fresh attempt.
+const beginTokenRefresh = (refreshToken: string) => {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = doRefreshTokens(refreshToken)
+    .then((tokens) => {
+      processQueue(null, tokens.accessToken);
+      return tokens;
+    })
+    .catch((refreshError) => {
+      processQueue(refreshError, null);
+      throw refreshError;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+  return refreshPromise;
+};
+
 // Proactive refresh for endpoints with OPTIONAL auth (no 401 to trigger the
 // interceptor — e.g. chatbot): an expired access token would silently become
-// a guest request. Call before such requests.
+// a guest request. Call before such requests. Joins the single-flight queue.
 export const ensureFreshAccessToken = async (): Promise<void> => {
+  // A refresh already in flight will land a fresh token in storage — wait for
+  // it instead of presenting the refresh token a second time.
+  if (refreshPromise) {
+    await refreshPromise;
+    return;
+  }
   const token = getStoredAccessToken();
   const refreshToken = getStoredRefreshToken();
   if (!token || !refreshToken) return;
@@ -87,7 +113,7 @@ export const ensureFreshAccessToken = async (): Promise<void> => {
   } catch {
     return;
   }
-  await doRefreshTokens(refreshToken);
+  await beginTokenRefresh(refreshToken);
 };
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -130,7 +156,7 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (isRefreshing) {
+    if (refreshPromise) {
       return new Promise<string>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
       })
@@ -144,24 +170,19 @@ apiClient.interceptors.response.use(
     }
 
     originalRequest._retry = true;
-    isRefreshing = true;
 
     try {
-      const { accessToken: newAccessToken } = await doRefreshTokens(refreshToken);
+      const { accessToken: newAccessToken } = await beginTokenRefresh(refreshToken);
 
       if (originalRequest.headers) {
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
       }
 
-      processQueue(null, newAccessToken);
       return apiClient(originalRequest);
     } catch (refreshError) {
-      processQueue(refreshError, null);
       clearStoredAuth();
       window.dispatchEvent(new Event('auth:logout'));
       return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
     }
   }
 );

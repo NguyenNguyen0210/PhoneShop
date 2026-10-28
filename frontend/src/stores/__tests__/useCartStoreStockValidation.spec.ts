@@ -221,4 +221,155 @@ describe('useCartStore - Stock & Flash Sale Validation', () => {
       expect(useCartStore.getState().selectedItemIds).toEqual([items[0].id]);
     });
   });
+
+  describe('zero stock is a real limit (E2)', () => {
+    it('blocks addItem when availableQty is 0 and warns out of stock', () => {
+      const variant = createMockVariant('var-zero', 0);
+      useCartStore.getState().addItem(mockProduct, variant, 1);
+
+      expect(useCartStore.getState().items).toHaveLength(0);
+      expect(notifyWarning).toHaveBeenCalledWith('Sản phẩm hiện đã hết hàng.');
+    });
+
+    it('blocks buyNow when availableQty is 0 and warns out of stock', () => {
+      const variant = createMockVariant('var-zero-bn', 0);
+      useCartStore.getState().buyNow(mockProduct, variant, 1);
+
+      expect(useCartStore.getState().items).toHaveLength(0);
+      expect(notifyWarning).toHaveBeenCalledWith('Sản phẩm hiện đã hết hàng.');
+    });
+
+    it('blocks updateQuantity increment on a zero-stock item and warns out of stock', () => {
+      const item = createCartItem('item-zero', 'var-zero', 1, { availableQty: 0 });
+      useCartStore.setState({ items: [item] });
+
+      useCartStore.getState().updateQuantity('item-zero', 2);
+
+      expect(useCartStore.getState().items[0].quantity).toBe(1);
+      expect(notifyWarning).toHaveBeenCalledWith('Sản phẩm hiện đã hết hàng.');
+    });
+
+    it('still allows addItem when the inventory object is absent', () => {
+      const variant = { id: 'var-noinv', price: 100000 } as unknown as ProductVariant;
+      useCartStore.getState().addItem(mockProduct, variant, 3);
+
+      expect(useCartStore.getState().items).toHaveLength(1);
+      expect(useCartStore.getState().items[0].quantity).toBe(3);
+      expect(notifyWarning).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('rollback does not clobber a newer quantity (E5)', () => {
+    it('keeps the newer quantity when a stale update request fails', async () => {
+      localStorage.setItem('phoneshop_access_token', 'tok');
+      const item = createCartItem('item-1', 'var-1', 2, { availableQty: 99 });
+      useCartStore.setState({ items: [item] });
+
+      let rejectStale!: (reason?: unknown) => void;
+      vi.mocked(cartService.updateCartItem)
+        .mockImplementationOnce(
+          () => new Promise((_resolve, reject) => { rejectStale = reject; })
+        )
+        .mockResolvedValueOnce({} as any);
+
+      useCartStore.getState().updateQuantity('item-1', 5); // stale — will fail
+      useCartStore.getState().updateQuantity('item-1', 8); // newer — succeeds
+
+      rejectStale(new Error('stale failure'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(useCartStore.getState().items[0].quantity).toBe(8);
+    });
+
+    it('still rolls back when the failed request is the latest quantity', async () => {
+      localStorage.setItem('phoneshop_access_token', 'tok');
+      const item = createCartItem('item-1', 'var-1', 2, { availableQty: 99 });
+      useCartStore.setState({ items: [item] });
+
+      vi.mocked(cartService.updateCartItem).mockRejectedValueOnce(new Error('out of stock'));
+
+      useCartStore.getState().updateQuantity('item-1', 5);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(useCartStore.getState().items[0].quantity).toBe(2);
+    });
+  });
+
+  describe('re-adding a flash item keeps its flash price (E3b)', () => {
+    it('keeps the existing flash unitPrice when priceOverride is not provided', () => {
+      const flashItem = createCartItem('item-fs', 'var-fs', 1, {
+        availableQty: 10,
+        isFlashSale: true,
+        flashQuotaLeft: 5,
+      });
+      flashItem.unitPrice = 15000000;
+      flashItem.price = 15000000;
+      useCartStore.setState({ items: [flashItem] });
+
+      useCartStore.getState().addItem(mockProduct, flashItem.variant, 1);
+
+      expect(useCartStore.getState().items[0].unitPrice).toBe(15000000);
+    });
+  });
+
+  describe('swallowed cart mutation failures still warn (E13)', () => {
+    const SYNC_FAIL_MSG = 'Không thể đồng bộ với giỏ hàng trên hệ thống. Vui lòng thử lại.';
+
+    it('warns when removeItem backend sync fails', async () => {
+      localStorage.setItem('phoneshop_access_token', 'tok');
+      useCartStore.setState({ items: [createCartItem('item-1', 'var-1', 1)], selectedItemIds: [] });
+      vi.mocked(cartService.removeFromCart).mockRejectedValueOnce(new Error('network'));
+
+      useCartStore.getState().removeItem('item-1');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(notifyWarning).toHaveBeenCalledWith(SYNC_FAIL_MSG);
+    });
+
+    it('warns when clearCart backend sync fails', async () => {
+      localStorage.setItem('phoneshop_access_token', 'tok');
+      useCartStore.setState({ items: [createCartItem('item-1', 'var-1', 1)], selectedItemIds: [] });
+      vi.mocked(cartService.clearCart).mockRejectedValueOnce(new Error('network'));
+
+      useCartStore.getState().clearCart();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(notifyWarning).toHaveBeenCalledWith(SYNC_FAIL_MSG);
+    });
+
+    it('warns when removeSelectedItems backend sync fails', async () => {
+      localStorage.setItem('phoneshop_access_token', 'tok');
+      useCartStore.setState({
+        items: [createCartItem('item-1', 'var-1', 1)],
+        selectedItemIds: ['item-1'],
+      });
+      vi.mocked(cartService.removeBulk).mockRejectedValueOnce(new Error('network'));
+
+      useCartStore.getState().removeSelectedItems();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(notifyWarning).toHaveBeenCalledWith(SYNC_FAIL_MSG);
+    });
+  });
+
+  describe('resetForUserChange clears everything user-specific (E1)', () => {
+    it('clears items, selection, pending queue and persisted cart', () => {
+      localStorage.setItem('phoneshop_access_token', 'tok');
+      localStorage.setItem('phoneshop_cart_pending', JSON.stringify(['v1']));
+      useCartStore.setState({
+        items: [createCartItem('item-1', 'v1', 1)],
+        selectedItemIds: ['item-1'],
+      });
+
+      useCartStore.getState().resetForUserChange();
+
+      expect(useCartStore.getState().items).toEqual([]);
+      expect(useCartStore.getState().selectedItemIds).toEqual([]);
+      expect(localStorage.getItem('phoneshop_cart_pending')).toBeNull();
+      const persisted = localStorage.getItem('phoneshop_cart_storage');
+      expect(
+        persisted === null || (JSON.parse(persisted as string)?.state?.items ?? []).length === 0
+      ).toBe(true);
+    });
+  });
 });

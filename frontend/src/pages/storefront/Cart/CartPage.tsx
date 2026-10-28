@@ -164,10 +164,17 @@ export const CartPage: React.FC = () => {
     try {
       const res = await voucherService.validateVoucher(code, subtotal, selectedItemIds);
       if (res && res.valid && res.voucher) {
+        // E6: persist the full voucher object (type, value, maxDiscountAmount)
+        // so CheckoutPage can reactively recalculate the discount when the
+        // cart subtotal changes (e.g. user removes an item on the checkout
+        // page). The old code only saved { code, discount, description } which
+        // made the checkout discount a stale snapshot.
         const voucherData = {
+          ...res.voucher,
           code: res.voucher.code,
           discount: res.discount,
           description: res.voucher.name || res.voucher.description || 'Áp dụng mã giảm giá thành công',
+          voucher: res.voucher,
         };
         setAppliedVoucher(voucherData);
         setVoucherCode(res.voucher.code);

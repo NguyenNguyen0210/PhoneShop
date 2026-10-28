@@ -10,7 +10,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, accessToken } = useAuthStore();
   const location = useLocation();
 
-  if (!user && !accessToken) {
+  if (!user || !accessToken) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

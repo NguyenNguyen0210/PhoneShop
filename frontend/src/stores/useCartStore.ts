@@ -31,6 +31,21 @@ const markPending = (variantId: string) => {
   }
 };
 
+// Mirror of markPending: drop a variant once its backend push succeeds so a
+// later sync does not re-add it (the add API merges quantities).
+const clearPending = (variantId: string) => {
+  if (typeof localStorage === 'undefined' || !variantId) return;
+  const pending = readPending().filter((v) => v !== variantId);
+  localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+};
+
+const CART_SYNC_FAIL_MSG =
+  'Không thể đồng bộ với giỏ hàng trên hệ thống. Vui lòng thử lại.';
+
+// Single-flight guard: concurrent syncs would double-push pending items (the
+// add API merges quantities) and fire duplicate /cart reads.
+let syncInFlight: Promise<void> | null = null;
+
 interface CartState {
   items: CartItem[];
   selectedItemIds: string[];
@@ -55,6 +70,8 @@ interface CartState {
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
+  /** Wipe user-specific cart data + pending queue (logout / account switch). */
+  resetForUserChange: () => void;
   totalAmount: () => number;
   totalCount: () => number;
 
@@ -93,13 +110,19 @@ export const useCartStore = create<CartState>()(
         const effectiveIsFlashSale = isFlashSale ?? existingItem?.isFlashSale;
         const effectiveFlashQuotaLeft = flashQuotaLeft ?? existingItem?.flashQuotaLeft;
 
-        const availableQty = Number(variant.inventory?.availableQty ?? 0);
+        // Infinity ONLY when the inventory object is absent (unknown stock);
+        // availableQty === 0 is a real limit.
+        const stockCap = !variant.inventory
+          ? Infinity
+          : Number(variant.inventory.availableQty ?? 0);
         const maxLimit = effectiveIsFlashSale
-          ? Math.min(
-              effectiveFlashQuotaLeft ?? (availableQty > 0 ? availableQty : Infinity),
-              availableQty > 0 ? availableQty : Infinity
-            )
-          : (availableQty > 0 ? availableQty : Infinity);
+          ? Math.min(effectiveFlashQuotaLeft ?? stockCap, stockCap)
+          : stockCap;
+
+        if (maxLimit === 0) {
+          notifyWarning('Sản phẩm hiện đã hết hàng.');
+          return;
+        }
 
         let qty = quantity;
         if (maxLimit !== Infinity) {
@@ -123,7 +146,15 @@ export const useCartStore = create<CartState>()(
           if (qty <= 0) return;
         }
 
-        const finalPrice = priceOverride !== undefined ? priceOverride : variant.price;
+        // Re-adding an item that already carries a flash price (no explicit
+        // priceOverride) must keep that flash price — falling back to
+        // variant.price would silently un-flash the existing line.
+        const finalPrice =
+          priceOverride !== undefined
+            ? priceOverride
+            : existingItem?.isFlashSale === true && existingItem.unitPrice
+            ? existingItem.unitPrice
+            : variant.price;
         let newItems: CartItem[];
         if (existingIndex > -1) {
           newItems = currentItems.map((item, idx) =>
@@ -161,7 +192,10 @@ export const useCartStore = create<CartState>()(
 
         // Đẩy ngay khi có mạng; thất bại/offline thì đánh dấu pending để sync đẩy 1 lần.
         if (hasAccessToken()) {
-          cartService.addToCart(variant.id, qty).catch(() => markPending(variant.id));
+          cartService
+            .addToCart(variant.id, qty)
+            .then(() => clearPending(variant.id))
+            .catch(() => markPending(variant.id));
         } else {
           markPending(variant.id);
         }
@@ -182,13 +216,19 @@ export const useCartStore = create<CartState>()(
         const effectiveIsFlashSale = isFlashSale ?? existing?.isFlashSale;
         const effectiveFlashQuotaLeft = flashQuotaLeft ?? existing?.flashQuotaLeft;
 
-        const availableQty = Number(variant.inventory?.availableQty ?? 0);
+        // Infinity ONLY when the inventory object is absent (unknown stock);
+        // availableQty === 0 is a real limit.
+        const stockCap = !variant.inventory
+          ? Infinity
+          : Number(variant.inventory.availableQty ?? 0);
         const maxLimit = effectiveIsFlashSale
-          ? Math.min(
-              effectiveFlashQuotaLeft ?? (availableQty > 0 ? availableQty : Infinity),
-              availableQty > 0 ? availableQty : Infinity
-            )
-          : (availableQty > 0 ? availableQty : Infinity);
+          ? Math.min(effectiveFlashQuotaLeft ?? stockCap, stockCap)
+          : stockCap;
+
+        if (maxLimit === 0) {
+          notifyWarning('Sản phẩm hiện đã hết hàng.');
+          return;
+        }
 
         let qty = quantity;
         if (maxLimit !== Infinity) {
@@ -212,7 +252,13 @@ export const useCartStore = create<CartState>()(
           if (qty <= 0) return;
         }
 
-        const finalPrice = priceOverride !== undefined ? priceOverride : variant.price;
+        // Same re-price rule as addItem: keep an existing flash unitPrice.
+        const finalPrice =
+          priceOverride !== undefined
+            ? priceOverride
+            : existing?.isFlashSale === true && existing.unitPrice
+            ? existing.unitPrice
+            : variant.price;
         let targetId: string;
         let newItems: CartItem[];
         if (existing) {
@@ -256,7 +302,10 @@ export const useCartStore = create<CartState>()(
         set({ items: newItems, selectedItemIds: [targetId] });
 
         if (hasAccessToken()) {
-          cartService.addToCart(variant.id, qty).catch(() => markPending(variant.id));
+          cartService
+            .addToCart(variant.id, qty)
+            .then(() => clearPending(variant.id))
+            .catch(() => markPending(variant.id));
         } else {
           markPending(variant.id);
         }
@@ -270,7 +319,9 @@ export const useCartStore = create<CartState>()(
         }));
 
         if (itemToRemove && hasAccessToken()) {
-          cartService.removeFromCart(itemToRemove.variantId).catch(() => {});
+          cartService
+            .removeFromCart(itemToRemove.variantId)
+            .catch(() => notifyWarning(CART_SYNC_FAIL_MSG));
         }
       },
 
@@ -283,13 +334,16 @@ export const useCartStore = create<CartState>()(
           return;
         }
 
-        const availableQty = Number(item.variant?.inventory?.availableQty ?? 0);
+        const inventory = item.variant?.inventory;
+        const stockCap = !inventory ? Infinity : Number(inventory.availableQty ?? 0);
         const maxLimit = item.isFlashSale
-          ? Math.min(
-              item.flashQuotaLeft ?? (availableQty > 0 ? availableQty : Infinity),
-              availableQty > 0 ? availableQty : Infinity
-            )
-          : (availableQty > 0 ? availableQty : Infinity);
+          ? Math.min(item.flashQuotaLeft ?? stockCap, stockCap)
+          : stockCap;
+
+        if (maxLimit === 0) {
+          notifyWarning('Sản phẩm hiện đã hết hàng.');
+          return;
+        }
 
         if (quantity > maxLimit) {
           if (item.isFlashSale) {
@@ -301,6 +355,9 @@ export const useCartStore = create<CartState>()(
         }
 
         const previousQty = item.quantity;
+        // The quantity THIS request is setting — used to detect whether a later
+        // failure may still roll back (a newer change must win).
+        const targetQty = quantity;
         set((state) => ({
           items: state.items.map((i) =>
             i.id === itemId ? { ...i, quantity } : i
@@ -309,11 +366,15 @@ export const useCartStore = create<CartState>()(
 
         if (item && hasAccessToken()) {
           cartService.updateCartItem(item.variantId, quantity).catch((err) => {
-            set((state) => ({
-              items: state.items.map((i) =>
-                i.id === itemId ? { ...i, quantity: previousQty } : i
-              ),
-            }));
+            // Only restore when the current quantity is still what THIS request
+            // set — otherwise a newer update already superseded it.
+            if (get().items.find((i) => i.id === itemId)?.quantity === targetQty) {
+              set((state) => ({
+                items: state.items.map((i) =>
+                  i.id === itemId ? { ...i, quantity: previousQty } : i
+                ),
+              }));
+            }
             notifyError(err, 'Số lượng trong kho không đủ để đáp ứng.');
           });
         }
@@ -322,7 +383,18 @@ export const useCartStore = create<CartState>()(
       clearCart: () => {
         set({ items: [], selectedItemIds: [] });
         if (hasAccessToken()) {
-          cartService.clearCart().catch(() => {});
+          cartService.clearCart().catch(() => notifyWarning(CART_SYNC_FAIL_MSG));
+        }
+      },
+
+      resetForUserChange: () => {
+        set({ items: [], selectedItemIds: [] });
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem(PENDING_KEY);
+          // Persist middleware rewrites on every set — drop user A's persisted
+          // cart, then re-set the empty state so storage ends up empty/clean.
+          localStorage.removeItem('phoneshop_cart_storage');
+          set({ items: [], selectedItemIds: [] });
         }
       },
 
@@ -361,11 +433,17 @@ export const useCartStore = create<CartState>()(
       removeSelectedItems: () => {
         const selected = get().selectedItemIds;
         if (selected.length === 0) return;
+        // Backend bulk delete OR-matches cart item id or variantId — send
+        // variantIds so locally-created items (which have no backend id yet)
+        // are removed as well.
+        const selectedVariantIds = get()
+          .items.filter((i) => selected.includes(i.id))
+          .map((i) => i.variantId);
         const remainingItems = get().items.filter((i) => !selected.includes(i.id));
         set({ items: remainingItems, selectedItemIds: [] });
 
-        if (hasAccessToken()) {
-          cartService.removeBulk(selected).catch(() => {});
+        if (selectedVariantIds.length > 0 && hasAccessToken()) {
+          cartService.removeBulk(selectedVariantIds).catch(() => notifyWarning(CART_SYNC_FAIL_MSG));
         }
       },
 
@@ -389,77 +467,87 @@ export const useCartStore = create<CartState>()(
         return items.length > 0 && items.every((i) => selectedItemIds.includes(i.id));
       },
 
-      syncWithBackend: async () => {
-        if (!hasAccessToken()) {
-          return;
+      syncWithBackend: () => {
+        // E4: share one in-flight sync — concurrent callers re-use the same
+        // promise instead of duplicating pushes and /cart reads.
+        if (syncInFlight) {
+          return syncInFlight;
         }
-        try {
-          // Chỉ đẩy những variant còn pending, mỗi variant đúng 1 lần.
-          const failed: string[] = [];
-          for (const variantId of readPending()) {
-            const item = get().items.find((i) => i.variantId === variantId);
-            if (!item) continue;
-            try {
-              await cartService.addToCart(variantId, item.quantity);
-            } catch {
-              failed.push(variantId);
+        const run = async () => {
+          if (!hasAccessToken()) {
+            return;
+          }
+          try {
+            // Chỉ đẩy những variant còn pending, mỗi variant đúng 1 lần.
+            const failed: string[] = [];
+            for (const variantId of readPending()) {
+              const item = get().items.find((i) => i.variantId === variantId);
+              if (!item) continue;
+              try {
+                await cartService.addToCart(variantId, item.quantity);
+              } catch {
+                failed.push(variantId);
+              }
             }
-          }
-          localStorage.setItem(PENDING_KEY, JSON.stringify(failed));
-          const backendCart = await cartService.getCart();
-          if (backendCart && Array.isArray(backendCart.items)) {
-            const prevItems = get().items;
-            const mappedItems: CartItem[] = backendCart.items.map((bItem: any) => {
-              const existing = prevItems.find((i) => i.variantId === bItem.variantId);
-              const isFlashSale = bItem.isFlashSale ?? existing?.isFlashSale ?? false;
-              const flashQuotaLeft = bItem.flashQuotaLeft ?? existing?.flashQuotaLeft;
-              const originalPrice = Number(
-                bItem.originalPrice || bItem.variant?.price || existing?.originalPrice || 0
-              );
-              const unitPrice = Number(
-                bItem.unitPrice ||
-                  bItem.price ||
-                  (isFlashSale && existing?.unitPrice ? existing.unitPrice : undefined) ||
-                  bItem.variant?.price ||
-                  0
-              );
-              return {
-                id: bItem.id,
-                variantId: bItem.variantId,
-                quantity: bItem.quantity,
-                unitPrice,
-                price: unitPrice,
-                product: bItem.variant?.product || existing?.product,
-                variant: bItem.variant || existing?.variant,
-                originalPrice,
-                isFlashSale,
-                flashQuotaLeft,
-              };
-            });
+            localStorage.setItem(PENDING_KEY, JSON.stringify(failed));
+            const backendCart = await cartService.getCart();
+            if (backendCart && Array.isArray(backendCart.items)) {
+              const prevItems = get().items;
+              const mappedItems: CartItem[] = backendCart.items.map((bItem: any) => {
+                const existing = prevItems.find((i) => i.variantId === bItem.variantId);
+                const isFlashSale = bItem.isFlashSale ?? existing?.isFlashSale ?? false;
+                const flashQuotaLeft = bItem.flashQuotaLeft ?? existing?.flashQuotaLeft;
+                const originalPrice = Number(
+                  bItem.originalPrice || bItem.variant?.price || existing?.originalPrice || 0
+                );
+                const unitPrice = Number(
+                  bItem.unitPrice ||
+                    bItem.price ||
+                    (isFlashSale && existing?.unitPrice ? existing.unitPrice : undefined) ||
+                    bItem.variant?.price ||
+                    0
+                );
+                return {
+                  id: bItem.id,
+                  variantId: bItem.variantId,
+                  quantity: bItem.quantity,
+                  unitPrice,
+                  price: unitPrice,
+                  product: bItem.variant?.product || existing?.product,
+                  variant: bItem.variant || existing?.variant,
+                  originalPrice,
+                  isFlashSale,
+                  flashQuotaLeft,
+                };
+              });
 
-            const prevSelectedSet = new Set(get().selectedItemIds);
-            const prevSelectedVariantIds = new Set(
-              prevItems
-                .filter((i) => prevSelectedSet.has(i.id) || prevSelectedSet.has(i.variantId))
-                .map((i) => i.variantId)
-            );
-            const preservedSelectedIds = mappedItems
-              .filter(
-                (i) => prevSelectedVariantIds.has(i.variantId) || prevSelectedSet.has(i.id)
-              )
-              .map((i) => i.id);
+              const prevSelectedSet = new Set(get().selectedItemIds);
+              const prevSelectedVariantIds = new Set(
+                prevItems
+                  .filter((i) => prevSelectedSet.has(i.id) || prevSelectedSet.has(i.variantId))
+                  .map((i) => i.variantId)
+              );
+              const preservedSelectedIds = mappedItems
+                .filter(
+                  (i) => prevSelectedVariantIds.has(i.variantId) || prevSelectedSet.has(i.id)
+                )
+                .map((i) => i.id);
 
-            set({
-              items: mappedItems,
-              selectedItemIds:
-                preservedSelectedIds.length > 0 || prevSelectedSet.size === 0
-                  ? preservedSelectedIds
-                  : get().selectedItemIds,
-            });
+              set({
+                items: mappedItems,
+                // E14: stale local ids no longer match the fresh backend items —
+                // an empty selection is safer than invisible "selected" items.
+                selectedItemIds: preservedSelectedIds.length > 0 ? preservedSelectedIds : [],
+              });
+            }
+          } catch {
+            // Keep local state on network error
           }
-        } catch {
-          // Keep local state on network error
-        }
+        };
+        syncInFlight = run().finally(() => {
+          syncInFlight = null;
+        });
+        return syncInFlight;
       },
 
       reconcileWithFlashSale: (campaign: any) => {

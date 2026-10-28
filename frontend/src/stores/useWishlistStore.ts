@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { Product, WishlistItem } from '../types';
 import { wishlistService } from '../services/wishlistService';
-import { cartService } from '../services/cartService';
 import { useCartStore } from './useCartStore';
 
 interface WishlistState {
@@ -145,12 +144,11 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
       itemIds: state.itemIds.filter((id) => id !== productId),
     }));
 
-    // Synchronize cart state with backend cart (toast feedback is shown by the caller)
+    // Synchronize cart state with backend cart (toast feedback is shown by the caller).
+    // syncWithBackend keeps the product/variant mapping and selection logic —
+    // a raw setState would drop product info and local ids.
     try {
-      const backendCart = await cartService.getCart();
-      if (backendCart && Array.isArray(backendCart.items)) {
-        useCartStore.setState({ items: backendCart.items });
-      }
+      await useCartStore.getState().syncWithBackend();
     } catch {
       // Keep local cart on network error
     }

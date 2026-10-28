@@ -148,7 +148,7 @@ export const OrderSuccessPage: React.FC = () => {
         const nowPaid =
           fresh.paymentStatus === 'PAID' ||
           (Boolean(fresh.status) &&
-            ['CONFIRMED', 'PROCESSING', 'PACKED', 'SHIPPING', 'DELIVERING', 'DELIVERED', 'COMPLETED'].includes(
+            ['CONFIRMED', 'PROCESSING', 'PACKED', 'SHIPPING', 'DELIVERED', 'COMPLETED'].includes(
               fresh.status,
             ));
         if (nowPaid) {
@@ -225,7 +225,7 @@ export const OrderSuccessPage: React.FC = () => {
   const isPaid =
     order?.paymentStatus === 'PAID' ||
     (Boolean(order?.status) &&
-      ['CONFIRMED', 'PROCESSING', 'PACKED', 'SHIPPING', 'DELIVERING', 'DELIVERED', 'COMPLETED'].includes(
+      ['CONFIRMED', 'PROCESSING', 'PACKED', 'SHIPPING', 'DELIVERED', 'COMPLETED'].includes(
         order!.status,
       ));
 

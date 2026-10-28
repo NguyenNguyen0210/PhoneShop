@@ -209,6 +209,15 @@ export const ProductDetailPage: React.FC = () => {
   useEffect(() => {
     if (!product || !activeFlashSale?.items || queryVariantId || hasAutoSelectedVariantRef.current) return;
 
+    // E11: only auto-select when the campaign window is actually open.
+    // Without this guard, a stale cached campaign (endAt in the past) would
+    // still force-select a variant that is no longer on sale.
+    const now = Date.now();
+    const windowOpen =
+      (!activeFlashSale.startAt || new Date(activeFlashSale.startAt).getTime() <= now) &&
+      (!activeFlashSale.endAt || new Date(activeFlashSale.endAt).getTime() > now);
+    if (!windowOpen) return;
+
     const flashVariant = product.variants.find((v) =>
       activeFlashSale.items.some(
         (fi) =>

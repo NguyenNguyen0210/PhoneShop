@@ -37,7 +37,7 @@ const FILTER_CONFIG: FilterOption[] = [
   { key: 'CANCELLED', label: 'Đã hủy' },
 ];
 
-const SHIPPING_STATUSES = ['CONFIRMED', 'PROCESSING', 'PACKED', 'SHIPPING', 'DELIVERING'];
+const SHIPPING_STATUSES = ['CONFIRMED', 'PROCESSING', 'PACKED', 'SHIPPING'];
 const DELIVERED_STATUSES = ['DELIVERED', 'COMPLETED'];
 
 const formatPrice = (amount: number): string => {

@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { User, Role } from '../types';
 import { authService } from '../services/authService';
 import { useCartStore } from './useCartStore';
+import { useWishlistStore } from './useWishlistStore';
+import { useNotificationStore } from './useNotificationStore';
 
 interface AuthState {
   user: User | null;
@@ -167,6 +169,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       localStorage.removeItem('phoneshop_access_token');
       localStorage.removeItem('phoneshop_refresh_token');
       set({ user: null, accessToken: null, refreshToken: null });
+      // Cross-user data must be wiped even when the Navbar (which normally
+      // resets these on user change) is not mounted — e.g. the auth:logout
+      // event fired by a failed token refresh deep inside a page.
+      useCartStore.getState().resetForUserChange();
+      useWishlistStore.getState().clearState();
+      useNotificationStore.getState().clearState();
     }
   },
 
