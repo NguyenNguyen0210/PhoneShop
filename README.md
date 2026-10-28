@@ -1,518 +1,421 @@
-# 📱 Phone Shop
+# 📱 PhoneShop — E-Commerce Platform
 
-> **Hệ thống Thương Mại Điện Tử Chuyên Biệt Thiết Bị Di Động & Phụ Kiện Cao Cấp**  
-> Xây dựng theo kiến trúc **Modular Monolith & Clean Architecture**, tích hợp kiểm soát giao dịch nguyên tử, cơ chế chống Race Condition cho vòng đời IMEI, lưu trữ đám mây **Supabase Cloud (PostgreSQL) & Cloudflare R2** và giao diện **Clean Light Mode (Apple Pavilion & Swiss Minimalist)**.
+<p align="center">
+  <img src="https://pub-dcd7bf5fa7c74b97a10cdc8dfadc4064.r2.dev/products/iphone-16-pro-max.webp" alt="PhoneShop Banner" width="220" style="border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);" />
+</p>
+
+<p align="center">
+  <strong>Hệ Thống Thương Mại Điện Tử Bán Lẻ Thiết Bị Di Động & Phụ Kiện Chính Hãng</strong><br>
+  Xây dựng theo kiến trúc <strong>Modular Monolith & Clean Architecture</strong>, tối ưu hóa giao dịch nguyên tử (ACID), quản lý vòng đời IMEI chống Race Condition và giao diện người dùng theo phong cách <strong>Swiss Minimalist & Clean Light Mode</strong>.
+</p>
+
+<p align="center">
+  <a href="https://phoneshop-blond.vercel.app" target="_blank"><img src="https://img.shields.io/badge/Live_Demo-Vercel-black?style=for-the-badge&logo=vercel" alt="Live Demo" /></a>
+  <a href="https://phoneshop-api.onrender.com/api/docs" target="_blank"><img src="https://img.shields.io/badge/API_Docs-Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black" alt="Swagger Docs" /></a>
+  <img src="https://img.shields.io/badge/NestJS-11.x-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" alt="NestJS" />
+  <img src="https://img.shields.io/badge/React-19.x-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/PostgreSQL-Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+</p>
+
+---
+
+## 🌐 Hệ Thống Đang Triển Khai (Live Production)
+
+| Thành phần | Nền tảng Cloud | URL Truy Cập | Trạng Thái |
+| :--- | :--- | :--- | :---: |
+| **Storefront & Admin Web** | **Vercel** | [https://phoneshop-blond.vercel.app](https://phoneshop-blond.vercel.app) | ![Vercel](https://img.shields.io/badge/Status-Active-brightgreen) |
+| **RESTful API Backend** | **Render** | [https://phoneshop-api.onrender.com/api](https://phoneshop-api.onrender.com/api) | ![Render](https://img.shields.io/badge/Status-Live-brightgreen) |
+| **Tài liệu API (Swagger)** | **Render** | [https://phoneshop-api.onrender.com/api/docs](https://phoneshop-api.onrender.com/api/docs) | ![Swagger](https://img.shields.io/badge/Docs-Online-blue) |
+| **Cơ sở dữ liệu (PostgreSQL)** | **Supabase** | `aws-0-ap-southeast-1.pooler.supabase.com:5432` | ![Supabase](https://img.shields.io/badge/PostgreSQL-Online-3ECF8E) |
+| **Lưu trữ ảnh Media CDN** | **Cloudflare R2** | `https://pub-dcd7bf5fa7c74b97a10cdc8dfadc4064.r2.dev` | ![Cloudflare](https://img.shields.io/badge/CDN-Active-F38020) |
 
 ---
 
 ## 📑 Mục Lục
-- [1. Giới Thiệu Tổng Quan](#1-giới-thiệu-tổng-quan)
-- [2. Triết Lý Thiết Kế & Trải Nghiệm Người Dùng](#2-triết-lý-thiết-kế--trải-nghiệm-người-dùng)
+- [1. Giới Thiệu & Bài Toán Giải Quyết](#1-giới-thiệu--bài-toán-giải-quyết)
+- [2. Kiến Trúc Kỹ Thuật (Architecture)](#2-kiến-trúc-kỹ-thuật-architecture)
+  - [2.1. Sơ Đồ Kiến Trúc Hệ Thống](#21-sơ-đồ-kiến-trúc-hệ-thống)
+  - [2.2. Vòng Đời IMEI & Giải Pháp Chống Bán Khống (Race Condition)](#22-vòng-đời-imei--giải-pháp-chống-bán-khống-race-condition)
+  - [2.3. Cơ Chế Giữ Hàng Tự Động (Hold Sweeper)](#23-cơ-chế-giữ-hàng-tự-động-hold-sweeper)
 - [3. Tính Năng Nổi Bật](#3-tính-năng-nổi-bật)
   - [3.1. Phân Hệ Khách Hàng (Storefront B2C)](#31-phân-hệ-khách-hàng-storefront-b2c)
   - [3.2. Phân Hệ Quản Trị & Vận Hành (Admin Portal)](#32-phân-hệ-quản-trị--vận-hành-admin-portal)
-- [4. Kiến Trúc Kỹ Thuật & Giải Pháp Cốt Lõi](#4-kiến-trúc-kỹ-thuật--giải-pháp-cốt-lõi)
-  - [4.1. Sơ Đồ Kiến Trúc Tổng Thể](#41-sơ-đồ-kiến-trúc-tổng-thể)
-  - [4.2. Quản Lý Vòng Đời IMEI & Xử Lý Concurrency](#42-quản-lý-vòng-đời-imei--xử-lý-concurrency)
-  - [4.3. Quản Lý Trạng Thái Đơn Hàng & Giữ Tồn Kho IMEI](#43-quản-lý-trạng-thái-đơn-hàng--giữ-tồn-kho-imei)
-  - [4.4. Tối Ưu Hóa Hình Ảnh Với Sharp & Media Storage](#44-tối-ưu-hóa-hình-ảnh-với-sharp--media-storage)
-- [5. Công Nghệ Sử Dụng (Tech Stack)](#5-công-nghệ-sử-dụng-tech-stack)
-- [6. Cấu Trúc Thư Mục Dự Án](#6-cấu-trúc-thư-mục-dự-án)
-- [7. Hướng Dẫn Cài Đặt & Chạy Local](#7-hướng-dẫn-cài-đặt--chạy-local)
-  - [7.1. Yêu Cầu Môi Trường](#71-yêu-cầu-môi-trường)
-  - [7.2. Chuẩn Bị Supabase Cloud (Database)](#72-chuẩn-bị-supabase-cloud-database)
-  - [7.3. Cấu Hình Biến Môi Trường (.env)](#73-cấu-hình-biến-môi-trường-env)
-  - [7.4. Khởi Tạo Database & Nạp Dữ Liệu Mẫu (Seed)](#74-khởi-tạo-database--nạp-dữ-liệu-mẫu-seed)
-  - [7.5. Khởi Động Ứng Dụng](#75-khởi-động-ứng-dụng)
-  - [7.6. Tài Khoản Đăng Nhập Mặc Định](#76-tài-khoản-đăng-nhập-mặc-định)
-- [8. Danh Sách API Chính (API Endpoints Reference)](#8-danh-sách-api-chính-api-endpoints-reference)
-- [9. Kiểm Tra Bản Đóng Gói Production (Build Verification)](#9-kiểm-tra-bản-đóng-gói-production-build-verification)
-- [10. Tiêu Chuẩn Bảo Mật & Best Practices](#10-tiêu-chuẩn-bảo-mật--best-practices)
+  - [3.3. Trợ Lý Ảo AI Tư Vấn Thông Minh](#33-trợ-lý-ảo-ai-tư-vấn-thông-minh)
+- [4. Ngăn Xếp Công Nghệ (Tech Stack)](#4-ngăn-xếp-công-nghệ-tech-stack)
+- [5. Cấu Trúc Thư Mục Dự Án](#5-cấu-trúc-thư-mục-dự-án)
+- [6. Hướng Dẫn Cài Đặt & Chạy Cục Bộ (Local Setup)](#6-hướng-dẫn-cài-đặt--chạy-cục-bộ-local-setup)
+  - [6.1. Yêu Cầu Tiên Quyết](#61-yêu-cầu-tiên-quyết)
+  - [6.2. Cấu Hình Biến Môi Trường (.env)](#62-cấu-hình-biến-môi-trường-env)
+  - [6.3. Khởi Tạo Cơ Sở Dữ Liệu & Seed Data](#63-khởi-tạo-cơ-sở-dữ-liệu--seed-data)
+  - [6.4. Khởi Động Ứng Dụng](#64-khởi-động-ứng-dụng)
+- [7. Tài Khoản Thử Nghiệm Mặc Định](#7-tài-khoản-thử-nghiệm-mặc-định)
+- [8. Danh Mục API Chính (RESTful Endpoints)](#8-danh-mục-api-chính-restful-endpoints)
+- [9. Tiêu Chuẩn Bảo Mật & Best Practices](#9-tiêu-chuẩn-bảo-mật--best-practices)
 
 ---
 
-## 1. Giới Thiệu Tổng Quan
+## 1. Giới Thiệu & Bài Toán Giải Quyết
 
-**Phone Shop** là giải pháp thương mại điện tử chuyên nghiệp cho ngành bán lẻ thiết bị di động thông minh. Dự án giải quyết các bài toán kỹ thuật đặc thù và phức tạp nhất của ngành bán lẻ điện thoại:
-1. **Mỗi thiết bị là một thực thể duy nhất**: Điện thoại không thể quản lý chỉ bằng số lượng tồn kho thuần túy (`quantity`), mà được quản lý định danh qua mã **Serial/IMEI** theo chuẩn thuật toán Luhn.
-2. **Hiện tượng Race Condition trong Flash Sale**: Ngăn chặn 2 khách hàng đồng thời thanh toán và sở hữu cùng một máy/IMEI khi mở bán sản phẩm hot.
-3. **Giữ hàng nguyên tử (Atomic Hold) có thời hạn**: Giữ máy cho khách hàng trong 15 phút để hoàn tất thủ tục thanh toán trực tuyến; tự động giải phóng tồn kho ngay lập tức nếu khách hàng bỏ đơn mà không làm nghẽn kho.
-4. **Hệ thống bảo hành điện tử (E-Warranty) minh bạch**: Khách hàng tra cứu lịch sử, xuất xứ và thời hạn bảo hành tức thì chỉ với dãy IMEI.
-5. **Dữ liệu thật 100% (No Mock Data)**: Toàn bộ danh mục 60 smartphone (Apple iPhone 17 Pro Max/17/16, Samsung Galaxy S26 Ultra/Z Fold7/Z Flip7, Xiaomi 16 Pro/15 Ultra, OPPO Find X9 Pro/N5, vivo X300 Pro/iQOO 13, Pixel 10 Pro XL, OnePlus 13, realme GT 7 Pro, ROG Phone 9 Pro, Xperia 1 VII...) với ~127 biến thể màu sắc/dung lượng/RAM, giá VND thực tế, specs đầy đủ (màn/pin/chipset/OS/5G) phủ kín mọi filter, được lưu trữ và truy vấn trực tiếp từ PostgreSQL.
+Khác với các mặt hàng thời trang hay tiêu dùng nhanh, ngành bán lẻ thiết bị thông minh (Smartphones/Tablets) đặt ra các yêu cầu khắt khe về mặt dữ liệu và tính toàn vẹn:
+
+1. **Định danh độc bản (Unique Serial/IMEI Tracking)**:
+   * Mỗi chiếc máy trong kho là một thực thể vật lý riêng biệt có số IMEI duy nhất (kiểm tra tính hợp lệ qua thuật toán **Luhn**).
+   * Hệ thống quản lý chính xác trạng thái của từng thiết bị từ lúc nhập kho, gán đơn hàng, bàn giao vận chuyển cho đến bảo hành sau bán hàng.
+2. **Loại bỏ tình trạng Overselling (Race Condition)**:
+   * Trong các sự kiện mở bán Flash Sale, hàng trăm khách hàng cùng tranh mua số lượng máy có hạn. PhoneShop áp dụng cơ chế **Atomic Hold & Pessimistic Locking** thông qua Prisma Interactive Transactions, đảm bảo 100% không bao giờ bán trùng 1 chiếc máy cho 2 người.
+3. **Cơ chế giữ hàng có thời hạn (15-Minute Hold & Auto-Release)**:
+   * Khi khởi tạo đơn hàng, hệ thống khóa tạm thời các mã IMEI trong 15 phút để khách thanh toán.
+   * Background Sweeper tự động quét và giải phóng IMEI về kho nếu khách hàng không hoàn tất thanh toán, ngăn ngừa tình trạng "nghẽn kho ảo".
+4. **Hệ thống Tra cứu Bảo hành Điện tử (E-Warranty)**:
+   * Khách hàng kiểm tra tức thì lịch sử mua hàng, nguồn gốc xuất xứ và thời hạn bảo hành chính hãng chỉ bằng dãy số IMEI công khai.
+5. **Dữ liệu thật 100% (Production Data)**:
+   * Không dùng mock data sơ sài: Toàn bộ danh mục hơn 100 sản phẩm với 250+ biến thể màu sắc, dung lượng, RAM, thông số kỹ thuật chi tiết (màn hình, camera, chip, pin, sạc) và dữ liệu tồn kho thực tế.
 
 ---
 
-## 2. Triết Lý Thiết Kế & Trải Nghiệm Người Dùng
+## 2. Kiến Trúc Kỹ Thuật (Architecture)
 
-Giao diện Storefront và Admin Portal được định hình theo phong cách **Clean Light Mode (Apple Pavilion & Swiss Minimalist)**:
-* **Bảng màu thuần khiết**: Sử dụng nền trắng ngà `#FAFAFA` và `#FFFFFF`, viền xám siêu mảnh `#E5E7EB`, điểm nhấn màu xanh sapphire `#2563EB` hoặc đen obsidian `#111827` cho CTA và các chi tiết tương tác quan trọng.
-* **Typography sắc nét**: Phân cấp rõ ràng với font chữ sans-serif hiện đại, độ tương phản cao, tối ưu khả năng đọc lướt thông số kỹ thuật.
-* **Thành phần tương tác cao cấp (Micro-Interactions)**:
-  * Hiệu ứng kính mờ (Glassmorphism & Backdrop Blur) trên thanh điều hướng Sticky Navbar.
-  * Giỏ hàng trượt (Slide-out CartDrawer) thao tác tức thì không cần tải lại trang.
-  * Thư viện ảnh sản phẩm chân thực, phóng to chi tiết với tỷ lệ khung hình chuẩn bán lẻ.
-  * Huy hiệu trạng thái kho (Live Stock Badge) và đồng hồ đếm ngược giữ hàng (15m Lock Countdown) hiển thị trực quan.
-* **100% Responsive**: Tương thích hoàn hảo từ màn hình di động 360px đến màn hình 4K Ultra-wide.
+### 2.1. Sơ Đồ Kiến Trúc Hệ Thống
+
+Hệ thống được thiết kế theo mô hình **Modular Monolith**: Phân tách rõ ràng giữa các Domain Modules, độc lập phụ thuộc và dễ bảo trì.
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                        CLIENT APPLICATIONS                             │
+│       React 19 + TypeScript + Vite + Tailwind CSS + Ant Design 6       │
+│     (Storefront B2C, Admin Management Portal, Google OAuth Popup)      │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ HTTPS / REST / JSON
+                                    │ Bearer JWT (Access / Refresh)
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                        NESTJS 11 BACKEND API                           │
+│                                                                        │
+│  [ Gateway Layer ]   CORS • Helmet • HttpExceptionFilter • DTO Pipes   │
+│  [ Security ]        JwtAuthGuard • RolesGuard (RBAC) • Throttler      │
+│  [ Core Modules ]    Auth • Users • Products • Orders • Payments       │
+│                      Inventory/IMEI • Warranty • Vouchers • Chatbot AI │
+│  [ Infrastructure]   Prisma ORM • Sharp WebP Engine • Sentry/Logger    │
+└───────────────────┬───────────────────────────────┬────────────────────┘
+                    │ PostgreSQL Connection Pool    │ S3 Compatible API
+                    ▼                               ▼
+       ┌────────────────────────┐      ┌─────────────────────────┐
+       │   SUPABASE POSTGRESQL  │      │  CLOUDFLARE R2 STORAGE  │
+       │  - 35 Business Tables  │      │  - WebP Product Images  │
+       │  - Foreign Key Rel     │      │  - Fast Global CDN      │
+       │  - ACID Transactions   │      │  - User Avatars         │
+       └────────────────────────┘      └─────────────────────────┘
+```
+
+---
+
+### 2.2. Vòng Đời IMEI & Giải Pháp Chống Bán Khống (Race Condition)
+
+Máy trạng thái nghiêm ngặt của một mã thiết bị IMEI:
+
+```text
+       ┌──────────────┐
+       │  AVAILABLE   │ ◄────────────────────────┐
+       └──────┬───────┘                          │
+              │                                  │
+Khách tạo đơn │ Khóa giao dịch nguyên tử         │ Hết hạn 15 phút
+giữ máy       ▼ (Pessimistic Hold)               │ hoặc Hủy đơn
+       ┌──────────────┐                          │
+       │     HOLD     │ ─────────────────────────┘
+       └──────┬───────┘
+              │
+Thanh toán    │ VietQR / VNPay IPN / COD
+thành công    ▼
+       ┌──────────────┐
+       │     SOLD     │
+       └──────┬───────┘
+              │
+Khách gửi yêu │ Tiếp nhận bảo hành
+cầu bảo hành  ▼
+       ┌──────────────┐         Hỏng hóc không sửa được
+       │   WARRANTY   │ ───────────────────────────────► ┌─────────────┐
+       └──────────────┘                                  │  DEFECTIVE  │
+                                                         └─────────────┘
+```
+
+#### Kỹ thuật kiểm soát giao dịch nguyên tử:
+```typescript
+await this.prisma.$transaction(async (tx) => {
+  // 1. Tìm và khóa giữ IMEI khả dụng
+  const availableImei = await tx.imeiDevice.findFirst({
+    where: { variantId, status: ImeiStatus.AVAILABLE },
+  });
+  if (!availableImei) throw new BadRequestException('Sản phẩm đã hết hàng!');
+
+  // 2. Chuyển trạng thái sang HOLD và liên kết mã đơn
+  await tx.imeiDevice.update({
+    where: { id: availableImei.id },
+    data: { status: ImeiStatus.HOLD },
+  });
+
+  // 3. Giảm tồn kho khả dụng tương ứng
+  await tx.inventory.update({
+    where: { variantId },
+    data: { reservedQty: { increment: 1 }, availableQty: { decrement: 1 } },
+  });
+});
+```
+
+---
+
+### 2.3. Cơ Chế Giữ Hàng Tự Động (Hold Sweeper)
+
+* **Giữ hàng có thời hạn**: Trường `holdExpiresAt` được gán mốc `now() + 15 phút`.
+* **Background Sweeper**: Nhiệm vụ nền chạy định kỳ mỗi 60 giây, tự động phát hiện và giải phóng toàn bộ các đơn hàng quá hạn chưa thanh toán, đưa IMEI trở lại trạng thái `AVAILABLE`.
+* **Đồng hồ đếm ngược**: Giao diện người dùng hiển thị thời gian giữ hàng trực quan, cảnh báo trước khi đơn bị tự động hủy.
 
 ---
 
 ## 3. Tính Năng Nổi Bật
 
 ### 3.1. Phân Hệ Khách Hàng (Storefront B2C)
-* **Trang chủ Flagship Showcase**:
-  * Hero Banner quảng bá flagship thế hệ mới nhất.
-  * Danh mục thương hiệu đối tác chính hãng (Apple, Samsung, Xiaomi, Sony, OPPO, Vivo, ASUS, Google).
-  * Bộ sưu tập sản phẩm mới ra mắt, bán chạy và chương trình ưu đãi đặc quyền.
-* **Bộ lọc & Tìm kiếm sản phẩm thông minh**:
-  * Tìm kiếm theo từ khóa tên máy, thương hiệu.
-  * Bộ lọc đa tiêu chí: Hãng sản xuất, phân khúc giá, RAM, bộ nhớ trong (ROM), tình trạng máy (Mới nguyên seal, Like New).
-  * Sắp xếp linh hoạt: Giá tăng/giảm, bán chạy nhất, mới nhất, đánh giá cao nhất.
-* **Trang chi tiết sản phẩm (Product Detail Page - PDP)**:
-  * Bộ chọn biến thể động: Chọn phiên bản màu sắc và dung lượng; giá bán và tồn kho tương ứng tự động cập nhật theo thời gian thực.
-  * Ma trận thông số kỹ thuật (Hardware Specs Matrix): Màn hình, chip xử lý, camera, pin, công nghệ sạc, hệ điều hành.
-  * Huy hiệu cam kết: Bảo hành chính hãng 12-24 tháng, 1 đổi 1 trong 30 ngày, miễn phí giao hàng toàn quốc.
-* **Giỏ hàng & Đặt hàng nguyên tử (Cart & Atomic Checkout)**:
-  * Giỏ hàng mini trượt (CartDrawer) lưu trữ đồng bộ với LocalStorage & State.
-  * Áp dụng mã giảm giá (Vouchers/Coupons) với điều kiện đơn hàng tối thiểu và mức giảm tối đa.
-  * Cơ chế giữ chỗ IMEI trong 15 phút ngay khi khởi tạo đơn hàng: Hiển thị đồng hồ đếm ngược thời gian giữ máy.
-* **Cổng thanh toán đa dạng & Bảo mật**:
-  * **VietQR**: Tự động sinh mã QR ngân hàng chuẩn NAPAS 247 kèm nội dung chuyển khoản và số tiền chính xác từng đồng.
-  * **VNPay Sandbox**: Chuyển hướng thanh toán qua cổng VNPay với chữ ký số HMAC-SHA512; xử lý Webhook IPN bảo mật chống gian lận.
-  * **COD (Cash on Delivery)**: Thanh toán tiền mặt khi nhận hàng kèm xác nhận đơn tự động.
-* **Tra cứu bảo hành điện tử (E-Warranty Lookup)**:
-  * Tra cứu công khai nhanh chóng chỉ cần nhập dãy số IMEI/Serial.
-  * Hiển thị trạng thái bảo hành: Còn hạn / Hết hạn, ngày kích hoạt, ngày hết hạn, lịch sử sửa chữa.
-* **Đánh giá & Phản hồi (Reviews & Admin Replies)**:
-  * Khách hàng đã mua hàng được quyền đánh giá số sao (1-5 sao) và để lại nhận xét.
-  * Quản trị viên/Nhân viên có thể phản hồi trực tiếp dưới bình luận của khách hàng.
-* **Trung tâm tài khoản khách hàng (Customer Profile)**:
-  * Cập nhật thông tin cá nhân và tải ảnh đại diện (Avatar) trực tiếp lên Supabase Storage.
-  * Theo dõi chi tiết lịch sử đơn hàng qua các trạng thái: `PENDING` -> `PROCESSING` -> `SHIPPED` -> `DELIVERED` -> `COMPLETED`.
+* **Giao diện chuẩn Swiss Minimalist**: Tinh tế, sáng sủa, hiệu ứng kính mờ (Backdrop Blur), giỏ hàng trượt tức thì (`CartDrawer`).
+* **Đăng nhập Google Popup mượt mà**: Sử dụng Google OAuth 2.0 Identity Services dạng cửa sổ nổi không cần chuyển hướng trang.
+* **Bộ lọc đa tiêu chí chuyên sâu**: Lọc theo Hãng, Phân khúc giá, RAM, Bộ nhớ trong (ROM), Độ phân giải camera, Tình trạng máy.
+* **Ma trận biến thể động**: Tự động chuyển đổi hình ảnh, giá bán, SKU và tồn kho khi khách chọn màu sắc / dung lượng.
+* **Cổng thanh toán đa kênh**:
+  * **VietQR**: Tạo mã QR ngân hàng chuẩn NAPAS 247 kèm số tiền và nội dung chuyển khoản tự động.
+  * **VNPay Sandbox**: Tích hợp chữ ký số HMAC-SHA512 và xác thực Webhook IPN an toàn.
+  * **COD**: Thanh toán tiền mặt khi nhận hàng.
+* **Tra cứu bảo hành công khai**: Kiểm tra thông tin máy và thời hạn bảo hành chính hãng chỉ với IMEI.
+* **Phòng chống lỗi toàn diện (Error Boundary)**: Bọc toàn bộ ứng dụng bằng React Error Boundary, ngăn chặn tình trạng sập trắng màn hình (White Screen of Death).
 
 ### 3.2. Phân Hệ Quản Trị & Vận Hành (Admin Portal)
-* **Bảng điều khiển kinh doanh (Admin Dashboard)**:
-  * Thống kê KPI tổng doanh thu, số lượng đơn hàng, lượng khách hàng mới và tồn kho thực tế.
-  * Biểu đồ doanh thu theo chu kỳ và danh sách đơn hàng mới cần xử lý gấp.
-* **Quản lý danh mục & Sản phẩm**:
-  * Thêm/Sửa/Xóa sản phẩm, thương hiệu, danh mục.
-  * Cấu hình biến thể đa cấp (RAM, ROM, Màu sắc, SKU, Giá bán, Giá khuyến mãi).
-  * Upload ảnh sản phẩm đơn và thư viện ảnh (Gallery) bằng kéo thả `ImageUploadDragger`: Tự động nén sang WebP qua Sharp trước khi lưu lên Supabase Storage bucket `phoneshop`.
-* **Quản lý kho Serial/IMEI chuyên sâu**:
-  * Nhập kho danh sách IMEI theo từng biến thể sản phẩm.
-  * Tự động kiểm tra tính hợp lệ của IMEI theo thuật toán Luhn.
-  * Theo dõi vòng đời chi tiết của từng máy: `AVAILABLE` (Sẵn sàng) -> `HOLD` (Đang giữ cho đơn) -> `SOLD` (Đã bán) -> `WARRANTY` (Đang bảo hành) -> `DEFECTIVE` (Lỗi kỹ thuật).
-* **Quản lý đơn hàng & Vận chuyển**:
-  * Xem danh sách đơn hàng, lọc theo trạng thái và ngày tạo.
-  * Cập nhật trạng thái đơn hàng, gán mã vận đơn giao hàng, xử lý hủy đơn và hoàn trả IMEI về kho.
-* **Quản lý bảo hành & Yêu cầu đổi trả**:
-  * Tiếp nhận phiếu yêu cầu bảo hành từ khách hàng.
-  * Phê duyệt, ghi nhận lỗi, tiến hành bảo hành hoặc đổi thiết bị mới.
-* **Quản lý khuyến mãi & Vouchers**:
-  * Tạo voucher giảm giá theo tỷ lệ phần trăm (%) hoặc số tiền cố định (VND).
-  * Ràng buộc: Giá trị đơn hàng tối thiểu, mức giảm tối đa, giới hạn lượt dùng tổng thể và giới hạn theo từng user.
-* **Phân quyền người dùng (RBAC)**:
-  * Phân chia vai trò rõ ràng: `ADMIN` (Toàn quyền hệ thống), `STAFF` (Vận hành đơn hàng, kho, phản hồi), `USER` (Khách hàng mua sắm).
+* **Bảng điều khiển kinh doanh (Dashboard)**: Thống kê doanh thu thời gian thực, biểu đồ tăng trưởng, đơn hàng mới và cảnh báo hàng sắp hết.
+* **Quản lý danh mục & biến thể**: Thêm/sửa sản phẩm, thiết lập thông số kỹ thuật JSON linh hoạt.
+* **Quản lý kho IMEI chuyên sâu**: Nhập lô danh sách IMEI, tự động kiểm tra thuật toán Luhn, giám sát từng trạng thái máy.
+* **Quy trình đơn hàng & Vận chuyển**: Điều phối trạng thái đơn `PENDING` ➔ `CONFIRMED` ➔ `PACKED` ➔ `SHIPPING` ➔ `DELIVERED`.
+* **Tải ảnh nén WebP tự động**: Upload kéo thả qua `StorageService`, tích hợp thư viện **Sharp** nén ảnh WebP chất lượng cao giảm 70-80% dung lượng trước khi đẩy lên **Cloudflare R2**.
+* **Phân quyền RBAC 3 cấp độ**: `ADMIN` (Toàn quyền), `STAFF` (Quản lý kho & đơn hàng), `USER` (Khách hàng).
+
+### 3.3. Trợ Lý Ảo AI Tư Vấn Thông Minh
+* Tích hợp Google Gemini AI hỗ trợ giải đáp thắc mắc về kỹ thuật di động, so sánh thông số và gợi ý điện thoại phù hợp với ngân sách của khách hàng theo thời gian thực.
 
 ---
 
-## 4. Kiến Trúc Kỹ Thuật & Giải Pháp Cốt Lõi
+## 4. Ngăn Xếp Công Nghệ (Tech Stack)
 
-### 4.1. Sơ Đồ Kiến Trúc Tổng Thể
-
-Hệ thống được thiết kế theo mô hình **Modular Monolith & Clean Architecture**:
-
-```text
-                        ┌─────────────────────────────────────────┐
-                        │        CLIENTS / WEB BROWSERS           │
-                        │    (React 19 + TypeScript + Vite)       │
-                        └───────────────────┬─────────────────────┘
-                                            │ HTTP / REST / JSON
-                                            │ JWT Bearer Auth
-                                            ▼
-                        ┌─────────────────────────────────────────┐
-                        │         NESTJS 11 BACKEND API           │
-                        │                                         │
-                        │  ├── Common: Guards, Interceptors, Pipes│
-                        │  ├── Modules: Auth, Products, Orders,   │
-                        │  │            Payments, IMEI, Warranty, │
-                        │  │            Vouchers, Reviews, Storage│
-                        │  └── Infrastructure: Prisma, Storage,   │
-                        │                      Sharp, Security    │
-                        └─────────┬───────────────────┬───────────┘
-                                  │                   │
-                  Prisma ORM (SQL)│                   │ S3 API
-                                  ▼                   ▼
-     ┌───────────────────────────────────┐    ┌───────────────────────────────────┐
-     │      SUPABASE CLOUD POSTGRESQL    │    │      CLOUDFLARE R2 STORAGE        │
-     │  - Relational Schema & Constraints│    │  - WebP Optimized Product Images  │
-     │  - Row-Level Security (RLS)       │    │  - Fast CDN Distribution          │
-     │  - ACID Transactions & Isolation  │    │  - Avatars & Proofs               │
-     └───────────────────────────────────┘    └───────────────────────────────────┘
-```
-
----
-
-### 4.2. Quản Lý Vòng Đời IMEI & Xử Lý Concurrency
-
-Vòng đời trạng thái của từng mã IMEI trong hệ thống tuân thủ máy trạng thái nghiêm ngặt:
-
-```text
-              ┌──────────────┐
-              │  AVAILABLE   │ ◄─────────────────────────┐
-              └──────┬───────┘                           │
-                     │                                   │
-      Khách tạo đơn  │ Đặt hàng (Pessimistic Lock)       │ Hết hạn 15m
-      giữ máy        ▼                                   │ hoặc khách hủy
-              ┌──────────────┐                           │
-              │     HOLD     │ ──────────────────────────┘
-              └──────┬───────┘
-                     │
-      Thanh toán     │ VNPay IPN / VietQR / COD thành công
-      hoàn tất       ▼
-              ┌──────────────┐
-              │     SOLD     │
-              └──────┬───────┘
-                     │
-      Sửa chữa       │ Khách gửi phiếu bảo hành
-      bảo hành       ▼
-              ┌──────────────┐          Thiết bị hỏng
-              │   WARRANTY   │ ──────────────────────────► ┌─────────────┐
-              └──────────────┘                             │  DEFECTIVE  │
-                                                           └─────────────┘
-```
-
-#### Giải Pháp Chống Tranh Chấp Flash Sale (Pessimistic Locking):
-Khi khách hàng tiến hành tạo đơn hàng, hệ thống thực thi một giao dịch nguyên tử (`prisma.$transaction`):
-1. Khóa và lấy bản ghi IMEI thỏa mãn: `variantId = targetVariant` VÀ `status = AVAILABLE`.
-2. Chuyển đổi trạng thái sang `HOLD` và liên kết với mã `orderId`.
-3. Giảm số lượng tồn khả dụng của biến thể.
-4. Nếu 2 request đồng thời yêu cầu chiếc máy cuối cùng, transaction thứ hai sẽ nhận ngoại lệ hết hàng ngay lập tức mà không xảy ra tình trạng bán khống (Overselling).
-
----
-
-### 4.3. Quản Lý Trạng Thái Đơn Hàng & Giữ Tồn Kho IMEI
-
-Khi đơn hàng được tạo, IMEI được chuyển sang `HOLD` trong giao dịch nguyên tử (`prisma.$transaction`).
-* **Giải phóng giữ hàng**:
-  * Khi khách hàng hủy đơn hoặc quản trị viên xử lý đơn hết hạn/thất bại, hệ thống giải phóng toàn bộ IMEI liên quan từ `HOLD` trở về `AVAILABLE` và hoàn trả số lượng khả dụng cho biến thể sản phẩm.
-  * Khi thanh toán thành công (VNPay IPN / VietQR / COD), trạng thái chuyển sang `SOLD` và đơn hàng sang `PROCESSING`.
-
----
-
-### 4.4. Tối Ưu Hóa Hình Ảnh Với Sharp & Media Storage
-
-Khi Quản trị viên tải ảnh sản phẩm hoặc người dùng cập nhật ảnh đại diện:
-1. `StorageController` tiếp nhận file qua Multer (kiểm tra định dạng hợp lệ: JPG, PNG, WebP, AVIF).
-2. `StorageService` sử dụng thư viện **Sharp** để:
-   * Giữ nguyên tỷ lệ hoặc crop thông minh.
-   * Tự động nén và chuyển đổi toàn bộ sang chuẩn **WebP** với chất lượng tối ưu (`quality: 80-85%`).
-   * Giảm đến 70-80% dung lượng file mà mắt thường không phân biệt được chất lượng suy giảm.
-3. Upload buffer ảnh WebP lên **Cloudflare R2 Storage** (tương thích S3 API).
-4. Lưu URL công khai (Public URL) vào cơ sở dữ liệu để phân phối nhanh qua CDN.
-
----
-
-## 5. Công Nghệ Sử Dụng (Tech Stack)
-
-| Lớp (Layer) | Công nghệ / Thư viện | Phiên bản | Mục đích sử dụng |
+| Phân Vùng | Công Nghệ / Thư Viện | Phiên Bản | Mục Đích Sử Dụng |
 | :--- | :--- | :--- | :--- |
-| **Backend Core** | NestJS | 11.x | Framework kiến trúc Modular Monolith cho Node.js |
-| | TypeScript | 6.x | Ngôn ngữ phát triển Type-safe cho toàn bộ backend |
-| **Database & ORM** | Supabase PostgreSQL | 16.x | Cơ sở dữ liệu quan hệ trên điện toán đám mây |
-| | Prisma ORM | 7.x | Quản lý schema, migrations và truy vấn SQL an toàn |
-| **Logging & Diagnostics** | Built-in NestJS Logger | 11.x | Ghi log chuẩn HTTP request/response và application errors |
-| **Media Processing** | Sharp | 0.35.x | Xử lý, nén và chuyển đổi định dạng ảnh sang WebP |
-| | Cloudflare R2 | S3 API | Lưu trữ đám mây tương thích S3 cho ảnh sản phẩm |
-| **Security & Auth** | Passport & JWT | 11.x | Xác thực người dùng qua Access Token / Refresh Token |
-| | Bcrypt | 6.x | Băm mật khẩu người dùng với muối (salt) bảo mật |
-| | Class-Validator | 0.15.x | Kiểm tra dữ liệu đầu vào DTO tại tầng Gateway |
-| **Frontend Core** | React | 19.x | Thư viện xây dựng giao diện người dùng |
-| | Vite | 8.x | Trình đóng gói và dev-server tốc độ cao |
-| | React Router DOM | 7.x | Quản lý định tuyến SPA (Single Page Application) |
-| **UI & Styling** | Tailwind CSS | 4.x | Utility-first CSS framework cho bố cục tùy biến |
+| **Backend Core** | NestJS | 11.x | Framework backend Node.js hướng module và clean architecture |
+| | TypeScript | 5.8+ | Đảm bảo tính nhất quán type-safe cho toàn bộ backend |
+| **Cơ sở dữ liệu** | Supabase PostgreSQL | 16.x | Database quan hệ trên Cloud, hỗ trợ ACID transactions |
+| | Prisma ORM | 7.x | Schema management, migrations và truy vấn SQL type-safe |
+| **Lưu trữ & Ảnh** | Cloudflare R2 | S3 API | Lưu trữ phân tán hình ảnh sản phẩm với độ trễ thấp |
+| | Sharp | 0.35.x | Nén và chuẩn hóa ảnh tải lên sang định dạng WebP |
+| **Bảo mật & Auth** | Passport & JWT | 11.x | Xác thực Access Token (15m) và Refresh Token (7d) |
+| | @react-oauth/google | 0.13.x | Đăng nhập Google Popup hiện đại chuẩn Google Identity |
+| | Bcrypt | 6.x | Mã hóa mật khẩu với thuật toán băm kèm salt |
+| **Frontend Core** | React | 19.x | Thư viện UI hiện đại |
+| | Vite | 8.x | Build tool và Dev Server tốc độ cao |
+| | React Router DOM | 7.x | Điều hướng trang Single Page Application |
+| **Giao diện & UI** | Tailwind CSS | 4.x | Utility-first styling framework |
 | | Ant Design | 6.x | Hệ thống component UI chuyên nghiệp cho Admin & Web |
-| | Lucide React | 1.x | Bộ icon SVG hiện đại, tối giản và sắc nét |
-| **State & API** | Zustand | 5.x | Quản lý state toàn cục nhẹ và hiệu quả (Auth, Cart) |
-| | Axios | 1.x | HTTP Client với Interceptor tự động gắn Bearer Token |
-| **DevOps** | Docker & Compose | 3.8+ | Đóng gói môi trường Backend nhất quán |
+| | Lucide React | 1.x | Bộ icon SVG tối giản, hiện đại |
+| **Quản lý State** | Zustand | 5.x | Quản lý state gọn nhẹ (Auth Store, Cart Store) |
+| | TanStack React Query| 5.x | Caching và đồng bộ trạng thái server-state |
+| **CI/CD & Deploy** | Vercel | Production | Triển khai Frontend tự động khi push GitHub |
+| | Render | Docker | Đóng gói và chạy container Backend NestJS tự động |
 
 ---
 
-## 6. Cấu Trúc Thư Mục Dự Án
+## 5. Cấu Trúc Thư Mục Dự Án
 
 ```text
 PhoneShop/
-├── docker-compose.yml              # Dev: backend container (nạp backend/.env.development)
-├── docker-compose.prod.yml         # Prod VPS: backend container (nạp backend/.env.production)
-├── frontend/.env.development       # Giá trị VITE_* dev công khai (tracked)
-├── .gitignore                      # Quy chuẩn loại trừ artifacts, secrets, docs, test scripts
+├── infrastructure/
+│   └── docker/
+│       └── backend.Dockerfile       # Multi-stage Dockerfile chạy production backend
 │
-├── backend/                        # Ứng dụng Backend NestJS
-│   ├── package.json                # Dependencies & script quản lý backend
-│   ├── tsconfig.json               # Cấu hình TypeScript
-│   ├── prisma/                     # Quản lý cơ sở dữ liệu
-│   │   ├── schema.prisma           # Định nghĩa toàn bộ thực thể database (ERD)
-│   │   ├── seed.ts                 # Script nạp dữ liệu chuẩn (24 smartphone, tài khoản, voucher)
-│   │   └── migrations/             # Lịch sử migration cơ sở dữ liệu
-│   │
+├── backend/                         # Ứng dụng NestJS Backend
+│   ├── prisma/
+│   │   ├── schema.prisma            # Schema định nghĩa 35 bảng thực thể PostgreSQL
+│   │   ├── seed.ts                  # Script nạp dữ liệu mẫu chất lượng cao
+│   │   └── migrations/              # Lịch sử migration cơ sở dữ liệu
 │   ├── src/
-│   │   ├── main.ts                 # Điểm khởi chạy ứng dụng (Bootstrap & load-env theo NODE_ENV)
-│   │   ├── load-env.ts             # Nạp backend/.env.development|production trước mọi import
-│   │   ├── app.module.ts           # Root module kết nối toàn bộ hệ thống
-│   │   │
-│   │   ├── common/                 # Thành phần dùng chung toàn hệ thống
-│   │   │   ├── constants.ts        # Các hằng số định danh hệ thống
-│   │   │   ├── guards/             # JwtAuthGuard, RolesGuard, OptionalJwtGuard
-│   │   │   ├── interceptors/       # LoggingInterceptor, ResponseInterceptor
-│   │   │   └── utils/              # Tiện ích Luhn IMEI, format tiền tệ
-│   │   │
-│   │   ├── modules/                # Các module nghiệp vụ (Feature Modules)
-│   │   │   ├── auth/               # Đăng ký, đăng nhập, JWT refresh, Google OAuth
-│   │   │   ├── users/              # Quản lý hồ sơ, địa chỉ, thông tin tài khoản
-│   │   │   ├── products/           # Danh mục sản phẩm, biến thể, lọc đa tiêu chí
-│   │   │   ├── cart/               # Giỏ hàng phía server
-│   │   │   ├── orders/             # Đặt hàng, khóa giữ IMEI nguyên tử
-│   │   │   ├── payments/           # Tích hợp VietQR, VNPay Sandbox, webhook IPN
-│   │   │   ├── imei/               # Vòng đời Serial/IMEI, nhập kho, kiểm tra Luhn
-│   │   │   ├── warranty/           # Kích hoạt & tra cứu bảo hành điện tử theo IMEI
-│   │   │   ├── vouchers/           # Quản lý mã giảm giá, kiểm tra điều kiện áp dụng
-│   │   │   ├── reviews/            # Đánh giá sản phẩm & phản hồi từ quản trị viên
-│   │   │   ├── inventory/          # Báo cáo nhập xuất tồn, cảnh báo hết hàng
-│   │   │   └── reports/            # Thống kê doanh thu, báo cáo hiệu quả bán hàng
-│   │   │
-│   │   └── infrastructure/         # Triển khai kỹ thuật hạ tầng
-│   │       ├── database/           # PrismaService kết nối Supabase PostgreSQL
-│   │       ├── storage/            # StorageService nén Sharp WebP & upload R2
-│   │       ├── security/           # Helmet, CORS cấu hình an toàn
-│   │       └── rate-limiting/      # Throttler bảo vệ API
+│   │   ├── main.ts                  # Điểm khởi chạy ứng dụng (Bootstrap, CORS, Pipes)
+│   │   ├── app.module.ts            # Root module kết nối tất cả tính năng
+│   │   ├── common/                  # Guards, Interceptors, Filters dùng chung
+│   │   ├── modules/                 # Các feature module nghiệp vụ:
+│   │   │   ├── auth/                # Đăng ký, đăng nhập JWT, Google Popup Login
+│   │   │   ├── products/            # Quản lý danh mục, biến thể, lọc specs
+│   │   │   ├── orders/              # Đặt hàng, khóa giữ IMEI nguyên tử
+│   │   │   ├── payments/            # VietQR, VNPay Sandbox, xử lý IPN
+│   │   │   ├── imei/                # Quản lý số IMEI, kiểm tra thuật toán Luhn
+│   │   │   ├── warranty/            # Tra cứu và quản lý bảo hành điện tử
+│   │   │   ├── storage/             # Xử lý nén ảnh Sharp WebP & upload R2
+│   │   │   └── chatbot/             # Trợ lý AI tư vấn sản phẩm Gemini
+│   │   └── infrastructure/          # PrismaService, cấu hình bảo mật
+│   └── package.json
 │
-└── frontend/                       # Ứng dụng Frontend React SPA
-    ├── package.json                # Dependencies & script quản lý frontend
-    ├── vite.config.ts              # Cấu hình Vite bundler & plugins
-    ├── tailwind.config.js          # Cấu hình theme Tailwind CSS
-    ├── public/                     # Tài nguyên tĩnh
-    │   └── images/products/        # Ảnh chụp thực tế của 24 smartphone retail
-    │
-    └── src/
-        ├── main.tsx                # Điểm khởi chạy React DOM
-        ├── App.tsx                 # Root component với ConfigProvider Ant Design
-        ├── index.css               # CSS toàn cục và định nghĩa utility classes
-        │
-        ├── components/             # Reusable UI Components
-        │   ├── common/             # Navbar, Footer, LoadingSpinner, Breadcrumb
-        │   └── storefront/         # ProductCard, CartDrawer, HeroBanner, VoucherCard
-        │
-        ├── layouts/                # Bố cục giao diện
-        │   ├── MainLayout.tsx      # Khung giao diện bán hàng Storefront
-        │   └── AdminLayout.tsx     # Khung thanh điều hướng Admin Portal
-        │
-        ├── pages/                  # Các trang màn hình
-        │   ├── storefront/         # Home, ProductDetail, ProductListing, Cart,
-        │   │                       # Checkout, OrderSuccess, WarrantyLookup, Profile, Auth
-        │   └── Admin/              # Dashboard, Products, Orders, InventoryImei
-        │
-        ├── services/               # Tầng gọi API qua Axios
-        │   ├── apiClient.ts        # Cấu hình Axios Base URL, Header, Token Interceptors
-        │   ├── productService.ts   # API sản phẩm, danh mục, biến thể
-        │   ├── orderService.ts     # API tạo đơn, giữ hàng, hủy đơn
-        │   ├── paymentService.ts   # API sinh mã VietQR, URL thanh toán VNPay
-        │   └── warrantyService.ts  # API tra cứu bảo hành theo IMEI
-        │
-        ├── stores/                 # Quản lý State toàn cục bằng Zustand
-        │   ├── useAuthStore.ts     # State xác thực, user, token
-        │   └── useCartStore.ts     # State giỏ hàng, tính tổng tiền, voucher
-        │
-        └── types/                  # Định nghĩa TypeScript interfaces & types
+└── frontend/                        # Ứng dụng React Frontend SPA
+    ├── src/
+    │   ├── App.tsx                  # Root component (GoogleOAuthProvider, ErrorBoundary)
+    │   ├── components/              # Các UI components tái sử dụng
+    │   │   ├── common/              # ErrorBoundary, Navbar, Footer, Modal
+    │   │   └── storefront/          # ProductCard, CartDrawer, HeroBanner
+    │   ├── pages/
+    │   │   ├── storefront/          # Home, Products, ProductDetail, Cart, Checkout
+    │   │   └── Admin/               # Dashboard, Orders, Products, Inventory, Payments
+    │   ├── services/                # Tầng gọi API qua Axios client
+    │   ├── stores/                  # Quản lý state toàn cục với Zustand (Auth, Cart)
+    │   └── types/                   # Định nghĩa TypeScript interfaces chuẩn
+    ├── vercel.json                  # Cấu hình routing SPA cho Vercel
+    └── package.json
 ```
 
 ---
 
-## 7. Hướng Dẫn Cài Đặt & Chạy Local
+## 6. Hướng Dẫn Cài Đặt & Chạy Cục Bộ (Local Setup)
 
-### 7.1. Yêu Cầu Môi Trường
-Đảm bảo máy tính của bạn đã cài đặt các công cụ sau:
-* **Node.js**: Phiên bản `>= 18.x` (khuyến nghị Node 20 LTS).
-* **Docker & Docker Compose**: Để chạy container Redis 7.
-* **Tài khoản Supabase (Miễn phí)**: Truy cập [supabase.com](https://supabase.com) để tạo một project PostgreSQL & Storage.
-* **Git**: Quản lý phiên bản mã nguồn.
+### 6.1. Yêu Cầu Tiên Quyết
+* **Node.js**: Phiên bản `>= 20.x` (LTS khuyến nghị).
+* **Git**: Quản lý mã nguồn.
+* **Cơ sở dữ liệu PostgreSQL**: Có thể dùng PostgreSQL cục bộ hoặc Supabase Cloud miễn phí.
 
 ---
 
-### 7.2. Chuẩn Bị Supabase Cloud (Database)
-1. **Tạo Database**:
-   * Tạo một project mới trên [Supabase Dashboard](https://app.supabase.com).
-   * Vào mục **Project Settings -> Database** để lấy chuỗi kết nối `DATABASE_URL` (dạng `postgresql://postgres.[ref]:[password]@...:5432/postgres?sslmode=require`).
+### 6.2. Cấu Hình Biến Môi Trường (.env)
 
----
+#### 1. Cấu hình Backend (`backend/.env`):
+Tạo file `backend/.env` với các giá trị mẫu:
+```env
+PORT=3000
+NODE_ENV=development
 
-### 7.3. Cấu Hình Biến Môi Trường (.env)
+# Kết nối PostgreSQL (Supabase hoặc Local)
+DATABASE_URL="postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres"
 
-Mỗi app giữ file env riêng — không còn file `.env` chung ở thư mục root:
+# JWT Authentication
+JWT_SECRET="your-super-secret-jwt-key"
+JWT_EXPIRES_IN="15m"
+JWT_REFRESH_SECRET="your-super-secret-refresh-key"
+JWT_REFRESH_EXPIRES_IN="7d"
 
-#### 1. Cấu hình Backend (`backend/.env.development`):
-Copy từ template rồi điền giá trị thật (file này đã git-ignored, không commit):
-```bash
-cp backend/.env.example backend/.env.development
+# Google OAuth 2.0
+GOOGLE_CLIENT_ID="your-google-client-id.apps.googleusercontent.com"
+
+# Cloudflare R2 (Lưu trữ ảnh - Tùy chọn)
+CLOUDFLARE_R2_ACCOUNT_ID="your-account-id"
+CLOUDFLARE_R2_ACCESS_KEY_ID="your-access-key"
+CLOUDFLARE_R2_SECRET_ACCESS_KEY="your-secret-key"
+CLOUDFLARE_R2_BUCKET="phoneshop"
+CLOUDFLARE_R2_PUBLIC_URL="https://pub-dcd7bf5fa7c74b97a10cdc8dfadc4064.r2.dev"
+
+# Google Gemini API (Chatbot AI)
+GEMINI_API_KEY="your-gemini-api-key"
 ```
-Xem đầy đủ danh sách biến trong `backend/.env.example` (DATABASE_URL Supabase, JWT_SECRET, VNPay/VietQR Sandbox, GOOGLE_CLIENT_ID/SECRET, CLOUDFLARE_R2_*, GEMINI_API_KEY...).
 
-Backend tự nạp đúng file theo `NODE_ENV` (nhờ `src/load-env.ts` chạy trước mọi import + `ConfigModule` trong `app.module.ts`):
-* Dev/local (`NODE_ENV != production`) → `backend/.env.development`
-* Prod (`NODE_ENV=production`) → `backend/.env.production`
-
-**Production (VPS):** tạo file `backend/.env.production` thủ công trên server theo template (giá trị thật). Workflow deploy (`.github/workflows/deploy.yml`) sẽ dừng lại nếu thiếu file này.
-
-#### 2. Cấu hình Frontend:
-File `frontend/.env.development` đã commit sẵn giá trị dev công khai (`VITE_API_URL=http://localhost:3000/api`, ...) nên chạy local không cần tạo gì thêm. Nếu cần override cục bộ, đặt trong `frontend/.env.development.local` (untracked). Biến môi trường production cấu hình trong Vercel Dashboard (Environment Variables).
+#### 2. Cấu hình Frontend (`frontend/.env.development`):
+File `frontend/.env.development` đã cấu hình sẵn trỏ về máy cục bộ:
+```env
+VITE_API_URL=http://localhost:3000/api
+VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+VITE_R2_PUBLIC_URL=https://pub-dcd7bf5fa7c74b97a10cdc8dfadc4064.r2.dev
+```
 
 ---
 
-### 7.4. Khởi Tạo Database & Nạp Dữ Liệu Mẫu (Seed)
+### 6.3. Khởi Tạo Cơ Sở Dữ Liệu & Seed Data
 
-Di chuyển vào thư mục `backend/`, cài đặt dependencies, đồng bộ schema và nạp dữ liệu:
+Di chuyển vào thư mục `backend/` và thực thi chuỗi lệnh:
 ```bash
 cd backend
 
-# 1. Cài đặt các thư viện backend
+# 1. Cài đặt các dependencies
 npm install
 
-# 2. Sinh Prisma Client từ schema
+# 2. Sinh Prisma Client
 npx prisma generate
 
-# 3. Đồng bộ schema sang Supabase PostgreSQL
+# 3. Đồng bộ cấu trúc bảng vào Database
 npx prisma db push
 
-# 4. Nạp dữ liệu mẫu (Roles, Admin/Staff/40 Customers, 12 Brands, 6 Categories, 60 Smartphones/~127 Variants phủ kín filter, 200 Orders đủ 9 status, IMEI kho, Vouchers Active/Expired/Upcoming, Flash Sale, Reviews 5★-1★)
+# 4. Nạp dữ liệu mẫu ban đầu (Sản phẩm, biến thể, tài khoản)
 npm run prisma:seed
 ```
 
-> **Ghi chú về hình ảnh sản phẩm:**  
-> Dữ liệu seed dùng URL R2 deterministic (`CLOUDFLARE_R2_PUBLIC_URL/products/<slug>.webp`, fallback về ảnh mặc định khi chưa upload). Nhờ vậy ngay sau khi seed xong toàn bộ 60 smartphone đều có thumbnail/variant image hợp lệ mà **không yêu cầu tải trước ảnh lên storage**.  
-> **Filter coverage:** mỗi giá trị RAM (4/6/8/12/16GB), Storage (64/128/256/512GB/1TB), Màu (Đen/Trắng/Xanh/Titan/Vàng/Tím/Xanh lá), Giá (<5/5-10/10-20/>20tr), Màn (<6.1/6.1-6.7/>6.7"), Pin (<4000/4000-5000/>5000mAh), OS (iOS/Android), Chipset (Apple/Snapdragon/Dimensity/Exynos), 5G on/off, onSale/inStock on/off, rating 5/4/3 đều có ≥5 products/variants để test thấy rõ.
-
 ---
 
-### 7.5. Khởi Động Ứng Dụng
+### 6.4. Khởi Động Ứng Dụng
 
-#### Khởi động Backend API (Cửa sổ Terminal 1):
+#### Khởi chạy Backend NestJS (Terminal 1):
 ```bash
 cd backend
 npm run start:dev
 ```
-Backend API sẽ hoạt động tại: **`http://localhost:3000/api`**  
-*(Tài liệu Swagger API tại: `http://localhost:3000/api/docs`)*
+* **API Endpoint**: `http://localhost:3000/api`
+* **Swagger Documentation**: `http://localhost:3000/api/docs`
 
-#### Khởi động Frontend Storefront (Cửa sổ Terminal 2):
+#### Khởi chạy Frontend React (Terminal 2):
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Giao diện Storefront sẽ mở tại: **`http://localhost:5173`**
+* **Giao diện Storefront**: `http://localhost:5173`
 
 ---
 
-### 7.7. Tài Khoản Đăng Nhập Mặc Định
+## 7. Tài Khoản Thử Nghiệm Mặc Định
 
-Dữ liệu seed chính (`prisma/seed.ts`, password chung `Password@123`) cung cấp sẵn các tài khoản demo tương ứng với 3 cấp độ phân quyền (RBAC):
+Hệ thống đi kèm các tài khoản được tạo sẵn phục vụ việc kiểm thử phân quyền:
 
-| Vai trò (Role) | Email đăng nhập | Mật khẩu mặc định | Quyền hạn truy cập |
+| Phân Quyền (Role) | Email Đăng Nhập | Mật Khẩu | Phạm Vi Truy Cập |
 | :--- | :--- | :--- | :--- |
-| **Quản trị viên (ADMIN)** | `admin@phoneshop.vn` | `Password@123` | Toàn quyền truy cập Storefront và Admin Portal (`/admin/*`) |
-| **Nhân viên (STAFF)** | `staff@phoneshop.vn` | `Password@123` | Quản lý kho IMEI, cập nhật đơn hàng, phản hồi đánh giá |
-| **Khách hàng (CUSTOMER)** | `an.nguyen92@gmail.com` (và 39 customers khác trong `prisma/seed_modules/customers.ts`) | `Password@123` | Mua hàng, thanh toán, theo dõi đơn, gửi đánh giá, đổi avatar |
+| **Quản trị viên (ADMIN)** | `admin@phoneshop.vn` | `Password@123` | Toàn quyền Storefront và bảng quản trị `/admin` |
+| **Nhân viên (STAFF)** | `staff@phoneshop.vn` | `Password@123` | Vận hành kho IMEI, cập nhật trạng thái đơn hàng |
+| **Khách hàng (CUSTOMER)** | `an.nguyen92@gmail.com` | `Password@123` | Đặt hàng, theo dõi đơn, gửi đánh giá sản phẩm |
 
-> Legacy `prisma/seed/seed.ts` (không dùng bởi `prisma db seed`) dùng accounts `*@phoneshop.local` / `Admin@123456|Staff@123456|User@123456` — chỉ để tham khảo.
+*(Người dùng cũng có thể bấm vào nút **Đăng nhập Google** để tự động tạo tài khoản khách hàng mới qua cửa sổ Popup).*
 
 ---
 
-## 8. Danh Sách API Chính (API Endpoints Reference)
+## 8. Danh Mục API Chính (RESTful Endpoints)
 
-Toàn bộ API tuân thủ chuẩn RESTful với tiền tố `/api`:
-
-### 8.1. Xác thực & Người dùng (Authentication & Users)
-| Phương thức | Đường dẫn API | Phân quyền | Mô tả chi tiết |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Public | Đăng ký tài khoản khách hàng mới |
-| `POST` | `/api/auth/login` | Public | Đăng nhập hệ thống, nhận Access Token & Refresh Token |
-| `POST` | `/api/auth/refresh` | Public | Cấp mới Access Token bằng Refresh Token |
-| `GET` | `/api/users/profile` | Authenticated | Lấy thông tin cá nhân của người dùng hiện tại |
-| `PUT` | `/api/users/profile` | Authenticated | Cập nhật thông tin cá nhân (Họ tên, SĐT, Địa chỉ) |
-
-### 8.2. Danh Mục & Sản Phẩm (Catalog & Products)
-| Phương thức | Đường dẫn API | Phân quyền | Mô tả chi tiết |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/products` | Public | Danh sách sản phẩm kèm bộ lọc (Hãng, Giá, RAM, ROM) |
-| `GET` | `/api/products/:slug` | Public | Chi tiết sản phẩm, danh sách biến thể và thông số |
-| `POST` | `/api/products` | Staff / Admin | Thêm sản phẩm mới kèm danh sách biến thể ban đầu |
-| `PUT` | `/api/products/:id` | Staff / Admin | Cập nhật thông tin sản phẩm và trạng thái kinh doanh |
-| `DELETE` | `/api/products/:id` | Admin | Xóa sản phẩm (Soft delete hoặc xóa khỏi catalog) |
-
-### 8.3. Đơn Hàng & Khóa Giữ Hàng (Orders & Concurrency Hold)
-| Phương thức | Đường dẫn API | Phân quyền | Mô tả chi tiết |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/orders` | Authenticated | Đặt hàng nguyên tử, khóa giữ IMEI trong transaction |
-| `GET` | `/api/orders/my-orders`| Authenticated | Danh sách lịch sử đơn hàng của khách hàng hiện tại |
-| `GET` | `/api/orders/:id` | Authenticated | Xem chi tiết đơn hàng, mã vận đơn, danh sách IMEI giữ |
-| `PATCH`| `/api/orders/:id/cancel`| Authenticated | Khách hàng chủ động hủy đơn, tự động nhả kho/IMEI |
-| `PATCH`| `/api/orders/:id/status`| Staff / Admin | Cập nhật trạng thái đơn hàng (`PROCESSING`, `SHIPPED`,...) |
-
-### 8.4. Thanh Toán (Payments)
-| Phương thức | Đường dẫn API | Phân quyền | Mô tả chi tiết |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/payments/vietqr` | Authenticated | Sinh chuỗi và mã VietQR chuẩn thanh toán ngân hàng |
-| `POST` | `/api/payments/vnpay/create-url` | Authenticated | Sinh URL thanh toán chuyển hướng sang cổng VNPay |
-| `GET` | `/api/payments/vnpay/ipn` | Public | Webhook tiếp nhận kết quả thanh toán từ VNPay |
-
-### 8.5. Kho Serial/IMEI & Bảo Hành (IMEI & Warranty)
-| Phương thức | Đường dẫn API | Phân quyền | Mô tả chi tiết |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/imei/lookup/:imei` | Public | Tra cứu công khai thông tin và hạn bảo hành theo IMEI |
-| `POST` | `/api/imei/batch-import` | Staff / Admin | Nhập lô mã IMEI vào kho cho biến thể sản phẩm |
-| `POST` | `/api/warranty/claims` | Authenticated | Gửi yêu cầu tiếp nhận bảo hành / sửa chữa thiết bị |
-| `PATCH`| `/api/warranty/claims/:id` | Staff / Admin | Duyệt và cập nhật tiến độ xử lý phiếu bảo hành |
-
-### 8.6. Media Storage (Cloudflare R2 & Sharp)
-| Phương thức | Đường dẫn API | Phân quyền | Mô tả chi tiết |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/storage/upload` | Staff / Admin | Upload 1 ảnh sản phẩm, tự động nén sang WebP |
-| `POST` | `/api/storage/gallery` | Staff / Admin | Upload nhiều ảnh thư viện sản phẩm dạng mảng WebP |
-| `POST` | `/api/storage/avatar` | Authenticated | Upload và thay thế ảnh đại diện người dùng |
+| Phân Hệ | Phương Thức | Endpoint | Quyền Hạn | Mô Tả |
+| :--- | :---: | :--- | :---: | :--- |
+| **Auth** | `POST` | `/api/auth/register` | Public | Đăng ký tài khoản người dùng mới |
+| | `POST` | `/api/auth/login` | Public | Đăng nhập hệ thống, cấp phát JWT |
+| | `POST` | `/api/auth/google/credential` | Public | **Đăng nhập Google OAuth Popup bằng ID Token** |
+| | `POST` | `/api/auth/refresh` | Public | Cấp mới Access Token từ Refresh Token |
+| **Products** | `GET` | `/api/products` | Public | Lấy danh sách sản phẩm kèm bộ lọc linh hoạt |
+| | `GET` | `/api/products/:slug` | Public | Lấy chi tiết sản phẩm, danh sách biến thể & specs |
+| | `POST` | `/api/products` | Staff/Admin | Tạo mới sản phẩm và thông số kỹ thuật |
+| **Orders** | `POST` | `/api/orders` | Auth | **Tạo đơn hàng nguyên tử & khóa giữ IMEI** |
+| | `GET` | `/api/orders/my-orders` | Auth | Lịch sử mua hàng của khách |
+| | `PATCH`| `/api/orders/:id/cancel` | Auth | Hủy đơn hàng và tự động nhả kho/IMEI |
+| **Payments** | `POST` | `/api/payments/vietqr` | Auth | Sinh mã VietQR chuẩn ngân hàng |
+| | `POST` | `/api/payments/vnpay/create-url` | Auth | Khởi tạo URL chuyển hướng VNPay Sandbox |
+| | `GET` | `/api/payments/vnpay/ipn` | Public | Webhook tiếp nhận kết quả thanh toán từ VNPay |
+| **IMEI & Bảo Hành** | `GET` | `/api/imei/lookup/:imei` | Public | Tra cứu nguồn gốc và hạn bảo hành theo IMEI |
+| | `POST` | `/api/imei/batch-import` | Staff/Admin | Nhập lô mã IMEI vào kho (kiểm tra Luhn) |
+| **AI Assistant** | `POST` | `/api/chatbot/ask` | Public | Đặt câu hỏi tư vấn sản phẩm cho trợ lý Gemini |
+| | `GET` | `/api/chatbot/suggestions` | Public | Lấy danh sách câu hỏi gợi ý thông minh |
 
 ---
 
-## 9. Kiểm Tra Bản Đóng Gói Production (Build Verification)
+## 9. Tiêu Chuẩn Bảo Mật & Best Practices
 
-Kiểm tra tính tương thích và bảo đảm không có lỗi cú pháp hoặc Type mismatch trong TypeScript:
-```bash
-# Kiểm tra build Backend
-npm --prefix backend run build
-
-# Kiểm tra build Frontend
-npm --prefix frontend run build
-```
-Cả hai ứng dụng đều biên dịch thành công 100% với mã thoát `exit 0`.
-
----
-
-## 10. Tiêu Chuẩn Bảo Mật & Best Practices
-
-1. **Bảo mật mã Serial/IMEI**:
-   * Số IMEI không bao giờ được trả về trong các API công khai của danh sách sản phẩm hay giỏ hàng.
-   * Số IMEI chỉ được tiết lộ trong chi tiết đơn hàng của chính người mua hoặc trong màn hình quản trị của nhân viên/admin có thẩm quyền.
-   * Nghiêm cấm ghi log số IMEI thô vào console, hệ thống giám sát hoặc file log production.
-2. **Bảo mật xác thực & Ủy quyền (Authentication & Authorization)**:
-   * Toàn bộ mật khẩu được băm (hash) bằng thư viện `bcrypt` với 10 vòng muối (salt rounds).
-   * Cơ chế xác thực kép: `Access Token` ngắn hạn (15 phút) và `Refresh Token` dài hạn (7 ngày).
-   * Phân quyền Role-based Access Control (RBAC) được kiểm soát chặt chẽ ở cấp độ từng controller qua `RolesGuard`.
-3. **Phòng chống tấn công & Tối ưu hóa**:
-   * Header bảo mật `Helmet` được cấu hình để ngăn chặn XSS, Clickjacking và MIME-sniffing.
-   * `LoggingInterceptor` và `HttpExceptionFilter` ghi log request/response và lỗi hệ thống qua NestJS Logger chuẩn.
-   * Kiểm soát chặt chẽ chính sách CORS (Cross-Origin Resource Sharing) giữa Frontend và Backend.
-   * Dữ liệu nhạy cảm và thông tin kết nối (Database URL, Secret Keys) được quản lý tách biệt qua `.env` và được loại trừ hoàn toàn khỏi Git tracking.
+1. **Bảo mật danh tính IMEI**:
+   * Số IMEI không bao giờ bị lộ trong danh sách sản phẩm hay giỏ hàng công khai.
+   * Số IMEI chỉ được hiển thị trong chi tiết đơn hàng của chính người mua hoặc trên trang quản trị có phân quyền.
+2. **Mã hóa và Kiểm soát Phiên (Security Tokens)**:
+   * Mật khẩu người dùng được băm qua `bcrypt` với 10 rounds salt.
+   * Access Token có thời hạn ngắn (15 phút), giảm thiểu rủi ro khi bị lộ token; Refresh Token được lưu an toàn trong database.
+3. **Phòng chống tấn công Web**:
+   * Header bảo mật `Helmet` bảo vệ ứng dụng khỏi các lỗi XSS, Clickjacking, MIME-sniffing.
+   * Kiểm soát chặt chẽ chính sách CORS giữa frontend Vercel và backend Render.
+   * `Class-validator` kiểm thực toàn bộ dữ liệu đầu vào DTO tại tầng Gateway, loại bỏ rủi ro SQL Injection.
 
 ---
 
 <p align="center">
-  Phát triển với sự tận tâm bởi <strong>PhoneShop Engineering Team</strong> © 2026.
+  Được xây dựng và phát triển bởi <strong>PhoneShop Team</strong> © 2026.
 </p>
