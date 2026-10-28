@@ -1,8 +1,6 @@
-import { BadRequestException, Injectable, Inject, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import type { Cache } from 'cache-manager';
 import { SettingItemDto, TestEmailDto, TestStorageDto, TestVietQrDto } from './dto/settings.dto';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import * as nodemailer from 'nodemailer';
@@ -55,28 +53,24 @@ export const DEFAULT_DEFINITIONS: Record<
 @Injectable()
 export class SystemSettingsService {
   private readonly logger = new Logger(SystemSettingsService.name);
+  private readonly memoryCache = new Map<string, { val: any; expiresAt: number }>();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
-    @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) {}
 
   async get<T = string>(key: string, defaultValue?: T): Promise<T> {
     const cacheKey = `settings:key:${key}`;
-    try {
-      const cached = await this.cache.get<T>(cacheKey);
-      if (cached !== undefined && cached !== null) return cached;
-    } catch (e) {
-      this.logger.warn(`Cache read error for ${key}: ${e}`);
+    const cached = this.memoryCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.val as T;
     }
 
     const record = await this.prisma.systemSetting.findUnique({ where: { key } });
     if (record && record.value !== null && record.value !== '') {
       const val = record.value as unknown as T;
-      try {
-        await this.cache.set(cacheKey, val, 3600);
-      } catch (e) {}
+      this.memoryCache.set(cacheKey, { val, expiresAt: Date.now() + 3600_000 });
       return val;
     }
 
@@ -194,9 +188,7 @@ export class SystemSettingsService {
         },
       });
 
-      try {
-        await this.cache.del(`settings:key:${item.key}`);
-      } catch (e) {}
+      this.memoryCache.delete(`settings:key:${item.key}`);
 
       // AUDIT: never persist plaintext secrets into the audit trail — a
       // redacted marker preserves the fact of change without widening

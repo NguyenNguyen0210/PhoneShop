@@ -7,7 +7,6 @@ import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 
 // Infrastructure (Global Modules - should be loaded first)
-import { CachingModule } from './infrastructure/caching/caching.module';
 import { RateLimitingModule } from './infrastructure/rate-limiting/rate-limiting.module';
 import { IdempotencyModule } from './infrastructure/idempotency/idempotency.module';
 import { BackgroundJobsModule } from './infrastructure/background-jobs/background-jobs.module';
@@ -59,7 +58,6 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
 
     // ----- Infrastructure (Global) -----
     PrismaModule,
-    CachingModule,
     RateLimitingModule,
     IdempotencyModule,
     BackgroundJobsModule,

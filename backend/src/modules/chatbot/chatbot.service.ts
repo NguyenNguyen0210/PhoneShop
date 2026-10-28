@@ -1,7 +1,6 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
-import { RagService } from '../rag/rag.service';
 import { CartService } from '../cart/cart.service';
 import {
   groqChatTurn,
@@ -305,7 +304,6 @@ export class ChatbotService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
-    @Optional() private readonly ragService?: RagService,
     @Optional() private readonly cartService?: CartService,
   ) {}
 
@@ -920,20 +918,7 @@ export class ChatbotService {
         return n;
       })();
 
-      // RAG chạy khi SQL thiếu (semantic bù cho keyword).
-      let ragSlugs: string[] = [];
-      if (sqlHitCount < 3) {
-        try {
-          if (this.ragService) {
-            ragSlugs = (await this.ragService.searchProducts(message, { maxPrice, limit: 5 })).map((h) => h.slug);
-          }
-        } catch (err) {
-          this.logger.warn(`RAG search fallback to SQL: ${(err as Error)?.message}`);
-          ragSlugs = [];
-        }
-      }
-
-      // Gộp 3 nguồn theo độ ưu tiên: khớp chính xác (0) → vector (1) → keyword (2),
+      // Gộp nguồn theo độ ưu tiên: khớp chính xác (0) → keyword (2),
       // trong cùng nguồn xếp theo số keyword trúng tên+brand.
       const seen = new Set<string>();
       const pool: { p: any; src: number }[] = [];
@@ -946,22 +931,6 @@ export class ChatbotService {
         }
       };
       pushPool(strongRows, 0);
-      let ragRows: any[] = [];
-      const freshRag = ragSlugs.filter((s) => !seen.has(s)).slice(0, 5);
-      if (freshRag.length > 0) {
-        try {
-          const hydrated: any[] = await this.prisma.product.findMany({
-            where: { status: 'ACTIVE' as any, slug: { in: freshRag } },
-            take: freshRag.length,
-            include: productInclude,
-          });
-          const bySlug = new Map(hydrated.map((p: any) => [p.slug, p]));
-          ragRows = freshRag.map((s) => bySlug.get(s)).filter(Boolean);
-        } catch (err) {
-          this.logger.warn(`RAG hydrate failed: ${(err as Error)?.message}`);
-        }
-      }
-      pushPool(ragRows, 1);
       pushPool(rows, 2);
       const allRows = pool
         .map(({ p, src }) => {

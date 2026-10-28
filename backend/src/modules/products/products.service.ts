@@ -1,6 +1,5 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger, Optional } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { RagService } from '../rag/rag.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
@@ -40,12 +39,10 @@ export class ProductsService {
 
   constructor(
     private prisma: PrismaService,
-    @Optional() private ragService?: RagService,
   ) {}
 
-  private reindexAsync(id: string) {
-    if (!this.ragService) return;
-    this.ragService.indexProduct(id).catch((err) => this.logger.warn(`RAG reindex failed: ${err?.message || err}`));
+  private reindexAsync(_id: string) {
+    // RAG embedding removed
   }
 
   // ── PRODUCTS ──────────────────────────────────────────

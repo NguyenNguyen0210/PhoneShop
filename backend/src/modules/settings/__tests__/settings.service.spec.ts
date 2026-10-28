@@ -5,7 +5,6 @@ describe('SystemSettingsService', () => {
   let service: SystemSettingsService;
   let prisma: any;
   let config: any;
-  let cache: any;
 
   beforeEach(() => {
     prisma = {
@@ -23,24 +22,26 @@ describe('SystemSettingsService', () => {
       get: jest.fn(),
     };
 
-    cache = {
-      get: jest.fn(),
-      set: jest.fn(),
-      del: jest.fn(),
-    };
-
-    service = new SystemSettingsService(prisma as any, config as any, cache as any);
+    service = new SystemSettingsService(prisma as any, config as any);
   });
 
-  it('should return from cache when cache hit', async () => {
-    (cache.get as any).mockResolvedValue('CACHED_VALUE');
-    const result = await service.get('TEST_KEY');
-    expect(result).toBe('CACHED_VALUE');
-    expect(prisma.systemSetting.findUnique).not.toHaveBeenCalled();
+  it('should return from cache when cache hit on second get', async () => {
+    (prisma.systemSetting.findUnique as any).mockResolvedValue({
+      key: 'TEST_KEY',
+      value: 'DB_VALUE',
+    });
+
+    const first = await service.get('TEST_KEY');
+    expect(first).toBe('DB_VALUE');
+    expect(prisma.systemSetting.findUnique).toHaveBeenCalledTimes(1);
+
+    // Second call hits in-memory cache
+    const second = await service.get('TEST_KEY');
+    expect(second).toBe('DB_VALUE');
+    expect(prisma.systemSetting.findUnique).toHaveBeenCalledTimes(1);
   });
 
   it('should query DB and cache when cache miss', async () => {
-    (cache.get as any).mockResolvedValue(null);
     (prisma.systemSetting.findUnique as any).mockResolvedValue({
       key: 'TEST_KEY',
       value: 'DB_VALUE',
@@ -48,11 +49,10 @@ describe('SystemSettingsService', () => {
 
     const result = await service.get('TEST_KEY');
     expect(result).toBe('DB_VALUE');
-    expect(cache.set).toHaveBeenCalledWith('settings:key:TEST_KEY', 'DB_VALUE', 3600);
+    expect(prisma.systemSetting.findUnique).toHaveBeenCalledWith({ where: { key: 'TEST_KEY' } });
   });
 
   it('should fallback to ConfigService when not found in DB', async () => {
-    (cache.get as any).mockResolvedValue(null);
     (prisma.systemSetting.findUnique as any).mockResolvedValue(null);
     (config.get as any).mockReturnValue('ENV_FALLBACK_VALUE');
 
@@ -123,7 +123,6 @@ describe('SystemSettingsService', () => {
         updatedBy: 'admin-id',
       },
     });
-    expect(cache.del).toHaveBeenCalledWith('settings:key:STORE_NAME');
     expect(prisma.auditLog.create).toHaveBeenCalled();
   });
 
@@ -132,7 +131,6 @@ describe('SystemSettingsService', () => {
   });
 
   it('testEmail should throw error if credentials missing', async () => {
-    (cache.get as any).mockResolvedValue(null);
     (prisma.systemSetting.findUnique as any).mockResolvedValue(null);
     (config.get as any).mockReturnValue(undefined);
 
@@ -142,7 +140,6 @@ describe('SystemSettingsService', () => {
   });
 
   it('should include FEATURED_BRANDS in getPublicSettings', async () => {
-    (cache.get as any).mockResolvedValue(null);
     (prisma.systemSetting.findUnique as any).mockResolvedValue(null);
     (config.get as any).mockImplementation((k: string, def: string) => def);
 

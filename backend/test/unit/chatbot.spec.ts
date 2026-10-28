@@ -309,7 +309,7 @@ describe('ChatbotService Unit Tests', () => {
       GEMINI_API_KEY: 'k',
       GEMINI_MODEL: 'gemini-3.1-flash-lite',
     });
-    const svc = new ChatbotService(mockPrisma as any, keyed as any, undefined as any, mockCart as any);
+    const svc = new ChatbotService(mockPrisma as any, keyed as any, mockCart as any);
     (global as any).fetch = (jest.fn() as any)
       .mockResolvedValueOnce({
         ok: true,
@@ -388,7 +388,7 @@ describe('ChatbotService Unit Tests', () => {
     });
     const mockCart = { getCart: (jest.fn() as any).mockResolvedValue({ items: [{ variantId: 'v1', quantity: 1 }] }), addItem: (jest.fn() as any).mockResolvedValue({}) };
     const noKey = new ConfigService({ CHATBOT_ENABLED: 'true', GEMINI_API_KEY: '' });
-    const svc = new ChatbotService(mockPrisma as any, noKey as any, undefined as any, mockCart as any);
+    const svc = new ChatbotService(mockPrisma as any, noKey as any, mockCart as any);
     (global as any).fetch = undefined;
 
     const res = await svc.ask({ message: 'thêm máy honor magic6 pro 5g vào giỏ hàng của tôi' } as any, { id: 'u1' });
@@ -404,7 +404,7 @@ describe('ChatbotService Unit Tests', () => {
     ]);
     const mockCart = { getCart: (jest.fn() as any), addItem: (jest.fn() as any) };
     const noKey = new ConfigService({ CHATBOT_ENABLED: 'true', GEMINI_API_KEY: '' });
-    const svc = new ChatbotService(mockPrisma as any, noKey as any, undefined as any, mockCart as any);
+    const svc = new ChatbotService(mockPrisma as any, noKey as any, mockCart as any);
 
     const res = await svc.ask({ message: 'thêm máy honor magic6 pro 5g vào giỏ hàng của tôi' } as any, null);
 
@@ -417,7 +417,7 @@ describe('ChatbotService Unit Tests', () => {
     ]);
     const mockCart = { getCart: (jest.fn() as any), addItem: (jest.fn() as any) };
     const noKey = new ConfigService({ CHATBOT_ENABLED: 'true', GEMINI_API_KEY: '' });
-    const svc = new ChatbotService(mockPrisma as any, noKey as any, undefined as any, mockCart as any);
+    const svc = new ChatbotService(mockPrisma as any, noKey as any, mockCart as any);
 
     const res = await svc.ask({ message: 'cho tôi xem giỏ hàng của tôi' } as any, { id: 'u1' });
 
@@ -431,7 +431,7 @@ describe('ChatbotService Unit Tests', () => {
     ]);
     const mockCart = { getCart: (jest.fn() as any), addItem: (jest.fn() as any).mockResolvedValue({}) };
     const noKey = new ConfigService({ CHATBOT_ENABLED: 'true', GEMINI_API_KEY: '' });
-    const svc = new ChatbotService(mockPrisma as any, noKey as any, undefined as any, mockCart as any);
+    const svc = new ChatbotService(mockPrisma as any, noKey as any, mockCart as any);
 
     const res = await svc.ask({ message: 'thêm iphone 29 promax vào giỏ hàng của tôi' } as any, { id: 'u1' });
 
@@ -574,36 +574,6 @@ describe('ChatbotService Unit Tests', () => {
     expect(res.reply).toContain('Thử lại thành công');
     expect((global as any).fetch).toHaveBeenCalledTimes(2);
     (global as any).fetch = undefined;
-  });
-
-  it('should skip RAG embedding when SQL already has 3+ clear hits', async () => {
-    const row = (slug: string, name: string) => ({
-      slug, name, brand: { name: 'Apple' }, warrantyMonths: 12, specs: {},
-      variants: [{ name: 'V', price: 30000000, inventory: { availableQty: 5 } }],
-    });
-    (mockPrisma.product.findMany as any).mockResolvedValue([
-      row('iphone-16-pro-max', 'iPhone 16 Pro Max'),
-      row('iphone-15-pro-max', 'iPhone 15 Pro Max'),
-      row('iphone-16-pro', 'iPhone 16 Pro'),
-    ]);
-    const ragSpy = { searchProducts: (jest.fn() as any).mockResolvedValue([]) };
-    const noKey = new ConfigService({ CHATBOT_ENABLED: 'true', GEMINI_API_KEY: '' });
-    const svc = new ChatbotService(mockPrisma as any, noKey as any, ragSpy as any);
-
-    await svc.ask({ message: 'tư vấn iPhone dưới 35 triệu' } as any, null);
-
-    expect(ragSpy.searchProducts).not.toHaveBeenCalled();
-  });
-
-  it('should still use RAG for semantic query with no SQL hits', async () => {
-    (mockPrisma.product.findMany as any).mockResolvedValue([]);
-    const ragSpy = { searchProducts: (jest.fn() as any).mockResolvedValue([]) };
-    const noKey = new ConfigService({ CHATBOT_ENABLED: 'true', GEMINI_API_KEY: '' });
-    const svc = new ChatbotService(mockPrisma as any, noKey as any, ragSpy as any);
-
-    await svc.ask({ message: 'máy nào pin trâu chụp đêm tốt' } as any, null);
-
-    expect(ragSpy.searchProducts).toHaveBeenCalled();
   });
 
   it('should answer via Groq chat/completions when CHATBOT_PROVIDER=groq', async () => {
