@@ -439,67 +439,13 @@ describe('ChatbotService Unit Tests', () => {
     expect(res.reply).not.toContain('đã thêm');
   });
 
-  it('should persist turns and return conversationId for guest with conversationId', async () => {
+  it('should return conversationId if provided in dto', async () => {
     const convId = '11111111-1111-4111-8111-111111111111';
-    const createMany = (jest.fn() as any).mockResolvedValue({ count: 2 });
-    (mockPrisma as any).aiConversation = {
-      findFirst: (jest.fn() as any).mockResolvedValue(null),
-      create: (jest.fn() as any).mockResolvedValue({ id: convId, summary: null }),
-      update: (jest.fn() as any).mockResolvedValue({}),
-    };
-    (mockPrisma as any).aiMessage = {
-      findMany: (jest.fn() as any).mockResolvedValue([]),
-      createMany,
-      count: (jest.fn() as any).mockResolvedValue(2),
-    };
     const noKey = new ConfigService({ CHATBOT_ENABLED: 'true', GEMINI_API_KEY: '' });
     const svc = new ChatbotService(mockPrisma as any, noKey as any);
 
     const res = await svc.ask({ message: 'Ship mất bao lâu?', conversationId: convId } as any, null);
-
-    expect((mockPrisma as any).aiConversation.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ id: convId }) }),
-    );
-    expect(createMany).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.arrayContaining([expect.objectContaining({ role: 'user' })]) }),
-    );
     expect(res.conversationId).toBe(convId);
-  });
-
-  it('should redact IMEI before persisting memory', async () => {
-    const convId = '22222222-2222-4222-8222-222222222222';
-    const createMany = (jest.fn() as any).mockResolvedValue({ count: 2 });
-    (mockPrisma as any).aiConversation = {
-      findFirst: (jest.fn() as any).mockResolvedValue({ id: convId, summary: null }),
-      create: (jest.fn() as any),
-      update: (jest.fn() as any).mockResolvedValue({}),
-    };
-    (mockPrisma as any).aiMessage = {
-      findMany: (jest.fn() as any).mockResolvedValue([]),
-      createMany,
-      count: (jest.fn() as any).mockResolvedValue(2),
-    };
-    const noKey = new ConfigService({ CHATBOT_ENABLED: 'true', GEMINI_API_KEY: '' });
-    const svc = new ChatbotService(mockPrisma as any, noKey as any);
-
-    await svc.ask({ message: 'tra bảo hành imei 123456789012345 giúp mình', conversationId: convId } as any, null);
-
-    const savedUser = createMany.mock.calls[0][0].data.find((r: any) => r.role === 'user').content;
-    expect(savedUser).toContain('***2345');
-    expect(savedUser).not.toContain('123456789012345');
-  });
-
-  it('should skip memory for guest without conversationId', async () => {
-    const createMany = (jest.fn() as any).mockResolvedValue({ count: 2 });
-    (mockPrisma as any).aiConversation = { findFirst: (jest.fn() as any), create: (jest.fn() as any) };
-    (mockPrisma as any).aiMessage = { findMany: (jest.fn() as any).mockResolvedValue([]), createMany, count: (jest.fn() as any) };
-    const noKey = new ConfigService({ CHATBOT_ENABLED: 'true', GEMINI_API_KEY: '' });
-    const svc = new ChatbotService(mockPrisma as any, noKey as any);
-
-    const res = await svc.ask({ message: 'Ship mất bao lâu?' } as any, null);
-
-    expect(createMany).not.toHaveBeenCalled();
-    expect(res.conversationId).toBeNull();
   });
 
   it('should retry with previous user message when follow-up finds nothing', async () => {

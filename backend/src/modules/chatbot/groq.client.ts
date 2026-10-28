@@ -1,5 +1,4 @@
 // Groq (OpenAI-compatible) client helpers — pure functions, không phụ thuộc Nest.
-// Embedding vẫn dùng Gemini (Groq không có embedding API).
 
 export interface GroqConfig {
   label?: string;

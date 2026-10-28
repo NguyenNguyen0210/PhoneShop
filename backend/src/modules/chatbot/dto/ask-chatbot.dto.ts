@@ -41,7 +41,7 @@ export class AskChatbotDto {
   history?: ChatHistoryItemDto[];
 
   @ApiPropertyOptional({
-    description: 'ID hội thoại do client giữ trong localStorage (server lưu memory theo id này)',
+    description: 'ID hội thoại do client quản lý',
   })
   @IsOptional()
   @IsUUID()

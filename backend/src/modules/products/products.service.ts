@@ -41,10 +41,6 @@ export class ProductsService {
     private prisma: PrismaService,
   ) {}
 
-  private reindexAsync(_id: string) {
-    // RAG embedding removed
-  }
-
   // ── PRODUCTS ──────────────────────────────────────────
 
   async create(dto: CreateProductDto) {
@@ -65,7 +61,6 @@ export class ProductsService {
       data: { ...dto, slug },
       include: { brand: true, category: true, variants: true },
     });
-    this.reindexAsync(created.id);
     return created;
   }
 
@@ -502,7 +497,6 @@ export class ProductsService {
       data: dto,
       include: { brand: true, category: true, variants: true },
     });
-    this.reindexAsync(updated.id);
     return updated;
   }
 

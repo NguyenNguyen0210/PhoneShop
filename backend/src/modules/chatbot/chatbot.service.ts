@@ -311,25 +311,8 @@ export class ChatbotService {
     const message = dto.message.trim();
     const faqs = findFaqMatches(message, 2);
     const imei = extractImei(message);
-    const userId = user?.id ? String(user.id) : null;
-    const sessionKey = userId ?? (dto.conversationId ? `guest:${dto.conversationId}` : null);
-
-    // Memory: ưu tiên history client gửi, else load từ DB theo conversation.
-    let conv: { id: string; summary: string | null } | null = null;
-    let history: { role: 'user' | 'assistant'; content: string }[] = dto.history || [];
-    let memSummary: string | null = null;
-    try {
-      conv = await this.resolveConversation(sessionKey, userId, dto.conversationId);
-      if (conv) {
-        memSummary = conv.summary;
-        if (!dto.history || dto.history.length === 0) {
-          history = await this.loadMemoryHistory(conv.id);
-        }
-      }
-    } catch (err) {
-      this.logger.warn(`Memory load failed: ${(err as Error)?.message}`);
-      conv = null;
-    }
+    const history: { role: 'user' | 'assistant'; content: string }[] = dto.history || [];
+    const conversationId = dto.conversationId ?? null;
 
     const [products, personal, vouchers, flashSales, store, warranty] = await Promise.all([
       this.searchProducts(message, history),
@@ -377,23 +360,21 @@ export class ChatbotService {
         const okReply =
           `Shop đã thêm ${toolResult.item.name} (${toolResult.item.variant}) vào giỏ hàng của bạn rồi nhé — ` +
           `${formatVnd(toolResult.item.price)} x ${toolResult.item.qty} (giỏ hiện có ${toolResult.cartQty ?? toolResult.item.qty} chiếc). Mở giỏ hàng để checkout nhé!`;
-        await this.persistTurn(conv?.id ?? null, message, okReply);
         return {
           reply: okReply,
           products: shownProducts,
           sources: this.buildSources(message, shownProducts, faqs, personal, vouchers, flashSales, warranty),
           escalate,
-          conversationId: conv?.id ?? dto.conversationId ?? null,
+          conversationId,
         };
       }
       const failReply = `${toolResult?.message || 'Không thêm được vào giỏ.'} Cần hỗ trợ thêm, bạn liên hệ hotline ${store.hotline} nhé!`;
-      await this.persistTurn(conv?.id ?? null, message, failReply);
       return {
         reply: failReply,
         products: shownProducts,
         sources: this.buildSources(message, shownProducts, faqs, personal, vouchers, flashSales, warranty),
         escalate,
-        conversationId: conv?.id ?? dto.conversationId ?? null,
+        conversationId,
       };
     }
 
@@ -407,13 +388,12 @@ export class ChatbotService {
 
     if (!enabled || !apiKey) {
       const fbReply = this.buildFallbackReply(message, faqs, shownProducts, personal, !!user, vouchers, flashSales, store, warranty);
-      await this.persistTurn(conv?.id ?? null, message, fbReply);
       return {
         reply: fbReply,
         products: shownProducts,
         sources: this.buildSources(message, shownProducts, faqs, personal, vouchers, flashSales, warranty),
         escalate,
-        conversationId: conv?.id ?? dto.conversationId ?? null,
+        conversationId,
       };
     }
 
@@ -429,26 +409,23 @@ export class ChatbotService {
         store,
         warranty,
         user || null,
-        memSummary,
       );
-      await this.persistTurn(conv?.id ?? null, message, reply);
       return {
         reply,
         products: shownProducts,
         sources: this.buildSources(message, shownProducts, faqs, personal, vouchers, flashSales, warranty),
         escalate: escalate || /gặp nhân viên|liên hệ cskh|không chắc chắn/i.test(reply),
-        conversationId: conv?.id ?? dto.conversationId ?? null,
+        conversationId,
       };
     } catch (err: any) {
       this.logger.warn(`Gemini call failed: ${err?.message || err}`);
       const errReply = `${this.buildFallbackReply(message, faqs, shownProducts, personal, !!user, vouchers, flashSales, store, warranty)}\n\n(Lưu ý: AI đang bận nên trả lời từ dữ liệu shop. Bấm "Gặp nhân viên" để được hỗ trợ trực tiếp.)`;
-      await this.persistTurn(conv?.id ?? null, message, errReply);
       return {
         reply: errReply,
         products: shownProducts,
         sources: this.buildSources(message, shownProducts, faqs, personal, vouchers, flashSales, warranty),
         escalate: true,
-        conversationId: conv?.id ?? dto.conversationId ?? null,
+        conversationId,
       };
     }
   }
@@ -565,7 +542,6 @@ export class ChatbotService {
     };
 
     const finish = async (
-      convId: string | null,
       reply: string,
       shown: ChatbotProduct[],
       faqs: { question: string; answer: string }[],
@@ -574,7 +550,6 @@ export class ChatbotService {
       flashSales: ChatbotFlashSaleItem[],
       escalateIt: boolean,
     ): Promise<void> => {
-      await this.persistTurn(convId, message, reply);
       emit({
         type: 'products',
         products: shown,
@@ -587,21 +562,7 @@ export class ChatbotService {
     // --- Grounding (đồng bộ với ask()) ---
     const faqs = findFaqMatches(message, 2);
     const imei = extractImei(message);
-    const userId = user?.id ? String(user.id) : null;
-    const sessionKey = userId ?? (dto.conversationId ? `guest:${dto.conversationId}` : null);
-    let conv: { id: string; summary: string | null } | null = null;
-    let history: { role: 'user' | 'assistant'; content: string }[] = dto.history || [];
-    let memSummary: string | null = null;
-    try {
-      conv = await this.resolveConversation(sessionKey, userId, dto.conversationId);
-      if (conv) {
-        memSummary = conv.summary;
-        if (!dto.history || dto.history.length === 0) history = await this.loadMemoryHistory(conv.id);
-      }
-    } catch {
-      conv = null;
-    }
-    const convId = conv?.id ?? null;
+    const history: { role: 'user' | 'assistant'; content: string }[] = dto.history || [];
     const [products, personal, vouchers, flashSales, store, warranty] = await Promise.all([
       this.searchProducts(message, history),
       user?.id ? this.getPersonalContext(user.id, message) : Promise.resolve(null),
@@ -616,7 +577,7 @@ export class ChatbotService {
         message,
       );
     const shownProducts = isActionIntent ? products.slice(0, 1) : products;
-    const prompt = this.buildPrompt(message, history, faqs, shownProducts, personal, vouchers, flashSales, store, warranty, memSummary);
+    const prompt = this.buildPrompt(message, history, faqs, shownProducts, personal, vouchers, flashSales, store, warranty);
 
     // Deterministic add-to-cart: thực thi thẳng, emit 1 token.
     const isAddToCart = /(thêm|bỏ|đưa).*vào giỏ|cho.*vào giỏ|thêm.*giỏ/i.test(message);
@@ -638,7 +599,7 @@ export class ChatbotService {
           `${formatVnd(toolResult.item.price)} x ${toolResult.item.qty} (giỏ hiện có ${toolResult.cartQty ?? toolResult.item.qty} chiếc). Mở giỏ hàng để checkout nhé!`
         : `${toolResult?.message || 'Không thêm được vào giỏ.'} Cần hỗ trợ thêm, bạn liên hệ hotline ${store.hotline} nhé!`;
       emit({ type: 'token', text });
-      await finish(convId, text, shownProducts, faqs, personal, vouchers, flashSales, escalate);
+      await finish(text, shownProducts, faqs, personal, vouchers, flashSales, escalate);
       return;
     }
 
@@ -647,7 +608,7 @@ export class ChatbotService {
     if (!enabled || !apiKey) {
       const fb = this.buildFallbackReply(message, faqs, shownProducts, personal, !!user, vouchers, flashSales, store, warranty);
       emit({ type: 'token', text: fb });
-      await finish(convId, fb, shownProducts, faqs, personal, vouchers, flashSales, escalate);
+      await finish(fb, shownProducts, faqs, personal, vouchers, flashSales, escalate);
       return;
     }
 
@@ -699,15 +660,14 @@ export class ChatbotService {
           contents.push({ role: 'user', parts: [{ functionResponse: { name, response: toolResult } }] });
         }
       }
-      // Text đã emit dần trong streamTurn; persist bản đầy đủ để làm memory.
       const finalText = full.trim() || '(không có nội dung)';
-      await finish(convId, finalText, shownProducts, faqs, personal, vouchers, flashSales, escalate || /gặp nhân viên|liên hệ cskh|không chắc chắn/i.test(finalText));
+      await finish(finalText, shownProducts, faqs, personal, vouchers, flashSales, escalate || /gặp nhân viên|liên hệ cskh|không chắc chắn/i.test(finalText));
     } catch (err: any) {
       this.logger.warn(`Gemini stream failed: ${err?.message || err}`);
       const fb =
         `${this.buildFallbackReply(message, faqs, shownProducts, personal, !!user, vouchers, flashSales, store, warranty)}\n\n(Lưu ý: AI đang bận nên trả lời từ dữ liệu shop.)`;
       emit({ type: 'token', text: fb });
-      await finish(convId, fb, shownProducts, faqs, personal, vouchers, flashSales, true);
+      await finish(fb, shownProducts, faqs, personal, vouchers, flashSales, true);
     }
   }
 
@@ -898,25 +858,6 @@ export class ChatbotService {
             })
           : Promise.resolve([]),
       ]);
-
-      // SQL đã đủ máy khớp rõ (>=3) thì bỏ qua embedding — tiết kiệm quota/latency,
-      // tránh 429 khi hỏi dồn. Semantic query (0 hit) vẫn đi RAG.
-      const sqlHitCount = (() => {
-        const seen = new Set<string>();
-        let n = 0;
-        for (const p of [...strongRows, ...rows]) {
-          if (!p?.slug || seen.has(p.slug)) continue;
-          seen.add(p.slug);
-          const hay = `${String(p.name || '').toLowerCase()} ${String(p.brand?.name || '').toLowerCase()}`;
-          for (const kw of keywords) {
-            if (kw.length >= 2 && hay.includes(kw)) {
-              n++;
-              break;
-            }
-          }
-        }
-        return n;
-      })();
 
       // Gộp nguồn theo độ ưu tiên: khớp chính xác (0) → keyword (2),
       // trong cùng nguồn xếp theo số keyword trúng tên+brand.
@@ -1291,113 +1232,6 @@ export class ChatbotService {
     }
   }
 
-  private redactForMemory(s: string): string {
-    return String(s || '').replace(/\d{14,17}/g, (m) => `***${m.slice(-4)}`);
-  }
-
-  private async resolveConversation(
-    sessionKey: string | null,
-    userId: string | null,
-    conversationId?: string,
-  ): Promise<{ id: string; summary: string | null } | null> {
-    if (!sessionKey) return null;
-    const db: any = this.prisma as any;
-    if (conversationId) {
-      const found = await db.aiConversation.findFirst({ where: { id: conversationId, sessionKey } });
-      if (found) return { id: found.id, summary: found.summary ?? null };
-      const created = await db.aiConversation.create({
-        data: { id: conversationId, sessionKey, userId: userId ?? undefined },
-      });
-      return { id: created.id, summary: null };
-    }
-    const created = await db.aiConversation.create({ data: { sessionKey, userId: userId ?? undefined } });
-    return { id: created.id, summary: null };
-  }
-
-  private async loadMemoryHistory(convId: string): Promise<{ role: 'user' | 'assistant'; content: string }[]> {
-    const msgs: any[] = await (this.prisma as any).aiMessage.findMany({
-      where: { conversationId: convId },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    });
-    return (msgs || [])
-      .reverse()
-      .map((m: any) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '') }));
-  }
-
-  private async persistTurn(convId: string | null, userMsg: string, assistantMsg: string): Promise<void> {
-    if (!convId) return;
-    try {
-      const db: any = this.prisma as any;
-      await db.aiMessage.createMany({
-        data: [
-          { conversationId: convId, role: 'user', content: this.redactForMemory(userMsg).slice(0, 2000) },
-          { conversationId: convId, role: 'assistant', content: this.redactForMemory(assistantMsg).slice(0, 4000) },
-        ],
-      });
-      await db.aiConversation.update({ where: { id: convId }, data: { updatedAt: new Date() } });
-      void this.maybeSummarize(convId);
-    } catch (err) {
-      this.logger.warn(`Memory persist failed: ${(err as Error)?.message}`);
-    }
-  }
-
-  private async maybeSummarize(convId: string): Promise<void> {
-    try {
-      const db: any = this.prisma as any;
-      const count: number = await db.aiMessage.count({ where: { conversationId: convId } });
-      if (count < 20) return;
-      const conv = await db.aiConversation.findUnique({ where: { id: convId }, select: { summary: true } });
-      if (conv?.summary) return;
-      const msgs = await this.loadMemoryHistory(convId);
-      const summaryPrompt = `Tóm tắt hội thoại mua sắm sau trong 3 câu tiếng Việt, giữ tên máy/ngân sách đã nhắc:\n${msgs.map((m) => `${m.role}: ${m.content}`).join('\n')}`;
-      let text = '';
-      if (this.llmProvider() !== 'gemini') {
-        const cfg = this.groqConfig();
-        if (!cfg.apiKey) return;
-        try {
-          const r = await groqChatTurn(
-            cfg,
-            [{ role: 'user', content: summaryPrompt }],
-            [],
-            (m) => this.logger.warn(m),
-          );
-          text = r.text;
-        } catch {
-          return;
-        }
-      } else {
-        const apiKey = this.config.get<string>('GEMINI_API_KEY') || process.env.GEMINI_API_KEY || '';
-        if (!apiKey) return;
-        const model = this.config.get<string>('GEMINI_MODEL') || process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
-        const ctrl = new AbortController();
-        const timeout = setTimeout(() => ctrl.abort(), 15000);
-        try {
-          const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              signal: ctrl.signal,
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: summaryPrompt }] }],
-                generationConfig: { temperature: 0.2, maxOutputTokens: 256 },
-              }),
-            },
-          );
-          if (!res.ok) return;
-          const data: any = await res.json();
-          text = data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('')?.trim() || '';
-        } finally {
-          clearTimeout(timeout);
-        }
-      }
-      if (text) await db.aiConversation.update({ where: { id: convId }, data: { summary: text.slice(0, 1000) } });
-    } catch (err) {
-      this.logger.warn(`Memory summarize failed: ${(err as Error)?.message}`);
-    }
-  }
-
   private buildFallbackReply(
     message: string,
     faqs: { question: string; answer: string }[],
@@ -1512,7 +1346,6 @@ export class ChatbotService {
     flashSales: ChatbotFlashSaleItem[] = [],
     store: ChatbotStoreInfo = STORE_DEFAULTS,
     warranty: ChatbotWarrantyLookup | null = null,
-    summary: string | null = null,
   ): string {
     const catalog = products.length
       ? products
@@ -1597,7 +1430,6 @@ export class ChatbotService {
       `- Flash sale đang chạy:\n${flashText}`,
       `- Tra IMEI:\n${warrantyText}`,
       hist ? `- Hội thoại trước:\n${hist}` : '',
-      summary ? `- Tóm tắt các lượt chat cũ hơn:\n${summary}` : '',
       `- Câu hỏi: ${message}`,
       'Trả lời (tối đa 220 từ, kèm gợi ý 1-2 máy nếu có, ghi hotline khi cần gặp người):',
     ]
@@ -1715,12 +1547,11 @@ export class ChatbotService {
     store: ChatbotStoreInfo = STORE_DEFAULTS,
     warranty: ChatbotWarrantyLookup | null = null,
     user: any | null = null,
-    summary: string | null = null,
   ): Promise<string> {
     const apiKey = this.config.get<string>('GEMINI_API_KEY') || process.env.GEMINI_API_KEY || '';
     const primaryModel = this.config.get<string>('GEMINI_MODEL') || process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
     const candidateModels = [primaryModel, 'gemini-3.1-flash-lite'].filter((m, i, arr) => arr.indexOf(m) === i);
-    const prompt = this.buildPrompt(message, history, faqs, products, personal, vouchers, flashSales, store, warranty, summary);
+    const prompt = this.buildPrompt(message, history, faqs, products, personal, vouchers, flashSales, store, warranty);
     const systemText = this.getSystemPrompt();
     if (this.llmProvider() !== 'gemini') {
       return this.callGroqWithTools(prompt, systemText, user);
