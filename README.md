@@ -29,15 +29,13 @@
 
 ## 📑 Mục Lục
 - [1. Giới Thiệu Dự Án](#1-giới-thiệu-dự-án)
-- [2. Các Tính Năng Chính](#2-các-tính-năng-chính)
-  - [2.1. Dành Cho Khách Mua Hàng](#21-dành-cho-khách-mua-hàng)
-  - [2.2. Dành Cho Quản Trị Viên & Nhân Viên](#22-dành-cho-quản-trị-viên--nhân-viên)
-- [3. Cách Hệ Thống Quản Lý Đơn Hàng & Tồn Kho](#3-cách-hệ-thống-quản-lý-đơn-hàng--tồn-kho)
-- [4. Công Nghệ Sử Dụng](#4-công-nghệ-sử-dụng)
-- [5. Cấu Trúc Thư Mục](#5-cấu-trúc-thư-mục)
+- [2. Công Nghệ Sử Dụng](#2-công-nghệ-sử-dụng)
+- [3. Cấu Trúc Thư Mục](#3-cấu-trúc-thư-mục)
+- [4. Các Tính Năng Chính](#4-các-tính-năng-chính)
+  - [4.1. Dành Cho Khách Mua Hàng](#41-dành-cho-khách-mua-hàng)
+  - [4.2. Dành Cho Quản Trị Viên & Nhân Viên](#42-dành-cho-quản-trị-viên--nhân-viên)
+- [5. Cách Hệ Thống Quản Lý Đơn Hàng & Tồn Kho](#5-cách-hệ-thống-quản-lý-đơn-hàng--tồn-kho)
 - [6. Hướng Dẫn Cài Đặt & Chạy Thử (Local)](#6-hướng-dẫn-cài-đặt--chạy-thử-local)
-- [7. Tài Khoản Đăng Nhập Mẫu](#7-tài-khoản-đăng-nhập-mẫu)
-- [8. Các Đường Dẫn API Chính](#8-các-đường-dẫn-api-chính)
 
 ---
 
@@ -52,9 +50,49 @@
 
 ---
 
-## 2. Các Tính Năng Chính
+## 2. Công Nghệ Sử Dụng
 
-### 2.1. Dành Cho Khách Mua Hàng
+| Phần | Công nghệ | Mục đích |
+| :--- | :--- | :--- |
+| **Giao diện (Frontend)** | **React 19 & Vite** | Xây dựng giao diện web mượt mà, tốc độ tải trang nhanh |
+| | **Tailwind CSS & Ant Design** | Thiết kế bố cục đẹp mắt, hiện đại và chuẩn chỉ trên cả điện thoại lẫn máy tính |
+| | **Zustand** | Quản lý thông tin giỏ hàng và trạng thái đăng nhập của người dùng |
+| **Máy chủ (Backend)** | **NestJS 11 & TypeScript** | Xây dựng hệ thống API xử lý nghiệp vụ bán hàng, tài khoản và đơn hàng |
+| | **Prisma ORM** | Kết nối và thao tác với cơ sở dữ liệu an toàn, chính xác |
+| **Cơ sở dữ liệu** | **Supabase (PostgreSQL)** | Lưu trữ dữ liệu sản phẩm, đơn hàng, người dùng trên nền tảng đám mây |
+| **Lưu trữ hình ảnh** | **Cloudflare R2** | Lưu trữ và tải nhanh hình ảnh sản phẩm với dung lượng tối ưu |
+| **Xác thực & Bảo mật** | **JWT & Google OAuth** | Bảo mật phiên đăng nhập và hỗ trợ đăng nhập nhanh bằng tài khoản Google |
+
+---
+
+## 3. Cấu Trúc Thư Mục
+
+```text
+PhoneShop/
+├── backend/                  # Mã nguồn phía máy chủ (NestJS)
+│   ├── prisma/
+│   │   ├── schema.prisma     # Định nghĩa cấu trúc các bảng dữ liệu
+│   │   └── seed.ts           # Dữ liệu mẫu (sản phẩm, tài khoản, đơn hàng)
+│   ├── src/
+│   │   ├── modules/          # Các chức năng: auth, products, orders, payments, imei...
+│   │   └── main.ts           # Điểm khởi chạy của máy chủ
+│   └── package.json
+│
+└── frontend/                 # Mã nguồn phía giao diện (React)
+    ├── src/
+    │   ├── components/       # Các khối giao diện dùng chung (thanh điều hướng, footer, thẻ sản phẩm)
+    │   ├── pages/            # Các trang giao diện (Trang chủ, Chi tiết máy, Giỏ hàng, Quản trị)
+    │   ├── stores/           # Lưu trữ trạng thái đăng nhập và giỏ hàng
+    │   └── services/         # Nơi gọi API từ máy chủ backend
+    ├── vercel.json           # Cấu hình triển khai trên Vercel
+    └── package.json
+```
+
+---
+
+## 4. Các Tính Năng Chính
+
+### 4.1. Dành Cho Khách Mua Hàng
 * **Trang chủ trực quan**: Xem banner quảng cáo các dòng máy mới, danh sách điện thoại nổi bật, bán chạy và các chương trình giảm giá.
 * **Tìm kiếm & Bộ lọc linh hoạt**:
   * Tìm nhanh theo tên máy hoặc hãng sản xuất (Apple, Samsung, Xiaomi, Sony...).
@@ -79,7 +117,7 @@
 
 ---
 
-### 2.2. Dành Cho Quản Trị Viên & Nhân Viên
+### 4.2. Dành Cho Quản Trị Viên & Nhân Viên
 * **Bảng điều khiển tổng quan**: Thống kê doanh thu, số lượng đơn hàng mới trong ngày và cảnh báo sản phẩm sắp hết hàng trong kho.
 * **Quản lý sản phẩm**:
   * Thêm, sửa, ẩn/hiện sản phẩm và các phiên bản bộ nhớ/màu sắc.
@@ -101,53 +139,13 @@
 
 ---
 
-## 3. Cách Hệ Thống Quản Lý Đơn Hàng & Tồn Kho
+## 5. Cách Hệ Thống Quản Lý Đơn Hàng & Tồn Kho
 
 Hệ thống quản lý quy trình bán hàng theo các bước rõ ràng:
 
 1. **Khách đặt hàng**: Hệ thống tự động chọn một mã IMEI khả dụng trong kho và chuyển sang trạng thái **Tạm giữ (HOLD)** trong vòng 15 phút.
 2. **Khách thanh toán thành công**: Máy chuyển sang trạng thái **Đã bán (SOLD)**, đơn hàng chuyển sang trạng thái chờ đóng gói và giao hàng.
 3. **Khách không thanh toán hoặc bấm hủy**: Mã IMEI được tự động trả lại kho về trạng thái **Có sẵn (AVAILABLE)** để khách khác có thể đặt mua ngay lập tức, không làm thất thoát số lượng máy của cửa hàng.
-
----
-
-## 4. Công Nghệ Sử Dụng
-
-| Phần | Công nghệ | Mục đích |
-| :--- | :--- | :--- |
-| **Giao diện (Frontend)** | **React 19 & Vite** | Xây dựng giao diện web mượt mà, tốc độ tải trang nhanh |
-| | **Tailwind CSS & Ant Design** | Thiết kế bố cục đẹp mắt, hiện đại và chuẩn chỉ trên cả điện thoại lẫn máy tính |
-| | **Zustand** | Quản lý thông tin giỏ hàng và trạng thái đăng nhập của người dùng |
-| **Máy chủ (Backend)** | **NestJS 11 & TypeScript** | Xây dựng hệ thống API xử lý nghiệp vụ bán hàng, tài khoản và đơn hàng |
-| | **Prisma ORM** | Kết nối và thao tác với cơ sở dữ liệu an toàn, chính xác |
-| **Cơ sở dữ liệu** | **Supabase (PostgreSQL)** | Lưu trữ dữ liệu sản phẩm, đơn hàng, người dùng trên nền tảng đám mây |
-| **Lưu trữ hình ảnh** | **Cloudflare R2** | Lưu trữ và tải nhanh hình ảnh sản phẩm với dung lượng tối ưu |
-| **Xác thực & Bảo mật** | **JWT & Google OAuth** | Bảo mật phiên đăng nhập và hỗ trợ đăng nhập nhanh bằng tài khoản Google |
-
----
-
-## 5. Cấu Trúc Thư Mục
-
-```text
-PhoneShop/
-├── backend/                  # Mã nguồn phía máy chủ (NestJS)
-│   ├── prisma/
-│   │   ├── schema.prisma     # Định nghĩa cấu trúc các bảng dữ liệu
-│   │   └── seed.ts           # Dữ liệu mẫu (sản phẩm, tài khoản, đơn hàng)
-│   ├── src/
-│   │   ├── modules/          # Các chức năng: auth, products, orders, payments, imei...
-│   │   └── main.ts           # Điểm khởi chạy của máy chủ
-│   └── package.json
-│
-└── frontend/                 # Mã nguồn phía giao diện (React)
-    ├── src/
-    │   ├── components/       # Các khối giao diện dùng chung (thanh điều hướng, footer, thẻ sản phẩm)
-    │   ├── pages/            # Các trang giao diện (Trang chủ, Chi tiết máy, Giỏ hàng, Quản trị)
-    │   ├── stores/           # Lưu trữ trạng thái đăng nhập và giỏ hàng
-    │   └── services/         # Nơi gọi API từ máy chủ backend
-    ├── vercel.json           # Cấu hình triển khai trên Vercel
-    └── package.json
-```
 
 ---
 
@@ -195,39 +193,6 @@ npm install
 npm run dev
 ```
 * Mở trình duyệt và truy cập trang web tại: **`http://localhost:5173`**
-
----
-
-## 7. Tài Khoản Đăng Nhập Mẫu
-
-Dữ liệu mẫu đi kèm sẵn 3 tài khoản tương ứng với các quyền hạn khác nhau để kiểm thử:
-
-| Vai trò | Email đăng nhập | Mật khẩu mặc định | Quyền hạn |
-| :--- | :--- | :--- | :--- |
-| **Quản trị viên (Admin)** | `admin@phoneshop.vn` | `Password@123` | Toàn quyền quản trị website và trang `/admin` |
-| **Nhân viên (Staff)** | `staff@phoneshop.vn` | `Password@123` | Quản lý đơn hàng, nhập kho và trả lời đánh giá |
-| **Khách hàng (User)** | `an.nguyen92@gmail.com` | `Password@123` | Mua hàng, xem lịch sử đơn và đánh giá máy |
-
-*(Bạn cũng có thể bấm vào nút **Đăng nhập với Google** để đăng nhập ngay mà không cần tạo tài khoản thủ công).*
-
----
-
-## 8. Các Đường Dẫn API Chính
-
-| Nhóm chức năng | Phương thức | Đường dẫn API | Mô tả |
-| :--- | :---: | :--- | :--- |
-| **Tài khoản** | `POST` | `/api/auth/register` | Đăng ký tài khoản mới |
-| | `POST` | `/api/auth/login` | Đăng nhập tài khoản |
-| | `POST` | `/api/auth/google/credential` | Đăng nhập nhanh bằng tài khoản Google |
-| **Sản phẩm** | `GET` | `/api/products` | Lấy danh sách điện thoại (kèm lọc hãng, giá, cấu hình) |
-| | `GET` | `/api/products/:slug` | Lấy thông tin chi tiết của một dòng máy |
-| **Đơn hàng** | `POST` | `/api/orders` | Đặt hàng và tạm giữ máy trong kho |
-| | `GET` | `/api/orders/my-orders` | Xem danh sách các đơn hàng đã mua |
-| | `PATCH`| `/api/orders/:id/cancel` | Khách chủ động hủy đơn và nhả máy về kho |
-| **Thanh toán** | `POST` | `/api/payments/vietqr` | Tạo mã QR chuyển khoản ngân hàng |
-| | `POST` | `/api/payments/vnpay/create-url` | Tạo đường dẫn thanh toán qua VNPay |
-| **Bảo hành** | `GET` | `/api/imei/lookup/:imei` | Tra cứu hạn bảo hành theo số IMEI |
-| **Trợ lý AI** | `POST` | `/api/chatbot/ask` | Gửi câu hỏi tư vấn điện thoại cho Chatbot |
 
 ---
 
