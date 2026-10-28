@@ -1,6 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import { generateLuhnImei, validateImei } from '../../src/common/utils/imei.util';
 import { ImeiStatus } from '@prisma/client';
+import { ImeiService } from '../../src/modules/imei/imei.service';
 
 describe('IMEI Concurrency & Luhn Validation Unit Tests', () => {
   describe('Luhn Algorithm Validation', () => {
@@ -45,20 +46,10 @@ describe('IMEI Concurrency & Luhn Validation Unit Tests', () => {
   });
 
   describe('IMEI State Transition Rules', () => {
-    // Valid state transitions in Phone Shop lifecycle:
-    // AVAILABLE -> RESERVED (when order placed / 15m hold starts)
-    // RESERVED -> AVAILABLE (when hold expires or order cancelled)
-    // RESERVED -> SOLD (when payment succeeds)
-    // SOLD -> WARRANTY (when under repair) or RETURNED
-
-    const allowedTransitions: Record<ImeiStatus, ImeiStatus[]> = {
-      [ImeiStatus.AVAILABLE]: [ImeiStatus.RESERVED, ImeiStatus.BLOCKED],
-      [ImeiStatus.RESERVED]: [ImeiStatus.AVAILABLE, ImeiStatus.SOLD, ImeiStatus.BLOCKED],
-      [ImeiStatus.SOLD]: [ImeiStatus.RETURNED, ImeiStatus.WARRANTY, ImeiStatus.BLOCKED],
-      [ImeiStatus.RETURNED]: [ImeiStatus.AVAILABLE, ImeiStatus.WARRANTY, ImeiStatus.BLOCKED],
-      [ImeiStatus.WARRANTY]: [ImeiStatus.AVAILABLE, ImeiStatus.SOLD, ImeiStatus.BLOCKED],
-      [ImeiStatus.BLOCKED]: [ImeiStatus.AVAILABLE],
-    };
+    // D13: the map below is imported from the production ImeiService — the
+    // test can no longer drift from the rules the service actually enforces.
+    const allowedTransitions: Record<ImeiStatus, ImeiStatus[]> =
+      ImeiService.ALLOWED_IMEI_TRANSITIONS;
 
     function canTransition(current: ImeiStatus, target: ImeiStatus): boolean {
       return (allowedTransitions[current] || []).includes(target);
@@ -87,6 +78,25 @@ describe('IMEI Concurrency & Luhn Validation Unit Tests', () => {
     it('should allow SOLD -> WARRANTY or RETURNED', () => {
       expect(canTransition(ImeiStatus.SOLD, ImeiStatus.WARRANTY)).toBe(true);
       expect(canTransition(ImeiStatus.SOLD, ImeiStatus.RETURNED)).toBe(true);
+    });
+
+    it('should disallow SOLD -> AVAILABLE (sold handset cannot be un-sold manually)', () => {
+      expect(canTransition(ImeiStatus.SOLD, ImeiStatus.AVAILABLE)).toBe(false);
+    });
+
+    it('should allow AVAILABLE -> BLOCKED and BLOCKED -> AVAILABLE only', () => {
+      expect(canTransition(ImeiStatus.AVAILABLE, ImeiStatus.BLOCKED)).toBe(true);
+      expect(canTransition(ImeiStatus.BLOCKED, ImeiStatus.AVAILABLE)).toBe(true);
+      expect(canTransition(ImeiStatus.BLOCKED, ImeiStatus.SOLD)).toBe(false);
+    });
+
+    it('should allow WARRANTY -> AVAILABLE (restock after repair) but not WARRANTY -> SOLD', () => {
+      expect(canTransition(ImeiStatus.WARRANTY, ImeiStatus.AVAILABLE)).toBe(true);
+      expect(canTransition(ImeiStatus.WARRANTY, ImeiStatus.SOLD)).toBe(false);
+    });
+
+    it('should allow RETURNED -> AVAILABLE', () => {
+      expect(canTransition(ImeiStatus.RETURNED, ImeiStatus.AVAILABLE)).toBe(true);
     });
   });
 });

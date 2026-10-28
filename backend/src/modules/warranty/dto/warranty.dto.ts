@@ -19,13 +19,15 @@ export class CreateWarrantyDto {
   @IsUUID()
   imeiDeviceId?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  startDate: string;
+  startDate?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  endDate: string;
+  endDate?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

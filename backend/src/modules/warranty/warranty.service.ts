@@ -40,15 +40,20 @@ export class WarrantyService {
     const startDate = new Date();
     const endDate = this.addWarrantyMonths(startDate, months);
     try {
+      // D7: only re-activate an ACTIVE warranty (reset dates for a live
+      // warranty). VOIDED/CLAIMED rows must never be resurrected — the
+      // upsert update branch is a no-op for non-ACTIVE statuses.
+      const existing = await this.prisma.warranty.findUnique({
+        where: { orderItemId: dto.orderItemId },
+      });
+      if (existing && existing.status !== WarrantyStatus.ACTIVE) {
+        throw new ConflictException(
+          `Cannot update warranty in ${existing.status} status — only ACTIVE warranties may be refreshed`,
+        );
+      }
       return await this.prisma.warranty.upsert({
         where: { orderItemId: dto.orderItemId },
-        update: {
-          status: WarrantyStatus.ACTIVE,
-          startDate,
-          endDate,
-          imeiDeviceId: dto.imeiDeviceId ?? orderItem.imeiDeviceId ?? undefined,
-          notes: dto.notes,
-        },
+        update: {},
         create: {
           userId: dto.userId,
           productVariantId: dto.productVariantId,

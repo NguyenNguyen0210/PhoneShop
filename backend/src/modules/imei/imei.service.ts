@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateImeiDto, UpdateImeiStatusDto, ImportImeiDto } from './dto/imei.dto';
-import { ImeiStatus, Prisma, StockMovementType } from '@prisma/client';
+import { ImeiStatus, Prisma, StockMovementType, OrderStatus } from '@prisma/client';
 import { PaginationQueryDto, PaginatedResponse } from '../../common/dto/pagination.dto';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -321,8 +321,8 @@ export class ImeiService {
   // AVAILABLE unit flipped to RETURNED (shrinking sellable stock). Every
   // mutation below goes through transitionTo(): allowed-map check +
   // conditional updateMany (count===0 ⇒ lost a race or illegal jump).
-  private static readonly ALLOWED_IMEI_TRANSITIONS: Record<ImeiStatus, ImeiStatus[]> = {
-    [ImeiStatus.AVAILABLE]: [ImeiStatus.RESERVED, ImeiStatus.BLOCKED],
+  public static readonly ALLOWED_IMEI_TRANSITIONS: Record<ImeiStatus, ImeiStatus[]> = {
+    [ImeiStatus.AVAILABLE]: [ImeiStatus.RESERVED, ImeiStatus.BLOCKED, ImeiStatus.SOLD],
     [ImeiStatus.RESERVED]: [ImeiStatus.AVAILABLE, ImeiStatus.SOLD, ImeiStatus.BLOCKED],
     [ImeiStatus.SOLD]: [ImeiStatus.WARRANTY, ImeiStatus.RETURNED],
     [ImeiStatus.RETURNED]: [ImeiStatus.AVAILABLE, ImeiStatus.BLOCKED],
@@ -330,24 +330,161 @@ export class ImeiService {
     [ImeiStatus.WARRANTY]: [ImeiStatus.AVAILABLE],
   };
 
+  // Order statuses whose IMEI hold is still live — a manual release while
+  // one of these is running would orphan the checkout hold.
+  private static readonly LIVE_ORDER_STATUSES: OrderStatus[] = [
+    OrderStatus.PENDING,
+    OrderStatus.CONFIRMED,
+    OrderStatus.PROCESSING,
+    OrderStatus.PACKED,
+  ];
+
   private async transitionTo(id: string, to: ImeiStatus, extraData: Record<string, any> = {}) {
     const device = await this.findOne(id);
-    const allowed = ImeiService.ALLOWED_IMEI_TRANSITIONS[device.status] || [];
+    const from = device.status;
+    const allowed = ImeiService.ALLOWED_IMEI_TRANSITIONS[from] || [];
     if (!allowed.includes(to)) {
       throw new BadRequestException(
-        `Cannot transition IMEI from ${device.status} to ${to}`,
+        `Cannot transition IMEI from ${from} to ${to}`,
       );
     }
-    const updated = await this.prisma.imeiDevice.updateMany({
-      where: { id, status: device.status },
-      data: { status: to, ...extraData },
-    });
-    if (updated.count === 0) {
-      throw new BadRequestException(
-        `IMEI state changed concurrently (expected ${device.status})`,
+
+    const apply = async (tx: any) => {
+      // D6: a RESERVED device usually belongs to a live order — releasing
+      // it manually would orphan the checkout hold and let the handset be
+      // sold twice.
+      if (from === ImeiStatus.RESERVED && to === ImeiStatus.AVAILABLE) {
+        const liveHold = await tx.orderItem?.findFirst?.({
+          where: {
+            imeiDeviceId: id,
+            order: { status: { in: ImeiService.LIVE_ORDER_STATUSES } },
+          },
+          select: { id: true },
+        });
+        if (liveHold) {
+          throw new ConflictException('IMEI đang được giữ cho đơn hàng đang xử lý');
+        }
+      }
+
+      const claimed = await tx.imeiDevice.updateMany({
+        where: { id, status: from },
+        data: { status: to, ...extraData },
+      });
+      if (claimed.count === 0) {
+        throw new ConflictException(
+          `IMEI state changed concurrently (expected ${from})`,
+        );
+      }
+
+      await this.applyImeiStockEffect(tx, device, from, to);
+
+      return tx.imeiDevice.findUnique({ where: { id }, include: { variant: true } });
+    };
+
+    if (typeof (this.prisma as any)?.$transaction === 'function') {
+      return this.prisma.$transaction(apply);
+    }
+    return apply(this.prisma);
+  }
+
+  /**
+   * D6: per-transition inventory counter + ledger effects, so manual IMEI
+   * flips keep the counters consistent with the IMEI rows (the source of
+   * truth checkout enforces) and every quantity change gets a StockMovement
+   * with settlement-consistent balances.
+   */
+  private async applyImeiStockEffect(tx: any, device: any, from: ImeiStatus, to: ImeiStatus) {
+    const variantId = device.variantId;
+    let invWhere: any = { variantId };
+    let invData: any = null;
+    let movement: { type: StockMovementType; quantity: number; note: string } | null = null;
+
+    if (from === ImeiStatus.AVAILABLE && to === ImeiStatus.RESERVED) {
+      invData = { reservedQty: { increment: 1 }, availableQty: { decrement: 1 } };
+      invWhere = { ...invWhere, availableQty: { gte: 1 } };
+    } else if (from === ImeiStatus.RESERVED && to === ImeiStatus.AVAILABLE) {
+      invData = { reservedQty: { decrement: 1 }, availableQty: { increment: 1 } };
+      invWhere = { ...invWhere, reservedQty: { gte: 1 } };
+    } else if (from === ImeiStatus.AVAILABLE && to === ImeiStatus.SOLD) {
+      invData = { quantity: { decrement: 1 }, availableQty: { decrement: 1 } };
+      invWhere = { ...invWhere, quantity: { gte: 1 }, availableQty: { gte: 1 } };
+      movement = {
+        type: StockMovementType.EXPORT_ORDER,
+        quantity: -1,
+        note: `Manual IMEI sale ${device.imei}`,
+      };
+    } else if (from === ImeiStatus.RESERVED && to === ImeiStatus.SOLD) {
+      invData = { quantity: { decrement: 1 }, reservedQty: { decrement: 1 } };
+      invWhere = { ...invWhere, quantity: { gte: 1 }, reservedQty: { gte: 1 } };
+      movement = {
+        type: StockMovementType.EXPORT_ORDER,
+        quantity: -1,
+        note: `Manual IMEI sale ${device.imei}`,
+      };
+    } else if (from === ImeiStatus.AVAILABLE && to === ImeiStatus.BLOCKED) {
+      // Blocked = physically on hand but unsellable: it leaves availableQty
+      // the same way an order hold does.
+      invData = { reservedQty: { increment: 1 }, availableQty: { decrement: 1 } };
+      invWhere = { ...invWhere, availableQty: { gte: 1 } };
+    } else if (from === ImeiStatus.BLOCKED && to === ImeiStatus.AVAILABLE) {
+      invData = { reservedQty: { decrement: 1 }, availableQty: { increment: 1 } };
+      invWhere = { ...invWhere, reservedQty: { gte: 1 } };
+    } else if (from === ImeiStatus.WARRANTY && to === ImeiStatus.AVAILABLE) {
+      invData = { quantity: { increment: 1 }, availableQty: { increment: 1 } };
+      movement = {
+        type: StockMovementType.IMPORT_RETURN,
+        quantity: 1,
+        note: 'Restock after warranty repair',
+      };
+    } else if (from === ImeiStatus.RETURNED && to === ImeiStatus.AVAILABLE) {
+      invData = { quantity: { increment: 1 }, availableQty: { increment: 1 } };
+      movement = {
+        type: StockMovementType.IMPORT_RETURN,
+        quantity: 1,
+        note: 'Restock after product return',
+      };
+    } else if (from === ImeiStatus.RETURNED && to === ImeiStatus.BLOCKED) {
+      // RETURNED units are not counted anywhere; a blocked unit is on hand
+      // but unsellable (quantity + reservedQty, availableQty unchanged).
+      invData = { quantity: { increment: 1 }, reservedQty: { increment: 1 } };
+    }
+    // SOLD→WARRANTY, SOLD→RETURNED, RESERVED→BLOCKED: no counter change —
+    // the unit was already out of sellable stock, or stays out of it.
+
+    if (!invData) return;
+
+    const invUpdated = await tx.inventory.updateMany({ where: invWhere, data: invData });
+    if (invUpdated.count === 0) {
+      throw new ConflictException(
+        'Inventory counters are out of sync with IMEI rows for this variant. Run POST /imei/:variantId/sync-inventory first.',
       );
     }
-    return this.findOne(id);
+
+    if (movement) {
+      const fresh = await tx.inventory.findUnique({ where: { variantId } });
+      const balanceAfter = fresh ? fresh.quantity : 0;
+      const balanceBefore = balanceAfter - movement.quantity;
+      const unitPrice =
+        movement.quantity < 0
+          ? Number(device.variant?.price ?? device.purchasePrice ?? 0)
+          : Number(device.purchasePrice ?? device.variant?.price ?? 0);
+      if (tx.stockMovement?.create) {
+        await tx.stockMovement.create({
+          data: {
+            variantId,
+            type: movement.type,
+            quantity: movement.quantity,
+            balanceBefore,
+            balanceAfter,
+            unitPrice,
+            totalAmount: Math.abs(movement.quantity) * unitPrice,
+            referenceType: 'IMEI_MANUAL',
+            referenceId: device.id,
+            note: movement.note,
+          },
+        });
+      }
+    }
   }
 
   async updateStatus(id: string, dto: UpdateImeiStatusDto) {
@@ -385,18 +522,43 @@ export class ImeiService {
   // SOLD/RETURNED/WARRANTY rows are owned by the sales/return flows and are
   // deliberately not inferred here.
   async syncInventoryFromImei(variantId: string) {
-    const [available, reserved, blocked] = await Promise.all(
-      ([ImeiStatus.AVAILABLE, ImeiStatus.RESERVED, ImeiStatus.BLOCKED] as const).map(
-        (status) => this.prisma.imeiDevice.count({ where: { variantId, status } }),
-      ),
-    );
-    return this.prisma.inventory.update({
-      where: { variantId },
-      data: {
-        quantity: available + reserved + blocked,
-        availableQty: available,
-        reservedQty: reserved,
-      },
-    });
+    const run = async (tx: any) => {
+      // D5: serialize concurrent rebuilds (and import cycles writing the
+      // same rows) with a transaction-scoped advisory lock.
+      await (tx as any)?.$executeRaw?.(
+        Prisma.sql`SELECT pg_advisory_xact_lock(hashtext('sync_inventory_from_imei'))`,
+      );
+      const [available, reserved, blocked] = await Promise.all(
+        ([ImeiStatus.AVAILABLE, ImeiStatus.RESERVED, ImeiStatus.BLOCKED] as const).map(
+          (status) => tx.imeiDevice.count({ where: { variantId, status } }),
+        ),
+      );
+      const quantity = available + reserved + blocked;
+      // D5: when the counters already match, writing again would churn
+      // updatedAt for nothing — treat it as a no-op.
+      const current = await tx.inventory?.findUnique?.({ where: { variantId } });
+      if (
+        current &&
+        current.quantity === quantity &&
+        current.availableQty === available &&
+        current.reservedQty === reserved
+      ) {
+        return current;
+      }
+      return tx.inventory.update({
+        where: { variantId },
+        data: {
+          quantity,
+          availableQty: available,
+          reservedQty: reserved,
+        },
+      });
+    };
+
+    if (typeof (this.prisma as any)?.$transaction === 'function') {
+      return this.prisma.$transaction(run);
+    }
+    // Legacy test doubles have no $transaction — run directly.
+    return run(this.prisma);
   }
 }

@@ -57,9 +57,13 @@ export class IdempotencyInterceptor implements NestInterceptor {
       if (expired || !sameOwner || existing.requestHash !== requestHash) {
         // Expired keys are dead; a key with a different owner/endpoint/body
         // must never replay another request's response.
-        if (expired || !sameOwner) {
+        if (expired) {
           await this.idempotencyService.deleteRecord(key);
         } else {
+          // D12 (audit): NEVER delete the victim's record on owner/endpoint
+          // mismatch — that would let an attacker invalidate another user's
+          // idempotency state. Return 409 unconditionally so the caller
+          // knows the key is taken.
           throw new HttpException(
             'Idempotency key already used with a different payload',
             HttpStatus.CONFLICT,
