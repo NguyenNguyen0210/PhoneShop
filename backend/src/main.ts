@@ -61,7 +61,6 @@ async function bootstrap() {
       'Accept',
       'Authorization',
       'X-Requested-With',
-      'Idempotency-Key',
     ],
     credentials: true,
   });

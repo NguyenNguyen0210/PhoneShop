@@ -24,7 +24,6 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { IdempotencyInterceptor } from '../../infrastructure/idempotency/idempotency.interceptor';
 
 @ApiTags('Payments')
 @Controller('payments')
@@ -64,9 +63,8 @@ export class PaymentsController {
   @Post('vnpay/create-url')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.USER, Role.ADMIN)
-  @UseInterceptors(IdempotencyInterceptor)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Generate signed VNPay payment URL (idempotent via Idempotency-Key header)' })
+  @ApiOperation({ summary: 'Generate signed VNPay payment URL' })
   createVnpayUrl(
     @Body() dto: CreateVnpayUrlDto,
     @Req() req: Request,
@@ -100,9 +98,8 @@ export class PaymentsController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.USER, Role.ADMIN)
-  @UseInterceptors(IdempotencyInterceptor)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create payment for own order (USER, idempotent via Idempotency-Key header)' })
+  @ApiOperation({ summary: 'Create payment for own order (USER)' })
   create(@CurrentUser() user: any, @Body() dto: CreatePaymentDto) {
     return this.paymentsService.create(user.id, dto);
   }

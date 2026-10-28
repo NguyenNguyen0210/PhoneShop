@@ -9,7 +9,6 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { IdempotencyInterceptor } from '../../infrastructure/idempotency/idempotency.interceptor';
 import { OrderStatus } from '@prisma/client';
 
 @ApiTags('Orders')
@@ -23,8 +22,7 @@ export class OrdersController {
 
   @Post('checkout')
   @Roles(Role.USER, Role.STAFF, Role.MANAGER, Role.ADMIN)
-  @UseInterceptors(IdempotencyInterceptor)
-  @ApiOperation({ summary: 'Checkout and create order from cart (idempotent via Idempotency-Key header)' })
+  @ApiOperation({ summary: 'Checkout and create order from cart' })
   checkout(@CurrentUser() user: any, @Body() dto: CreateOrderDto) {
     return this.ordersService.checkout(user.id, dto);
   }
