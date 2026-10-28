@@ -125,6 +125,89 @@ describe('OrdersService - Selective Checkout', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
+  it('A9: accepts a line selected twice (item id + variantId tokens of the SAME item)', async () => {
+    // The FE cart snapshot can carry both the backend item id and the
+    // variantId for one line; the old strict count comparison 400'd that.
+    mockPrisma.cart.findUnique.mockResolvedValue({
+      id: 'cart-1',
+      items: [
+        {
+          id: 'item-1',
+          variantId: 'var-1',
+          quantity: 1,
+          unitPrice: 10000000,
+          variant: {
+            id: 'var-1',
+            name: 'iPhone 15',
+            sku: 'IP15',
+            isActive: true,
+            inventory: { availableQty: 5 },
+          },
+        },
+      ],
+    });
+
+    const result = await service.checkout('user-1', {
+      addressId: 'addr-1',
+      selectedItemIds: ['item-1', 'var-1'],
+    } as any);
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].variantId).toBe('var-1');
+  });
+
+  it('A6: voucher with perUserLimit = 0 is rejected even for a first-time user', async () => {
+    mockPrisma.cart.findUnique.mockResolvedValue({
+      id: 'cart-1',
+      items: [
+        {
+          id: 'item-1',
+          variantId: 'var-1',
+          quantity: 1,
+          unitPrice: 10000000,
+          variant: {
+            id: 'var-1',
+            name: 'iPhone 15',
+            sku: 'IP15',
+            isActive: true,
+            inventory: { availableQty: 5 },
+          },
+        },
+      ],
+    });
+
+    mockTx.voucher = {
+      findUnique: (jest.fn() as any).mockResolvedValue({
+        id: 'vouch-1',
+        code: 'ZERO',
+        isActive: true,
+        type: 'FIXED_AMOUNT',
+        value: 1000,
+        startAt: new Date(Date.now() - 86400000),
+        endAt: new Date(Date.now() + 86400000),
+        usageLimit: null,
+        usageCount: 0,
+        perUserLimit: 0,
+        minOrderValue: 0,
+      }),
+      update: (jest.fn() as any).mockResolvedValue({}),
+    };
+    mockTx.voucherUsage = {
+      count: (jest.fn() as any).mockResolvedValue(0),
+      create: (jest.fn() as any).mockResolvedValue({}),
+    };
+
+    await expect(
+      service.checkout('user-1', {
+        addressId: 'addr-1',
+        voucherCode: 'ZERO',
+      } as any),
+    ).rejects.toThrow(/per-user usage limit/i);
+
+    // The per-user gate runs before any usage is written.
+    expect(mockTx.voucherUsage.create).not.toHaveBeenCalled();
+  });
+
   it('should only include selected items in created order and only delete selected items from cartItem', async () => {
     const item1 = {
       id: 'item-1',

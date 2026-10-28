@@ -3,6 +3,7 @@ import { Logger, Optional } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../infrastructure/email/email.service';
+import { rollbackFlashSoldCount } from './flash-sale-rollback.util';
 import { OrderStatus, ImeiStatus, PaymentStatus } from '@prisma/client';
 
 export interface ExpireOrderHoldJobData {
@@ -110,6 +111,12 @@ export class OrdersProcessor extends WorkerHost {
           },
         });
       }
+
+      // Audit A3: the BullMQ expiry path is the PRIMARY release path when
+      // Redis is enabled, and the sweeper never revisits a non-PENDING order.
+      // Without this call every abandoned checkout permanently ate its
+      // flash-sale slots (soldCount never rolled back).
+      await rollbackFlashSoldCount(tx, order.items, order.createdAt);
     });
 
     if (cancelled) {

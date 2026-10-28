@@ -10,6 +10,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { VietqrService } from './vietqr.service';
 import { EmailService } from '../../infrastructure/email/email.service';
 import { SystemSettingsService } from '../settings/settings.service';
+import { rollbackFlashSoldCount } from '../orders/flash-sale-rollback.util';
 import {
   CreatePaymentDto,
   CreateVnpayUrlDto,
@@ -123,14 +124,23 @@ export class PaymentsService {
       );
     }
 
+    // B1 (audit): reject when order already has a PAID payment (re-paying a
+    // settled order would create a phantom PENDING row that finance chases).
+    if (order.payments.some((p) => p.status === PaymentStatus.PAID)) {
+      throw new BadRequestException('Đơn hàng đã được thanh toán.');
+    }
+
     const amount = Number(order.totalAmount);
     const qrData = this.vietqrService.generateQrAsync
       ? await this.vietqrService.generateQrAsync(amount, order.orderNumber)
       : this.vietqrService.generateQr(amount, order.orderNumber);
 
-    // Find or create pending payment record for VietQR transfer
+    // B1 (audit): adopt ANY pending payment (regardless of method) instead
+    // of creating a sibling row. A COD order that switches to bank transfer
+    // reuses the checkout-level PENDING row; method stays — the QR is just
+    // a presentation concern, the row already tracks the money.
     let payment = order.payments.find(
-      (p) => p.status === PaymentStatus.PENDING && p.method === PaymentMethod.BANK_TRANSFER,
+      (p) => p.status === PaymentStatus.PENDING,
     );
 
     if (!payment) {
@@ -180,14 +190,27 @@ export class PaymentsService {
       throw new BadRequestException('Đơn hàng đã bị hủy, không thể báo thanh toán');
     }
 
-    // Extend hold duration by 24 hours so the order isn't auto-cancelled while awaiting verification
+    // B4: extend hold only once per reporting cycle (first report). A repeated
+    // report before verification is a no-op for the hold (dedupe below prevents
+    // flooding), and the ceiling prevents unbounded extension beyond 48h from
+    // the order creation.
     if (order.status === OrderStatus.PENDING && this.prisma.order?.update) {
-      await this.prisma.order.update({
-        where: { id: order.id },
-        data: {
-          holdExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        },
-      });
+      const priorReport = this.prisma.paymentTransaction?.count
+        ? await this.prisma.paymentTransaction.count({
+            where: {
+              providerReference: 'CUSTOMER_REPORTED',
+              payment: { orderId: order.id },
+            },
+          })
+        : 0;
+      if (priorReport === 0) {
+        const ceiling = new Date(order.createdAt).getTime() + 48 * 60 * 60 * 1000;
+        const next = Math.min(Date.now() + 24 * 60 * 60 * 1000, ceiling);
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: { holdExpiresAt: new Date(next) },
+        });
+      }
     }
 
     let pending = order.payments.find(
@@ -197,7 +220,11 @@ export class PaymentsService {
       pending = order.payments.find((p) => p.status === PaymentStatus.PENDING);
     }
     if (!pending) {
-      const isVnpay = (order as any).paymentMethod === PaymentMethod.VNPAY;
+      // B4 (audit): derive the method from the order's existing pending payment
+      // row. The old code read `(order as any).paymentMethod` which doesn't
+      // exist on the Order model → isVnpay was always false.
+      const anyPending = order.payments.find((p) => p.status === PaymentStatus.PENDING);
+      const isVnpay = anyPending?.method === PaymentMethod.VNPAY;
       pending = await this.prisma.payment.create({
         data: {
           orderId: order.id,
@@ -292,6 +319,9 @@ export class PaymentsService {
             },
           });
         }
+        // B5 (audit): release flash-sale quota on hold expiry — same pattern
+        // as orders.processor and cancelMyOrder.
+        await rollbackFlashSoldCount(tx, full.items, full.createdAt);
       });
     }
     throw new BadRequestException(
@@ -333,11 +363,10 @@ export class PaymentsService {
       const warrantyCode = `WRT-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
       await tx.warranty.upsert({
         where: { orderItemId: item.id },
-        update: {
-          status: WarrantyStatus.ACTIVE,
-          startDate: anchorDate,
-          endDate: this.addWarrantyMonths(anchorDate, months),
-        },
+        // B8 (audit): never overwrite IPN/delivery-anchored dates on repeat
+        // settlement. An empty update branch keeps the existing warranty row
+        // untouched (upsert is a no-op for the update path).
+        update: {},
         create: {
           userId: order.userId,
           productVariantId: item.variantId,
@@ -414,14 +443,22 @@ export class PaymentsService {
   }
 
   private buildVnpayCreateDate(date: Date = new Date()): string {
-    return (
-      date.getFullYear().toString() +
-      (date.getMonth() + 1).toString().padStart(2, '0') +
-      date.getDate().toString().padStart(2, '0') +
-      date.getHours().toString().padStart(2, '0') +
-      date.getMinutes().toString().padStart(2, '0') +
-      date.getSeconds().toString().padStart(2, '0')
-    );
+    // B9 (audit): VNPay expects the local Indochina time (UTC+7). The old
+    // code used getHours() etc. which depends on the server's system TZ — a
+    // UTC-configured cloud host would send times 7 hours behind, failing
+    // VNPay's 15-minute window validation.
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+    return `${get('year')}${get('month')}${get('day')}${get('hour')}${get('minute')}${get('second')}`;
   }
 
   async createVnpayPaymentUrl(dto: CreateVnpayUrlDto, clientIp?: string, userId?: string) {
@@ -513,7 +550,11 @@ export class PaymentsService {
         throw dup;
       }
       // 1. Create or update payment
-      let payment = order.payments.find((p) => p.status === PaymentStatus.PENDING);
+      // B3 (audit): prefer the VNPAY-method pending row so a COD checkout
+      // that later pays via VNPay doesn't accidentally settle the COD row.
+      let payment = order.payments.find(
+        (p) => p.status === PaymentStatus.PENDING && p.method === PaymentMethod.VNPAY,
+      ) ?? order.payments.find((p) => p.status === PaymentStatus.PENDING);
       if (!payment) {
         payment = await tx.payment.create({
           data: {
@@ -687,7 +728,12 @@ export class PaymentsService {
     }
 
     const responseCode = query['vnp_ResponseCode'];
-    if (responseCode === '00') {
+    // B6 (audit): vnp_TransactionStatus, when present, is the authoritative
+    // settlement status. A '00' responseCode with a non-'00' transactionStatus
+    // means VNPay captured the transaction but the bank rejected it later.
+    const txnStatus = query['vnp_TransactionStatus'];
+    const isSuccessful = responseCode === '00' && (!txnStatus || txnStatus === '00');
+    if (isSuccessful) {
       // Payment Successful — shared settlement (idempotent).
       try {
         await this.confirmVnpaySuccess(order, query, 'IPN');
@@ -709,16 +755,29 @@ export class PaymentsService {
         `VNPay IPN: Payment failed for order ${orderNumber} with code ${responseCode}`,
       );
       const txnNo = query['vnp_TransactionNo'];
-      const alreadyRecorded = txnNo
-        ? await this.prisma.payment.findFirst({
-            where: {
-              orderId: order.id,
-              status: PaymentStatus.FAILED,
-              providerOrderId: txnNo,
-            },
-            select: { id: true },
-          })
-        : null;
+      let alreadyRecorded: { id: string } | null = null;
+      if (txnNo) {
+        alreadyRecorded = await this.prisma.payment.findFirst({
+          where: {
+            orderId: order.id,
+            status: PaymentStatus.FAILED,
+            providerOrderId: txnNo,
+          },
+          select: { id: true },
+        });
+      } else {
+        // B6 (audit): when VNPay omits vnp_TransactionNo (network-level
+        // failures), dedupe on a recent FAILED payment for this order within
+        // the 15-minute hold window to avoid flooding the ledger.
+        alreadyRecorded = await this.prisma.payment.findFirst({
+          where: {
+            orderId: order.id,
+            status: PaymentStatus.FAILED,
+            createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
+          },
+          select: { id: true },
+        });
+      }
       if (!alreadyRecorded) {
         await this.prisma.payment.create({
           data: {
@@ -844,6 +903,24 @@ export class PaymentsService {
       where: { orderId: dto.orderId, status: PaymentStatus.PAID },
     });
     if (existing) throw new BadRequestException('Order is already paid');
+
+    // B2 (audit): reject when a PENDING payment of a DIFFERENT method exists.
+    // Without this guard, a user who checked out via COD could simultaneously
+    // hit the VNPay endpoint and end up with two live PENDING rows — one COD,
+    // one VNPAY — and a staff confirm on either would double-book revenue.
+    const pendingOther = await this.prisma.payment.findFirst({
+      where: {
+        orderId: dto.orderId,
+        status: PaymentStatus.PENDING,
+        method: { not: dto.method },
+      },
+      select: { id: true, method: true },
+    });
+    if (pendingOther) {
+      throw new BadRequestException(
+        'Đơn hàng đang có một phương thức thanh toán khác chờ xử lý. Vui lòng hoàn tất hoặc hủy đơn trước khi thử phương thức khác.',
+      );
+    }
 
     // M5: double-clicking "pay" must not stack PENDING rows — reuse the fresh
     // pending payment for the same order+method instead of creating another.
@@ -979,19 +1056,24 @@ export class PaymentsService {
       );
     }
 
-    await this.prisma.paymentTransaction.create({
-      data: {
-        paymentId,
-        transactionCode: this.generateTransactionCode(),
-        type: TransactionType.PAYMENT,
-        status: TransactionStatus.FAILED,
-        amount: payment.amount,
-      },
-    });
+    // B7 (audit): ledger row + status flip must be atomic — a crash between
+    // the two previously left a SUCCESS transaction row on a still-PENDING
+    // payment (orphan).
+    return this.prisma.$transaction(async (tx) => {
+      await tx.paymentTransaction.create({
+        data: {
+          paymentId,
+          transactionCode: this.generateTransactionCode(),
+          type: TransactionType.PAYMENT,
+          status: TransactionStatus.FAILED,
+          amount: payment.amount,
+        },
+      });
 
-    return this.prisma.payment.update({
-      where: { id: paymentId },
-      data: { status: PaymentStatus.FAILED },
+      return tx.payment.update({
+        where: { id: paymentId },
+        data: { status: PaymentStatus.FAILED },
+      });
     });
   }
 

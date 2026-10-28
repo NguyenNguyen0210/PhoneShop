@@ -118,7 +118,10 @@ describe('OrdersService - Flash Sale Atomic Reservation', () => {
     expect(order.items.create[0].unitPrice).toBe(15000000);
   });
 
-  it('should throw BadRequestException when overselling flash sale item (reserved.count === 0)', async () => {
+  it('should fall back to the normal price when the flash quota is exhausted (reserved.count === 0)', async () => {
+    // Policy (audit A9): getCart shows the item at NORMAL price once quotaLeft
+    // hits 0, so checkout must not hard-fail a cart the UI calls valid — the
+    // failed claim falls back to the catalog price instead of throwing.
     const userId = 'user-1';
     const dto = {
       addressId: 'addr-1',
@@ -165,7 +168,28 @@ describe('OrdersService - Flash Sale Atomic Reservation', () => {
           stockLimit: 5,
           soldCount: 4,
         }),
-        updateMany: mockFn().mockResolvedValue({ count: 0 }), // Oversold!
+        updateMany: mockFn().mockResolvedValue({ count: 0 }), // Quota exhausted!
+      },
+      cartItem: {
+        update: mockFn(),
+        updateMany: mockFn().mockResolvedValue({ count: 1 }),
+        deleteMany: mockFn().mockResolvedValue({ count: 1 }),
+      },
+      $queryRaw: mockFn().mockResolvedValue([{ id: 'imei-1' }, { id: 'imei-2' }]),
+      imeiDevice: {
+        updateMany: mockFn().mockResolvedValue({ count: 2 }),
+      },
+      inventory: {
+        update: mockFn(),
+        updateMany: mockFn().mockResolvedValue({ count: 1 }),
+      },
+      order: {
+        create: mockFn().mockImplementation((args: any) => {
+          return { id: 'ord-1', ...args.data };
+        }),
+      },
+      shipping: {
+        create: mockFn().mockResolvedValue({ id: 'ship-1' }),
       },
     };
 
@@ -173,10 +197,22 @@ describe('OrdersService - Flash Sale Atomic Reservation', () => {
       return callback(mockTx);
     });
 
-    await expect(service.checkout(userId, dto as any)).rejects.toThrow(BadRequestException);
-    await expect(service.checkout(userId, dto as any)).rejects.toThrow(
-      'đã hết suất ưu đãi Flash Sale. Vui lòng cập nhật lại giỏ hàng.',
-    );
+    const order = await service.checkout(userId, dto as any);
+
+    // The claim was still attempted (guarded atomic increment)...
+    expect(mockTx.flashSaleItem.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'fsi-1',
+        soldCount: { lte: 3 }, // 5 - 2
+      },
+      data: {
+        soldCount: { increment: 2 },
+      },
+    });
+
+    // ...but the order is booked at the NORMAL catalog price, not flashPrice.
+    expect(order.items.create[0].unitPrice).toBe(20000000);
+    expect(order.subtotal).toBe(40000000);
   });
 
   it('should stack voucher discount on top of flash sale subtotal', async () => {

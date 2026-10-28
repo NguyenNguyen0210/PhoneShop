@@ -56,6 +56,12 @@ const CANCELLABLE_STATUSES: OrderStatus[] = [
   OrderStatus.PACKED,
 ];
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Order identifiers in URLs may be an orderNumber OR a UUID. Passing a raw
+// non-UUID token to a `uuid` column makes Postgres fail the cast (22P02) and
+// surfaces as a 500 — only compare the id column for real UUIDs.
+const isUuid = (v: string) => UUID_RE.test(v || '');
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
@@ -69,6 +75,57 @@ export class OrdersService {
 
   private generateOrderNumber(): string {
     return `ORD-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
+  }
+
+  /**
+   * Single source of truth for voucher money math. MUST stay formula-identical
+   * with `vouchers.service.ts validate()` (parity contract asserted by
+   * test/unit/vouchers-validate-parity.spec.ts): percentage discounts are
+   * rounded to whole VND, capped by maxDiscountAmount, then by the subtotal;
+   * fixed discounts are capped by the subtotal; freeship discounts the
+   * shipping fee capped by its value.
+   */
+  private computeVoucherDiscount(
+    voucher: any,
+    subtotal: number,
+    shippingFee: number,
+  ): number {
+    if (voucher.type === VoucherType.PERCENTAGE) {
+      let discount = Math.round((subtotal * Number(voucher.value)) / 100);
+      if (voucher.maxDiscountAmount) {
+        discount = Math.min(discount, Number(voucher.maxDiscountAmount));
+      }
+      return Math.min(discount, subtotal);
+    }
+    if (voucher.type === VoucherType.FIXED_AMOUNT) {
+      return Math.min(Number(voucher.value), subtotal);
+    }
+    if (voucher.type === VoucherType.FREE_SHIPPING) {
+      return computeFreeshipDiscount(Number(voucher.value), shippingFee);
+    }
+    return 0;
+  }
+
+  /**
+   * Cancelling a captured (PAID/PROCESSING) payment order would collect money
+   * with no refund record and leave SOLD IMEIs behind phantom stock. Both the
+   * staff path (transitionStatus → CANCELLED) and the buyer path
+   * (cancelMyOrder) re-check INSIDE the release transaction so a payment that
+   * confirmed concurrently rolls the whole cancel back.
+   */
+  private async assertNoCapturedPayment(tx: any, orderId: string) {
+    const paid = await tx.payment?.findFirst?.({
+      where: {
+        orderId,
+        status: { in: [PaymentStatus.PAID, PaymentStatus.PROCESSING] },
+      },
+      select: { id: true },
+    });
+    if (paid) {
+      throw new BadRequestException(
+        'Order is already paid and cannot be cancelled. Please contact support.',
+      );
+    }
   }
 
   calculateShippingFee(method: ShippingMethod, subtotal: number): number {
@@ -119,12 +176,20 @@ export class OrdersService {
       itemsToCheckout = cart.items.filter(
         (item) => selectedSet.has(item.id) || selectedSet.has(item.variantId),
       );
-      if (itemsToCheckout.length === 0 || itemsToCheckout.length !== selectedSet.size) {
+      // Canonical match: a token is satisfied when it equals an item's id OR
+      // its variantId. Sending BOTH tokens for the same line (id + variantId)
+      // is legal — the cart snapshot could have been taken before a sync — so
+      // only tokens that match NO item at all are invalid.
+      const unmatched = [...selectedSet].filter(
+        (token) =>
+          !itemsToCheckout.some((i) => i.id === token || i.variantId === token),
+      );
+      if (itemsToCheckout.length === 0 || unmatched.length > 0) {
         const foundIds = new Set([
           ...itemsToCheckout.map((i) => i.id),
           ...itemsToCheckout.map((i) => i.variantId),
         ]);
-        const invalidIds = [...selectedSet].filter((s) => !foundIds.has(s));
+        const invalidIds = unmatched.length > 0 ? unmatched : [...selectedSet].filter((s) => !foundIds.has(s));
         throw new BadRequestException(
           `Some selected items were not found in your cart: ${invalidIds.join(', ')}`,
         );
@@ -218,41 +283,46 @@ export class OrdersService {
                 where: { id: (activeFlashItem as any).campaignId },
               })
             : null;
-          if (
-            flashCampaign &&
-            (!flashCampaign.isActive ||
-              flashCampaign.startAt > now ||
-              flashCampaign.endAt < now)
-          ) {
-            const variantName = (item.variant as any).product?.name || item.variant?.name || item.variantId;
-            throw new BadRequestException(
-              `Sản phẩm ${variantName} đã kết thúc Flash Sale. Vui lòng cập nhật lại giỏ hàng.`,
-            );
-          }
-          // Atomically increment soldCount if within stockLimit
-          const reserved = await tx.flashSaleItem.updateMany({
-            where: {
-              id: activeFlashItem.id,
-              soldCount: { lte: activeFlashItem.stockLimit - item.quantity },
-            },
-            data: {
-              soldCount: { increment: item.quantity },
-            },
-          });
+          const windowOpen = flashCampaign
+            ? !!flashCampaign.isActive &&
+              flashCampaign.startAt <= now &&
+              flashCampaign.endAt >= now
+            : // Campaign row unreadable (partial test tx / older schema):
+              // optimistically claim — the claim itself is guarded by
+              // soldCount <= stockLimit and every release path rolls it back.
+              true;
 
-          if (reserved.count === 0) {
-            const variantName = (item.variant as any).product?.name || item.variant?.name || item.variantId;
-            throw new BadRequestException(
-              `Sản phẩm ${variantName} đã hết suất ưu đãi Flash Sale. Vui lòng cập nhật lại giỏ hàng.`,
-            );
-          }
+          if (windowOpen) {
+            // Atomically increment soldCount if within stockLimit
+            const reserved = await tx.flashSaleItem.updateMany({
+              where: {
+                id: activeFlashItem.id,
+                soldCount: { lte: activeFlashItem.stockLimit - item.quantity },
+              },
+              data: {
+                soldCount: { increment: item.quantity },
+              },
+            });
 
-          effectiveUnitPrice = Number(activeFlashItem.flashPrice);
+            if (reserved.count > 0) {
+              effectiveUnitPrice = Number(activeFlashItem.flashPrice);
+            }
+            // count === 0 → quota was exhausted between the cart display and
+            // this checkout. Sell at the NORMAL catalog price instead of
+            // failing: getCart/validate already show the item at normal price
+            // once quotaLeft hits 0 (cart.service resolveActiveFlashSale), so
+            // failing here would hard-block a cart the UI calls valid.
+          }
+          // Window closed between read and claim → fall through to the normal
+          // price (same semantics as an inactive campaign in getCart).
         }
 
         if (item.id && effectiveUnitPrice !== Number(item.unitPrice)) {
-          await tx.cartItem.update({
-            where: { id: item.id },
+          // Tolerant refresh: the cart row may have been deleted between the
+          // outer read and this transaction (user removed it from another
+          // tab). updateMany with count-ignored semantics never throws P2025.
+          await tx.cartItem.updateMany?.({
+            where: { id: item.id, cartId: cart.id },
             data: { unitPrice: effectiveUnitPrice },
           });
         }
@@ -309,7 +379,7 @@ export class OrdersService {
             `Minimum order value is ${voucher.minOrderValue}`,
           );
         }
-        if (voucher.perUserLimit) {
+        if (voucher.perUserLimit !== null && voucher.perUserLimit !== undefined) {
           const userUsage = await tx.voucherUsage.count({
             where: { voucherId: voucher.id, userId },
           });
@@ -320,22 +390,7 @@ export class OrdersService {
           }
         }
 
-        if (voucher.type === VoucherType.PERCENTAGE) {
-          discountAmount = (subtotal * Number(voucher.value)) / 100;
-          if (voucher.maxDiscountAmount) {
-            discountAmount = Math.min(
-              discountAmount,
-              Number(voucher.maxDiscountAmount),
-            );
-          }
-          discountAmount = Math.min(discountAmount, subtotal);
-        } else if (voucher.type === VoucherType.FIXED_AMOUNT) {
-          discountAmount = Math.min(Number(voucher.value), subtotal);
-        } else if (voucher.type === VoucherType.FREE_SHIPPING) {
-          // M2: a freeship voucher discounts the SHIPPING fee (capped by its
-          // value) — never the merchandise subtotal. Must match validate().
-          discountAmount = computeFreeshipDiscount(Number(voucher.value), shippingFee);
-        }
+        discountAmount = this.computeVoucherDiscount(voucher, subtotal, shippingFee);
 
         voucherUsageData = { voucherId: voucher.id, discountAmount };
 
@@ -437,6 +492,11 @@ export class OrdersService {
           voucherCode: dto.voucherCode,
           customerNote: dto.customerNote,
           holdExpiresAt,
+          // Anchor createdAt to the claim timestamp: rollbackFlashSoldCount
+          // matches campaigns by a window containing createdAt, and a campaign
+          // that ends between the flash claim and this insert would otherwise
+          // fall outside that window and leak its claimed quota forever.
+          createdAt: now,
           items: {
             create: orderItemsCreateData,
           },
@@ -500,7 +560,10 @@ export class OrdersService {
           where: { id: voucherUsageData.voucherId },
           select: { perUserLimit: true },
         });
-        if (voucherForCap?.perUserLimit) {
+        if (
+          voucherForCap?.perUserLimit !== null &&
+          voucherForCap?.perUserLimit !== undefined
+        ) {
           const finalUsage = await tx.voucherUsage.count({
             where: { voucherId: voucherUsageData.voucherId, userId },
           });
@@ -548,24 +611,24 @@ export class OrdersService {
         `Failed to enqueue expire-order-hold job for order ${order.id}:`,
         (queueErr as Error).message,
       );
-      // H7 fallback: if the queue is down (or the local fallback silently
-      // drops delayed jobs), the hold would otherwise never expire and stock
-      // stays RESERVED forever. Schedule an in-process release as backstop.
-      // NOTE: single-instance safety net only — with multiple instances the
-      // BullMQ job is authoritative; this timer is a no-op if the order is
-      // already confirmed/cancelled (guarded by conditional updateMany).
-      const delayMs = Math.max(0, holdExpiresAt.getTime() - Date.now());
-      const timer = setTimeout(() => {
-        this.releaseExpiredHold(order.id).catch((err) =>
-          this.logger.error(
-            `Fallback hold release failed for order ${order.id}:`,
-            (err as Error).message,
-          ),
-        );
-      }, delayMs);
-      // H7 safety: unref so the timer never keeps the process alive alone.
-      if (typeof (timer as any)?.unref === 'function') (timer as any).unref();
     }
+    // H7 fallback: ALWAYS schedule an in-process release as backstop — the
+    // local fallback queue silently drops delayed jobs without throwing, so
+    // gating the timer on the enqueue failure left abandoned holds stuck
+    // until the 60s sweeper ran. releaseExpiredHold is a guarded no-op when
+    // the order already moved on (or the BullMQ job fired first).
+    // NOTE: single-instance safety net only.
+    const delayMs = Math.max(0, holdExpiresAt.getTime() - Date.now());
+    const timer = setTimeout(() => {
+      this.releaseExpiredHold(order.id).catch((err) =>
+        this.logger.error(
+          `Fallback hold release failed for order ${order.id}:`,
+          (err as Error).message,
+        ),
+      );
+    }, delayMs);
+    // H7 safety: unref so the timer never keeps the process alive alone.
+    if (typeof (timer as any)?.unref === 'function') (timer as any).unref();
 
     // P3: send confirmation email to the buyer (safe-catch: never break creation).
     // For VNPAY, confirmation is dispatched upon verified payment via PaymentsService.handleVnpayIpn
@@ -778,7 +841,7 @@ export class OrdersService {
     const order = await this.prisma.order.findFirst({
       where: {
         userId,
-        OR: [{ id }, { orderNumber: id }],
+        OR: [...(isUuid(id) ? [{ id }] : []), { orderNumber: id }],
       },
       include: {
         items: {
@@ -833,7 +896,10 @@ export class OrdersService {
         skip,
         take: limit,
         include: {
-          user: true,
+          // Never serialize the raw user row — it carries passwordHash.
+          user: {
+            select: { id: true, email: true, firstName: true, lastName: true, phone: true },
+          },
           address: true,
           items: {
             include: {
@@ -898,7 +964,7 @@ export class OrdersService {
       (this.prisma.order.findFirst
         ? await this.prisma.order.findFirst({
             where: {
-              OR: [{ id }, { orderNumber: id }],
+              OR: [...(isUuid(id) ? [{ id }] : []), { orderNumber: id }],
             },
             include: {
               user: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } },
@@ -1061,6 +1127,11 @@ export class OrdersService {
         newStatus === OrderStatus.CANCELLED &&
         ([OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.PACKED] as OrderStatus[]).includes(order.status)
       ) {
+        // A paid order must never be dissolved into thin air: money was
+        // captured, IMEIs are SOLD, and there is no refund flow. Re-check
+        // INSIDE the transaction so a payment confirming concurrently rolls
+        // the whole cancel back (P2/A1).
+        await this.assertNoCapturedPayment(tx, id);
         await this.rollbackVoucherUsage(tx, order);
         // Close still-pending payments so a cancelled order never keeps a
         // live PENDING row (finance filter + orphan cleanup).
@@ -1088,6 +1159,81 @@ export class OrdersService {
         // Give back the flash-sale slots this order claimed (no-op when none).
         await rollbackFlashSoldCount(tx, order.items, order.createdAt);
         // The sale is dead — void its ACTIVE warranties with the same stroke.
+        await this.warrantyService?.voidWarrantiesForOrder(tx, id);
+      }
+
+      // RETURNED has real stock side effects. Without this branch a carrier
+      // return (shipping.service auto-transition) left IMEIs stuck in
+      // RESERVED (pre-settlement) or SOLD (post-settlement) forever — dead
+      // stock no sweep or cancel path could reach.
+      if (newStatus === OrderStatus.RETURNED && order.status === OrderStatus.SHIPPING) {
+        // Parcel returned before settlement: identical economics to a cancel.
+        await this.assertNoCapturedPayment(tx, id);
+        await this.rollbackVoucherUsage(tx, order);
+        if (tx.payment?.updateMany) {
+          await tx.payment.updateMany({
+            where: { orderId: id, status: PaymentStatus.PENDING },
+            data: { status: PaymentStatus.CANCELLED },
+          });
+        }
+        for (const item of order.items) {
+          if (item.imeiDeviceId) {
+            await tx.imeiDevice.updateMany({
+              where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
+              data: { status: ImeiStatus.AVAILABLE },
+            });
+          }
+          await tx.inventory.updateMany({
+            where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
+            data: {
+              reservedQty: { decrement: item.quantity },
+              availableQty: { increment: item.quantity },
+            },
+          });
+        }
+        await rollbackFlashSoldCount(tx, order.items, order.createdAt);
+        await this.warrantyService?.voidWarrantiesForOrder(tx, id);
+      }
+
+      if (newStatus === OrderStatus.RETURNED && order.status === OrderStatus.DELIVERED) {
+        // Physical units come back to the warehouse after settlement: flip
+        // SOLD IMEIs to RETURNED, restock quantity, and write the ledger.
+        await this.rollbackVoucherUsage(tx, order);
+        for (const item of order.items) {
+          if (item.imeiDeviceId) {
+            await tx.imeiDevice.updateMany({
+              where: { id: item.imeiDeviceId, status: ImeiStatus.SOLD },
+              data: { status: ImeiStatus.RETURNED },
+            });
+          }
+          const inv = await tx.inventory.updateMany({
+            where: { variantId: item.variantId },
+            data: {
+              quantity: { increment: item.quantity },
+              availableQty: { increment: item.quantity },
+            },
+          });
+          if (inv.count > 0 && tx.stockMovement) {
+            const fresh = await tx.inventory.findUnique({ where: { variantId: item.variantId } });
+            const balanceAfter = fresh ? fresh.quantity : 0;
+            const unitPrice = Number(item.unitPrice || 0);
+            await tx.stockMovement.create({
+              data: {
+                variantId: item.variantId,
+                type: StockMovementType.IMPORT_RETURN,
+                quantity: item.quantity,
+                balanceBefore: balanceAfter - item.quantity,
+                balanceAfter,
+                unitPrice,
+                totalAmount: item.quantity * unitPrice,
+                referenceType: 'ORDER_RETURN',
+                referenceId: id,
+                note: 'Nhập lại kho từ đơn hàng bị trả về',
+              },
+            });
+          }
+        }
+        await rollbackFlashSoldCount(tx, order.items, order.createdAt);
         await this.warrantyService?.voidWarrantiesForOrder(tx, id);
       }
 
@@ -1157,17 +1303,25 @@ export class OrdersService {
         // PAID on delivery so finance never shows delivered orders as unpaid.
         // (VietQR/bank-transfer rows stay manual: only a bank reference proves
         // the money arrived.)
-        // Idempotent via the PENDING filter.
-        const doorPending = tx.payment?.findMany
-          ? await tx.payment.findMany({
-              where: {
-                orderId: id,
-                method: PaymentMethod.COD,
-                status: PaymentStatus.PENDING,
-              },
-              select: { id: true, amount: true, method: true },
-            })
-          : [];
+        // Idempotent via the PENDING filter. A6/audit: if the order ALREADY
+        // has a PAID payment (e.g. paid via VNPay/transfer earlier), flipping
+        // the COD row too would book 2× the order total — skip entirely.
+        const hasPaidPayment = await tx.payment?.findFirst?.({
+          where: { orderId: id, status: PaymentStatus.PAID },
+          select: { id: true },
+        });
+        const doorPending = hasPaidPayment
+          ? []
+          : tx.payment?.findMany
+            ? await tx.payment.findMany({
+                where: {
+                  orderId: id,
+                  method: PaymentMethod.COD,
+                  status: PaymentStatus.PENDING,
+                },
+                select: { id: true, amount: true, method: true },
+              })
+            : [];
         for (const cp of doorPending) {
           if (tx.payment?.update) {
             await tx.payment.update({
@@ -1339,6 +1493,8 @@ export class OrdersService {
   }
 
   async cancelMyOrder(userId: string, id: string, dto: CancelOrderDto) {
+    if (!isUuid(id)) throw new NotFoundException('Order not found');
+
     const order = await this.prisma.order.findFirst({
       where: { id, userId },
       include: {
@@ -1365,6 +1521,12 @@ export class OrdersService {
 
     // Release reserved stock & IMEIs (re-read inside txn to avoid stale snapshot)
     await this.prisma.$transaction(async (tx) => {
+      // P2 (audit A2): the pre-transaction paidPayment check races the payment
+      // confirmation (VNPay IPN can commit between the read and this claim).
+      // Re-check inside the transaction so a concurrently-paid order rolls the
+      // whole cancel back instead of dissolving captured money.
+      await this.assertNoCapturedPayment(tx, id);
+
       // H2: give the voucher use back together with the stock release
       const guarded = await tx.order.updateMany({
         where: { id, userId, status: { in: CANCELLABLE_STATUSES } },
