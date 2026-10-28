@@ -23,7 +23,7 @@ export { generateLuhnImei, validateImei };
 
 import { seedCustomersAndAddresses } from './seed_modules/customers';
 import { seedCatalog } from './seed_modules/catalog';
-import { seedOrdersAndInstallments } from './seed_modules/orders_and_installments';
+import { seedOrders } from './seed_modules/orders';
 import { seedFeedbackAndAftersales } from './seed_modules/feedback_and_warranties';
 
 // R2 public base URL for seeded product/variant images.
@@ -199,7 +199,7 @@ async function main() {
     });
   }
 
-  const orderResult = await seedOrdersAndInstallments(
+  const orderResult = await seedOrders(
     prisma,
     customers,
     primaryStaffId,

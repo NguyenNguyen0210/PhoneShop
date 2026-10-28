@@ -9,7 +9,7 @@ import {
   TicketStatus,
 } from '@prisma/client';
 import { SeededCustomer } from './customers';
-import { SeededOrderResult, DeliveredItemInfo } from './orders_and_installments';
+import { SeededOrderResult, DeliveredItemInfo } from './orders';
 
 interface VoucherSeedData {
   code: string;

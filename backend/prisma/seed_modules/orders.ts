@@ -269,7 +269,7 @@ function buildOrderBlueprints(): OrderBlueprint[] {
   return blueprints;
 }
 
-export async function seedOrdersAndInstallments(
+export async function seedOrders(
   prisma: PrismaClient,
   customers: SeededCustomer[],
   staffUserId: string,
@@ -281,7 +281,7 @@ export async function seedOrdersAndInstallments(
   ) => Promise<{ id: string; imei: string }>
 ): Promise<SeededOrderResult> {
   if (!customers || customers.length === 0) {
-    throw new Error('No customers provided for seedOrdersAndInstallments');
+    throw new Error('No customers provided for seedOrders');
   }
 
   const variants = await prisma.productVariant.findMany({
