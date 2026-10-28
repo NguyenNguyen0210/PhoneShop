@@ -58,6 +58,7 @@ export const Customer360View: React.FC<Customer360ViewProps> = ({ userId, backPa
     }
     setLoading(true);
     setErrorMessage('');
+    setData(null);
     const fetchData = async () => {
       try {
         const res = await userService.getCustomer360(userId);
@@ -118,7 +119,7 @@ export const Customer360View: React.FC<Customer360ViewProps> = ({ userId, backPa
   }
 
   const { customer, metrics, addresses = [], recentOrders = [] } = data;
-  const fullName = [customer.lastName, customer.firstName].filter(Boolean).join(' ') || 'Chưa cập nhật';
+  const fullName = [customer.lastName?.trim(), customer.firstName?.trim()].filter(Boolean).join(' ') || 'Chưa cập nhật';
   const initials = fullName !== 'Chưa cập nhật' && fullName.length > 0 ? fullName.charAt(0).toUpperCase() : '';
 
   const renderCustomerStatusTag = (status: string) => {
@@ -247,7 +248,7 @@ export const Customer360View: React.FC<Customer360ViewProps> = ({ userId, backPa
               src={customer.avatarUrl || undefined}
               style={{ backgroundColor: '#1677ff', fontSize: 24 }}
             >
-              {!customer.avatarUrl && (initials || <UserOutlined />)}
+              {initials || <UserOutlined />}
             </Avatar>
           </Col>
           <Col flex="auto">
