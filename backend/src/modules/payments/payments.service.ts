@@ -9,7 +9,6 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { VietqrService } from './vietqr.service';
 import { EmailService } from '../../infrastructure/email/email.service';
-import { SystemSettingsService } from '../settings/settings.service';
 import { rollbackFlashSoldCount } from '../orders/flash-sale-rollback.util';
 import {
   CreatePaymentDto,
@@ -64,7 +63,6 @@ export class PaymentsService {
     private readonly vietqrService: VietqrService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
-    @Optional() private readonly settingsService?: SystemSettingsService,
   ) {
     // LOW: in production, refuse to sign/verify VNPay traffic with the
     // publicly visible sandbox placeholders. Dev keeps working with sandbox.
@@ -388,47 +386,31 @@ export class PaymentsService {
     vnpUrl: string;
     returnUrl: string;
   }> {
-    const isVnpayEnabled = this.settingsService
-      ? (await this.settingsService.get('PAYMENT_VNPAY_ENABLED', 'true')) === 'true'
-      : (this.configService.get<string>('PAYMENT_VNPAY_ENABLED', 'true')) === 'true';
+    const isVnpayEnabled =
+      this.configService.get<string>('PAYMENT_VNPAY_ENABLED', 'true') === 'true';
 
     if (!isVnpayEnabled) {
       throw new BadRequestException('Cổng thanh toán VNPay đang tạm thời đóng để bảo trì');
     }
 
-    const tmnCode = this.settingsService
-      ? await this.settingsService.get('VNPAY_TMN_CODE', 'SANDBOX1')
-      : this.configService.get<string>('VNPAY_TMN_CODE', 'SANDBOX1');
-    const hashSecret = this.settingsService
-      ? await this.settingsService.get(
-          'VNPAY_HASH_SECRET',
-          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
-        )
-      : this.configService.get<string>(
-          'VNPAY_HASH_SECRET',
-          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
-        );
-    const vnpUrl = this.settingsService
-      ? await this.settingsService.get(
-          'VNPAY_URL',
-          'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
-        )
-      : this.configService.get<string>(
-          'VNPAY_URL',
-          'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
-        );
+    const tmnCode = this.configService.get<string>('VNPAY_TMN_CODE', 'SANDBOX1');
+    const hashSecret = this.configService.get<string>(
+      'VNPAY_HASH_SECRET',
+      'SANDBOX_SECRET_KEY_1234567890ABCDEF',
+    );
+    const vnpUrl = this.configService.get<string>(
+      'VNPAY_URL',
+      'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
+    );
     // Prod fix: returnUrl mặc định theo FRONTEND_URL để VNPay redirect về
-    // đúng domain vercel thay vì localhost. DB settings (nếu đã set đúng)
-    // vẫn thắng vì get() ưu tiên DB row trước.
+    // đúng domain vercel thay vì localhost.
     const frontendBase = (
       this.configService.get<string>('FRONTEND_URL', '') || ''
     ).replace(/\/$/, '');
     const fallbackReturnUrl = frontendBase
       ? `${frontendBase}/order/vnpay-return`
       : 'https://app.tutorhub.id.vn/order/vnpay-return';
-    let returnUrl = this.settingsService
-      ? await this.settingsService.get('VNPAY_RETURN_URL', fallbackReturnUrl)
-      : this.configService.get<string>('VNPAY_RETURN_URL', fallbackReturnUrl);
+    let returnUrl = this.configService.get<string>('VNPAY_RETURN_URL', fallbackReturnUrl);
     // Self-heal legacy config: /payment/vnpay-return chưa từng tồn tại trong
     // AppRoutes (chỉ có /order/vnpay-return và /vnpay-return) nên VNPay
     // redirect về đó sẽ rơi vào catch-all Navigate to "/" (về trang chủ).
@@ -653,15 +635,10 @@ export class PaymentsService {
     this.logger.log(`Received VNPay IPN webhook: ${JSON.stringify(query)}`);
 
     const secureHash = query['vnp_SecureHash'];
-    const hashSecret = this.settingsService
-      ? await this.settingsService.get(
-          'VNPAY_HASH_SECRET',
-          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
-        )
-      : this.configService.get<string>(
-          'VNPAY_HASH_SECRET',
-          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
-        );
+    const hashSecret = this.configService.get<string>(
+      'VNPAY_HASH_SECRET',
+      'SANDBOX_SECRET_KEY_1234567890ABCDEF',
+    );
 
     const cleanParams: Record<string, string> = {};
     for (const [key, value] of Object.entries(query)) {
@@ -797,15 +774,10 @@ export class PaymentsService {
 
   async handleVnpayReturn(query: Record<string, any>) {
     const secureHash = query['vnp_SecureHash'];
-    const hashSecret = this.settingsService
-      ? await this.settingsService.get(
-          'VNPAY_HASH_SECRET',
-          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
-        )
-      : this.configService.get<string>(
-          'VNPAY_HASH_SECRET',
-          'SANDBOX_SECRET_KEY_1234567890ABCDEF',
-        );
+    const hashSecret = this.configService.get<string>(
+      'VNPAY_HASH_SECRET',
+      'SANDBOX_SECRET_KEY_1234567890ABCDEF',
+    );
 
     const cleanParams: Record<string, string> = {};
     for (const [key, value] of Object.entries(query)) {

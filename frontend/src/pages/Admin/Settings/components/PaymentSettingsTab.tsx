@@ -13,13 +13,13 @@ import {
   Tooltip,
   message,
   Divider,
-  Tag,
+  Alert,
 } from 'antd';
 import type { FormInstance } from 'antd';
 import {
   CreditCardOutlined,
   QrcodeOutlined,
-  SafetyCertificateOutlined,
+  DollarOutlined,
   InfoCircleOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
@@ -89,6 +89,55 @@ export const PaymentSettingsTab: React.FC<PaymentSettingsTabProps> = ({ form }) 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* COD Payment Card */}
+      <Card
+        style={{
+          borderRadius: 12,
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        }}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+            <Space size={10}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  background: '#fef3c7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#d97706',
+                  fontSize: 18,
+                }}
+              >
+                <DollarOutlined />
+              </div>
+              <div>
+                <Title level={5} style={{ margin: 0, color: '#0f172a' }}>
+                  Thanh toán khi nhận hàng (COD)
+                </Title>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Khách hàng thanh toán bằng tiền mặt trực tiếp cho bên vận chuyển khi nhận hàng
+                </Text>
+              </div>
+            </Space>
+            <Form.Item
+              name="PAYMENT_COD_ENABLED"
+              valuePropName="checked"
+              style={{ margin: 0 }}
+            >
+              <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
+            </Form.Item>
+          </div>
+        }
+      >
+        <Paragraph type="secondary" style={{ margin: 0, fontSize: 13 }}>
+          Khi bật tùy chọn này, khách hàng có thể chọn hình thức trả tiền mặt khi giao hàng tận nơi (COD) trong quá trình đặt hàng.
+        </Paragraph>
+      </Card>
+
       {/* VNPay Gateway Card */}
       <Card
         style={{
@@ -133,81 +182,13 @@ export const PaymentSettingsTab: React.FC<PaymentSettingsTabProps> = ({ form }) 
           </div>
         }
       >
-        <Row gutter={[20, 16]}>
-          <Col xs={24} md={12}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Mã Merchant (TMN Code)</Text>
-                  <Tooltip title="Mã định danh website kết nối cổng thanh toán do VNPay cung cấp">
-                    <InfoCircleOutlined style={{ color: '#94a3b8' }} />
-                  </Tooltip>
-                </Space>
-              }
-              name="VNPAY_TMN_CODE"
-            >
-              <Input placeholder="Ví dụ: SANDBOX1" style={{ borderRadius: 8 }} />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} md={12}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Khóa bí mật (Hash Secret)</Text>
-                  <Tooltip title="Chuỗi bí mật dùng để mã hóa và đối soát chữ ký SHA512. Giữ nguyên dấu chấm để không đổi mật khẩu cũ.">
-                    <SafetyCertificateOutlined style={{ color: '#f59e0b' }} />
-                  </Tooltip>
-                  <Tag color="orange" style={{ fontSize: 10, lineHeight: '18px', padding: '0 6px', margin: 0 }}>Bảo mật</Tag>
-                </Space>
-              }
-              name="VNPAY_HASH_SECRET"
-            >
-              <Input.Password
-                placeholder="Chuỗi khóa bảo mật hash secret"
-                style={{ borderRadius: 8 }}
-              />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} md={12}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Cổng thanh toán URL (VNPAY_URL)</Text>
-                  <Tooltip title="Endpoint chuyển hướng người dùng sang giao diện thanh toán VNPay">
-                    <InfoCircleOutlined style={{ color: '#94a3b8' }} />
-                  </Tooltip>
-                </Space>
-              }
-              name="VNPAY_URL"
-            >
-              <Input
-                placeholder="https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
-                style={{ borderRadius: 8 }}
-              />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} md={12}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Địa chỉ phản hồi (VNPAY_RETURN_URL)</Text>
-                  <Tooltip title="URL mà VNPay chuyển hướng người dùng quay lại sau khi hoàn tất giao dịch">
-                    <InfoCircleOutlined style={{ color: '#94a3b8' }} />
-                  </Tooltip>
-                </Space>
-              }
-              name="VNPAY_RETURN_URL"
-            >
-              <Input
-                placeholder="https://app.tutorhub.id.vn/order/vnpay-return"
-                style={{ borderRadius: 8 }}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
+        <Alert
+          type="info"
+          showIcon
+          message="Cấu hình kết nối VNPay được quản lý qua biến môi trường (.env)"
+          description="Để bảo mật thông tin tài chính, các tham số kỹ thuật bao gồm VNPAY_TMN_CODE, VNPAY_HASH_SECRET, VNPAY_URL và VNPAY_RETURN_URL được đọc trực tiếp từ file môi trường máy chủ."
+          style={{ borderRadius: 8 }}
+        />
       </Card>
 
       {/* VietQR Bank Transfer Card */}

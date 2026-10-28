@@ -28,6 +28,7 @@ import { GeneralSettingsTab } from './components/GeneralSettingsTab';
 const { Title, Paragraph, Text } = Typography;
 
 const BOOLEAN_KEYS = new Set([
+  'PAYMENT_COD_ENABLED',
   'PAYMENT_VNPAY_ENABLED',
   'PAYMENT_VIETQR_ENABLED',
   'EMAIL_SECURE',
@@ -42,31 +43,13 @@ const SECRET_KEYS = new Set([
 ]);
 
 const KEY_TO_GROUP: Record<string, string> = {
+  PAYMENT_COD_ENABLED: 'payment',
   PAYMENT_VNPAY_ENABLED: 'payment',
-  VNPAY_TMN_CODE: 'payment',
-  VNPAY_HASH_SECRET: 'payment',
-  VNPAY_URL: 'payment',
-  VNPAY_RETURN_URL: 'payment',
   PAYMENT_VIETQR_ENABLED: 'payment',
   VIETQR_BANK_ID: 'payment',
   VIETQR_ACCOUNT_NO: 'payment',
   VIETQR_ACCOUNT_NAME: 'payment',
   VIETQR_TEMPLATE: 'payment',
-
-  CLOUDFLARE_R2_ACCOUNT_ID: 'storage',
-  CLOUDFLARE_R2_BUCKET: 'storage',
-  CLOUDFLARE_R2_ACCESS_KEY_ID: 'storage',
-  CLOUDFLARE_R2_SECRET_ACCESS_KEY: 'storage',
-  CLOUDFLARE_R2_PUBLIC_URL: 'storage',
-
-  EMAIL_HOST: 'email',
-  EMAIL_PORT: 'email',
-  EMAIL_SECURE: 'email',
-  EMAIL_USER: 'email',
-  EMAIL_PASS: 'email',
-  EMAIL_FROM: 'email',
-  EMAIL_PROVIDER: 'email',
-  BREVO_API_KEY: 'email',
 
   STORE_NAME: 'general',
   STORE_HOTLINE: 'general',
@@ -131,7 +114,7 @@ export const AdminSettingsPage: React.FC = () => {
       const rawValues = form.getFieldsValue(true);
 
       const itemsToUpdate: SettingItem[] = Object.entries(rawValues)
-        .filter(([key]) => key in KEY_TO_GROUP || key.startsWith('CUSTOM_'))
+        .filter(([key]) => (key in KEY_TO_GROUP || key.startsWith('CUSTOM_')) && !SECRET_KEYS.has(key))
         .map(([key, val]) => {
           let valueStr = '';
           if (BOOLEAN_KEYS.has(key)) {
@@ -144,7 +127,7 @@ export const AdminSettingsPage: React.FC = () => {
             key,
             value: valueStr,
             group: KEY_TO_GROUP[key] || 'general',
-            isSecret: SECRET_KEYS.has(key),
+            isSecret: false,
           };
         });
 

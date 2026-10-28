@@ -1,24 +1,18 @@
 import React, { useState } from 'react';
 import {
   Card,
-  Form,
-  Input,
   Button,
-  Row,
-  Col,
   Space,
   Typography,
-  Tooltip,
   message,
   Divider,
-  Tag,
   Alert,
+  Descriptions,
+  Tag,
 } from 'antd';
 import type { FormInstance } from 'antd';
 import {
   CloudServerOutlined,
-  SafetyCertificateOutlined,
-  InfoCircleOutlined,
   CheckCircleOutlined,
   CloudSyncOutlined,
 } from '@ant-design/icons';
@@ -41,19 +35,8 @@ export const StorageSettingsTab: React.FC<StorageSettingsTabProps> = ({ form }) 
     setTestingStorage(true);
     setTestResult({ status: 'idle', message: '' });
     try {
-      const accountId = form.getFieldValue('CLOUDFLARE_R2_ACCOUNT_ID');
-      const bucket = form.getFieldValue('CLOUDFLARE_R2_BUCKET');
-      const accessKeyId = form.getFieldValue('CLOUDFLARE_R2_ACCESS_KEY_ID');
-      const secretAccessKey = form.getFieldValue('CLOUDFLARE_R2_SECRET_ACCESS_KEY');
-
-      const res = await settingsService.testStorage({
-        accountId,
-        bucket,
-        accessKeyId,
-        secretAccessKey,
-      });
-
-      const msg = res.message || `Kết nối thành công tới bucket "${bucket}"`;
+      const res = await settingsService.testStorage({});
+      const msg = res.message || 'Kết nối thành công tới dịch vụ lưu trữ R2';
       setTestResult({ status: 'success', message: msg });
       message.success(msg);
     } catch (err: any) {
@@ -65,6 +48,11 @@ export const StorageSettingsTab: React.FC<StorageSettingsTabProps> = ({ form }) 
       setTestingStorage(false);
     }
   };
+
+  const accountId = form.getFieldValue('CLOUDFLARE_R2_ACCOUNT_ID') || 'Được nạp từ .env';
+  const bucket = form.getFieldValue('CLOUDFLARE_R2_BUCKET') || 'Được nạp từ .env';
+  const accessKeyId = form.getFieldValue('CLOUDFLARE_R2_ACCESS_KEY_ID') || 'Được nạp từ .env';
+  const publicUrl = form.getFieldValue('CLOUDFLARE_R2_PUBLIC_URL') || 'Được nạp từ .env';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -101,97 +89,40 @@ export const StorageSettingsTab: React.FC<StorageSettingsTabProps> = ({ form }) 
                 </Text>
               </div>
             </Space>
+            <Tag color="blue">Được cấu hình qua file môi trường .env</Tag>
           </div>
         }
       >
-        <Row gutter={[20, 16]}>
-          <Col xs={24} md={12}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Account ID (ID Tài khoản Cloudflare)</Text>
-                  <Tooltip title="Chuỗi 32 ký tự định danh tài khoản Cloudflare của bạn">
-                    <InfoCircleOutlined style={{ color: '#94a3b8' }} />
-                  </Tooltip>
-                </Space>
-              }
-              name="CLOUDFLARE_R2_ACCOUNT_ID"
-            >
-              <Input placeholder="Ví dụ: 8a4f91b7d5904ac123e456789abcdef0" style={{ borderRadius: 8 }} />
-            </Form.Item>
-          </Col>
+        <Alert
+          type="info"
+          showIcon
+          message="Được cấu hình qua file môi trường .env"
+          description="Để bảo đảm an toàn dữ liệu và tuân thủ quy tắc bảo mật, toàn bộ khóa truy cập S3 và thông số kết nối Cloudflare R2 được quản lý trực tiếp qua file môi trường (.env) trên máy chủ."
+          style={{ marginBottom: 20, borderRadius: 8 }}
+        />
 
-          <Col xs={24} md={12}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Tên Bucket (Bucket Name)</Text>
-                  <Tooltip title="Tên bucket R2 dùng để lưu file media">
-                    <InfoCircleOutlined style={{ color: '#94a3b8' }} />
-                  </Tooltip>
-                </Space>
-              }
-              name="CLOUDFLARE_R2_BUCKET"
-            >
-              <Input placeholder="Ví dụ: phoneshop-assets" style={{ borderRadius: 8 }} />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} md={12}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Access Key ID (S3 API Token)</Text>
-                  <Tooltip title="Mã Access Key ID tạo từ mục R2 API Tokens trên Cloudflare Dashboard">
-                    <InfoCircleOutlined style={{ color: '#94a3b8' }} />
-                  </Tooltip>
-                </Space>
-              }
-              name="CLOUDFLARE_R2_ACCESS_KEY_ID"
-            >
-              <Input placeholder="Ví dụ: 03ad0132b9c78d..." style={{ borderRadius: 8 }} />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} md={12}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Secret Access Key</Text>
-                  <Tooltip title="Mật khẩu truy cập S3 API. Giữ nguyên dấu chấm để không thay đổi giá trị hiện tại.">
-                    <SafetyCertificateOutlined style={{ color: '#f59e0b' }} />
-                  </Tooltip>
-                  <Tag color="orange" style={{ fontSize: 10, lineHeight: '18px', padding: '0 6px', margin: 0 }}>Bảo mật</Tag>
-                </Space>
-              }
-              name="CLOUDFLARE_R2_SECRET_ACCESS_KEY"
-            >
-              <Input.Password
-                placeholder="Chuỗi Secret Access Key bí mật"
-                style={{ borderRadius: 8 }}
-              />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Tên miền truy cập công khai (Public URL / Custom Domain)</Text>
-                  <Tooltip title="Tên miền phụ hoặc Public R2 dev domain để khách hàng xem được ảnh sản phẩm">
-                    <InfoCircleOutlined style={{ color: '#94a3b8' }} />
-                  </Tooltip>
-                </Space>
-              }
-              name="CLOUDFLARE_R2_PUBLIC_URL"
-            >
-              <Input
-                placeholder="https://pub-xxxxxx.r2.dev hoặc https://media.phoneshop.vn"
-                style={{ borderRadius: 8 }}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
+        <Descriptions
+          bordered
+          size="small"
+          column={{ xs: 1, sm: 2 }}
+          style={{ marginBottom: 16 }}
+        >
+          <Descriptions.Item label="Account ID">
+            <Text code>{accountId}</Text>
+          </Descriptions.Item>
+          <Descriptions.Item label="Tên Bucket">
+            <Text strong>{bucket}</Text>
+          </Descriptions.Item>
+          <Descriptions.Item label="Access Key ID">
+            <Text code>{accessKeyId}</Text>
+          </Descriptions.Item>
+          <Descriptions.Item label="Secret Access Key">
+            <Text type="secondary">•••••••••••• (Ẩn trong .env)</Text>
+          </Descriptions.Item>
+          <Descriptions.Item label="Public URL" span={2}>
+            <Text copyable={{ text: publicUrl }}>{publicUrl}</Text>
+          </Descriptions.Item>
+        </Descriptions>
 
         {testResult.status !== 'idle' && (
           <div style={{ marginTop: 8, marginBottom: 16 }}>
@@ -211,7 +142,7 @@ export const StorageSettingsTab: React.FC<StorageSettingsTabProps> = ({ form }) 
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <Paragraph type="secondary" style={{ margin: 0, fontSize: 13, maxWidth: 540 }}>
-            Kiểm tra quyền truy cập R2 bằng cách gọi S3 ListObjects (MaxKeys=1) đến bucket đã cấu hình.
+            Kiểm tra quyền truy cập R2 bằng cách gọi S3 ListObjects (MaxKeys=1) tới bucket đang cấu hình trong .env.
           </Paragraph>
           <Button
             type="default"

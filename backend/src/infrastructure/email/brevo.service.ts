@@ -1,6 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
 
 export interface BrevoSendOptions {
   to: string | string[];
@@ -28,7 +27,6 @@ export class BrevoService {
 
   constructor(
     private readonly config: ConfigService,
-    @Optional() private readonly prisma?: PrismaService,
     // @Optional: Nest DI injects undefined (no Function provider);
     // tests / manual wiring can still pass a custom fetch.
     @Optional() private readonly fetchFn?: FetchFn,
@@ -39,26 +37,9 @@ export class BrevoService {
   }
 
   async getResolvedConfig(): Promise<{ apiKey: string; from: string }> {
-    let dbKey: string | undefined;
-    let dbFrom: string | undefined;
-
-    if (this.prisma) {
-      try {
-        const records = await this.prisma.systemSetting.findMany({
-          where: { group: { equals: 'EMAIL', mode: 'insensitive' } },
-        });
-        for (const rec of records) {
-          if (rec.key === 'BREVO_API_KEY') dbKey = rec.value;
-          if (rec.key === 'EMAIL_FROM') dbFrom = rec.value;
-        }
-      } catch {
-        // Fallback to env when DB is unreachable.
-      }
-    }
-
-    const apiKey = this.clean(dbKey || this.config.get<string>('BREVO_API_KEY'));
+    const apiKey = this.clean(this.config.get<string>('BREVO_API_KEY'));
     const from =
-      this.clean(dbFrom || this.config.get<string>('EMAIL_FROM')) ||
+      this.clean(this.config.get<string>('EMAIL_FROM')) ||
       'Phone Shop <no-reply@phoneshop.vn>';
 
     return { apiKey, from };

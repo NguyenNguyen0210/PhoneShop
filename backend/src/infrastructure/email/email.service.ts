@@ -1,6 +1,5 @@
 import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import { BrevoService } from './brevo.service';
@@ -9,8 +8,6 @@ import {
   OrderCancelledOptions,
   OrderDeliveredOptions,
   WarrantyItemSummary,
-  InstallmentApprovedOptions,
-  InstallmentRejectedOptions,
   buildWelcomeEmail,
   buildPasswordResetEmail,
   buildOrderConfirmationEmail,
@@ -18,8 +15,6 @@ import {
   buildReturnApprovedEmail,
   buildOrderCancelledEmail,
   buildOrderDeliveredEmail,
-  buildInstallmentApprovedEmail,
-  buildInstallmentRejectedEmail,
 } from './email-template.builder';
 
 export {
@@ -27,8 +22,6 @@ export {
   OrderCancelledOptions,
   OrderDeliveredOptions,
   WarrantyItemSummary,
-  InstallmentApprovedOptions,
-  InstallmentRejectedOptions,
 };
 
 export interface SendEmailOptions {
@@ -58,12 +51,10 @@ export function escapeHtml(value?: string | null): string {
 export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
   private transporter: Transporter | null = null;
-  private currentConfigKey = '';
   public isMock = true;
 
   constructor(
     private readonly config: ConfigService,
-    @Optional() private readonly prisma?: PrismaService,
     @Optional() private readonly brevo?: BrevoService,
   ) {}
 
@@ -71,43 +62,16 @@ export class EmailService implements OnModuleInit {
     return (val ?? '').trim().replace(/^["']|["']$/g, '');
   }
 
-  async getResolvedConfig() {
-    let dbHost: string | undefined;
-    let dbUser: string | undefined;
-    let dbPass: string | undefined;
-    let dbPort: string | undefined;
-    let dbSecure: string | undefined;
-    let dbFrom: string | undefined;
-
-    if (this.prisma) {
-      try {
-        const records = await this.prisma.systemSetting.findMany({
-          where: { group: { equals: 'EMAIL', mode: 'insensitive' } },
-        });
-        for (const rec of records) {
-          if (rec.key === 'EMAIL_HOST') dbHost = rec.value;
-          if (rec.key === 'EMAIL_USER') dbUser = rec.value;
-          if (rec.key === 'EMAIL_PASS') dbPass = rec.value;
-          if (rec.key === 'EMAIL_PORT') dbPort = rec.value;
-          if (rec.key === 'EMAIL_SECURE') dbSecure = rec.value;
-          if (rec.key === 'EMAIL_FROM') dbFrom = rec.value;
-        }
-      } catch (err) {
-        // Fallback to ConfigService if DB query fails
-      }
-    }
-
-    const host = this.clean(dbHost || this.config.get<string>('EMAIL_HOST'));
-    const user = this.clean(dbUser || this.config.get<string>('EMAIL_USER'));
-    const pass = this.clean(dbPass || this.config.get<string>('EMAIL_PASS'));
-    const rawPort = this.clean(dbPort || String(this.config.get('EMAIL_PORT', 587)));
+  getResolvedConfig() {
+    const host = this.clean(this.config.get<string>('EMAIL_HOST'));
+    const user = this.clean(this.config.get<string>('EMAIL_USER'));
+    const pass = this.clean(this.config.get<string>('EMAIL_PASS'));
+    const rawPort = this.clean(String(this.config.get('EMAIL_PORT', 587)));
     const port = Number(rawPort) || 587;
-    const rawSecure = this.clean(
-      dbSecure !== undefined ? dbSecure : String(this.config.get('EMAIL_SECURE', 'false')),
-    );
+    const rawSecure = this.clean(String(this.config.get('EMAIL_SECURE', 'false')));
     const secure = rawSecure === 'true' || port === 465;
     const from =
-      this.clean(dbFrom || this.config.get<string>('EMAIL_FROM')) ||
+      this.clean(this.config.get<string>('EMAIL_FROM')) ||
       'Phone Shop <no-reply@phoneshop.vn>';
 
     return { host, user, pass, port, secure, from };
@@ -128,7 +92,7 @@ export class EmailService implements OnModuleInit {
     from: string;
     isMock: boolean;
   }> {
-    const cfg = await this.getResolvedConfig();
+    const cfg = this.getResolvedConfig();
     const isMock = !cfg.host || !cfg.user || !cfg.pass;
     this.isMock = isMock;
 
@@ -141,8 +105,7 @@ export class EmailService implements OnModuleInit {
       return { transporter: null, from: cfg.from, isMock: true };
     }
 
-    const configKey = `${cfg.host}:${cfg.port}:${cfg.secure}:${cfg.user}:${cfg.pass}`;
-    if (!this.transporter || this.currentConfigKey !== configKey) {
+    if (!this.transporter) {
       this.transporter = nodemailer.createTransport({
         host: cfg.host,
         port: cfg.port,
@@ -153,7 +116,6 @@ export class EmailService implements OnModuleInit {
         greetingTimeout: 10000,
         socketTimeout: 15000,
       });
-      this.currentConfigKey = configKey;
       this.logger.log(
         `Email transporter initialized (host=${cfg.host}, port=${cfg.port}, user=${cfg.user})`,
       );
@@ -295,28 +257,6 @@ export class EmailService implements OnModuleInit {
       to,
       subject: `Đơn hàng #${options.orderNumber} đã giao thành công`,
       html: buildOrderDeliveredEmail(options),
-    });
-  }
-
-  async sendInstallmentApproved(
-    to: string,
-    options: InstallmentApprovedOptions,
-  ): Promise<void> {
-    await this.send({
-      to,
-      subject: `Hồ sơ trả góp cho đơn hàng #${options.orderNumber} đã được phê duyệt`,
-      html: buildInstallmentApprovedEmail(options),
-    });
-  }
-
-  async sendInstallmentRejected(
-    to: string,
-    options: InstallmentRejectedOptions,
-  ): Promise<void> {
-    await this.send({
-      to,
-      subject: `Thông báo kết quả hồ sơ trả góp đơn hàng #${options.orderNumber}`,
-      html: buildInstallmentRejectedEmail(options),
     });
   }
 }

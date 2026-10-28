@@ -1,27 +1,20 @@
 import React, { useState } from 'react';
 import {
   Card,
-  Form,
-  Input,
-  InputNumber,
-  Switch,
   Button,
-  Row,
-  Col,
   Space,
   Typography,
-  Tooltip,
   message,
   Divider,
-  Tag,
   Modal,
   Alert,
+  Descriptions,
+  Tag,
+  Input,
 } from 'antd';
 import type { FormInstance } from 'antd';
 import {
   MailOutlined,
-  SafetyCertificateOutlined,
-  InfoCircleOutlined,
   SendOutlined,
   CheckCircleOutlined,
 } from '@ant-design/icons';
@@ -60,12 +53,6 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({ form }) => {
     try {
       const res = await settingsService.testEmail({
         toEmail: recipientEmail.trim(),
-        host: form.getFieldValue('EMAIL_HOST'),
-        port: form.getFieldValue('EMAIL_PORT'),
-        secure: form.getFieldValue('EMAIL_SECURE'),
-        user: form.getFieldValue('EMAIL_USER'),
-        pass: form.getFieldValue('EMAIL_PASS'),
-        from: form.getFieldValue('EMAIL_FROM'),
       });
       const msg = res.message || `Email kiểm tra đã được gửi thành công đến ${recipientEmail}`;
       setTestResult({ status: 'success', message: msg });
@@ -80,6 +67,13 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({ form }) => {
       setSendingEmail(false);
     }
   };
+
+  const host = form.getFieldValue('EMAIL_HOST') || 'smtp.gmail.com';
+  const port = form.getFieldValue('EMAIL_PORT') || '587';
+  const secure = form.getFieldValue('EMAIL_SECURE');
+  const user = form.getFieldValue('EMAIL_USER') || 'Được nạp từ .env';
+  const from = form.getFieldValue('EMAIL_FROM') || 'Phone Shop <no-reply@phoneshop.vn>';
+  const provider = form.getFieldValue('EMAIL_PROVIDER') || 'brevo';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -109,126 +103,53 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({ form }) => {
               </div>
               <div>
                 <Title level={5} style={{ margin: 0, color: '#0f172a' }}>
-                  Dịch vụ Gửi thư Điện tử SMTP
+                  Dịch vụ Gửi thư Điện tử (Email Service)
                 </Title>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  Máy chủ SMTP dùng để gửi email xác nhận đặt hàng, thông báo mã OTP và biên lai thanh toán
+                  Máy chủ SMTP / Brevo API gửi email xác nhận đặt hàng, thông báo mã OTP và biên lai thanh toán
                 </Text>
               </div>
             </Space>
+            <Tag color="blue">Được cấu hình qua file môi trường .env</Tag>
           </div>
         }
       >
-        <Row gutter={[20, 16]}>
-          <Col xs={24} md={14}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Địa chỉ máy chủ SMTP (SMTP Host)</Text>
-                  <Tooltip title="Tên miền máy chủ gửi thư SMTP (Ví dụ: smtp.gmail.com, smtp.mailgun.org)">
-                    <InfoCircleOutlined style={{ color: '#94a3b8' }} />
-                  </Tooltip>
-                </Space>
-              }
-              name="EMAIL_HOST"
-            >
-              <Input placeholder="Ví dụ: smtp.gmail.com" style={{ borderRadius: 8 }} />
-            </Form.Item>
-          </Col>
+        <Alert
+          type="info"
+          showIcon
+          message="Được cấu hình qua file môi trường .env"
+          description="Để đảm bảo an toàn tuyệt đối cho tài khoản gửi thư, toàn bộ thông tin đăng nhập SMTP (mật khẩu ứng dụng, API key) được thiết lập thông qua file môi trường .env trên máy chủ backend."
+          style={{ marginBottom: 20, borderRadius: 8 }}
+        />
 
-          <Col xs={24} sm={12} md={5}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Cổng (Port)</Text>
-                  <Tooltip title="Cổng kết nối SMTP tiêu chuẩn (587 cho TLS/STARTTLS, 465 cho SSL)">
-                    <InfoCircleOutlined style={{ color: '#94a3b8' }} />
-                  </Tooltip>
-                </Space>
-              }
-              name="EMAIL_PORT"
-            >
-              <InputNumber
-                style={{ width: '100%', borderRadius: 8 }}
-                placeholder="587"
-                min={1}
-                max={65535}
-              />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} sm={12} md={5}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>SSL/TLS trực tiếp</Text>
-                  <Tooltip title="Bật nếu dùng cổng 465 SSL chuyên dụng, tắt nếu dùng STARTTLS trên cổng 587">
-                    <InfoCircleOutlined style={{ color: '#94a3b8' }} />
-                  </Tooltip>
-                </Space>
-              }
-              name="EMAIL_SECURE"
-              valuePropName="checked"
-            >
-              <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} md={12}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Tên đăng nhập SMTP (Username / Email)</Text>
-                  <Tooltip title="Địa chỉ email hoặc tài khoản đăng nhập máy chủ gửi thư">
-                    <InfoCircleOutlined style={{ color: '#94a3b8' }} />
-                  </Tooltip>
-                </Space>
-              }
-              name="EMAIL_USER"
-            >
-              <Input placeholder="Ví dụ: no-reply@phoneshop.vn" style={{ borderRadius: 8 }} />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} md={12}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Mật khẩu ứng dụng SMTP (Password / Secret)</Text>
-                  <Tooltip title="Mật khẩu ứng dụng (App Password) hoặc API key. Giữ nguyên dấu chấm để không thay đổi giá trị.">
-                    <SafetyCertificateOutlined style={{ color: '#f59e0b' }} />
-                  </Tooltip>
-                  <Tag color="orange" style={{ fontSize: 10, lineHeight: '18px', padding: '0 6px', margin: 0 }}>Bảo mật</Tag>
-                </Space>
-              }
-              name="EMAIL_PASS"
-            >
-              <Input.Password
-                placeholder="Mật khẩu ứng dụng SMTP"
-                style={{ borderRadius: 8 }}
-              />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24}>
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <Text strong>Tiêu đề người gửi (From Header)</Text>
-                  <Tooltip title="Định dạng hiển thị tên người gửi trong hòm thư khách hàng">
-                    <InfoCircleOutlined style={{ color: '#94a3b8' }} />
-                  </Tooltip>
-                </Space>
-              }
-              name="EMAIL_FROM"
-            >
-              <Input
-                placeholder='Ví dụ: Phone Shop <no-reply@phoneshop.vn>'
-                style={{ borderRadius: 8 }}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
+        <Descriptions
+          bordered
+          size="small"
+          column={{ xs: 1, sm: 2 }}
+          style={{ marginBottom: 16 }}
+        >
+          <Descriptions.Item label="Phương thức gửi (Provider)">
+            <Tag color="purple">{String(provider).toUpperCase()}</Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label="Máy chủ SMTP (Host)">
+            <Text strong>{host}</Text>
+          </Descriptions.Item>
+          <Descriptions.Item label="Cổng kết nối (Port)">
+            <Text code>{port}</Text>
+          </Descriptions.Item>
+          <Descriptions.Item label="Phương thức mã hóa">
+            <Text>{secure || port === 465 || port === '465' ? 'TLS / SSL (Cổng 465)' : 'STARTTLS (Cổng 587)'}</Text>
+          </Descriptions.Item>
+          <Descriptions.Item label="Tài khoản gửi (Username)">
+            <Text code>{user}</Text>
+          </Descriptions.Item>
+          <Descriptions.Item label="Mật khẩu ứng dụng (Password)">
+            <Text type="secondary">•••••••••••• (Ẩn trong .env)</Text>
+          </Descriptions.Item>
+          <Descriptions.Item label="Tiêu đề người gửi (From)" span={2}>
+            <Text copyable={{ text: from }}>{from}</Text>
+          </Descriptions.Item>
+        </Descriptions>
 
         {testResult.status !== 'idle' && (
           <div style={{ marginTop: 8, marginBottom: 16 }}>
@@ -248,7 +169,7 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({ form }) => {
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <Paragraph type="secondary" style={{ margin: 0, fontSize: 13, maxWidth: 540 }}>
-            Kiểm tra thông số máy chủ SMTP bằng cách gửi một email thông báo kiểm thử đến hòm thư người nhận.
+            Kiểm tra thông số cấu hình email trong .env bằng cách gửi một email chẩn đoán thử nghiệm đến hòm thư người nhận.
           </Paragraph>
           <Button
             type="default"
@@ -295,7 +216,7 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({ form }) => {
       >
         <div style={{ padding: '12px 0' }}>
           <Paragraph style={{ fontSize: 13, color: '#475569', marginBottom: 16 }}>
-            Nhập địa chỉ email sẽ nhận thư thử nghiệm. Hệ thống sẽ kết nối với máy chủ SMTP và gửi email xác nhận ngay lập tức:
+            Nhập địa chỉ email sẽ nhận thư thử nghiệm. Hệ thống sẽ kết nối với máy chủ SMTP (.env) và gửi email xác nhận ngay lập tức:
           </Paragraph>
           <Input
             placeholder="nhap.email.nhan@gmail.com"

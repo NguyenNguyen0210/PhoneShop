@@ -12,31 +12,13 @@ export const DEFAULT_DEFINITIONS: Record<
   string,
   { group: string; isSecret: boolean; defaultVal?: string }
 > = {
+  PAYMENT_COD_ENABLED: { group: 'payment', isSecret: false, defaultVal: 'true' },
   PAYMENT_VNPAY_ENABLED: { group: 'payment', isSecret: false, defaultVal: 'true' },
-  VNPAY_TMN_CODE: { group: 'payment', isSecret: false, defaultVal: 'SANDBOX1' },
-  VNPAY_HASH_SECRET: { group: 'payment', isSecret: true },
-  VNPAY_URL: { group: 'payment', isSecret: false, defaultVal: 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html' },
-  VNPAY_RETURN_URL: { group: 'payment', isSecret: false, defaultVal: 'https://app.tutorhub.id.vn/order/vnpay-return' },
   PAYMENT_VIETQR_ENABLED: { group: 'payment', isSecret: false, defaultVal: 'true' },
   VIETQR_BANK_ID: { group: 'payment', isSecret: false, defaultVal: '970422' },
   VIETQR_ACCOUNT_NO: { group: 'payment', isSecret: false, defaultVal: '0987654321' },
   VIETQR_ACCOUNT_NAME: { group: 'payment', isSecret: false, defaultVal: 'CONG TY PHONE SHOP' },
   VIETQR_TEMPLATE: { group: 'payment', isSecret: false, defaultVal: 'compact2' },
-
-  CLOUDFLARE_R2_ACCOUNT_ID: { group: 'storage', isSecret: false },
-  CLOUDFLARE_R2_BUCKET: { group: 'storage', isSecret: false },
-  CLOUDFLARE_R2_ACCESS_KEY_ID: { group: 'storage', isSecret: false },
-  CLOUDFLARE_R2_SECRET_ACCESS_KEY: { group: 'storage', isSecret: true },
-  CLOUDFLARE_R2_PUBLIC_URL: { group: 'storage', isSecret: false },
-
-  EMAIL_HOST: { group: 'email', isSecret: false, defaultVal: 'smtp.gmail.com' },
-  EMAIL_PORT: { group: 'email', isSecret: false, defaultVal: '587' },
-  EMAIL_SECURE: { group: 'email', isSecret: false, defaultVal: 'false' },
-  EMAIL_USER: { group: 'email', isSecret: false },
-  EMAIL_PASS: { group: 'email', isSecret: true },
-  EMAIL_FROM: { group: 'email', isSecret: false, defaultVal: 'Phone Shop <no-reply@phoneshop.vn>' },
-  EMAIL_PROVIDER: { group: 'email', isSecret: false, defaultVal: 'brevo' },
-  BREVO_API_KEY: { group: 'email', isSecret: true },
 
   STORE_NAME: { group: 'general', isSecret: false, defaultVal: 'Phone Shop' },
   STORE_HOTLINE: { group: 'general', isSecret: false, defaultVal: '1900 6868' },
@@ -80,9 +62,9 @@ export class SystemSettingsService {
 
   async getAllGrouped(maskSecrets = true): Promise<Record<string, Record<string, string>>> {
     const dbRecords = await this.prisma.systemSetting.findMany();
-    const dbMap = new Map<string, { value: string; isSecret: boolean }>();
+    const dbMap = new Map<string, string>();
     for (const rec of dbRecords) {
-      dbMap.set(rec.key, { value: rec.value, isSecret: rec.isSecret });
+      dbMap.set(rec.key, rec.value);
     }
 
     const groups: Record<string, Record<string, string>> = {
@@ -94,21 +76,9 @@ export class SystemSettingsService {
 
     for (const [key, def] of Object.entries(DEFAULT_DEFINITIONS)) {
       const g = def.group.toLowerCase();
-      let val = '';
-      const dbEntry = dbMap.get(key);
-      const isSec = dbEntry ? dbEntry.isSecret : def.isSecret;
-
-      if (dbEntry && dbEntry.value !== '') {
-        val = isSec && maskSecrets ? MASKED_SECRET : dbEntry.value;
-      } else {
-        const envVal = this.config.get<string>(key, def.defaultVal || '');
-        if (isSec) {
-          val = envVal ? (maskSecrets ? MASKED_SECRET : envVal) : '';
-        } else {
-          val = envVal;
-        }
-      }
-
+      const val = dbMap.has(key)
+        ? (dbMap.get(key) ?? '')
+        : (this.config.get<string>(key, def.defaultVal || '') ?? '');
       if (!groups[g]) groups[g] = {};
       groups[g][key] = val;
     }
@@ -117,9 +87,32 @@ export class SystemSettingsService {
       if (!DEFAULT_DEFINITIONS[rec.key]) {
         const g = (rec.group || 'general').toLowerCase();
         if (!groups[g]) groups[g] = {};
-        groups[g][rec.key] = rec.isSecret && maskSecrets ? MASKED_SECRET : rec.value;
+        groups[g][rec.key] = rec.value;
       }
     }
+
+    // Read-only environment-based configurations & status for display
+    groups.payment['VNPAY_TMN_CODE'] = this.config.get<string>('VNPAY_TMN_CODE', 'SANDBOX1') || '';
+    groups.payment['VNPAY_URL'] = this.config.get<string>('VNPAY_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html') || '';
+    groups.payment['VNPAY_RETURN_URL'] = this.config.get<string>('VNPAY_RETURN_URL', 'https://app.tutorhub.id.vn/order/vnpay-return') || '';
+
+    groups.storage['CLOUDFLARE_R2_ACCOUNT_ID'] = this.config.get<string>('CLOUDFLARE_R2_ACCOUNT_ID', '') || '';
+    groups.storage['CLOUDFLARE_R2_BUCKET'] = this.config.get<string>('CLOUDFLARE_R2_BUCKET', '') || '';
+    groups.storage['CLOUDFLARE_R2_ACCESS_KEY_ID'] = this.config.get<string>('CLOUDFLARE_R2_ACCESS_KEY_ID', '') || '';
+    groups.storage['CLOUDFLARE_R2_PUBLIC_URL'] = this.config.get<string>('CLOUDFLARE_R2_PUBLIC_URL', '') || '';
+    groups.storage['CLOUDFLARE_R2_STATUS'] = this.config.get<string>('CLOUDFLARE_R2_SECRET_ACCESS_KEY')
+      ? 'Đã cấu hình qua .env'
+      : 'Chưa cấu hình .env';
+
+    groups.email['EMAIL_HOST'] = this.config.get<string>('EMAIL_HOST', 'smtp.gmail.com') || '';
+    groups.email['EMAIL_PORT'] = String(this.config.get<string>('EMAIL_PORT', '587')) || '587';
+    groups.email['EMAIL_SECURE'] = String(this.config.get<string>('EMAIL_SECURE', 'false')) || 'false';
+    groups.email['EMAIL_USER'] = this.config.get<string>('EMAIL_USER', '') || '';
+    groups.email['EMAIL_FROM'] = this.config.get<string>('EMAIL_FROM', 'Phone Shop <no-reply@phoneshop.vn>') || '';
+    groups.email['EMAIL_PROVIDER'] = this.config.get<string>('EMAIL_PROVIDER', 'brevo') || '';
+    groups.email['EMAIL_STATUS'] = (this.config.get<string>('BREVO_API_KEY') || this.config.get<string>('EMAIL_PASS'))
+      ? 'Đã cấu hình qua .env'
+      : 'Chưa cấu hình .env';
 
     return groups;
   }
@@ -131,6 +124,7 @@ export class SystemSettingsService {
       STORE_EMAIL: await this.get('STORE_EMAIL', 'support@phoneshop.vn'),
       STORE_ADDRESS: await this.get('STORE_ADDRESS', 'Hồ Chí Minh, Việt Nam'),
       MAINTENANCE_MODE: await this.get('MAINTENANCE_MODE', 'false'),
+      PAYMENT_COD_ENABLED: await this.get('PAYMENT_COD_ENABLED', 'true'),
       PAYMENT_VNPAY_ENABLED: await this.get('PAYMENT_VNPAY_ENABLED', 'true'),
       PAYMENT_VIETQR_ENABLED: await this.get('PAYMENT_VIETQR_ENABLED', 'true'),
       FEATURED_BRANDS: await this.get('FEATURED_BRANDS', 'apple,samsung,xiaomi,oppo,vivo,realme,honor,oneplus'),
@@ -138,9 +132,23 @@ export class SystemSettingsService {
   }
 
   async updateBatch(items: SettingItemDto[], adminUserId?: string): Promise<void> {
-    // AUDIT: strict key whitelist — arbitrary keys would let a caller plant
-    // unvalidated config (or collide with future env-backed keys). Only
-    // known keys plus the CUSTOM_ escape hatch are accepted.
+    const FORBIDDEN_SECRET_KEYS = new Set([
+      'VNPAY_HASH_SECRET',
+      'CLOUDFLARE_R2_SECRET_ACCESS_KEY',
+      'EMAIL_PASS',
+      'BREVO_API_KEY',
+    ]);
+
+    const secretKeysAttempted = items
+      .filter((item) => FORBIDDEN_SECRET_KEYS.has(item.key) || item.isSecret)
+      .map((item) => item.key);
+
+    if (secretKeysAttempted.length > 0) {
+      throw new BadRequestException(
+        `Không cho phép lưu trữ hoặc ghi đè thông tin bảo mật (${secretKeysAttempted.join(', ')}) vào cơ sở dữ liệu. Vui lòng cấu hình qua file môi trường .env.`,
+      );
+    }
+
     const unknownKeys = items
       .map((i) => i.key)
       .filter((k) => !(k in DEFAULT_DEFINITIONS) && !k.startsWith('CUSTOM_'));
@@ -153,8 +161,6 @@ export class SystemSettingsService {
     const changedKeys: string[] = [];
     const diff: Record<string, { oldValue: string | null; newValue: string }> = {};
 
-    // AUDIT: snapshot pre-update values so the audit row carries an old/new
-    // diff instead of just the list of touched keys.
     const existing = await this.prisma.systemSetting.findMany({
       where: { key: { in: items.map((i) => i.key) } },
     });
@@ -162,12 +168,7 @@ export class SystemSettingsService {
 
     for (const item of items) {
       const def = DEFAULT_DEFINITIONS[item.key];
-      const isSecret = item.isSecret ?? def?.isSecret ?? false;
       const group = (item.group || def?.group || 'general').toUpperCase();
-
-      if (isSecret && (item.value === MASKED_SECRET || item.value === '')) {
-        continue;
-      }
 
       await this.prisma.systemSetting.upsert({
         where: { key: item.key },
@@ -175,14 +176,14 @@ export class SystemSettingsService {
           key: item.key,
           value: item.value,
           group,
-          isSecret,
+          isSecret: false,
           description: item.description,
           updatedBy: adminUserId,
         },
         update: {
           value: item.value,
           group,
-          isSecret,
+          isSecret: false,
           description: item.description,
           updatedBy: adminUserId,
         },
@@ -190,13 +191,8 @@ export class SystemSettingsService {
 
       this.memoryCache.delete(`settings:key:${item.key}`);
 
-      // AUDIT: never persist plaintext secrets into the audit trail — a
-      // redacted marker preserves the fact of change without widening
-      // credential exposure to every audit-log reader.
       const oldVal = oldByKey.get(item.key) ?? null;
-      diff[item.key] = isSecret
-        ? { oldValue: oldVal ? '[REDACTED]' : null, newValue: '[REDACTED]' }
-        : { oldValue: oldVal, newValue: item.value };
+      diff[item.key] = { oldValue: oldVal, newValue: item.value };
       changedKeys.push(item.key);
     }
 
@@ -228,16 +224,16 @@ export class SystemSettingsService {
   }
 
   async testStorage(dto: TestStorageDto): Promise<{ success: boolean; message: string }> {
-    const accountId = dto.accountId || (await this.get('CLOUDFLARE_R2_ACCOUNT_ID'));
-    const bucket = dto.bucket || (await this.get('CLOUDFLARE_R2_BUCKET'));
-    const accessKeyId = dto.accessKeyId || (await this.get('CLOUDFLARE_R2_ACCESS_KEY_ID'));
+    const accountId = dto.accountId || this.config.get<string>('CLOUDFLARE_R2_ACCOUNT_ID');
+    const bucket = dto.bucket || this.config.get<string>('CLOUDFLARE_R2_BUCKET');
+    const accessKeyId = dto.accessKeyId || this.config.get<string>('CLOUDFLARE_R2_ACCESS_KEY_ID');
     const secretAccessKey =
       dto.secretAccessKey && dto.secretAccessKey !== MASKED_SECRET
         ? dto.secretAccessKey
-        : await this.get('CLOUDFLARE_R2_SECRET_ACCESS_KEY');
+        : this.config.get<string>('CLOUDFLARE_R2_SECRET_ACCESS_KEY');
 
     if (!accountId || !bucket || !accessKeyId || !secretAccessKey) {
-      throw new Error('Chưa điền đủ thông số Cloudflare R2 (Account ID, Bucket, Keys)');
+      throw new Error('Chưa cấu hình đầy đủ thông số Cloudflare R2 trong .env (ACCOUNT_ID, BUCKET, ACCESS_KEY_ID, SECRET_ACCESS_KEY)');
     }
 
     const s3 = new S3Client({
@@ -251,14 +247,14 @@ export class SystemSettingsService {
   }
 
   async testEmail(dto: TestEmailDto, adminEmail?: string): Promise<{ success: boolean; message: string }> {
-    const rawHost = dto.host || (await this.get('EMAIL_HOST'));
-    const rawPort = dto.port !== undefined ? String(dto.port) : await this.get('EMAIL_PORT', '587');
+    const rawHost = dto.host || this.config.get<string>('EMAIL_HOST');
+    const rawPort = dto.port !== undefined ? String(dto.port) : this.config.get<string>('EMAIL_PORT', '587');
     const port = Number(rawPort?.replace(/^["']|["']$/g, '')) || 587;
-    const rawSecure = dto.secure !== undefined ? String(dto.secure) : await this.get('EMAIL_SECURE', 'false');
+    const rawSecure = dto.secure !== undefined ? String(dto.secure) : this.config.get<string>('EMAIL_SECURE', 'false');
     const secure = rawSecure === 'true' || port === 465;
-    const rawUser = dto.user || (await this.get('EMAIL_USER'));
-    const passCandidate = dto.pass && dto.pass !== MASKED_SECRET ? dto.pass : await this.get('EMAIL_PASS');
-    const rawFrom = dto.from || (await this.get('EMAIL_FROM', 'Phone Shop <no-reply@phoneshop.vn>'));
+    const rawUser = dto.user || this.config.get<string>('EMAIL_USER');
+    const passCandidate = dto.pass && dto.pass !== MASKED_SECRET ? dto.pass : this.config.get<string>('EMAIL_PASS');
+    const rawFrom = dto.from || this.config.get<string>('EMAIL_FROM', 'Phone Shop <no-reply@phoneshop.vn>');
 
     const host = rawHost?.replace(/^["']|["']$/g, '').trim();
     const user = rawUser?.replace(/^["']|["']$/g, '').trim();
@@ -270,7 +266,7 @@ export class SystemSettingsService {
       throw new Error('Không có email nhận kiểm thử');
     }
     if (!host || !user || !pass) {
-      throw new Error('Thông số SMTP (HOST, USER, PASS) chưa được cấu hình đầy đủ');
+      throw new Error('Thông số SMTP (EMAIL_HOST, EMAIL_USER, EMAIL_PASS) chưa được cấu hình trong .env');
     }
 
     const transporter = nodemailer.createTransport({
