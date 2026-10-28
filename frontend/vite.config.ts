@@ -16,8 +16,9 @@ export default defineConfig({
   },
   server: {
     allowedHosts: [
-      '.tutorhub.id.vn', // Cho phép đúng domain này
-      // hoặc dùng '.tutorhub.id.vn' để cho phép tất cả subdomain
+      'localhost',
+      '127.0.0.1',
+      '.tutorhub.id.vn',
     ],
     proxy: {
       '/api': {

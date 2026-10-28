@@ -160,7 +160,7 @@ export class EmailService implements OnModuleInit {
   }
 
   async sendWelcomeEmail(to: string, recipientName: string): Promise<void> {
-    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'https://app.tutorhub.id.vn');
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
     await this.send({
       to,
       subject: 'Chào mừng bạn đến với PhoneShop',
@@ -180,7 +180,7 @@ export class EmailService implements OnModuleInit {
       orderUrl?: string;
     },
   ): Promise<void> {
-    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'https://app.tutorhub.id.vn');
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
     const orderUrl = options?.orderUrl || `${frontendUrl}/account/orders`;
     await this.send({
       to,

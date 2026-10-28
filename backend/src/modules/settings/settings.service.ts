@@ -94,7 +94,9 @@ export class SystemSettingsService {
     // Read-only environment-based configurations & status for display
     groups.payment['VNPAY_TMN_CODE'] = this.config.get<string>('VNPAY_TMN_CODE', 'SANDBOX1') || '';
     groups.payment['VNPAY_URL'] = this.config.get<string>('VNPAY_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html') || '';
-    groups.payment['VNPAY_RETURN_URL'] = this.config.get<string>('VNPAY_RETURN_URL', 'https://app.tutorhub.id.vn/order/vnpay-return') || '';
+    const defaultReturnUrl =
+      (this.config.get<string>('FRONTEND_URL', 'http://localhost:5173') || 'http://localhost:5173').replace(/\/$/, '') + '/order/vnpay-return';
+    groups.payment['VNPAY_RETURN_URL'] = this.config.get<string>('VNPAY_RETURN_URL', defaultReturnUrl) || '';
 
     groups.storage['CLOUDFLARE_R2_ACCOUNT_ID'] = this.config.get<string>('CLOUDFLARE_R2_ACCOUNT_ID', '') || '';
     groups.storage['CLOUDFLARE_R2_BUCKET'] = this.config.get<string>('CLOUDFLARE_R2_BUCKET', '') || '';

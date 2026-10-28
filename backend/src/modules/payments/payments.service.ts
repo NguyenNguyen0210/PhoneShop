@@ -409,7 +409,7 @@ export class PaymentsService {
     ).replace(/\/$/, '');
     const fallbackReturnUrl = frontendBase
       ? `${frontendBase}/order/vnpay-return`
-      : 'https://app.tutorhub.id.vn/order/vnpay-return';
+      : 'http://localhost:5173/order/vnpay-return';
     let returnUrl = this.configService.get<string>('VNPAY_RETURN_URL', fallbackReturnUrl);
     // Self-heal legacy config: /payment/vnpay-return chưa từng tồn tại trong
     // AppRoutes (chỉ có /order/vnpay-return và /vnpay-return) nên VNPay

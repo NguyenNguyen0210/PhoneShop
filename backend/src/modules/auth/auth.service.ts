@@ -196,9 +196,11 @@ export class AuthService {
   getGoogleAuthUrl(): { url: string; state: string } {
     const clientId =
       this.configService.get<string>('GOOGLE_CLIENT_ID') || '';
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
     const redirectUri =
       this.configService.get<string>('GOOGLE_REDIRECT_URI') ||
-      'https://app.tutorhub.id.vn/auth/oauth/callback';
+      `${frontendUrl.replace(/\/$/, '')}/auth/oauth/callback`;
 
     // P7: signed OAuth state (login-CSRF protection). The SPA stores it in
     // sessionStorage and echoes it back with the code; googleLogin() rejects
@@ -256,9 +258,11 @@ export class AuthService {
       this.configService.get<string>('GOOGLE_CLIENT_ID') || '';
     const clientSecret =
       this.configService.get<string>('GOOGLE_CLIENT_SECRET') || '';
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
     const redirectUri =
       this.configService.get<string>('GOOGLE_REDIRECT_URI') ||
-      'https://app.tutorhub.id.vn/auth/oauth/callback';
+      `${frontendUrl.replace(/\/$/, '')}/auth/oauth/callback`;
 
     if (!clientId || !clientSecret) {
       throw new BadRequestException('Google OAuth is not configured properly on the server');
@@ -482,7 +486,7 @@ export class AuthService {
     });
 
     const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'https://app.tutorhub.id.vn';
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
     const resetLink = `${frontendUrl.replace(/\/$/, '')}/reset-password?token=${rawToken}`;
     const recipientName = user.firstName
       ? `${user.firstName} ${user.lastName || ''}`.trim()
