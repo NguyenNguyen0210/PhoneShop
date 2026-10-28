@@ -134,7 +134,14 @@ export class VouchersService {
             },
             orderBy: { id: 'asc' }, // same pick order as checkout
           });
-          if (flash) unit = Number(flash.flashPrice);
+          // Parity with cart/getCart: the flash price only applies while quota
+          // remains. When the campaign window is open but the quota is
+          // exhausted, the item is priced at the NORMAL variant price
+          // end-to-end (same rule as cart addItem + checkout fallback).
+          const quotaLeft = flash
+            ? Math.max(0, Number(flash.stockLimit) - (flash.soldCount || 0))
+            : 0;
+          if (flash && quotaLeft > 0) unit = Number(flash.flashPrice);
           orderTotal += unit * item.quantity;
         }
       }
@@ -152,7 +159,7 @@ export class VouchersService {
       throw new BadRequestException(`Đơn hàng tối thiểu để áp dụng mã là ${Number(voucher.minOrderValue).toLocaleString('vi-VN')}₫`);
     }
 
-    if (userId && voucher.perUserLimit) {
+    if (userId && voucher.perUserLimit !== null && voucher.perUserLimit !== undefined) {
       const userUsage = await this.prisma.voucherUsage.count({
         where: { voucherId: voucher.id, userId },
       });
@@ -164,7 +171,8 @@ export class VouchersService {
     // Calculate discount
     let discount = 0;
     if (voucher.type === VoucherType.PERCENTAGE) {
-      discount = (orderTotal * Number(voucher.value)) / 100;
+      // Round BEFORE capping — parity with orders.service.ts (same formula).
+      discount = Math.round((orderTotal * Number(voucher.value)) / 100);
       if (voucher.maxDiscountAmount) {
         discount = Math.min(discount, Number(voucher.maxDiscountAmount));
       }
