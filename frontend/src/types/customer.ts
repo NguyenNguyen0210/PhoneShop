@@ -29,26 +29,42 @@ export interface Customer360Metrics {
   totalOrders: number;
 }
 
+export interface Customer360Customer {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
+  status: 'ACTIVE' | 'INACTIVE' | 'BANNED' | string;
+  createdAt: string;
+  lastLoginAt?: string | null;
+}
+
+export interface Customer360Address {
+  id: string;
+  recipientName: string;
+  phone: string;
+  addressLine1: string;
+  ward: string;
+  district: string;
+  city: string;
+  isDefault: boolean;
+}
+
+export interface Customer360RecentOrder {
+  id: string;
+  orderNumber: string;
+  status: string;
+  paymentStatus: string;
+  totalAmount: number;
+  createdAt: string;
+  itemCount: number;
+}
+
 export interface Customer360Data {
-  customer: CustomerSummary;
+  customer: Customer360Customer;
   metrics: Customer360Metrics;
-  addresses: Array<{
-    id: string;
-    recipientName: string;
-    phone: string;
-    addressLine1: string;
-    ward: string;
-    district: string;
-    city: string;
-    isDefault: boolean;
-  }>;
-  recentOrders: Array<{
-    id: string;
-    orderNumber: string;
-    status: string;
-    paymentStatus: string;
-    totalAmount: number;
-    createdAt: string;
-    itemCount: number;
-  }>;
+  addresses: Customer360Address[];
+  recentOrders: Customer360RecentOrder[];
 }

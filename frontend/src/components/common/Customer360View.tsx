@@ -26,11 +26,17 @@ import {
   PhoneOutlined,
   MailOutlined,
   CalendarOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { userService } from '../../services/userService';
-import type { Customer360Data } from '../../types/customer';
+import type { Customer360Data, Customer360RecentOrder } from '../../types/customer';
 
 const { Title, Text } = Typography;
+
+const vndFormatter = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+});
 
 export interface Customer360ViewProps {
   userId: string;
@@ -42,12 +48,16 @@ export const Customer360View: React.FC<Customer360ViewProps> = ({ userId, backPa
   const [data, setData] = useState<Customer360Data | null>(null);
   const [loading, setLoading] = useState<boolean>(Boolean(userId));
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [reloadKey, setReloadKey] = useState<number>(0);
 
   useEffect(() => {
     let ignore = false;
     if (!userId) {
+      setLoading(false);
       return;
     }
+    setLoading(true);
+    setErrorMessage('');
     const fetchData = async () => {
       try {
         const res = await userService.getCustomer360(userId);
@@ -71,7 +81,7 @@ export const Customer360View: React.FC<Customer360ViewProps> = ({ userId, backPa
     return () => {
       ignore = true;
     };
-  }, [userId]);
+  }, [userId, reloadKey]);
 
   if (loading) {
     return (
@@ -93,9 +103,14 @@ export const Customer360View: React.FC<Customer360ViewProps> = ({ userId, backPa
         </Button>
         <Card style={{ borderRadius: 8, padding: '40px 0', textAlign: 'center' }}>
           <Empty description={errorMessage || 'Không tìm thấy dữ liệu khách hàng'}>
-            <Button type="primary" onClick={() => navigate(backPath)}>
-              Quay lại danh sách
-            </Button>
+            <Space>
+              <Button type="primary" onClick={() => navigate(backPath)}>
+                Quay lại danh sách
+              </Button>
+              <Button icon={<ReloadOutlined />} onClick={() => setReloadKey((k) => k + 1)}>
+                Thử lại
+              </Button>
+            </Space>
           </Empty>
         </Card>
       </div>
@@ -103,8 +118,8 @@ export const Customer360View: React.FC<Customer360ViewProps> = ({ userId, backPa
   }
 
   const { customer, metrics, addresses = [], recentOrders = [] } = data;
-  const fullName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Chưa cập nhật';
-  const initials = fullName !== 'Chưa cập nhật' && fullName.length > 0 ? fullName.charAt(0).toUpperCase() : 'U';
+  const fullName = [customer.lastName, customer.firstName].filter(Boolean).join(' ') || 'Chưa cập nhật';
+  const initials = fullName !== 'Chưa cập nhật' && fullName.length > 0 ? fullName.charAt(0).toUpperCase() : '';
 
   const renderCustomerStatusTag = (status: string) => {
     switch (status) {
@@ -119,7 +134,7 @@ export const Customer360View: React.FC<Customer360ViewProps> = ({ userId, backPa
     }
   };
 
-  const orderColumns: ColumnsType<Customer360Data['recentOrders'][number]> = [
+  const orderColumns: ColumnsType<Customer360RecentOrder> = [
     {
       title: 'Mã đơn hàng',
       dataIndex: 'orderNumber',
@@ -146,8 +161,7 @@ export const Customer360View: React.FC<Customer360ViewProps> = ({ userId, backPa
       title: 'Tổng tiền',
       dataIndex: 'totalAmount',
       key: 'totalAmount',
-      render: (val: number) =>
-        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0),
+      render: (val: number) => vndFormatter.format(val || 0),
     },
     {
       title: 'Trạng thái đơn',
@@ -168,9 +182,18 @@ export const Customer360View: React.FC<Customer360ViewProps> = ({ userId, backPa
         } else if (val === 'CONFIRMED') {
           color = 'cyan';
           text = 'Đã xác nhận';
+        } else if (val === 'PACKED') {
+          color = 'cyan';
+          text = 'Đang đóng gói';
         } else if (val === 'SHIPPING') {
           color = 'blue';
           text = 'Đang giao hàng';
+        } else if (val === 'RETURNED') {
+          color = 'purple';
+          text = 'Đã trả hàng';
+        } else if (val === 'REFUNDED') {
+          color = 'purple';
+          text = 'Đã hoàn tiền';
         } else if (val === 'PENDING') {
           color = 'orange';
           text = 'Chờ xử lý';
@@ -222,10 +245,9 @@ export const Customer360View: React.FC<Customer360ViewProps> = ({ userId, backPa
             <Avatar
               size={64}
               src={customer.avatarUrl || undefined}
-              icon={!customer.avatarUrl && <UserOutlined />}
               style={{ backgroundColor: '#1677ff', fontSize: 24 }}
             >
-              {!customer.avatarUrl && initials}
+              {!customer.avatarUrl && (initials || <UserOutlined />)}
             </Avatar>
           </Col>
           <Col flex="auto">
@@ -281,9 +303,7 @@ export const Customer360View: React.FC<Customer360ViewProps> = ({ userId, backPa
           <Card style={{ borderRadius: 8 }}>
             <Statistic
               title="Tổng chi tiêu"
-              value={new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                metrics?.totalSpent || 0,
-              )}
+              value={vndFormatter.format(metrics?.totalSpent || 0)}
               prefix={<WalletOutlined style={{ color: '#52c41a', marginRight: 8 }} />}
             />
           </Card>
@@ -312,6 +332,7 @@ export const Customer360View: React.FC<Customer360ViewProps> = ({ userId, backPa
                     dataSource={recentOrders}
                     columns={orderColumns}
                     pagination={{ pageSize: 5 }}
+                    scroll={{ x: 750 }}
                   />
                 ),
             },
