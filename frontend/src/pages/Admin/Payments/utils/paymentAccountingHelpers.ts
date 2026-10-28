@@ -37,28 +37,15 @@ export const getCustomerInfo = (record: Payment): CustomerInfo => {
 };
 
 export const getGatewayRef = (record: Payment): string => {
-  // If transaction has providerReference
-  const txnRef = record.transactions?.[0]?.providerReference;
+  // Ưu tiên lấy mã tham chiếu giao dịch thực tế từ cổng thanh toán/ngân hàng
+  const txnRef =
+    record.transactions?.[0]?.providerReference ||
+    record.transactions?.[0]?.transactionNumber;
   if (txnRef) return txnRef;
 
   if (record.providerOrderId) return record.providerOrderId;
 
-  const hex = (record.id || '').slice(0, 8).toUpperCase();
-  const numSeed = Math.abs(
-    hex.split('').reduce((acc, c) => acc + c.charCodeAt(0) * 17, 10000000),
-  ) % 90000000 + 10000000;
-
-  switch (record.method) {
-    case 'VNPAY':
-      return `VNP${numSeed}`;
-    case 'VIETQR':
-    case 'BANK_TRANSFER':
-      return `VCB-${hex.slice(0, 6)}`;
-    case 'COD':
-      return `COD-${hex.slice(0, 6)}`;
-    default:
-      return `REF-${hex.slice(0, 6)}`;
-  }
+  return '—';
 };
 
 export interface FeeCalculation {
