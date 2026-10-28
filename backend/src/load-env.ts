@@ -1,10 +1,5 @@
 // Preloads the env file matching NODE_ENV into process.env BEFORE any
-// other application import runs. Several modules read process.env at
-// import time (e.g. REDIS_ENABLED in background-jobs and orders modules
-// to decide between real BullMQ queues and the local fallback). Nest's
-// ConfigModule populates process.env only later during bootstrap — too
-// late for those constants.
-//
+// other application import runs.
 // This module MUST stay the first import in main.ts: ES imports execute
 // depth-first in source order, so dotenv runs before the rest of the
 // import graph. A dotenv.config() call placed in main.ts body would NOT

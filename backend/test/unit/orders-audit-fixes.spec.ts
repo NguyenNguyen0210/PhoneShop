@@ -1,7 +1,6 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrdersService } from '../../src/modules/orders/orders.service';
-import { OrdersProcessor } from '../../src/modules/orders/orders.processor';
 import {
   OrderStatus,
   PaymentStatus,
@@ -17,7 +16,6 @@ describe('OrdersService - audit fixes (paid-order cancel, RETURNED, ledger safet
   let service: OrdersService;
   let mockPrisma: any;
   let mockTx: any;
-  let mockQueue: any;
 
   beforeEach(() => {
     mockTx = {
@@ -62,8 +60,7 @@ describe('OrdersService - audit fixes (paid-order cancel, RETURNED, ledger safet
       $transaction: (jest.fn() as any).mockImplementation(async (cb: any) => cb(mockTx)),
     };
 
-    mockQueue = { add: (jest.fn() as any).mockResolvedValue({}) };
-    service = new OrdersService(mockPrisma, mockQueue);
+    service = new OrdersService(mockPrisma);
   });
 
   const orderWith = (over: Partial<any> = {}) => ({
@@ -252,50 +249,5 @@ describe('OrdersService - audit fixes (paid-order cancel, RETURNED, ledger safet
     expect(mockTx.payment.findMany).not.toHaveBeenCalled();
     expect(mockTx.payment.update).not.toHaveBeenCalled();
     expect(mockTx.paymentTransaction.create).not.toHaveBeenCalled();
-  });
-});
-
-describe('OrdersProcessor - hold expiry rolls back flash quota', () => {
-  it('A3: handleExpireOrderHold calls rollbackFlashSoldCount inside the release tx', async () => {
-    const mockTx = {
-      order: { updateMany: (jest.fn() as any).mockResolvedValue({ count: 1 }) },
-      payment: { updateMany: (jest.fn() as any).mockResolvedValue({ count: 0 }) },
-      voucher: {
-        findUnique: (jest.fn() as any).mockResolvedValue(null),
-        updateMany: (jest.fn() as any).mockResolvedValue({}),
-      },
-      voucherUsage: { deleteMany: (jest.fn() as any).mockResolvedValue({}) },
-      imeiDevice: { updateMany: (jest.fn() as any).mockResolvedValue({ count: 1 }) },
-      inventory: { updateMany: (jest.fn() as any).mockResolvedValue({ count: 1 }) },
-      flashSaleItem: {
-        updateMany: (jest.fn() as any).mockResolvedValue({ count: 1 }),
-        findMany: (jest.fn() as any).mockResolvedValue([]),
-      },
-    };
-    const mockPrisma = {
-      order: {
-        findUnique: (jest.fn() as any).mockResolvedValue({
-          id: 'ord-1',
-          orderNumber: 'ORD-1',
-          status: OrderStatus.PENDING,
-          holdExpiresAt: new Date(Date.now() - 1000),
-          voucherCode: null,
-          createdAt: new Date('2026-10-28T00:00:00Z'),
-          items: [
-            { id: 'item-1', variantId: 'var-1', quantity: 1, imeiDeviceId: 'imei-1' },
-          ],
-          user: { email: 'a@b.c' },
-        }),
-      },
-      $transaction: (jest.fn() as any).mockImplementation(async (cb: any) => cb(mockTx)),
-    };
-
-    const processor = new OrdersProcessor(mockPrisma as any, undefined as any);
-    await processor.process({ name: 'expire-order-hold', data: { orderId: 'ord-1' } } as any);
-
-    // The flash rollback util decrements soldCount via a guarded updateMany
-    // scoped to the campaign window; with no active campaign items it is a
-    // no-op — the essential assertion is that it RAN (was wired in).
-    expect(mockTx.flashSaleItem.findMany).toHaveBeenCalled();
   });
 });

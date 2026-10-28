@@ -9,7 +9,6 @@ import { HealthModule } from './health/health.module';
 // Infrastructure (Global Modules - should be loaded first)
 import { RateLimitingModule } from './infrastructure/rate-limiting/rate-limiting.module';
 import { IdempotencyModule } from './infrastructure/idempotency/idempotency.module';
-import { BackgroundJobsModule } from './infrastructure/background-jobs/background-jobs.module';
 import { SecurityModule } from './infrastructure/security/security.module';
 import { EmailModule } from './infrastructure/email/email.module';
 import { StorageModule } from './infrastructure/storage/storage.module';
@@ -60,7 +59,6 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
     PrismaModule,
     RateLimitingModule,
     IdempotencyModule,
-    BackgroundJobsModule,
     SecurityModule,
     EmailModule,
     StorageModule,

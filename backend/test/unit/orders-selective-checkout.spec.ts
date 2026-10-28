@@ -7,7 +7,6 @@ describe('OrdersService - Selective Checkout', () => {
   let service: OrdersService;
   let mockPrisma: any;
   let mockTx: any;
-  let mockQueue: any;
 
   beforeEach(() => {
     mockTx = {
@@ -62,11 +61,7 @@ describe('OrdersService - Selective Checkout', () => {
       }),
     };
 
-    mockQueue = {
-      add: jest.fn().mockReturnValue(Promise.resolve()),
-    };
-
-    service = new OrdersService(mockPrisma, mockQueue);
+    service = new OrdersService(mockPrisma);
   });
 
   it('should throw BadRequestException if selectedItemIds does not match any item in cart', async () => {

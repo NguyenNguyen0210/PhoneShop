@@ -2,25 +2,6 @@ version: '3.8'
 
 services:
   # ==========================================
-  # Redis
-  # Used for caching, rate limiting, idempotency & background jobs
-  # ==========================================
-  redis:
-    image: redis:7-alpine
-    container_name: phoneshop_redis_prod
-    command: redis-server --appendonly yes
-    restart: always
-    volumes:
-      - redis_data_prod:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - internal_network
-
-  # ==========================================
   # Backend - NestJS (Production Container)
   # ==========================================
   backend:
@@ -35,18 +16,9 @@ services:
       - ./backend/.env.production
     environment:
       - NODE_ENV=production
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_ENABLED=true
-    depends_on:
-      redis:
-        condition: service_healthy
     networks:
       - internal_network
 
 networks:
   internal_network:
     driver: bridge
-
-volumes:
-  redis_data_prod:

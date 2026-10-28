@@ -68,7 +68,7 @@ describe('OrdersService - Fulfillment Stock Movements & Ledger Sync', () => {
       }),
     };
 
-    ordersService = new OrdersService(mockPrisma, {} as any);
+    ordersService = new OrdersService(mockPrisma);
   });
 
   it('decrements physical stock and records EXPORT_ORDER movement on DELIVERED', async () => {
@@ -147,16 +147,14 @@ describe('OrdersService - Fulfillment Stock Movements & Ledger Sync', () => {
 describe('OrdersService - Checkout Brand Deactivation Validation', () => {
   let ordersService: OrdersService;
   let mockPrisma: any;
-  let mockQueue: any;
 
   beforeEach(() => {
-    mockQueue = { add: (jest.fn() as any).mockResolvedValue({ id: 'job-1' }) };
     mockPrisma = {
       cart: {
         findUnique: (jest.fn() as any),
       },
     };
-    ordersService = new OrdersService(mockPrisma, mockQueue);
+    ordersService = new OrdersService(mockPrisma);
   });
 
   it('throws BadRequestException when cart item product brand isActive is false', async () => {

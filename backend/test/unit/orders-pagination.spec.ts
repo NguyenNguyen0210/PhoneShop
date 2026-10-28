@@ -7,13 +7,8 @@ describe('Orders Pagination Unit Tests', () => {
   let ordersService: OrdersService;
   let ordersController: OrdersController;
   let mockPrisma: any;
-  let mockOrderQueue: any;
 
   beforeEach(() => {
-    mockOrderQueue = {
-      add: jest.fn().mockReturnValue(Promise.resolve()),
-    };
-
     mockPrisma = {
       order: {
         count: jest.fn(),
@@ -21,7 +16,7 @@ describe('Orders Pagination Unit Tests', () => {
       },
     };
 
-    ordersService = new OrdersService(mockPrisma as any, mockOrderQueue as any);
+    ordersService = new OrdersService(mockPrisma as any);
     ordersController = new OrdersController(ordersService);
   });
 

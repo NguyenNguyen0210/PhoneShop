@@ -51,7 +51,7 @@ describe('OrdersService - PACKED and SHIPPING transitions', () => {
       $transaction: jest.fn((cb: any) => cb(prisma)),
     };
 
-    service = new OrdersService(prisma as any, { add: jest.fn() } as any);
+    service = new OrdersService(prisma as any);
   });
 
   it('should transition from PROCESSING to PACKED and set packedAt', async () => {

@@ -7,8 +7,6 @@ import {
   Logger,
   Optional,
 } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../infrastructure/email/email.service';
 import { rollbackFlashSoldCount } from './flash-sale-rollback.util';
@@ -68,7 +66,6 @@ export class OrdersService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue('order-queue') private readonly orderQueue: Queue,
     @Optional() private readonly emailService?: EmailService,
     @Optional() private readonly warrantyService?: WarrantyService,
   ) {}
@@ -598,38 +595,6 @@ export class OrdersService {
       }
     }
 
-    // 6. Push BullMQ job for hold auto-release (15m standard)
-    try {
-      await this.orderQueue.add(
-        'expire-order-hold',
-        { orderId: order.id },
-        { delay: holdDurationMs },
-      );
-      this.logger.log(`Enqueued 15m hold expiry job for order ${order.id}`);
-    } catch (queueErr) {
-      this.logger.error(
-        `Failed to enqueue expire-order-hold job for order ${order.id}:`,
-        (queueErr as Error).message,
-      );
-    }
-    // H7 fallback: ALWAYS schedule an in-process release as backstop — the
-    // local fallback queue silently drops delayed jobs without throwing, so
-    // gating the timer on the enqueue failure left abandoned holds stuck
-    // until the 60s sweeper ran. releaseExpiredHold is a guarded no-op when
-    // the order already moved on (or the BullMQ job fired first).
-    // NOTE: single-instance safety net only.
-    const delayMs = Math.max(0, holdExpiresAt.getTime() - Date.now());
-    const timer = setTimeout(() => {
-      this.releaseExpiredHold(order.id).catch((err) =>
-        this.logger.error(
-          `Fallback hold release failed for order ${order.id}:`,
-          (err as Error).message,
-        ),
-      );
-    }, delayMs);
-    // H7 safety: unref so the timer never keeps the process alive alone.
-    if (typeof (timer as any)?.unref === 'function') (timer as any).unref();
-
     // P3: send confirmation email to the buyer (safe-catch: never break creation).
     // For VNPAY, confirmation is dispatched upon verified payment via PaymentsService.handleVnpayIpn
     // to avoid duplicate emails or false confirmations for abandoned payment sessions.
@@ -691,92 +656,6 @@ export class OrdersService {
     }
 
     return order;
-  }
-
-  // ── H7: FALLBACK HOLD RELEASE ─────────────────────────────────
-  // Same guarded semantics as OrdersProcessor.handleExpireOrderHold:
-  // only a still-PENDING order is cancelled; IMEI/inventory release is
-  // status-filtered so concurrent cancel paths cannot double-release.
-  // Voucher use is rolled back together (H2).
-  async releaseExpiredHold(orderId: string): Promise<boolean> {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      include: {
-        items: true,
-        user: { select: { email: true, firstName: true, lastName: true } },
-      },
-    });
-    if (!order || order.status !== OrderStatus.PENDING) return false;
-
-    let cancelled = false;
-    await this.prisma.$transaction(async (tx) => {
-      const affected = await tx.order.updateMany({
-        where: { id: orderId, status: OrderStatus.PENDING },
-        data: {
-          status: OrderStatus.CANCELLED,
-          cancelledAt: new Date(),
-          cancelledReason: 'Hold expired (15 minutes)',
-        },
-      });
-      if (affected.count === 0) return;
-      cancelled = true;
-
-      // Close still-pending payments so the expired order keeps no live rows.
-      if (tx.payment?.updateMany) {
-        await tx.payment.updateMany({
-          where: { orderId, status: PaymentStatus.PENDING },
-          data: { status: PaymentStatus.CANCELLED },
-        });
-      }
-
-      await this.rollbackVoucherUsage(tx, order);
-
-      for (const item of order.items) {
-        if (item.imeiDeviceId) {
-          await tx.imeiDevice.updateMany({
-            where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
-            data: { status: ImeiStatus.AVAILABLE },
-          });
-        }
-        await tx.inventory.updateMany({
-          where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
-          data: {
-            reservedQty: { decrement: item.quantity },
-            availableQty: { increment: item.quantity },
-          },
-        });
-      }
-
-      // Give back the flash-sale slots this order claimed (no-op when none).
-      await rollbackFlashSoldCount(tx, order.items, order.createdAt);
-      // The sale is dead — void its ACTIVE warranties with the same stroke.
-      await this.warrantyService?.voidWarrantiesForOrder(tx, orderId);
-    });
-
-    if (cancelled) {
-      this.logger.log(`Fallback released expired hold for order ${orderId}`);
-      const emailService = this.emailService;
-      if (emailService && (order as any).user?.email) {
-        try {
-          const u = (order as any).user;
-          const recipientName =
-            [u.firstName, u.lastName].filter(Boolean).join(' ') || undefined;
-          const holdReason = 'Đã quá thời gian chờ hoàn tất thanh toán';
-
-          await emailService.sendOrderCancelled(u.email, {
-            orderNumber: order.orderNumber,
-            recipientName,
-            cancelledReason: holdReason,
-            voucherRestored: Boolean((order as any).voucherCode),
-          });
-        } catch (emailErr) {
-          this.logger.warn(
-            `Failed to send hold expired cancellation email for order ${orderId}: ${(emailErr as Error).message}`,
-          );
-        }
-      }
-    }
-    return cancelled;
   }
 
   private toClientOrder(o: any) {

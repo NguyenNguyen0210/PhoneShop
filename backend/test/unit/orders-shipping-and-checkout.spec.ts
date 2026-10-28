@@ -6,7 +6,6 @@ describe('OrdersService - Shipping Calculation & Checkout Integration', () => {
   let service: OrdersService;
   let mockPrisma: any;
   let mockTx: any;
-  let mockQueue: any;
 
   beforeEach(() => {
     mockTx = {
@@ -86,11 +85,7 @@ describe('OrdersService - Shipping Calculation & Checkout Integration', () => {
       }),
     };
 
-    mockQueue = {
-      add: jest.fn().mockReturnValue(Promise.resolve()),
-    };
-
-    service = new OrdersService(mockPrisma, mockQueue);
+    service = new OrdersService(mockPrisma);
   });
 
   describe('calculateShippingFee', () => {

@@ -8,13 +8,8 @@ const mockFn = () => (jest.fn() as any);
 describe('OrdersService - Flash Sale Atomic Reservation', () => {
   let service: OrdersService;
   let prisma: any;
-  let orderQueue: any;
 
   beforeEach(() => {
-    orderQueue = {
-      add: mockFn().mockResolvedValue({ id: 'job-1' }),
-    };
-
     prisma = {
       cart: {
         findUnique: mockFn(),
@@ -22,7 +17,7 @@ describe('OrdersService - Flash Sale Atomic Reservation', () => {
       $transaction: mockFn(),
     };
 
-    service = new OrdersService(prisma as any, orderQueue as any);
+    service = new OrdersService(prisma as any);
   });
 
   it('should apply flashPrice and increment soldCount when within stock limit', async () => {

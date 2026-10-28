@@ -1,6 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { OrdersService } from '../../src/modules/orders/orders.service';
-import { OrdersProcessor } from '../../src/modules/orders/orders.processor';
 import { ImeiService } from '../../src/modules/imei/imei.service';
 import { OrderStatus, ImeiStatus, VoucherType } from '@prisma/client';
 import { BadRequestException } from '@nestjs/common';
@@ -9,13 +8,6 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
   describe('OrdersService - checkout & IMEI reservation with row-locking', () => {
     let ordersService: OrdersService;
     let mockPrisma: any;
-    let mockOrderQueue: any;
-
-    beforeEach(() => {
-      mockOrderQueue = {
-        add: jest.fn().mockReturnValue(Promise.resolve()),
-      };
-    });
 
     it('should acquire IMEIs using $queryRaw row-level locking and reserve them', async () => {
       const mockTx: any = {
@@ -81,7 +73,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         }),
       };
 
-      ordersService = new OrdersService(mockPrisma, mockOrderQueue);
+      ordersService = new OrdersService(mockPrisma);
 
       const result = await ordersService.checkout('user-1', {
         addressId: 'addr-1',
@@ -156,7 +148,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         }),
       };
 
-      ordersService = new OrdersService(mockPrisma, mockOrderQueue);
+      ordersService = new OrdersService(mockPrisma);
 
       await expect(
         ordersService.checkout('user-1', { addressId: 'addr-1' } as any),
@@ -207,7 +199,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         }),
       };
 
-      ordersService = new OrdersService(mockPrisma, mockOrderQueue);
+      ordersService = new OrdersService(mockPrisma);
 
       await expect(
         ordersService.checkout('user-1', { addressId: 'addr-1' } as any),
@@ -272,7 +264,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         }),
       };
 
-      ordersService = new OrdersService(mockPrisma, mockOrderQueue);
+      ordersService = new OrdersService(mockPrisma);
 
       await expect(
         ordersService.checkout('user-1', {
@@ -341,7 +333,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         }),
       };
 
-      ordersService = new OrdersService(mockPrisma, mockOrderQueue);
+      ordersService = new OrdersService(mockPrisma);
 
       await expect(
         ordersService.checkout('user-1', {
@@ -436,7 +428,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         }),
       };
 
-      ordersService = new OrdersService(mockPrisma, mockOrderQueue);
+      ordersService = new OrdersService(mockPrisma);
 
       const order = await ordersService.checkout('user-1', {
         addressId: 'addr-1',
@@ -495,7 +487,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         }),
       };
 
-      ordersService = new OrdersService(mockPrisma, {} as any);
+      ordersService = new OrdersService(mockPrisma);
 
       await ordersService.transitionStatus('ord-1', OrderStatus.CANCELLED);
 
@@ -558,7 +550,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         }),
       };
 
-      ordersService = new OrdersService(mockPrisma, {} as any);
+      ordersService = new OrdersService(mockPrisma);
 
       await ordersService.transitionStatus('ord-1', OrderStatus.DELIVERED);
 
@@ -623,7 +615,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         }),
       };
 
-      ordersService = new OrdersService(mockPrisma, {} as any);
+      ordersService = new OrdersService(mockPrisma);
 
       await ordersService.transitionStatus('ord-1', OrderStatus.COMPLETED);
 
@@ -660,7 +652,7 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
         }),
       };
 
-      ordersService = new OrdersService(mockPrisma, {} as any);
+      ordersService = new OrdersService(mockPrisma);
 
       const result: any = await ordersService.transitionStatus('ord-1', OrderStatus.RETURNED);
 
@@ -671,123 +663,6 @@ describe('Orders & IMEI Concurrency and Lifecycle Tests', () => {
           data: expect.objectContaining({ status: OrderStatus.RETURNED }),
         }),
       );
-    });
-  });
-
-  describe('OrdersProcessor - atomic hold expiration', () => {
-    it('should atomically cancel order and release reserved stock if status is PENDING', async () => {
-      const mockTx: any = {
-        order: {
-          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
-        },
-        imeiDevice: {
-          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
-        },
-        inventory: {
-          update: jest.fn().mockReturnValue(Promise.resolve({})),
-          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 1 })),
-        },
-      };
-
-      const mockPrisma: any = {
-        order: {
-          findUnique: jest.fn().mockImplementation(() =>
-            Promise.resolve({
-              id: 'ord-hold-1',
-              status: OrderStatus.PENDING,
-              items: [
-                {
-                  variantId: 'var-1',
-                  quantity: 1,
-                  imeiDeviceId: 'imei-hold-1',
-                },
-              ],
-            }),
-          ),
-        },
-        $transaction: jest.fn().mockImplementation(async (callback: any) => {
-          return callback(mockTx);
-        }),
-      };
-
-      const processor = new OrdersProcessor(mockPrisma);
-      const mockJob: any = {
-        name: 'expire-order-hold',
-        id: 'job-1',
-        data: { orderId: 'ord-hold-1' },
-      };
-
-      await processor.process(mockJob);
-
-      expect(mockTx.order.updateMany).toHaveBeenCalledWith({
-        where: { id: 'ord-hold-1', status: OrderStatus.PENDING },
-        data: {
-          status: OrderStatus.CANCELLED,
-          cancelledAt: expect.any(Date),
-          cancelledReason: 'Hold expired (15 minutes)',
-        },
-      });
-      expect(mockTx.imeiDevice.updateMany).toHaveBeenCalledWith({
-        where: { id: 'imei-hold-1', status: ImeiStatus.RESERVED },
-        data: { status: ImeiStatus.AVAILABLE },
-      });
-      expect(mockTx.inventory.updateMany).toHaveBeenCalledWith({
-        where: { variantId: 'var-1', reservedQty: { gte: 1 } },
-        data: {
-          reservedQty: { decrement: 1 },
-          availableQty: { increment: 1 },
-        },
-      });
-    });
-
-    it('should skip release if order status changed before transaction commits (race condition prevention)', async () => {
-      const mockTx: any = {
-        order: {
-          // Order was paid/confirmed right before tx ran -> affected count is 0
-          updateMany: jest.fn().mockReturnValue(Promise.resolve({ count: 0 })),
-        },
-        imeiDevice: {
-          updateMany: jest.fn(),
-        },
-        inventory: {
-          update: jest.fn(),
-        },
-      };
-
-      const mockPrisma: any = {
-        order: {
-          findUnique: jest.fn().mockImplementation(() =>
-            Promise.resolve({
-              id: 'ord-hold-2',
-              status: OrderStatus.PENDING, // was pending at findUnique
-              items: [
-                {
-                  variantId: 'var-1',
-                  quantity: 1,
-                  imeiDeviceId: 'imei-hold-2',
-                },
-              ],
-            }),
-          ),
-        },
-        $transaction: jest.fn().mockImplementation(async (callback: any) => {
-          return callback(mockTx);
-        }),
-      };
-
-      const processor = new OrdersProcessor(mockPrisma);
-      const mockJob: any = {
-        name: 'expire-order-hold',
-        id: 'job-2',
-        data: { orderId: 'ord-hold-2' },
-      };
-
-      await processor.process(mockJob);
-
-      expect(mockTx.order.updateMany).toHaveBeenCalled();
-      // Should NOT release IMEIs or inventory because affected.count was 0
-      expect(mockTx.imeiDevice.updateMany).not.toHaveBeenCalled();
-      expect(mockTx.inventory.update).not.toHaveBeenCalled();
     });
   });
 
