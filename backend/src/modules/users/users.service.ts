@@ -242,7 +242,7 @@ export class UsersService {
   async getCustomer360(id: string, currentUser: any): Promise<Customer360Response> {
     const user = await this.findOne(id, currentUser);
 
-    const [orders, addresses] = await Promise.all([
+    const [orders, allUserOrders] = await Promise.all([
       this.prisma.order.findMany({
         where: { userId: id },
         orderBy: { createdAt: 'desc' },
@@ -254,7 +254,7 @@ export class UsersService {
           totalAmount: true,
           createdAt: true,
           payments: {
-            take: 1,
+            orderBy: { createdAt: 'desc' },
             select: { status: true },
           },
           items: {
@@ -262,39 +262,37 @@ export class UsersService {
           },
         },
       }),
-      this.prisma.address.findMany({
+      this.prisma.order.findMany({
         where: { userId: id },
-        orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
         select: {
-          id: true,
-          recipientName: true,
-          phone: true,
-          addressLine1: true,
-          ward: true,
-          district: true,
-          city: true,
-          isDefault: true,
+          status: true,
+          totalAmount: true,
+          payments: { select: { status: true } },
         },
       }),
     ]);
 
-    const totalOrders = orders.length;
-    const totalSpent = orders
-      .filter((o: any) => {
-        const isPaid = o.payments?.[0]?.status === 'PAID';
-        return isPaid || o.status === 'COMPLETED';
-      })
+    const totalOrders = allUserOrders.length;
+    const totalSpent = allUserOrders
+      .filter((o: any) => o.status === 'COMPLETED' || o.payments?.some((p: any) => p.status === 'PAID'))
       .reduce((sum: number, o: any) => sum + Number(o.totalAmount || 0), 0);
 
     const recentOrders: Customer360OrderItem[] = orders.map((o: any) => ({
       id: o.id,
       orderNumber: o.orderNumber,
       status: o.status,
-      paymentStatus: o.payments?.[0]?.status || 'PENDING',
+      paymentStatus: o.payments?.find((p: any) => p.status === 'PAID')?.status || o.payments?.[0]?.status || 'PENDING',
       totalAmount: Number(o.totalAmount || 0),
       createdAt: o.createdAt,
       itemCount: o.items?.reduce((cnt: number, it: any) => cnt + (it.quantity || 1), 0) || 0,
     }));
+
+    const sortedAddresses = (user.addresses || []).slice().sort((a: any, b: any) => {
+      if (a.isDefault === b.isDefault) {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return a.isDefault ? -1 : 1;
+    });
 
     return {
       customer: {
@@ -311,7 +309,7 @@ export class UsersService {
         totalSpent,
         totalOrders,
       },
-      addresses: addresses.map((a: any) => ({
+      addresses: sortedAddresses.map((a: any) => ({
         id: a.id,
         recipientName: a.recipientName,
         phone: a.phone,
