@@ -36,7 +36,7 @@
 - Modify: `backend/src/modules/users/dto/customer-360.dto.ts`
 - Modify: `backend/src/modules/users/users.service.ts`
 
-- [ ] **Step 1: Cập nhật `customer-360.dto.ts`**
+- [x] **Step 1: Cập nhật `customer-360.dto.ts`**
 
 Thay thế toàn bộ nội dung `backend/src/modules/users/dto/customer-360.dto.ts` bằng định nghĩa tinh gọn:
 ```typescript
@@ -83,7 +83,7 @@ export interface Customer360Response {
 }
 ```
 
-- [ ] **Step 2: Cập nhật phương thức `getCustomer360` trong `users.service.ts`**
+- [x] **Step 2: Cập nhật phương thức `getCustomer360` trong `users.service.ts`**
 
 Trong `backend/src/modules/users/users.service.ts`, sửa lại hàm `getCustomer360` để chỉ lấy `user`, `addresses`, `orders` (bỏ tickets và warranties):
 ```typescript
@@ -165,7 +165,7 @@ Trong `backend/src/modules/users/users.service.ts`, sửa lại hàm `getCustome
   }
 ```
 
-- [ ] **Step 3: Kiểm tra biên dịch tĩnh Backend**
+- [x] **Step 3: Kiểm tra biên dịch tĩnh Backend**
 
 Chạy lệnh kiểm tra type:
 ```bash
@@ -174,7 +174,7 @@ npx tsc --noEmit
 (workdir: `backend`)  
 Kỳ vọng: Không có lỗi biên dịch (Exit 0).
 
-- [ ] **Step 4: Commit thay đổi Task 1**
+- [x] **Step 4: Commit thay đổi Task 1**
 
 ```bash
 git add backend/src/modules/users/dto/customer-360.dto.ts backend/src/modules/users/users.service.ts
@@ -191,7 +191,7 @@ git commit -m "refactor(backend): simplify customer 360 dto and service logic"
 - Modify: `frontend/src/pages/Admin/Customers/AdminCustomer360Page.tsx`
 - Modify: `frontend/src/pages/Staff/Customers/StaffCustomer360Page.tsx`
 
-- [ ] **Step 1: Cập nhật `frontend/src/types/customer.ts`**
+- [x] **Step 1: Cập nhật `frontend/src/types/customer.ts`**
 
 Cập nhật `Customer360Metrics` và `Customer360Data`:
 ```typescript
@@ -225,14 +225,14 @@ export interface Customer360Data {
 }
 ```
 
-- [ ] **Step 2: Tạo component `frontend/src/components/common/Customer360View.tsx`**
+- [x] **Step 2: Tạo component `frontend/src/components/common/Customer360View.tsx`**
 
 Tạo component hoàn chỉnh với UI tinh tế, hỗ trợ Loading, Error, Empty state, Header thông tin khách hàng, 2 thẻ KPI và 2 Tabs (Đơn hàng & Địa chỉ):
 - Sử dụng Ant Design `Card`, `Table`, `Tag`, `Avatar`, `Statistic`, `Tabs`, `Button`.
 - Format tiền tệ `Intl.NumberFormat('vi-VN')`.
 - Map màu sắc Tag trạng thái chuẩn mực (`COMPLETED`: green, `CANCELLED`: red, `PROCESSING`: blue, `PENDING`: orange).
 
-- [ ] **Step 3: Tinh giản `AdminCustomer360Page.tsx` và `StaffCustomer360Page.tsx`**
+- [x] **Step 3: Tinh giản `AdminCustomer360Page.tsx` và `StaffCustomer360Page.tsx`**
 
 Cả 2 file trang Admin và Staff chỉ cần mount `Customer360View`:
 ```tsx
@@ -247,7 +247,7 @@ export const AdminCustomer360Page: React.FC = () => {
 ```
 (Tương tự với `StaffCustomer360Page.tsx` với `backPath="/staff/customers"`).
 
-- [ ] **Step 4: Kiểm tra biên dịch tĩnh Frontend**
+- [x] **Step 4: Kiểm tra biên dịch tĩnh Frontend**
 
 Chạy lệnh kiểm tra type:
 ```bash
@@ -256,7 +256,7 @@ npx tsc --noEmit
 (workdir: `frontend`)  
 Kỳ vọng: Không có lỗi biên dịch (Exit 0).
 
-- [ ] **Step 5: Commit thay đổi Task 2**
+- [x] **Step 5: Commit thay đổi Task 2**
 
 ```bash
 git add frontend/src/types/customer.ts frontend/src/components/common/Customer360View.tsx frontend/src/pages/Admin/Customers/AdminCustomer360Page.tsx frontend/src/pages/Staff/Customers/StaffCustomer360Page.tsx
@@ -271,7 +271,7 @@ git commit -m "refactor(frontend): create unified Customer360View and simplify a
 - Modify: `backend/src/modules/audit-log/dto/filter-audit-log.dto.ts`
 - Modify: `backend/src/modules/audit-log/audit-log.service.ts`
 
-- [ ] **Step 1: Cập nhật `filter-audit-log.dto.ts`**
+- [x] **Step 1: Cập nhật `filter-audit-log.dto.ts`**
 
 Tinh giản DTO chỉ nhận các tham số thực tế:
 ```typescript
@@ -302,7 +302,7 @@ export class FilterAuditLogDto {
 }
 ```
 
-- [ ] **Step 2: Tinh giản `audit-log.service.ts`**
+- [x] **Step 2: Tinh giản `audit-log.service.ts`**
 
 Trong `backend/src/modules/audit-log/audit-log.service.ts`, viết lại `findAll` tinh gọn, loại bỏ các nhánh `OR` và `startDate/endDate` thừa:
 ```typescript
@@ -350,7 +350,7 @@ Trong `backend/src/modules/audit-log/audit-log.service.ts`, viết lại `findAl
   }
 ```
 
-- [ ] **Step 3: Kiểm tra biên dịch tĩnh Backend**
+- [x] **Step 3: Kiểm tra biên dịch tĩnh Backend**
 
 Chạy lệnh kiểm tra type:
 ```bash
@@ -359,7 +359,7 @@ npx tsc --noEmit
 (workdir: `backend`)  
 Kỳ vọng: Không có lỗi biên dịch (Exit 0).
 
-- [ ] **Step 4: Commit thay đổi Task 3**
+- [x] **Step 4: Commit thay đổi Task 3**
 
 ```bash
 git add backend/src/modules/audit-log/dto/filter-audit-log.dto.ts backend/src/modules/audit-log/audit-log.service.ts
@@ -374,20 +374,20 @@ git commit -m "refactor(backend): simplify audit log filter dto and query servic
 - Modify: `frontend/src/pages/Admin/AuditLogs/AdminAuditLogsPage.tsx`
 - Modify: `frontend/src/pages/Admin/AuditLogs/components/AuditLogDetailDrawer.tsx`
 
-- [ ] **Step 1: Tinh giản `AuditLogDetailDrawer.tsx`**
+- [x] **Step 1: Tinh giản `AuditLogDetailDrawer.tsx`**
 
 Loại bỏ các thành phần hiển thị diff phức tạp. Hiển thị thông tin qua `Descriptions` và render dữ liệu `oldData` / `newData` qua thẻ `<pre>` có định dạng JSON gọn gàng:
 - Descriptions: ID, Thời gian, Người thực hiện, IP, Hành động, Thực thể tác động.
 - Tab/Section: "Dữ liệu mới" và "Dữ liệu cũ" (nếu có).
 
-- [ ] **Step 2: Tinh giản `AdminAuditLogsPage.tsx`**
+- [x] **Step 2: Tinh giản `AdminAuditLogsPage.tsx`**
 
 - Xóa bỏ 4 thẻ KPI `Statistic` rườm rà ở đầu trang.
 - Xóa bỏ `RangePicker` (bộ chọn khoảng ngày) và nút Export CSV.
 - Giữ lại thanh Filter gồm: `Input.Search` + `Select` lọc Action + Nút `Làm mới`.
 - Giữ Table Ant Design chuẩn mực với phân trang `Pagination`.
 
-- [ ] **Step 3: Kiểm tra biên dịch tĩnh Frontend**
+- [x] **Step 3: Kiểm tra biên dịch tĩnh Frontend**
 
 Chạy lệnh kiểm tra type:
 ```bash
@@ -396,7 +396,7 @@ npx tsc --noEmit
 (workdir: `frontend`)  
 Kỳ vọng: Không có lỗi biên dịch (Exit 0).
 
-- [ ] **Step 4: Commit thay đổi Task 4**
+- [x] **Step 4: Commit thay đổi Task 4**
 
 ```bash
 git add frontend/src/pages/Admin/AuditLogs/AdminAuditLogsPage.tsx frontend/src/pages/Admin/AuditLogs/components/AuditLogDetailDrawer.tsx
@@ -410,7 +410,7 @@ git commit -m "refactor(frontend): simplify admin audit logs page and detail dra
 **Files:**
 - Verify: Toàn bộ Backend & Frontend
 
-- [ ] **Step 1: Biên dịch Backend**
+- [x] **Step 1: Biên dịch Backend**
 
 Chạy:
 ```bash
@@ -419,7 +419,7 @@ npx tsc --noEmit
 (workdir: `backend`)  
 Kỳ vọng: 0 errors.
 
-- [ ] **Step 2: Biên dịch Frontend**
+- [x] **Step 2: Biên dịch Frontend**
 
 Chạy:
 ```bash
@@ -428,6 +428,6 @@ npx tsc --noEmit
 (workdir: `frontend`)  
 Kỳ vọng: 0 errors.
 
-- [ ] **Step 3: Kiểm tra trạng thái Git**
+- [x] **Step 3: Kiểm tra trạng thái Git**
 
 Chạy `git status` đảm bảo working tree sạch sẽ, các commit atomic đã được ghi nhận.
