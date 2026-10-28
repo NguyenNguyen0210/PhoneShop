@@ -9,6 +9,7 @@ import {
   Query,
   Req,
   Res,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -87,7 +88,11 @@ export class InventoryController {
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Low stock alerts (STAFF/MANAGER/ADMIN)' })
   @ApiQuery({ name: 'threshold', required: false, type: Number })
-  getLowStock(@Query('threshold') threshold?: number) {
+  // D1: ParseIntPipe converts ?threshold=5 (string) into a number — the raw
+  // string previously crashed Prisma (`lte: '5'`) with a 500.
+  getLowStock(
+    @Query('threshold', new ParseIntPipe({ optional: true })) threshold?: number,
+  ) {
     return this.inventoryService.getLowStockAlerts(threshold);
   }
 

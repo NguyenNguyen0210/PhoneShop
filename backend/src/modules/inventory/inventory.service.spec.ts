@@ -12,10 +12,15 @@ describe('InventoryService - Stock Movements & Ledger', () => {
       inventory: {
         findUnique: jest.fn<any>(),
         update: jest.fn<any>(),
+        updateMany: jest.fn<any>(),
         findMany: jest.fn<any>(),
+        count: jest.fn<any>(),
       },
       productVariant: {
         findUnique: jest.fn<any>(),
+      },
+      imeiDevice: {
+        count: jest.fn<any>(),
       },
       stockMovement: {
         create: jest.fn<any>(),
@@ -32,22 +37,25 @@ describe('InventoryService - Stock Movements & Ledger', () => {
   });
 
   describe('adjustStock', () => {
-    it('adjustStock with positive quantity records IMPORT_MANUAL movement and audit log', async () => {
+    it('adjustStock with positive quantity atomically increments and records IMPORT_MANUAL movement from post-read balances', async () => {
       const variantId = 'v-123';
-      prisma.inventory.findUnique.mockResolvedValue({
-        variantId,
-        quantity: 10,
-        availableQty: 10,
-        reservedQty: 0,
-      });
+      prisma.inventory.findUnique
+        .mockResolvedValueOnce({
+          variantId,
+          quantity: 10,
+          availableQty: 10,
+          reservedQty: 0,
+        })
+        .mockResolvedValueOnce({
+          variantId,
+          quantity: 15,
+          availableQty: 15,
+          reservedQty: 0,
+        });
+      prisma.inventory.updateMany.mockResolvedValue({ count: 1 });
       prisma.productVariant.findUnique.mockResolvedValue({
         id: variantId,
         costPrice: 5000000,
-      });
-      prisma.inventory.update.mockResolvedValue({
-        variantId,
-        quantity: 15,
-        availableQty: 15,
       });
       prisma.stockMovement.create.mockResolvedValue({ id: 'sm-1' });
 
@@ -57,6 +65,15 @@ describe('InventoryService - Stock Movements & Ledger', () => {
         'user-1'
       );
 
+      // atomic guarded increment instead of read-compute-absolute-write
+      expect(prisma.inventory.updateMany).toHaveBeenCalledWith({
+        where: { variantId },
+        data: {
+          quantity: { increment: 5 },
+          availableQty: { increment: 5 },
+        },
+      });
+      expect(prisma.inventory.update).not.toHaveBeenCalled();
       expect(prisma.stockMovement.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -73,13 +90,6 @@ describe('InventoryService - Stock Movements & Ledger', () => {
           }),
         })
       );
-      expect(prisma.inventory.update).toHaveBeenCalledWith({
-        where: { variantId },
-        data: {
-          quantity: 15,
-          availableQty: 15,
-        },
-      });
       expect(prisma.auditLog.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -93,22 +103,25 @@ describe('InventoryService - Stock Movements & Ledger', () => {
       expect(result.quantity).toBe(15);
     });
 
-    it('adjustStock with negative quantity records EXPORT_MANUAL movement', async () => {
+    it('adjustStock with negative quantity guards quantity floor and records EXPORT_MANUAL movement', async () => {
       const variantId = 'v-123';
-      prisma.inventory.findUnique.mockResolvedValue({
-        variantId,
-        quantity: 10,
-        availableQty: 8,
-        reservedQty: 2,
-      });
+      prisma.inventory.findUnique
+        .mockResolvedValueOnce({
+          variantId,
+          quantity: 10,
+          availableQty: 8,
+          reservedQty: 2,
+        })
+        .mockResolvedValueOnce({
+          variantId,
+          quantity: 6,
+          availableQty: 4,
+          reservedQty: 2,
+        });
+      prisma.inventory.updateMany.mockResolvedValue({ count: 1 });
       prisma.productVariant.findUnique.mockResolvedValue({
         id: variantId,
         costPrice: 3000000,
-      });
-      prisma.inventory.update.mockResolvedValue({
-        variantId,
-        quantity: 6,
-        availableQty: 4,
       });
       prisma.stockMovement.create.mockResolvedValue({ id: 'sm-2' });
 
@@ -118,6 +131,13 @@ describe('InventoryService - Stock Movements & Ledger', () => {
         'user-2'
       );
 
+      expect(prisma.inventory.updateMany).toHaveBeenCalledWith({
+        where: { variantId, quantity: { gte: 4 } },
+        data: {
+          quantity: { decrement: 4 },
+          availableQty: { decrement: 4 },
+        },
+      });
       expect(prisma.stockMovement.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -134,17 +154,10 @@ describe('InventoryService - Stock Movements & Ledger', () => {
           }),
         })
       );
-      expect(prisma.inventory.update).toHaveBeenCalledWith({
-        where: { variantId },
-        data: {
-          quantity: 6,
-          availableQty: 4,
-        },
-      });
       expect(result.quantity).toBe(6);
     });
 
-    it('adjustStock throws BadRequestException if balanceAfter < 0', async () => {
+    it('adjustStock rejects when result quantity would go below zero (pre-validation, no write)', async () => {
       const variantId = 'v-123';
       prisma.inventory.findUnique.mockResolvedValue({
         variantId,
@@ -156,6 +169,36 @@ describe('InventoryService - Stock Movements & Ledger', () => {
       await expect(
         service.adjustStock(variantId, { quantity: -5 }, 'user-1')
       ).rejects.toThrow(BadRequestException);
+      expect(prisma.inventory.updateMany).not.toHaveBeenCalled();
+      expect(prisma.stockMovement.create).not.toHaveBeenCalled();
+    });
+
+    it('adjustStock rejects when new quantity would fall below reserved quantity', async () => {
+      const variantId = 'v-123';
+      prisma.inventory.findUnique.mockResolvedValue({
+        variantId,
+        quantity: 5,
+        availableQty: 2,
+        reservedQty: 3,
+      });
+
+      await expect(
+        service.adjustStock(variantId, { quantity: -3 }, 'user-1')
+      ).rejects.toThrow('New quantity cannot be less than reserved quantity');
+      expect(prisma.inventory.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('adjustStock throws Conflict-free BadRequest when the guarded atomic update loses a race (count 0)', async () => {
+      const variantId = 'v-123';
+      prisma.inventory.findUnique
+        .mockResolvedValueOnce({ variantId, quantity: 3, availableQty: 3, reservedQty: 0 })
+        .mockResolvedValueOnce({ variantId, quantity: 3, availableQty: 3, reservedQty: 0 });
+      prisma.inventory.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.adjustStock(variantId, { quantity: -2 }, 'user-1')
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.stockMovement.create).not.toHaveBeenCalled();
     });
 
     it('adjustStock throws NotFoundException if inventory does not exist', async () => {
@@ -164,6 +207,91 @@ describe('InventoryService - Stock Movements & Ledger', () => {
       await expect(
         service.adjustStock('unknown-variant', { quantity: 1 })
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('findAll lowStockOnly filter', () => {
+    it('filters availableQty <= reorderLevel at query level (raw SQL page ids + count) before pagination', async () => {
+      const raw: any = jest.fn();
+      raw.mockResolvedValueOnce([{ id: 'inv-2' }, { id: 'inv-1' }]);
+      raw.mockResolvedValueOnce([{ count: 7 }]);
+      prisma.$queryRaw = raw;
+      prisma.inventory.findMany.mockResolvedValue([
+        { id: 'inv-2', quantity: 3, reservedQty: 3, availableQty: 0, reorderLevel: 5 },
+        { id: 'inv-1', quantity: 4, reservedQty: 0, availableQty: 4, reorderLevel: 5 },
+      ]);
+
+      const res = await service.findAll(2, 20, undefined, 'true');
+
+      expect(res.total).toBe(7);
+      expect(res.page).toBe(2);
+      expect(res.limit).toBe(20);
+      expect(res.data).toHaveLength(2);
+      expect(res.totalPages).toBe(1);
+      // full rows fetched by ids with the existing include
+      expect(prisma.inventory.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: { in: ['inv-2', 'inv-1'] } },
+          include: {
+            variant: { include: { product: { select: { id: true, name: true } } } },
+          },
+          orderBy: { updatedAt: 'desc' },
+        }),
+      );
+      // raw SQL applies the per-row comparison BEFORE limit/offset
+      const pageSql = prisma.$queryRaw.mock.calls[0][0];
+      expect(pageSql.text).toContain('available_qty <= i.reorder_level');
+      expect(pageSql.text).toContain('LIMIT');
+      expect(pageSql.text).toContain('OFFSET');
+      const pageValues = pageSql.values;
+      expect(pageValues).toContain(20);
+      expect(pageValues).toContain(20);
+      const countSql = prisma.$queryRaw.mock.calls[1][0];
+      expect(countSql.text).toContain('available_qty <= i.reorder_level');
+      expect(countSql.text).not.toContain('LIMIT');
+    });
+
+    it('applies the search term in raw SQL when lowStockOnly + search are combined', async () => {
+      const raw: any = jest.fn();
+      raw.mockResolvedValueOnce([]);
+      raw.mockResolvedValueOnce([{ count: 0 }]);
+      prisma.$queryRaw = raw;
+
+      await service.findAll(1, 20, 'iPhone', 'true');
+
+      const pageSql = prisma.$queryRaw.mock.calls[0][0];
+      expect(pageSql.text).toContain('ILIKE');
+      expect(pageSql.values).toContain('%iPhone%');
+    });
+
+    it('falls back to per-row filtering with correct totals and page slice when $queryRaw is unavailable (test doubles)', async () => {
+      prisma.inventory.findMany.mockResolvedValue([
+        { id: 'inv-1', quantity: 10, reservedQty: 0, availableQty: 10, reorderLevel: 5 },
+        { id: 'inv-2', quantity: 5, reservedQty: 0, availableQty: 5, reorderLevel: 5 },
+        { id: 'inv-3', quantity: 2, reservedQty: 0, availableQty: 2, reorderLevel: 5 },
+      ]);
+
+      const res = await service.findAll(2, 1, undefined, 'true');
+
+      expect(res.total).toBe(2);
+      expect(res.data).toEqual([
+        { id: 'inv-3', quantity: 2, reservedQty: 0, availableQty: 2, reorderLevel: 5 },
+      ]);
+      expect(res.page).toBe(2);
+      expect(res.limit).toBe(1);
+    });
+
+    it('returns unfiltered paginated data when lowStockOnly is falsy', async () => {
+      prisma.inventory.count.mockResolvedValue(2);
+      prisma.inventory.findMany.mockResolvedValue([
+        { id: 'inv-1' },
+        { id: 'inv-2' },
+      ]);
+
+      const res = await service.findAll(1, 20, undefined, undefined);
+
+      expect(res.total).toBe(2);
+      expect(prisma.$queryRaw).toBeUndefined();
     });
   });
 
@@ -311,8 +439,8 @@ describe('InventoryService - Stock Movements & Ledger', () => {
             variantId: 'v-999',
             type: StockMovementType.EXPORT_ORDER,
             createdAt: {
-              gte: new Date('2026-10-01T00:00:00.000Z'),
-              lte: new Date('2026-10-04T23:59:59.999Z'),
+              gte: new Date('2026-10-01T00:00:00+07:00'),
+              lte: new Date('2026-10-04T23:59:59.999+07:00'),
             },
             variant: {
               OR: [
@@ -370,6 +498,42 @@ describe('InventoryService - Stock Movements & Ledger', () => {
         outAmount: 6000000,
       });
     });
+    it('buckets by Asia/Ho_Chi_Minh day: a movement at 18:30 UTC (+7) belongs to the next day', async () => {
+      prisma.stockMovement.findMany.mockResolvedValue([
+        {
+          createdAt: new Date('2026-10-01T18:30:00Z'),
+          quantity: 2,
+          totalAmount: 2000000,
+          type: StockMovementType.IMPORT_MANUAL,
+        },
+      ]);
+
+      const result = await service.getDailySummary({});
+
+      expect(result).toHaveLength(1);
+      expect(result[0].date).toBe('2026-10-02');
+      expect(result[0].inQty).toBe(2);
+    });
+  });
+
+  describe('reserveStock / releaseStock IMEI guard', () => {
+    it('reserveStock rejects IMEI-tracked variants without touching counters', async () => {
+      prisma.imeiDevice.count.mockResolvedValue(3);
+
+      await expect(
+        service.reserveStock('var-imei', { quantity: 1 })
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.inventory.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('releaseStock rejects IMEI-tracked variants without touching counters', async () => {
+      prisma.imeiDevice.count.mockResolvedValue(3);
+
+      await expect(
+        service.releaseStock('var-imei', { quantity: 1 })
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.inventory.updateMany).not.toHaveBeenCalled();
+    });
   });
 
   describe('exportLedgerCsv', () => {
@@ -408,6 +572,39 @@ describe('InventoryService - Stock Movements & Ledger', () => {
       expect(csv).toContain('"ORD-101"');
       expect(csv).toContain('"iPhone 15"');
       expect(csv).toContain('"Admin User"');
+    });
+
+    it('neutralizes formula-injection by prefixing leading =, +, -, @ with a single quote', async () => {
+      prisma.stockMovement.findMany
+        .mockResolvedValueOnce([
+          {
+            id: 'sm-9',
+            createdAt: new Date('2026-10-01T10:00:00Z'),
+            referenceId: '=HYPERLINK("http://evil")',
+            type: StockMovementType.EXPORT_MANUAL,
+            variant: {
+              sku: '@SUM(1,1)',
+              color: '-2+3',
+              storage: '+cmd',
+              product: { name: 'Product', thumbnailUrl: null },
+            },
+            quantity: -1,
+            balanceBefore: 5,
+            balanceAfter: 4,
+            unitPrice: 100,
+            totalAmount: 100,
+            performer: null,
+            note: '=cmd|\' /C calc!A0',
+          },
+        ])
+        .mockResolvedValueOnce([]);
+      prisma.stockMovement.count.mockResolvedValue(1);
+
+      const csv = await service.exportLedgerCsv({});
+      expect(csv).toContain('"\'=HYPERLINK(""http://evil"")"');
+      expect(csv).toContain('"\'@SUM(1,1)"');
+      expect(csv).toContain('"\'-2+3"');
+      expect(csv).toContain('"\'=cmd');
     });
   });
 });

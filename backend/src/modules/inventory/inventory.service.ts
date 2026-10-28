@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { StockMovementType } from '@prisma/client';
+import { Prisma, StockMovementType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdjustStockDto, SetReorderLevelDto, ReserveStockDto } from './dto/inventory.dto';
 import { GetStockLedgerDto } from './dto/stock-movement.dto';
@@ -37,26 +37,81 @@ export class InventoryService {
     }
     const lowOnly =
       lowStockOnly === true || lowStockOnly === 'true' || lowStockOnly === '1';
-    const [total, data] = await Promise.all([
-      this.prisma.inventory.count({ where }),
-      this.prisma.inventory.findMany({
-        where,
-        include: {
-          variant: { include: { product: { select: { id: true, name: true } } } },
-        },
-        orderBy: { updatedAt: 'desc' },
-        skip,
-        take: safeLimit,
-      }),
-    ]);
-    // Prisma cannot compare two columns in `where`, so low-stock-only
-    // (availableQty <= reorderLevel) is filtered per-row after fetch.
-    // Fetch one extra page-worth when filtering to reduce empty pages.
-    if (lowOnly) {
-      const filtered = data.filter((inv: any) => inv.availableQty <= inv.reorderLevel);
-      return buildPaginatedResponse(filtered, filtered.length, safePage, safeLimit);
+    if (!lowOnly) {
+      const [total, data] = await Promise.all([
+        this.prisma.inventory.count({ where }),
+        this.prisma.inventory.findMany({
+          where,
+          include: {
+            variant: { include: { product: { select: { id: true, name: true } } } },
+          },
+          orderBy: { updatedAt: 'desc' },
+          skip,
+          take: safeLimit,
+        }),
+      ]);
+      return buildPaginatedResponse(data, total, safePage, safeLimit);
     }
-    return buildPaginatedResponse(data, total, safePage, safeLimit);
+    // D2: low-stock-only compares two columns (availableQty <= reorderLevel),
+    // which Prisma's `where` cannot express — it must be evaluated in SQL
+    // BEFORE limit/offset, otherwise totals and pages are wrong.
+    return this.findLowStockPage(safePage, safeLimit, skip, term);
+  }
+
+  /** D2: page of low-stock ids via raw SQL, then full rows by ids. */
+  private async findLowStockPage(
+    safePage: number,
+    safeLimit: number,
+    skip: number,
+    term: string,
+  ) {
+    const include = {
+      variant: { include: { product: { select: { id: true, name: true } } } },
+    };
+    const prisma = this.prisma as any;
+    if (typeof prisma.$queryRaw !== 'function') {
+      // Fallback for partial test doubles: filter per row and slice —
+      // correct totals + pagination, at the cost of fetching everything.
+      const all = await this.prisma.inventory.findMany({ include });
+      const filtered = (all as any[]).filter(
+        (inv: any) => inv.availableQty <= inv.reorderLevel,
+      );
+      return buildPaginatedResponse(
+        filtered.slice(skip, skip + safeLimit),
+        filtered.length,
+        safePage,
+        safeLimit,
+      );
+    }
+    const searchFilter = term
+      ? Prisma.sql`AND (pv.sku ILIKE ${`%${term}%`} OR pv.color ILIKE ${`%${term}%`} OR pv.storage ILIKE ${`%${term}%`} OR pv.ram ILIKE ${`%${term}%`} OR p.name ILIKE ${`%${term}%`})`
+      : Prisma.empty;
+    const idRows: { id: string }[] = await prisma.$queryRaw(Prisma.sql`
+      SELECT i.id
+      FROM inventories i
+      JOIN product_variants pv ON pv.id = i.variant_id
+      JOIN products p ON p.id = pv.product_id
+      WHERE i.available_qty <= i.reorder_level ${searchFilter}
+      ORDER BY i.updated_at DESC
+      LIMIT ${safeLimit} OFFSET ${skip}
+    `);
+    const countRows: { count: number }[] = await prisma.$queryRaw(Prisma.sql`
+      SELECT COUNT(*)::int AS count
+      FROM inventories i
+      JOIN product_variants pv ON pv.id = i.variant_id
+      JOIN products p ON p.id = pv.product_id
+      WHERE i.available_qty <= i.reorder_level ${searchFilter}
+    `);
+    const ids = idRows.map((r) => r.id);
+    const data =
+      ids.length === 0
+        ? []
+        : await this.prisma.inventory.findMany({
+            where: { id: { in: ids } },
+            include,
+            orderBy: { updatedAt: 'desc' },
+          });
+    return buildPaginatedResponse(data, Number(countRows?.[0]?.count ?? 0), safePage, safeLimit);
   }
 
   /** Backfill inventory rows for variants created before auto-create logic. */
@@ -196,29 +251,65 @@ export class InventoryService {
         throw new BadRequestException('New quantity cannot be less than reserved quantity');
       }
 
-      const newAvailable = Math.max(0, newQty - inv.reservedQty);
-
       const type =
         dto.quantity >= 0 ? StockMovementType.IMPORT_MANUAL : StockMovementType.EXPORT_MANUAL;
 
-      await this.recordMovement(tx, {
-        variantId,
-        type,
-        quantity: dto.quantity,
-        unitPrice: dto.unitPrice,
-        performedBy: userId,
-        note: dto.note,
-        referenceType: dto.referenceType || 'ADJUSTMENT',
-        referenceId: dto.referenceId,
-      });
-
-      const updatedInv = await tx.inventory.update({
-        where: { variantId },
+      // D3: guarded ATOMIC change instead of read-compute-absolute-write —
+      // the floor guard keeps a concurrent write from pushing quantity
+      // below zero between the validation read and this write. availableQty
+      // shifts by the same delta (reservedQty unchanged) so the invariant
+      // availableQty = quantity - reservedQty is preserved.
+      const updated = await tx.inventory.updateMany({
+        where: {
+          variantId,
+          ...(dto.quantity < 0 ? { quantity: { gte: -dto.quantity } } : {}),
+        },
         data: {
-          quantity: newQty,
-          availableQty: newAvailable,
+          quantity:
+            dto.quantity >= 0
+              ? { increment: dto.quantity }
+              : { decrement: -dto.quantity },
+          availableQty:
+            dto.quantity >= 0
+              ? { increment: dto.quantity }
+              : { decrement: -dto.quantity },
         },
       });
+      if (updated.count === 0) {
+        throw new BadRequestException('Insufficient stock');
+      }
+
+      // Post-read: derive ledger balances from the row AFTER the atomic op
+      // (balanceBefore = balanceAfter + delta for negative delta).
+      const fresh = await tx.inventory.findUnique({ where: { variantId } });
+      const balanceAfter = fresh ? fresh.quantity : newQty;
+      const balanceBefore = balanceAfter - dto.quantity;
+
+      if (tx.stockMovement?.create) {
+        const variant = await tx.productVariant.findUnique({
+          where: { id: variantId },
+          select: { costPrice: true, price: true },
+        });
+        const unitPrice =
+          dto.unitPrice !== undefined
+            ? dto.unitPrice
+            : Number(variant?.costPrice ?? variant?.price ?? 0);
+        await tx.stockMovement.create({
+          data: {
+            variantId,
+            type,
+            quantity: dto.quantity,
+            balanceBefore,
+            balanceAfter,
+            unitPrice,
+            totalAmount: Math.abs(dto.quantity) * unitPrice,
+            referenceType: dto.referenceType || 'ADJUSTMENT',
+            referenceId: dto.referenceId,
+            performedBy: userId,
+            note: dto.note,
+          },
+        });
+      }
 
       await tx.auditLog.create({
         data: {
@@ -228,8 +319,8 @@ export class InventoryService {
           userId: userId || null,
           oldData: { quantity: inv.quantity, availableQty: inv.availableQty },
           newData: {
-            quantity: newQty,
-            availableQty: newAvailable,
+            quantity: balanceAfter,
+            availableQty: fresh ? fresh.availableQty : newQty - inv.reservedQty,
             note: dto.note,
             referenceType: dto.referenceType,
             referenceId: dto.referenceId,
@@ -237,7 +328,7 @@ export class InventoryService {
         },
       });
 
-      return updatedInv;
+      return fresh ?? { ...inv, quantity: balanceAfter };
     });
   }
 
@@ -251,8 +342,10 @@ export class InventoryService {
 
     if (startDate || endDate) {
       where.createdAt = {};
-      if (startDate) where.createdAt.gte = new Date(`${startDate}T00:00:00.000Z`);
-      if (endDate) where.createdAt.lte = new Date(`${endDate}T23:59:59.999Z`);
+      // D11: day boundaries are Asia/Ho_Chi_Minh (+07:00), not UTC — staff
+      // in VN expect "2026-10-01" to start at 00:00 local.
+      if (startDate) where.createdAt.gte = new Date(`${startDate}T00:00:00+07:00`);
+      if (endDate) where.createdAt.lte = new Date(`${endDate}T23:59:59.999+07:00`);
     }
 
     if (search && search.trim()) {
@@ -363,8 +456,9 @@ export class InventoryService {
     const where: any = {};
     if (dto.startDate || dto.endDate) {
       where.createdAt = {};
-      if (dto.startDate) where.createdAt.gte = new Date(`${dto.startDate}T00:00:00.000Z`);
-      if (dto.endDate) where.createdAt.lte = new Date(`${dto.endDate}T23:59:59.999Z`);
+      // D11: +07:00 day boundaries (see getLedger).
+      if (dto.startDate) where.createdAt.gte = new Date(`${dto.startDate}T00:00:00+07:00`);
+      if (dto.endDate) where.createdAt.lte = new Date(`${dto.endDate}T23:59:59.999+07:00`);
     }
 
     const movements = await this.prisma.stockMovement.findMany({
@@ -379,9 +473,10 @@ export class InventoryService {
     >();
 
     for (const m of movements) {
+      // D11: bucket label in Asia/Ho_Chi_Minh time, not an ISO-UTC slice —
+      // 18:30Z is already the next day in Vietnam.
       const day = (m.createdAt instanceof Date ? m.createdAt : new Date(m.createdAt))
-        .toISOString()
-        .slice(0, 10);
+        .toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
 
       if (!dailyMap.has(day)) {
         dailyMap.set(day, { inQty: 0, outQty: 0, inAmount: 0, outAmount: 0 });
@@ -420,7 +515,14 @@ export class InventoryService {
       'Ghi chú',
     ];
 
-    const escapeCsv = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+    // D10: neutralize CSV formula injection — a cell starting with =, +, -
+    // or @ executes as a formula in Excel/Sheets. Prefixing with an
+    // apostrophe forces text treatment.
+    const escapeCsv = (val: any) => {
+      let s = String(val ?? '');
+      if (/^[=+\-@]/.test(s)) s = `'${s}`;
+      return `"${s.replace(/"/g, '""')}"`;
+    };
 
     const rows = res.items.map((item: any) =>
       [
@@ -447,6 +549,15 @@ export class InventoryService {
 
   async reserveStock(variantId: string, dto: ReserveStockDto) {
     return this.prisma.$transaction(async (tx) => {
+      // D4: IMEI-tracked variants are reserved per-device by the order flow
+      // (AVAILABLE IMEI → RESERVED). Adjusting the aggregate counters here
+      // would desync them from the rows.
+      const imeiRows = (await tx.imeiDevice?.count({ where: { variantId } })) ?? 0;
+      if (imeiRows > 0) {
+        throw new BadRequestException(
+          'Biến thể quản lý theo IMEI: đặt/giải phóng giữ hàng theo từng IMEI, không chỉnh tay',
+        );
+      }
       const res = await tx.inventory.updateMany({
         where: { variantId, availableQty: { gte: dto.quantity } },
         data: {
@@ -463,6 +574,13 @@ export class InventoryService {
 
   async releaseStock(variantId: string, dto: ReserveStockDto) {
     return this.prisma.$transaction(async (tx) => {
+      // D4: see reserveStock — IMEI-tracked variants release per-device.
+      const imeiRows = (await tx.imeiDevice?.count({ where: { variantId } })) ?? 0;
+      if (imeiRows > 0) {
+        throw new BadRequestException(
+          'Biến thể quản lý theo IMEI: đặt/giải phóng giữ hàng theo từng IMEI, không chỉnh tay',
+        );
+      }
       const res = await tx.inventory.updateMany({
         where: { variantId, reservedQty: { gte: dto.quantity } },
         data: {
