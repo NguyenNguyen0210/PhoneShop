@@ -157,13 +157,31 @@ export class AuthService {
     });
 
     if (revoked.count === 0) {
-      // Unknown or already-used token presented → possible theft/reuse.
-      // Containment: revoke all of this user's sessions and force re-login.
-      await this.prisma.refreshToken.updateMany({
-        where: { userId: user.id, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
-      throw new UnauthorizedException('Refresh token reuse detected');
+      // Tolerance for benign concurrent races (e.g. multiple tabs or network retries):
+      // if this token was revoked within a 15-second grace window, reject the request
+      // without triggering breach containment (which would nuke all valid sessions).
+      const recentlyRevoked = this.prisma.refreshToken?.findFirst
+        ? await this.prisma.refreshToken.findFirst({
+            where: {
+              userId: user.id,
+              tokenHash,
+              revokedAt: { gte: new Date(Date.now() - 15_000) },
+            },
+            select: { id: true },
+          })
+        : null;
+
+      if (!recentlyRevoked) {
+        // Unknown or stale token presented (>15s since revocation) → possible theft/reuse.
+        // Containment: revoke all of this user's sessions and force re-login.
+        await this.prisma.refreshToken.updateMany({
+          where: { userId: user.id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+        throw new UnauthorizedException('Refresh token reuse detected');
+      }
+
+      throw new UnauthorizedException('Token already refreshed');
     }
 
     // Generate new tokens

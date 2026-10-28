@@ -7,8 +7,8 @@ import {
   HttpStatus,
   BadRequestException,
 } from '@nestjs/common';
-import { Observable, of } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { Observable, of, from, lastValueFrom } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { createHash } from 'crypto';
 import { IdempotencyService } from './idempotency.service';
 import { Request } from 'express';
@@ -93,14 +93,16 @@ export class IdempotencyInterceptor implements NestInterceptor {
     }
 
     return next.handle().pipe(
-      tap(async (response) => {
-        try {
-          await this.idempotencyService.updateRecord(key, HttpStatus.OK, response);
-        } catch {
-          // Non-fatal: the order/payment already succeeded; a missing cache
-          // entry only means the next retry re-executes (same as no key).
-        }
-      }),
+      switchMap((response) =>
+        from(
+          this.idempotencyService
+            .updateRecord(key, HttpStatus.OK, response)
+            .catch(() => {
+              // Non-fatal: the order/payment already succeeded; a missing cache
+              // entry only means the next retry re-executes (same as no key).
+            }),
+        ).pipe(switchMap(() => of(response))),
+      ),
     );
   }
 }

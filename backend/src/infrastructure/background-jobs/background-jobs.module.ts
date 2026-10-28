@@ -1,15 +1,42 @@
-import { Module, Global } from '@nestjs/common';
+import { Module, Global, Logger } from '@nestjs/common';
 import { BullModule, getQueueToken } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // In-memory queue fallback used when Redis is disabled (REDIS_ENABLED !== 'true').
-// Internal-only job IDs (never user-facing, never persisted as business data).
+// Unlike the old stub that silently dropped jobs, this fallback actually
+// executes each job's handler synchronously via `setImmediate` so that
+// critical paths (hold-expiry, emails) still run in dev/test environments.
+const logger = new Logger('LocalQueue');
+
 const createLocalQueue = (name: string) => ({
   provide: getQueueToken(name),
   useValue: {
     name,
-    add: async (jobName: string, data: any) => {
-      return { id: `local-${Date.now()}`, name: jobName, data };
+    _handlers: new Map<string, (data: any) => Promise<void>>(),
+    /**
+     * Register a handler that will be invoked for matching jobNames.
+     * Called from modules that provide processor services.
+     */
+    registerHandler(jobName: string, handler: (data: any) => Promise<void>) {
+      this._handlers.set(jobName, handler);
+    },
+    async add(jobName: string, data: any, _opts?: any) {
+      const id = `local-${Date.now()}`;
+      const handler = this._handlers.get(jobName);
+      if (handler) {
+        // Execute asynchronously so the caller is not blocked by the handler,
+        // but the work IS performed (unlike the old stub).
+        setImmediate(async () => {
+          try {
+            await handler(data);
+          } catch (err) {
+            logger.error(`Local queue "${name}" job "${jobName}" failed: ${(err as Error).message}`);
+          }
+        });
+      } else {
+        logger.warn(`Local queue "${name}": no handler for "${jobName}" — job ${id} dropped`);
+      }
+      return { id, name: jobName, data };
     },
     on: () => {},
     close: async () => {},

@@ -252,4 +252,66 @@ describe('Auth Register & Login Unit Tests', () => {
       });
     });
   });
+
+  describe('AuthService - refreshToken grace period & containment', () => {
+    const user = { id: 'user-1' };
+    const dto = { refreshToken: 'valid-refresh-token' };
+
+    it('rotates refresh token normally when active token is presented', async () => {
+      mockPrisma.refreshToken.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'u1@example.com',
+        roles: [],
+      });
+      mockPrisma.refreshToken.create.mockResolvedValueOnce({ id: 'rt-new' });
+
+      const result = await authService.refreshToken(user, dto);
+
+      expect(result).toHaveProperty('accessToken');
+      expect(result).toHaveProperty('refreshToken');
+      expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          tokenHash: expect.any(String),
+          revokedAt: null,
+        },
+        data: { revokedAt: expect.any(Date) },
+      });
+    });
+
+    it('rejects without session containment when token was recently revoked within grace window (race condition protection)', async () => {
+      // 0 tokens revoked -> already revoked
+      mockPrisma.refreshToken.updateMany.mockResolvedValueOnce({ count: 0 });
+      // findFirst discovers it was revoked recently (grace window)
+      mockPrisma.refreshToken.findFirst = (jest.fn() as any).mockResolvedValueOnce({ id: 'rt-old' });
+
+      await expect(authService.refreshToken(user, dto)).rejects.toThrow(
+        new UnauthorizedException('Token already refreshed'),
+      );
+
+      // Verify containment updateMany was NOT called (sessions preserved)
+      expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('triggers full session containment when an unknown or stale token is presented', async () => {
+      // 0 tokens revoked
+      mockPrisma.refreshToken.updateMany.mockResolvedValueOnce({ count: 0 });
+      // findFirst returns null (not recently revoked)
+      mockPrisma.refreshToken.findFirst = (jest.fn() as any).mockResolvedValueOnce(null);
+      // containment revocation
+      mockPrisma.refreshToken.updateMany.mockResolvedValueOnce({ count: 3 });
+
+      await expect(authService.refreshToken(user, dto)).rejects.toThrow(
+        new UnauthorizedException('Refresh token reuse detected'),
+      );
+
+      // Verify containment updateMany WAS called
+      expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledTimes(2);
+      expect(mockPrisma.refreshToken.updateMany).toHaveBeenLastCalledWith({
+        where: { userId: 'user-1', revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+    });
+  });
 });

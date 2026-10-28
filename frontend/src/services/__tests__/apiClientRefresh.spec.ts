@@ -1,20 +1,32 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
-import { ensureFreshAccessToken } from '../apiClient';
+
+const { getResponseErrorHandler, setResponseErrorHandler } = vi.hoisted(() => {
+  let handler: ((error: any) => Promise<any>) | null = null;
+  return {
+    getResponseErrorHandler: () => handler,
+    setResponseErrorHandler: (h: any) => { handler = h; },
+  };
+});
 
 vi.mock('axios', () => {
   const post = vi.fn();
-  const use = vi.fn();
-  const instance = {
-    interceptors: { request: { use }, response: { use } },
+  const reqUse = vi.fn();
+  const resUse = vi.fn((_success, error) => {
+    setResponseErrorHandler(error);
+  });
+  const instance = Object.assign(vi.fn(), {
+    interceptors: { request: { use: reqUse }, response: { use: resUse } },
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
     delete: vi.fn(),
-  };
+  });
   return { default: { create: () => instance, post } };
 });
+
+import { ensureFreshAccessToken, apiClient } from '../apiClient';
 
 const mockedPost = () => vi.mocked(axios.post);
 
@@ -91,5 +103,50 @@ describe('ensureFreshAccessToken', () => {
     await expect(p1).rejects.toThrow('invalid refresh token');
     await expect(p2).rejects.toThrow('invalid refresh token');
     expect(mockedPost()).toHaveBeenCalledOnce();
+  });
+
+  it('coalesces proactive refresh and concurrent 401 response into a single refresh request', async () => {
+    localStorage.setItem('phoneshop_access_token', makeJwt(Math.floor(Date.now() / 1000) - 10));
+    localStorage.setItem('phoneshop_refresh_token', 'refresh-shared');
+
+    let resolvePost!: (value: unknown) => void;
+    mockedPost().mockImplementationOnce(
+      () => new Promise((resolve) => { resolvePost = resolve; })
+    );
+
+    // Mock apiClient retry response
+    const mockApiClient = vi.mocked(apiClient);
+    mockApiClient.mockResolvedValueOnce({ data: 'retried-ok' });
+
+    // 1. Kick off proactive refresh (in flight)
+    const proactivePromise = ensureFreshAccessToken();
+
+    // 2. Concurrently, a 401 response error arrives from an existing request
+    const dummy401Error = {
+      response: { status: 401 },
+      config: { url: '/api/cart', headers: {} },
+    };
+    const interceptorPromise = getResponseErrorHandler()!(dummy401Error);
+
+    // 3. Resolve the refresh endpoint
+    resolvePost({
+      data: { data: { accessToken: 'new-acc-shared', refreshToken: 'new-ref-shared' } },
+    });
+
+    await Promise.all([proactivePromise, interceptorPromise]);
+
+    // Crucial assertion: only ONE call to /auth/refresh-token was made
+    expect(mockedPost()).toHaveBeenCalledOnce();
+    expect(localStorage.getItem('phoneshop_access_token')).toBe('new-acc-shared');
+    expect(localStorage.getItem('phoneshop_refresh_token')).toBe('new-ref-shared');
+    // And the 401 request was retried with the new token
+    expect(mockApiClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/api/cart',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer new-acc-shared',
+        }),
+      }),
+    );
   });
 });
