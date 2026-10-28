@@ -40,7 +40,7 @@ export const getGatewayRef = (record: Payment): string => {
   // Ưu tiên lấy mã tham chiếu giao dịch thực tế từ cổng thanh toán/ngân hàng
   const txnRef =
     record.transactions?.[0]?.providerReference ||
-    record.transactions?.[0]?.transactionNumber;
+    record.transactions?.[0]?.transactionCode;
   if (txnRef) return txnRef;
 
   if (record.providerOrderId) return record.providerOrderId;

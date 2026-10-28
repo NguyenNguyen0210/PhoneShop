@@ -27,7 +27,6 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   // Forgot password modal state
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -103,17 +102,12 @@ export const LoginPage: React.FC = () => {
       notifyError('Không nhận được mã xác thực từ Google');
       return;
     }
-    setGoogleLoading(true);
     try {
       const loggedUser = await loginWithGoogleCredential(credentialResponse.credential);
       notifySuccess('Đăng nhập Google thành công!');
 
-      const isAdminUser =
-        loggedUser.roles?.some(
-          (r: any) =>
-            (typeof r === 'string' && (r === 'ADMIN' || r === 'MANAGER')) ||
-            (typeof r === 'object' && (r?.name === 'ADMIN' || r?.name === 'MANAGER')),
-        ) ?? false;
+      const role = loggedUser.role || (loggedUser as any).roles?.[0]?.name || (loggedUser as any).roles?.[0];
+      const isAdminUser = role === 'ADMIN' || role === 'MANAGER';
 
       if (from && from !== '/' && from !== '/login') {
         navigate(from, { replace: true });
@@ -124,8 +118,6 @@ export const LoginPage: React.FC = () => {
       }
     } catch (err: any) {
       notifyError(err, 'Đăng nhập Google thất bại. Vui lòng thử lại.');
-    } finally {
-      setGoogleLoading(false);
     }
   };
 

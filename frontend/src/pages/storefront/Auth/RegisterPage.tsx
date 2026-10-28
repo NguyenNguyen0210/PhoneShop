@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Phone, Loader2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { authService } from '../../../services/authService';
 import { notifyError, notifySuccess } from '../../../utils/notify';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 
@@ -18,7 +17,6 @@ export const RegisterPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,15 +58,12 @@ export const RegisterPage: React.FC = () => {
       notifyError('Không nhận được mã xác thực từ Google');
       return;
     }
-    setGoogleLoading(true);
     try {
       await loginWithGoogleCredential(credentialResponse.credential);
       notifySuccess('Đăng ký / Đăng nhập Google thành công!');
       navigate('/', { replace: true });
     } catch (err: any) {
       notifyError(err, 'Đăng ký qua Google không thành công. Vui lòng thử lại.');
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
