@@ -13,6 +13,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
@@ -87,10 +88,13 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   // ============================================================
-  // GLOBAL RESPONSE FORMAT
+  // GLOBAL LOGGING & RESPONSE FORMAT
   // ============================================================
 
-  app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalInterceptors(
+    new LoggingInterceptor(),
+    new ResponseInterceptor(),
+  );
 
   // ============================================================
   // GLOBAL PREFIX

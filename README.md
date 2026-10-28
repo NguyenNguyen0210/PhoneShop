@@ -1,7 +1,7 @@
 # 📱 Phone Shop
 
 > **Hệ thống Thương Mại Điện Tử Chuyên Biệt Thiết Bị Di Động & Phụ Kiện Cao Cấp**  
-> Xây dựng theo kiến trúc **Modular Monolith & Clean Architecture**, tích hợp kiểm soát giao dịch nguyên tử, cơ chế chống Race Condition cho vòng đời IMEI, hàng đợi xử lý nền **Redis BullMQ**, lưu trữ đám mây **Supabase Cloud (PostgreSQL + S3 Storage)** và giao diện **Clean Light Mode (Apple Pavilion & Swiss Minimalist)**.
+> Xây dựng theo kiến trúc **Modular Monolith & Clean Architecture**, tích hợp kiểm soát giao dịch nguyên tử, cơ chế chống Race Condition cho vòng đời IMEI, lưu trữ đám mây **Supabase Cloud (PostgreSQL) & Cloudflare R2** và giao diện **Clean Light Mode (Apple Pavilion & Swiss Minimalist)**.
 
 ---
 
@@ -14,19 +14,17 @@
 - [4. Kiến Trúc Kỹ Thuật & Giải Pháp Cốt Lõi](#4-kiến-trúc-kỹ-thuật--giải-pháp-cốt-lõi)
   - [4.1. Sơ Đồ Kiến Trúc Tổng Thể](#41-sơ-đồ-kiến-trúc-tổng-thể)
   - [4.2. Quản Lý Vòng Đời IMEI & Xử Lý Concurrency](#42-quản-lý-vòng-đời-imei--xử-lý-concurrency)
-  - [4.3. Hàng Đợi Redis BullMQ & Tự Động Hủy Giữ Hàng 15 Phút](#43-hàng-đợi-redis-bullmq--tự-động-hủy-giữ-hàng-15-phút)
-  - [4.4. Cơ Chế Idempotency Chống Trùng Lặp Giao Dịch](#44-cơ-chế-idempotency-chống-trùng-lặp-giao-dịch)
-  - [4.5. Tối Ưu Hóa Hình Ảnh Với Sharp & Supabase Storage](#45-tối-ưu-hóa-hình-ảnh-với-sharp--supabase-storage)
+  - [4.3. Quản Lý Trạng Thái Đơn Hàng & Giữ Tồn Kho IMEI](#43-quản-lý-trạng-thái-đơn-hàng--giữ-tồn-kho-imei)
+  - [4.4. Tối Ưu Hóa Hình Ảnh Với Sharp & Media Storage](#44-tối-ưu-hóa-hình-ảnh-với-sharp--media-storage)
 - [5. Công Nghệ Sử Dụng (Tech Stack)](#5-công-nghệ-sử-dụng-tech-stack)
 - [6. Cấu Trúc Thư Mục Dự Án](#6-cấu-trúc-thư-mục-dự-án)
 - [7. Hướng Dẫn Cài Đặt & Chạy Local](#7-hướng-dẫn-cài-đặt--chạy-local)
   - [7.1. Yêu Cầu Môi Trường](#71-yêu-cầu-môi-trường)
-  - [7.2. Chuẩn Bị Supabase Cloud (Database & Storage)](#72-chuẩn-bị-supabase-cloud-database--storage)
+  - [7.2. Chuẩn Bị Supabase Cloud (Database)](#72-chuẩn-bị-supabase-cloud-database)
   - [7.3. Cấu Hình Biến Môi Trường (.env)](#73-cấu-hình-biến-môi-trường-env)
-  - [7.4. Khởi Động Redis Container](#74-khởi-động-redis-container)
-  - [7.5. Khởi Tạo Database & Nạp Dữ Liệu Mẫu (Seed)](#75-khởi-tạo-database--nạp-dữ-liệu-mẫu-seed)
-  - [7.6. Khởi Động Ứng Dụng](#76-khởi-động-ứng-dụng)
-  - [7.7. Tài Khoản Đăng Nhập Mặc Định](#77-tài-khoản-đăng-nhập-mặc-định)
+  - [7.4. Khởi Tạo Database & Nạp Dữ Liệu Mẫu (Seed)](#74-khởi-tạo-database--nạp-dữ-liệu-mẫu-seed)
+  - [7.5. Khởi Động Ứng Dụng](#75-khởi-động-ứng-dụng)
+  - [7.6. Tài Khoản Đăng Nhập Mặc Định](#76-tài-khoản-đăng-nhập-mặc-định)
 - [8. Danh Sách API Chính (API Endpoints Reference)](#8-danh-sách-api-chính-api-endpoints-reference)
 - [9. Kiểm Thử & Đảm Bảo Chất Lượng (Testing & QA)](#9-kiểm-thử--đảm-bảo-chất-lượng-testing--qa)
 - [10. Tiêu Chuẩn Bảo Mật & Best Practices](#10-tiêu-chuẩn-bảo-mật--best-practices)
@@ -138,26 +136,18 @@ Hệ thống được thiết kế theo mô hình **Modular Monolith & Clean Arc
                         │  ├── Modules: Auth, Products, Orders,   │
                         │  │            Payments, IMEI, Warranty, │
                         │  │            Vouchers, Reviews, Storage│
-                        │  └── Infrastructure: Prisma, BullMQ,    │
-                        │                      Sharp, Storage     │
+                        │  └── Infrastructure: Prisma, Storage,   │
+                        │                      Sharp, Security    │
                         └─────────┬───────────────────┬───────────┘
                                   │                   │
-                  Prisma ORM (SQL)│                   │ IORedis Client
+                  Prisma ORM (SQL)│                   │ S3 API
                                   ▼                   ▼
      ┌───────────────────────────────────┐    ┌───────────────────────────────────┐
-     │      SUPABASE CLOUD POSTGRESQL    │    │      REDIS 7 CONTAINER (BullMQ)   │
-     │  - Relational Schema & Constraints│    │  - Delayed Job: expire-order-hold │
-     │  - Row-Level Security (RLS)       │    │  - Idempotency Cache Keys         │
-     │  - ACID Transactions              │    │  - High-Speed Query Cache         │
-     └─────────────────┬─────────────────┘    └───────────────────────────────────┘
-                       │
-                       ▼
-     ┌───────────────────────────────────┐
-     │      SUPABASE CLOUD STORAGE       │
-     │  - Bucket: phoneshop        │
-     │  - WebP Optimized Product Images  │
-     │  - Avatars & Inspection Proofs    │
-     └───────────────────────────────────┘
+     │      SUPABASE CLOUD POSTGRESQL    │    │      CLOUDFLARE R2 STORAGE        │
+     │  - Relational Schema & Constraints│    │  - WebP Optimized Product Images  │
+     │  - Row-Level Security (RLS)       │    │  - Fast CDN Distribution          │
+     │  - ACID Transactions & Isolation  │    │  - Avatars & Proofs               │
+     └───────────────────────────────────┘    └───────────────────────────────────┘
 ```
 
 ---
@@ -200,50 +190,24 @@ Khi khách hàng tiến hành tạo đơn hàng, hệ thống thực thi một g
 
 ---
 
-### 4.3. Hàng Đợi Redis BullMQ & Tự Động Hủy Giữ Hàng 15 Phút
+### 4.3. Quản Lý Trạng Thái Đơn Hàng & Giữ Tồn Kho IMEI
 
-Khi đơn hàng được tạo, IMEI được chuyển sang `HOLD`. Nếu khách hàng không thanh toán hoặc đóng trình duyệt, máy không thể bị giữ vĩnh viễn.
-
-* **BullMQ Delayed Queue**:
-  * Khi tạo đơn thành công, `OrdersService` đẩy một job vào queue `orders-queue`:
-    ```typescript
-    await this.ordersQueue.add(
-      'expire-order-hold',
-      { orderId: order.id },
-      { delay: 15 * 60 * 1000 } // 15 phút (900.000 ms)
-    );
-    ```
-* **OrdersProcessor (Worker)**:
-  * Sau đúng 15 phút, worker kích hoạt xử lý job:
-    1. Kiểm tra trạng thái hiện tại của đơn hàng.
-    2. Nếu đơn hàng vẫn ở trạng thái `PENDING` (chưa thanh toán):
-       * Cập nhật trạng thái đơn thành `CANCELLED`.
-       * Chuyển toàn bộ IMEI thuộc đơn từ `HOLD` trở lại `AVAILABLE`.
-       * Hoàn lại số lượng tồn kho khả dụng cho sản phẩm.
-    3. Nếu đơn hàng đã được cập nhật (`PAID` hoặc `PROCESSING`), worker tự động bỏ qua.
-* **In-memory Sweeper Fallback**:
-  * Hệ thống tích hợp `hold-expiry.sweeper.ts` quét định kỳ phòng trường hợp Redis bảo trì hoặc biến môi trường `REDIS_ENABLED=false`.
+Khi đơn hàng được tạo, IMEI được chuyển sang `HOLD` trong giao dịch nguyên tử (`prisma.$transaction`).
+* **Giải phóng giữ hàng**:
+  * Khi khách hàng hủy đơn hoặc quản trị viên xử lý đơn hết hạn/thất bại, hệ thống giải phóng toàn bộ IMEI liên quan từ `HOLD` trở về `AVAILABLE` và hoàn trả số lượng khả dụng cho biến thể sản phẩm.
+  * Khi thanh toán thành công (VNPay IPN / VietQR / COD), trạng thái chuyển sang `SOLD` và đơn hàng sang `PROCESSING`.
 
 ---
 
-### 4.4. Cơ Chế Idempotency Chống Trùng Lặp Giao Dịch
-
-Các endpoint nhạy cảm (như `POST /api/orders`, `POST /api/payments/create-url`) được bảo vệ bởi **Idempotency Interceptor**:
-* Khách hàng gửi kèm header `Idempotency-Key: <unique-uuid>`.
-* Hệ thống lưu trữ trạng thái xử lý trong bộ nhớ / Redis.
-* Nếu mạng chập chờn khiến người dùng nhấn nút "Đặt hàng" hoặc "Thanh toán" nhiều lần trong thời gian ngắn, các request trùng lặp sẽ nhận lại response trước đó mà không tạo ra đơn hàng thứ hai hay trừ tiền hai lần.
-
----
-
-### 4.5. Tối Ưu Hóa Hình Ảnh Với Sharp & Supabase Storage
+### 4.4. Tối Ưu Hóa Hình Ảnh Với Sharp & Media Storage
 
 Khi Quản trị viên tải ảnh sản phẩm hoặc người dùng cập nhật ảnh đại diện:
 1. `StorageController` tiếp nhận file qua Multer (kiểm tra định dạng hợp lệ: JPG, PNG, WebP, AVIF).
 2. `StorageService` sử dụng thư viện **Sharp** để:
    * Giữ nguyên tỷ lệ hoặc crop thông minh.
-   * Tự động nén và chuyển đổi (convert) toàn bộ sang chuẩn **WebP** với chất lượng tối ưu (`quality: 80-85%`).
+   * Tự động nén và chuyển đổi toàn bộ sang chuẩn **WebP** với chất lượng tối ưu (`quality: 80-85%`).
    * Giảm đến 70-80% dung lượng file mà mắt thường không phân biệt được chất lượng suy giảm.
-3. Upload buffer ảnh WebP lên **Supabase Storage** (Bucket `phoneshop`).
+3. Upload buffer ảnh WebP lên **Cloudflare R2 Storage** (tương thích S3 API).
 4. Lưu URL công khai (Public URL) vào cơ sở dữ liệu để phân phối nhanh qua CDN.
 
 ---
@@ -256,10 +220,9 @@ Khi Quản trị viên tải ảnh sản phẩm hoặc người dùng cập nh�
 | | TypeScript | 6.x | Ngôn ngữ phát triển Type-safe cho toàn bộ backend |
 | **Database & ORM** | Supabase PostgreSQL | 16.x | Cơ sở dữ liệu quan hệ trên điện toán đám mây |
 | | Prisma ORM | 7.x | Quản lý schema, migrations và truy vấn SQL an toàn |
-| **Background & Cache** | Redis | 7-alpine | Bộ nhớ cache hiệu năng cao chạy trên Docker |
-| | BullMQ | 6.x | Quản lý hàng đợi nền, xử lý Delayed Job 15m hold |
+| **Logging & Diagnostics** | Built-in NestJS Logger | 11.x | Ghi log chuẩn HTTP request/response và application errors |
 | **Media Processing** | Sharp | 0.35.x | Xử lý, nén và chuyển đổi định dạng ảnh sang WebP |
-| | Supabase Storage | 2.x | Lưu trữ đám mây tương thích S3 cho ảnh sản phẩm |
+| | Cloudflare R2 | S3 API | Lưu trữ đám mây tương thích S3 cho ảnh sản phẩm |
 | **Security & Auth** | Passport & JWT | 11.x | Xác thực người dùng qua Access Token / Refresh Token |
 | | Bcrypt | 6.x | Băm mật khẩu người dùng với muối (salt) bảo mật |
 | | Class-Validator | 0.15.x | Kiểm tra dữ liệu đầu vào DTO tại tầng Gateway |
@@ -271,7 +234,7 @@ Khi Quản trị viên tải ảnh sản phẩm hoặc người dùng cập nh�
 | | Lucide React | 1.x | Bộ icon SVG hiện đại, tối giản và sắc nét |
 | **State & API** | Zustand | 5.x | Quản lý state toàn cục nhẹ và hiệu quả (Auth, Cart) |
 | | Axios | 1.x | HTTP Client với Interceptor tự động gắn Bearer Token |
-| **DevOps & Testing**| Docker & Compose | 3.8+ | Đóng gói môi trường Redis và Backend nhất quán |
+| **DevOps & Testing**| Docker & Compose | 3.8+ | Đóng gói môi trường Backend nhất quán |
 | | Jest & Ts-Jest | 30.x | Khung kiểm thử tự động Unit Tests cho nghiệp vụ cốt lõi |
 
 ---
@@ -280,8 +243,8 @@ Khi Quản trị viên tải ảnh sản phẩm hoặc người dùng cập nh�
 
 ```text
 PhoneShop/
-├── docker-compose.yml              # Dev: Redis 7 + backend container (nạp backend/.env.development)
-├── docker-compose.prod.yml         # Prod VPS: Redis + backend (nạp backend/.env.production)
+├── docker-compose.yml              # Dev: backend container (nạp backend/.env.development)
+├── docker-compose.prod.yml         # Prod VPS: backend container (nạp backend/.env.production)
 ├── frontend/.env.development       # Giá trị VITE_* dev công khai (tracked)
 ├── .gitignore                      # Quy chuẩn loại trừ artifacts, secrets, docs, test scripts
 │
@@ -301,7 +264,7 @@ PhoneShop/
 │   │   ├── common/                 # Thành phần dùng chung toàn hệ thống
 │   │   │   ├── constants.ts        # Các hằng số định danh hệ thống
 │   │   │   ├── guards/             # JwtAuthGuard, RolesGuard, OptionalJwtGuard
-│   │   │   ├── interceptors/       # Logging, Idempotency, Transform response
+│   │   │   ├── interceptors/       # LoggingInterceptor, ResponseInterceptor
 │   │   │   └── utils/              # Tiện ích Luhn IMEI, format tiền tệ
 │   │   │
 │   │   ├── modules/                # Các module nghiệp vụ (Feature Modules)
@@ -309,7 +272,7 @@ PhoneShop/
 │   │   │   ├── users/              # Quản lý hồ sơ, địa chỉ, thông tin tài khoản
 │   │   │   ├── products/           # Danh mục sản phẩm, biến thể, lọc đa tiêu chí
 │   │   │   ├── cart/               # Giỏ hàng phía server
-│   │   │   ├── orders/             # Đặt hàng, khóa giữ IMEI, OrdersProcessor BullMQ
+│   │   │   ├── orders/             # Đặt hàng, khóa giữ IMEI nguyên tử
 │   │   │   ├── payments/           # Tích hợp VietQR, VNPay Sandbox, webhook IPN
 │   │   │   ├── imei/               # Vòng đời Serial/IMEI, nhập kho, kiểm tra Luhn
 │   │   │   ├── warranty/           # Kích hoạt & tra cứu bảo hành điện tử theo IMEI
@@ -320,12 +283,12 @@ PhoneShop/
 │   │   │
 │   │   └── infrastructure/         # Triển khai kỹ thuật hạ tầng
 │   │       ├── database/           # PrismaService kết nối Supabase PostgreSQL
-│   │       ├── storage/            # StorageService nén Sharp WebP & upload Supabase
-│   │       ├── background-jobs/    # Cấu hình hàng đợi Redis BullMQ
-│   │       └── idempotency/        # Bộ nhớ đệm kiểm soát idempotency key
+│   │       ├── storage/            # StorageService nén Sharp WebP & upload R2
+│   │       ├── security/           # Helmet, CORS cấu hình an toàn
+│   │       └── rate-limiting/      # Throttler bảo vệ API
 │   │
 │   └── test/                       # Kiểm thử tự động (Automated Tests)
-│       └── unit/                   # Unit test suites (IMEI, Orders Concurrency, Storage, Payments)
+│       └── unit/                   # Unit test suites (IMEI, Orders, Storage, Payments)
 │
 └── frontend/                       # Ứng dụng Frontend React SPA
     ├── package.json                # Dependencies & script quản lý frontend
@@ -379,15 +342,10 @@ PhoneShop/
 
 ---
 
-### 7.2. Chuẩn Bị Supabase Cloud (Database & Storage)
+### 7.2. Chuẩn Bị Supabase Cloud (Database)
 1. **Tạo Database**:
    * Tạo một project mới trên [Supabase Dashboard](https://app.supabase.com).
    * Vào mục **Project Settings -> Database** để lấy chuỗi kết nối `DATABASE_URL` (dạng `postgresql://postgres.[ref]:[password]@...:5432/postgres?sslmode=require`).
-2. **Tạo Storage Bucket**:
-   * Vào mục **Storage** trên Dashboard Supabase -> Nhấn **New Bucket**.
-   * Đặt tên Bucket: **`phoneshop`**.
-   * Bật tùy chọn **Public Bucket** (để ảnh sản phẩm và avatar có thể truy cập công khai qua CDN).
-   * Lấy `SUPABASE_URL` và `SUPABASE_SERVICE_ROLE_KEY` tại mục **Project Settings -> API**.
 
 ---
 
@@ -400,7 +358,7 @@ Copy từ template rồi điền giá trị thật (file này đã git-ignored, 
 ```bash
 cp backend/.env.example backend/.env.development
 ```
-Xem đầy đủ danh sách biến trong `backend/.env.example` (DATABASE_URL Supabase, JWT_SECRET, REDIS_HOST, SUPABASE_*, VNPay/VietQR Sandbox, GOOGLE_CLIENT_ID/SECRET, CLOUDFLARE_R2_*, GEMINI_API_KEY...).
+Xem đầy đủ danh sách biến trong `backend/.env.example` (DATABASE_URL Supabase, JWT_SECRET, VNPay/VietQR Sandbox, GOOGLE_CLIENT_ID/SECRET, CLOUDFLARE_R2_*, GEMINI_API_KEY...).
 
 Backend tự nạp đúng file theo `NODE_ENV` (nhờ `src/load-env.ts` chạy trước mọi import + `ConfigModule` trong `app.module.ts`):
 * Dev/local (`NODE_ENV != production`) → `backend/.env.development`
@@ -413,24 +371,7 @@ File `frontend/.env.development` đã commit sẵn giá trị dev công khai (`V
 
 ---
 
-### 7.4. Khởi Động Redis Container
-
-Hệ thống sử dụng Redis 7 cho hàng đợi xử lý nền **BullMQ**.
-* Trong môi trường phát triển cục bộ (Local Development), mô hình chuẩn khuyến nghị là **chạy Redis qua Docker và chạy Node.js trên máy host** để tận dụng tối đa tốc độ biên dịch và Hot Reload:
-```bash
-# Đứng tại thư mục PhoneShop/
-docker compose up -d redis
-```
-Kiểm tra trạng thái container Redis:
-```bash
-docker ps --filter "name=phoneshop_redis"
-# Container hiển thị trạng thái "Up ... (healthy)" trên port 6379 là thành công
-```
-*(Lưu ý: File `docker-compose.yml` cũng cung cấp sẵn service `backend` đóng gói toàn diện bằng container nếu bạn muốn chạy trọn bộ bằng Docker trong môi trường staging/production).*
-
----
-
-### 7.5. Khởi Tạo Database & Nạp Dữ Liệu Mẫu (Seed)
+### 7.4. Khởi Tạo Database & Nạp Dữ Liệu Mẫu (Seed)
 
 Di chuyển vào thư mục `backend/`, cài đặt dependencies, đồng bộ schema và nạp dữ liệu:
 ```bash
@@ -450,13 +391,12 @@ npm run prisma:seed
 ```
 
 > **Ghi chú về hình ảnh sản phẩm:**  
-> Dữ liệu seed dùng URL R2 deterministic (`CLOUDFLARE_R2_PUBLIC_URL/products/<slug>.webp`, fallback về ảnh mặc định khi chưa upload). Nhờ vậy ngay sau khi seed xong toàn bộ 60 smartphone đều có thumbnail/variant image hợp lệ mà **không yêu cầu tải trước ảnh lên Supabase Storage**.  
-> Supabase Storage được kích hoạt phục vụ cho các nghiệp vụ động trong quá trình vận hành: Quản trị viên thêm sản phẩm mới/upload thư viện ảnh (tự động nén WebP) và Khách hàng cập nhật ảnh đại diện (Avatar).
+> Dữ liệu seed dùng URL R2 deterministic (`CLOUDFLARE_R2_PUBLIC_URL/products/<slug>.webp`, fallback về ảnh mặc định khi chưa upload). Nhờ vậy ngay sau khi seed xong toàn bộ 60 smartphone đều có thumbnail/variant image hợp lệ mà **không yêu cầu tải trước ảnh lên storage**.  
 > **Filter coverage:** mỗi giá trị RAM (4/6/8/12/16GB), Storage (64/128/256/512GB/1TB), Màu (Đen/Trắng/Xanh/Titan/Vàng/Tím/Xanh lá), Giá (<5/5-10/10-20/>20tr), Màn (<6.1/6.1-6.7/>6.7"), Pin (<4000/4000-5000/>5000mAh), OS (iOS/Android), Chipset (Apple/Snapdragon/Dimensity/Exynos), 5G on/off, onSale/inStock on/off, rating 5/4/3 đều có ≥5 products/variants để test thấy rõ.
 
 ---
 
-### 7.6. Khởi Động Ứng Dụng
+### 7.5. Khởi Động Ứng Dụng
 
 #### Khởi động Backend API (Cửa sổ Terminal 1):
 ```bash
@@ -515,7 +455,7 @@ Toàn bộ API tuân thủ chuẩn RESTful với tiền tố `/api`:
 ### 8.3. Đơn Hàng & Khóa Giữ Hàng (Orders & Concurrency Hold)
 | Phương thức | Đường dẫn API | Phân quyền | Mô tả chi tiết |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/orders` | Authenticated | Đặt hàng nguyên tử, khóa giữ IMEI 15 phút qua BullMQ |
+| `POST` | `/api/orders` | Authenticated | Đặt hàng nguyên tử, khóa giữ IMEI trong transaction |
 | `GET` | `/api/orders/my-orders`| Authenticated | Danh sách lịch sử đơn hàng của khách hàng hiện tại |
 | `GET` | `/api/orders/:id` | Authenticated | Xem chi tiết đơn hàng, mã vận đơn, danh sách IMEI giữ |
 | `PATCH`| `/api/orders/:id/cancel`| Authenticated | Khách hàng chủ động hủy đơn, tự động nhả kho/IMEI |
@@ -536,7 +476,7 @@ Toàn bộ API tuân thủ chuẩn RESTful với tiền tố `/api`:
 | `POST` | `/api/warranty/claims` | Authenticated | Gửi yêu cầu tiếp nhận bảo hành / sửa chữa thiết bị |
 | `PATCH`| `/api/warranty/claims/:id` | Staff / Admin | Duyệt và cập nhật tiến độ xử lý phiếu bảo hành |
 
-### 8.6. Media Storage (Supabase & Sharp)
+### 8.6. Media Storage (Cloudflare R2 & Sharp)
 | Phương thức | Đường dẫn API | Phân quyền | Mô tả chi tiết |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/storage/upload` | Staff / Admin | Upload 1 ảnh sản phẩm, tự động nén sang WebP |
@@ -552,7 +492,7 @@ Dự án áp dụng quy trình kiểm thử tự động nghiêm ngặt nhằm �
 ### 9.1. Chạy Bộ Unit Test (Jest)
 Bộ kiểm thử đơn vị bao gồm 4 test suites chuyên sâu:
 * `imei.spec.ts`: Xác thực thuật toán Luhn, định dạng 15 chữ số và chuyển đổi trạng thái IMEI.
-* `orders-concurrency.spec.ts`: Kiểm tra cơ chế Pessimistic Locking chống tranh chấp kho, kiểm tra thời hạn giữ hàng và Worker BullMQ tự động hủy đơn sau 15 phút.
+* `orders-concurrency.spec.ts`: Kiểm tra cơ chế Pessimistic Locking chống tranh chấp kho và hoàn trả IMEI khi hủy đơn.
 * `storage.spec.ts`: Kiểm tra tính năng nén ảnh WebP bằng Sharp và cơ chế chặn các tệp tin nguy hại / không hợp lệ (như SVG chứa mã độc).
 * `payments.spec.ts`: Kiểm tra tính toàn vẹn của checksum chữ ký HMAC-SHA512 VNPay và xử lý Webhook IPN an toàn.
 
@@ -600,7 +540,7 @@ Cả hai ứng dụng đều biên dịch thành công 100% với mã thoát `ex
    * Phân quyền Role-based Access Control (RBAC) được kiểm soát chặt chẽ ở cấp độ từng controller qua `RolesGuard`.
 3. **Phòng chống tấn công & Tối ưu hóa**:
    * Header bảo mật `Helmet` được cấu hình để ngăn chặn XSS, Clickjacking và MIME-sniffing.
-   * `Idempotency-Key` bảo vệ các giao dịch nhạy cảm khỏi nguy cơ double-spending do lỗi đường truyền mạng.
+   * `LoggingInterceptor` và `HttpExceptionFilter` ghi log request/response và lỗi hệ thống qua NestJS Logger chuẩn.
    * Kiểm soát chặt chẽ chính sách CORS (Cross-Origin Resource Sharing) giữa Frontend và Backend.
    * Dữ liệu nhạy cảm và thông tin kết nối (Database URL, Secret Keys) được quản lý tách biệt qua `.env` và được loại trừ hoàn toàn khỏi Git tracking.
 
