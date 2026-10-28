@@ -15,6 +15,7 @@ interface AuthState {
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   login: (email: string, password: string) => Promise<User>;
   loginWithGoogle: (code: string, state?: string) => Promise<User>;
+  loginWithGoogleCredential: (credential: string) => Promise<User>;
   register: (data: {
     email: string;
     password: string;
@@ -106,6 +107,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const res = await authService.googleLogin(code, state);
+      const normalized = normalizeUser(res.user) || res.user;
+      const accessToken = res.accessToken;
+      const refreshToken = res.refreshToken;
+
+      get().setAuth(normalized, accessToken, refreshToken);
+      set({ isLoading: false });
+      return normalized;
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Đăng nhập Google thất bại';
+      set({ error: msg, isLoading: false });
+      throw new Error(msg);
+    }
+  },
+
+  loginWithGoogleCredential: async (credential: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await authService.loginWithGoogleCredential(credential);
       const normalized = normalizeUser(res.user) || res.user;
       const accessToken = res.accessToken;
       const refreshToken = res.refreshToken;

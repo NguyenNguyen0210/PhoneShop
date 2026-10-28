@@ -15,11 +15,12 @@ import {
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { authService } from '../../../services/authService';
 import { notifyError, notifySuccess, getErrorMessage } from '../../../utils/notify';
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, login } = useAuthStore();
+  const { user, login, loginWithGoogleCredential } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -97,37 +98,39 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) {
+      notifyError('Không nhận được mã xác thực từ Google');
+      return;
+    }
     setGoogleLoading(true);
     try {
-      // P7: server-minted OAuth state stored locally and echoed back on
-      // callback — blocks login-CSRF (planted Google codes).
-      const { url, state } = await authService.getGoogleAuthUrl();
-      if (state) sessionStorage.setItem('oauth_state', state);
-      window.location.href = url;
-    } catch {
-      // Fallback: build authorization URL using environment credentials
-      const clientId =
-        import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-        '323053585279-2e3jkfp7m1nojsutf5dufau00ajd9osh.apps.googleusercontent.com';
-      const redirectUri =
-        import.meta.env.VITE_GOOGLE_REDIRECT_URI ||
-        `${window.location.origin}/auth/oauth/callback`;
-      const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
-      const options = {
-        redirect_uri: redirectUri,
-        client_id: clientId,
-        access_type: 'offline',
-        response_type: 'code',
-        prompt: 'consent',
-        scope: [
-          'https://www.googleapis.com/auth/userinfo.profile',
-          'https://www.googleapis.com/auth/userinfo.email',
-        ].join(' '),
-      };
-      const qs = new URLSearchParams(options);
-      window.location.href = `${rootUrl}?${qs.toString()}`;
+      const loggedUser = await loginWithGoogleCredential(credentialResponse.credential);
+      notifySuccess('Đăng nhập Google thành công!');
+
+      const isAdminUser =
+        loggedUser.roles?.some(
+          (r: any) =>
+            (typeof r === 'string' && (r === 'ADMIN' || r === 'MANAGER')) ||
+            (typeof r === 'object' && (r?.name === 'ADMIN' || r?.name === 'MANAGER')),
+        ) ?? false;
+
+      if (from && from !== '/' && from !== '/login') {
+        navigate(from, { replace: true });
+      } else if (isAdminUser) {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
+    } catch (err: any) {
+      notifyError(err, 'Đăng nhập Google thất bại. Vui lòng thử lại.');
+    } finally {
+      setGoogleLoading(false);
     }
+  };
+
+  const handleGoogleError = () => {
+    notifyError('Đăng nhập Google không thành công hoặc cửa sổ đã bị đóng');
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -175,44 +178,17 @@ export const LoginPage: React.FC = () => {
           </p>
         </div>
 
-        {/* 1-Click Social Login (Google) */}
-        <div className="space-y-2">
-          <button
-            type="button"
-            aria-label="Google"
-            onClick={handleGoogleLogin}
-            disabled={googleLoading}
-            className="flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm font-semibold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 hover:border-slate-300 active:scale-[0.99] disabled:opacity-70 cursor-pointer"
-          >
-            {googleLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                <span>Đang kết nối Google...</span>
-              </>
-            ) : (
-              <>
-                <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                  />
-                </svg>
-                <span>Đăng nhập nhanh với Google</span>
-              </>
-            )}
-          </button>
+        {/* 1-Click Social Login (Google Pop-up) */}
+        <div className="flex justify-center w-full">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+            theme="outline"
+            size="large"
+            shape="rectangular"
+            text="signin_with"
+            width="100%"
+          />
         </div>
 
         {/* Divider */}

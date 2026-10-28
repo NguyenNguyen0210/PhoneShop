@@ -32,6 +32,11 @@ export const authService = {
     return response.data?.data ?? response.data;
   },
 
+  async loginWithGoogleCredential(credential: string): Promise<AuthResponse> {
+    const response = await apiClient.post('/auth/google/credential', { credential });
+    return response.data?.data ?? response.data;
+  },
+
   async logout(): Promise<void> {
     try {
       await apiClient.post('/auth/logout');
