@@ -27,22 +27,28 @@ export interface CustomerStats {
 export interface Customer360Metrics {
   totalSpent: number;
   totalOrders: number;
-  completedOrders: number;
-  processingOrders: number;
-  cancelledOrders: number;
-  totalTickets: number;
-  openTickets: number;
-  activeWarranties: number;
-  totalInstallments: number;
-  approvedInstallments: number;
 }
 
 export interface Customer360Data {
   customer: CustomerSummary;
   metrics: Customer360Metrics;
-  addresses: any[];
-  recentOrders: any[];
-  warranties: any[];
-  installments: any[];
-  tickets: any[];
+  addresses: Array<{
+    id: string;
+    recipientName: string;
+    phone: string;
+    addressLine1: string;
+    ward: string;
+    district: string;
+    city: string;
+    isDefault: boolean;
+  }>;
+  recentOrders: Array<{
+    id: string;
+    orderNumber: string;
+    status: string;
+    paymentStatus: string;
+    totalAmount: number;
+    createdAt: string;
+    itemCount: number;
+  }>;
 }
