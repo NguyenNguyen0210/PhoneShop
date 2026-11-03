@@ -247,4 +247,12 @@ export const orderService = {
     const response = await apiClient.patch(`/shipping/order/${orderId}`, payload);
     return response.data?.data ?? response.data;
   },
+
+  async refundOrder(
+    id: string,
+    payload: { reason: string; restockItems?: boolean; note?: string; amount?: number }
+  ): Promise<Order> {
+    const response = await apiClient.post(`/orders/${id}/refund`, payload);
+    return normalizeOrder(response.data?.data ?? response.data);
+  },
 };

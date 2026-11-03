@@ -16,6 +16,9 @@ import {
   Input,
   Dropdown,
   Tooltip,
+  Form,
+  Checkbox,
+  Alert,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
@@ -30,6 +33,7 @@ import {
   CopyOutlined,
   DownOutlined,
   SafetyCertificateOutlined,
+  RollbackOutlined,
 } from '@ant-design/icons';
 import { orderService } from '../../../services/orderService';
 import { paymentService } from '../../../services/paymentService';
@@ -222,6 +226,78 @@ export const AdminOrdersPage: React.FC = () => {
             }
           : null,
       );
+    }
+  };
+
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [refundOrderTarget, setRefundOrderTarget] = useState<Order | null>(null);
+  const [refundLoading, setRefundLoading] = useState(false);
+  const [refundForm] = Form.useForm();
+
+  const handleOpenRefundModal = (order: Order) => {
+    setRefundOrderTarget(order);
+    refundForm.resetFields();
+    refundForm.setFieldsValue({
+      restockItems: true,
+      reason: undefined,
+      customReason: '',
+      note: '',
+    });
+    setRefundModalOpen(true);
+  };
+
+  const handleCloseRefundModal = () => {
+    setRefundModalOpen(false);
+    setRefundOrderTarget(null);
+    refundForm.resetFields();
+  };
+
+  const handleRefundSubmit = async () => {
+    if (!refundOrderTarget) return;
+    try {
+      const values = await refundForm.validateFields();
+      setRefundLoading(true);
+
+      const finalReason =
+        values.reason === 'Lý do khác' && values.customReason
+          ? values.customReason.trim()
+          : values.reason;
+
+      await orderService.refundOrder(refundOrderTarget.id, {
+        reason: finalReason,
+        restockItems: values.restockItems ?? true,
+        note: values.note?.trim() || undefined,
+        amount: Number(refundOrderTarget.totalAmount || 0),
+      });
+
+      message.success('Đã xử lý hoàn tiền đơn hàng');
+      setRefundModalOpen(false);
+      setRefundOrderTarget(null);
+      refundForm.resetFields();
+
+      await loadOrders();
+
+      if (selectedOrder && selectedOrder.id === refundOrderTarget.id) {
+        try {
+          const refreshed = await orderService.getOrderById(refundOrderTarget.id);
+          setSelectedOrder(refreshed);
+        } catch {
+          setSelectedOrder((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status: 'RETURNED' as OrderStatus,
+                  paymentStatus: 'REFUNDED',
+                }
+              : null
+          );
+        }
+      }
+    } catch (err: any) {
+      if (err?.errorFields) return;
+      message.error(err.response?.data?.message || err.message || 'Xử lý hoàn tiền thất bại');
+    } finally {
+      setRefundLoading(false);
     }
   };
 
@@ -614,7 +690,7 @@ export const AdminOrdersPage: React.FC = () => {
       title: 'Thao tác',
       key: 'actions',
       render: (_, record) => (
-        <Space size={6}>
+        <Space size={6} wrap>
           <Button
             size="small"
             icon={<EyeOutlined />}
@@ -637,6 +713,17 @@ export const AdminOrdersPage: React.FC = () => {
           >
             Điều phối
           </Button>
+          {(record.status === 'DELIVERED' || record.status === 'COMPLETED') && (
+            <Button
+              size="small"
+              danger
+              icon={<RollbackOutlined />}
+              title="Hoàn tiền / Đổi trả hàng"
+              onClick={() => handleOpenRefundModal(record)}
+            >
+              Hoàn tiền
+            </Button>
+          )}
         </Space>
       ),
     },
@@ -805,6 +892,21 @@ export const AdminOrdersPage: React.FC = () => {
         open={isDetailModalOpen}
         onCancel={handleCloseDetailModal}
         footer={[
+          (selectedOrder?.status === 'DELIVERED' || selectedOrder?.status === 'COMPLETED') && (
+            <Button
+              key="refund"
+              danger
+              icon={<RollbackOutlined />}
+              title="Hoàn tiền / Đổi trả đơn hàng này"
+              onClick={() => {
+                if (selectedOrder) {
+                  handleOpenRefundModal(selectedOrder);
+                }
+              }}
+            >
+              Hoàn tiền / Đổi trả
+            </Button>
+          ),
           <Button
             key="dispatch"
             icon={<CarOutlined />}
@@ -1221,6 +1323,115 @@ export const AdminOrdersPage: React.FC = () => {
         }}
         onSuccess={handleReconcileSuccess}
       />
+
+      {/* Modal: Order Refund & Return */}
+      <Modal
+        title={
+          <Space>
+            <RollbackOutlined style={{ color: '#ef4444' }} />
+            <span>Xử lý Hoàn tiền / Đổi trả đơn hàng</span>
+          </Space>
+        }
+        open={refundModalOpen}
+        onCancel={handleCloseRefundModal}
+        onOk={handleRefundSubmit}
+        confirmLoading={refundLoading}
+        okText="Xác nhận hoàn tiền"
+        okButtonProps={{ danger: true }}
+        cancelText="Hủy"
+        destroyOnClose
+        width={560}
+      >
+        {refundOrderTarget && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <Alert
+              type="warning"
+              showIcon
+              message={
+                <div>
+                  Hệ thống sẽ chuyển trạng thái đơn hàng sang{' '}
+                  <Tag color="volcano" style={{ fontWeight: 600 }}>ĐỔI TRẢ (RETURNED)</Tag>, cập nhật thanh toán sang{' '}
+                  <Tag color="magenta" style={{ fontWeight: 600 }}>REFUNDED</Tag> và vô hiệu hóa bảo hành đã kích hoạt.
+                </div>
+              }
+            />
+
+            <Descriptions size="small" bordered column={1}>
+              <Descriptions.Item label="Mã đơn hàng">
+                <Text code strong>{refundOrderTarget.orderNumber}</Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Khách hàng">
+                <Text strong>{refundOrderTarget.customerName}</Text> ({refundOrderTarget.shippingPhone})
+              </Descriptions.Item>
+              <Descriptions.Item label="Số tiền hoàn trả">
+                <Text strong style={{ color: '#dc2626', fontSize: 16 }}>
+                  {formatPrice(refundOrderTarget.totalAmount)}
+                </Text>
+              </Descriptions.Item>
+            </Descriptions>
+
+            <Form
+              form={refundForm}
+              layout="vertical"
+              initialValues={{ restockItems: true }}
+            >
+              <Form.Item
+                name="reason"
+                label="Lý do hoàn tiền / đổi trả"
+                rules={[{ required: true, message: 'Vui lòng chọn hoặc nhập lý do hoàn tiền' }]}
+              >
+                <Select
+                  placeholder="-- Chọn lý do đổi trả / hoàn tiền --"
+                  options={[
+                    { value: 'Khách hàng đổi ý trong thời hạn quy định', label: 'Khách hàng đổi ý trong thời hạn quy định' },
+                    { value: 'Sản phẩm lỗi kỹ thuật do nhà sản xuất', label: 'Sản phẩm lỗi kỹ thuật do nhà sản xuất' },
+                    { value: 'Giao sai sản phẩm / màu sắc / cấu hình', label: 'Giao sai sản phẩm / màu sắc / cấu hình' },
+                    { value: 'Sản phẩm bị móp méo / trầy xước khi nhận', label: 'Sản phẩm bị móp méo / trầy xước khi nhận' },
+                    { value: 'Lý do khác', label: 'Lý do khác (nhập bên dưới)' },
+                  ]}
+                />
+              </Form.Item>
+
+              <Form.Item
+                noStyle
+                shouldUpdate={(prevValues, currentValues) => prevValues.reason !== currentValues.reason}
+              >
+                {({ getFieldValue }) =>
+                  getFieldValue('reason') === 'Lý do khác' ? (
+                    <Form.Item
+                      name="customReason"
+                      label="Chi tiết lý do khác"
+                      rules={[{ required: true, message: 'Vui lòng nhập lý do cụ thể' }]}
+                    >
+                      <Input placeholder="Nhập lý do cụ thể của khách hàng..." />
+                    </Form.Item>
+                  ) : null
+                }
+              </Form.Item>
+
+              <Form.Item
+                name="restockItems"
+                valuePropName="checked"
+                style={{ marginBottom: 12 }}
+              >
+                <Checkbox defaultChecked>
+                  Nhập lại kho vật lý và đổi IMEI sang RETURNED
+                </Checkbox>
+              </Form.Item>
+
+              <Form.Item
+                name="note"
+                label="Ghi chú / Tài khoản thụ hưởng (Tùy chọn)"
+              >
+                <Input.TextArea
+                  rows={3}
+                  placeholder="VD: STK 1903... Techcombank - NGUYEN VAN A. Đã chuyển tiền hoàn vào lúc 10:30..."
+                />
+              </Form.Item>
+            </Form>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

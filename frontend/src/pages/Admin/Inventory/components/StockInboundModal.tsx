@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Form, Select, InputNumber, Input, Alert, Typography, Space, Tag, message } from 'antd';
+import { Modal, Form, Select, InputNumber, Input, Alert, Typography, Space, Tag, message, Button } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { inventoryService } from '../../../../services/inventoryService';
 import { productService } from '../../../../services/productService';
 import { supplierService } from '../../../../services/supplierService';
+import { imeiService } from '../../../../services/imeiService';
 import type { Product, ProductVariant } from '../../../../types';
 import type { Supplier } from '../../../../types/supplier';
 
@@ -30,6 +32,9 @@ export const StockInboundModal: React.FC<StockInboundModalProps> = ({
   onSuccess,
   preselectedVariantId,
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -37,12 +42,16 @@ export const StockInboundModal: React.FC<StockInboundModalProps> = ({
   const [selectedProductId, setSelectedProductId] = useState<string | undefined>();
   const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [isImeiManaged, setIsImeiManaged] = useState<boolean>(false);
+  const [checkingImei, setCheckingImei] = useState<boolean>(false);
 
   useEffect(() => {
     if (!open) return;
     form.resetFields();
     setSelectedProductId(undefined);
     setSelectedVariantId(undefined);
+    setIsImeiManaged(false);
+    setCheckingImei(false);
     form.setFieldsValue({ quantity: 1 });
     setProductsLoading(true);
     productService
@@ -88,8 +97,66 @@ export const StockInboundModal: React.FC<StockInboundModalProps> = ({
       (selectedVariant as any)?.stock ??
       0) as number;
 
+  useEffect(() => {
+    if (!selectedVariantId) {
+      setIsImeiManaged(false);
+      setCheckingImei(false);
+      return;
+    }
+
+    let isMounted = true;
+    setCheckingImei(true);
+
+    const categorySlug = selectedProduct?.category?.slug?.toLowerCase() || '';
+    const categoryName = selectedProduct?.category?.name?.toLowerCase() || '';
+    const isLikelyImeiCategory =
+      categorySlug.includes('phone') ||
+      categorySlug.includes('dien-thoai') ||
+      categorySlug.includes('smartphone') ||
+      categorySlug.includes('tablet') ||
+      categorySlug.includes('ipad') ||
+      categoryName.includes('điện thoại') ||
+      categoryName.includes('máy tính bảng') ||
+      categoryName.includes('phone');
+
+    imeiService
+      .getImeis({ variantId: selectedVariantId, limit: 1 })
+      .then((res) => {
+        if (!isMounted) return;
+        const imeiCount = res?.total ?? (Array.isArray(res?.data) ? res.data.length : 0);
+        if (imeiCount > 0 || isLikelyImeiCategory) {
+          setIsImeiManaged(true);
+        } else {
+          setIsImeiManaged(false);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not verify IMEI tracking for variant:', err);
+        if (isMounted) {
+          setIsImeiManaged(isLikelyImeiCategory);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setCheckingImei(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedVariantId, selectedProduct]);
+
+  const imeiTabUrl = location.pathname.startsWith('/staff')
+    ? '/staff/inventory?tab=imei'
+    : '/admin/inventory?tab=imei';
+
   const handleSubmit = async () => {
     try {
+      if (isImeiManaged) {
+        message.warning('Biến thể này được quản lý theo IMEI. Vui lòng sử dụng tính năng Import IMEI.');
+        return;
+      }
       const values = await form.validateFields();
       if (!values.variantId) {
         message.error('Vui lòng chọn đúng biến thể (màu + cấu hình)');
@@ -137,6 +204,7 @@ export const StockInboundModal: React.FC<StockInboundModalProps> = ({
       onOk={handleSubmit}
       confirmLoading={loading}
       okText="Xác nhận nhập kho"
+      okButtonProps={{ disabled: isImeiManaged || checkingImei }}
       cancelText="Hủy"
       destroyOnClose
       width={640}
@@ -213,15 +281,41 @@ export const StockInboundModal: React.FC<StockInboundModalProps> = ({
           />
         )}
 
+        {selectedVariant && isImeiManaged && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="Biến thể này được quản lý theo từng số IMEI riêng biệt. Vui lòng sử dụng tính năng Import IMEI để nhập kho chính xác."
+            action={
+              <Button
+                size="small"
+                type="primary"
+                onClick={() => {
+                  onClose();
+                  navigate(imeiTabUrl);
+                }}
+              >
+                Chuyển sang Quản lý IMEI
+              </Button>
+            }
+          />
+        )}
+
         <Form.Item
           name="quantity"
           label="Số lượng nhập cụ thể"
           rules={[
-            { required: true, message: 'Vui lòng nhập số lượng' },
+            { required: !isImeiManaged, message: 'Vui lòng nhập số lượng' },
             { type: 'number', min: 1, message: 'Số lượng tối thiểu là 1' },
           ]}
         >
-          <InputNumber min={1} style={{ width: '100%' }} placeholder="VD: 10 máy" />
+          <InputNumber
+            min={1}
+            style={{ width: '100%' }}
+            placeholder={isImeiManaged ? 'Đã khóa vì biến thể quản lý theo IMEI' : 'VD: 10 máy'}
+            disabled={isImeiManaged}
+          />
         </Form.Item>
 
         <Form.Item name="unitPrice" label="Đơn giá nhập (VNĐ)">
