@@ -21,6 +21,7 @@ import {
   SettingOutlined,
   TeamOutlined,
   SafetyCertificateOutlined,
+  AppstoreOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
 import './AdminLayout.css';
@@ -59,6 +60,11 @@ export const AdminLayout: React.FC = () => {
           icon: <OrderedListOutlined style={{ fontSize: 16 }} />,
           label: 'Quản lý Đơn hàng',
         },
+        {
+          key: '/admin/warranties',
+          icon: <SafetyCertificateOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Bảo hành',
+        },
       ],
     },
     {
@@ -69,6 +75,11 @@ export const AdminLayout: React.FC = () => {
           key: '/admin/products',
           icon: <ShoppingOutlined style={{ fontSize: 16 }} />,
           label: 'Quản lý Sản phẩm',
+        },
+        {
+          key: '/admin/categories',
+          icon: <AppstoreOutlined style={{ fontSize: 16 }} />,
+          label: 'Quản lý Danh mục',
         },
         {
           key: '/admin/brands',

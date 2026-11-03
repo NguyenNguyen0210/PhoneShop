@@ -42,6 +42,8 @@ import { AdminUsersPage } from '../pages/Admin/Users/AdminUsersPage';
 import { AdminAuditLogsPage } from '../pages/Admin/AuditLogs/AdminAuditLogsPage';
 import { AdminSettingsPage } from '../pages/Admin/Settings/AdminSettingsPage';
 import { AdminPromotionsPage } from '../pages/Admin/Promotions/AdminPromotionsPage';
+import { AdminCategoriesPage } from '../pages/Admin/Categories/AdminCategoriesPage';
+import { AdminWarrantiesPage } from '../pages/Admin/Warranties/AdminWarrantiesPage';
 
 // Staff Operational Pages
 import { StaffDashboardPage } from '../pages/Staff/Dashboard/StaffDashboardPage';
@@ -115,7 +117,14 @@ export const AppRoutes: React.FC = () => {
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/products" element={<AdminProductsPage />} />
-          <Route path="/admin/categories" element={<Navigate to="/admin/products" replace />} />
+          <Route
+            path="/admin/categories"
+            element={
+              <RoleGuard allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
+                <AdminCategoriesPage />
+              </RoleGuard>
+            }
+          />
           <Route
             path="/admin/brands"
             element={
@@ -129,6 +138,14 @@ export const AppRoutes: React.FC = () => {
           <Route path="/admin/imei" element={<Navigate to="/admin/inventory?tab=imei" replace />} />
           <Route path="/admin/orders" element={<AdminOrdersPage />} />
           <Route path="/admin/orders/:id" element={<AdminOrdersPage />} />
+          <Route
+            path="/admin/warranties"
+            element={
+              <RoleGuard allowedRoles={[ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN]}>
+                <AdminWarrantiesPage />
+              </RoleGuard>
+            }
+          />
           <Route path="/admin/promotions" element={<AdminPromotionsPage />} />
           <Route
             path="/admin/payments"
@@ -184,6 +201,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/staff/chat" element={<StaffLiveChatPage />} />
           <Route path="/staff/orders" element={<AdminOrdersPage />} />
           <Route path="/staff/orders/:id" element={<AdminOrdersPage />} />
+          <Route path="/staff/warranties" element={<AdminWarrantiesPage />} />
           <Route path="/staff/inventory" element={<StaffInventoryPage />} />
           <Route path="/staff/imei" element={<Navigate to="/staff/inventory?tab=imei" replace />} />
           <Route path="/staff/tickets" element={<AdminTicketsPage />} />

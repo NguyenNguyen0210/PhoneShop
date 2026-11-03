@@ -16,6 +16,7 @@ import {
   SearchOutlined,
   DollarOutlined,
   MessageOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/useAuthStore';
 import './StaffLayout.css';
@@ -49,6 +50,11 @@ export const StaffLayout: React.FC = () => {
       key: '/staff/orders',
       icon: <OrderedListOutlined style={{ fontSize: 16 }} />,
       label: 'Đơn hàng & Giao vận',
+    },
+    {
+      key: '/staff/warranties',
+      icon: <SafetyCertificateOutlined style={{ fontSize: 16 }} />,
+      label: 'Xử lý Bảo hành',
     },
     {
       key: '/staff/inventory',
