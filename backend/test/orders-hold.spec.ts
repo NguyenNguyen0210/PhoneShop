@@ -9,6 +9,7 @@ describe('OrdersHoldScheduler & Hold Expiration', () => {
   let scheduler: OrdersScheduler;
   let ordersService: OrdersService;
   let prisma: any;
+  let module: TestingModule;
 
   beforeEach(async () => {
     prisma = {
@@ -36,7 +37,7 @@ describe('OrdersHoldScheduler & Hold Expiration', () => {
       $transaction: jest.fn((cb) => cb(prisma)),
     };
 
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         OrdersScheduler,
         {
@@ -54,6 +55,13 @@ describe('OrdersHoldScheduler & Hold Expiration', () => {
 
     scheduler = module.get<OrdersScheduler>(OrdersScheduler);
     ordersService = module.get<OrdersService>(OrdersService);
+  });
+
+  afterAll(async () => {
+    if (module) {
+      await module.close();
+    }
+    jest.clearAllTimers();
   });
 
   it('should find expired online orders and release reservation', async () => {

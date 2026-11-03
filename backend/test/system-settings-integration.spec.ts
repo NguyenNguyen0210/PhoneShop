@@ -9,6 +9,7 @@ describe('OrdersService - System Settings Integration', () => {
   let ordersService: OrdersService;
   let settingsService: any;
   let prisma: any;
+  let module: TestingModule;
 
   beforeEach(async () => {
     prisma = {
@@ -21,7 +22,7 @@ describe('OrdersService - System Settings Integration', () => {
       get: jest.fn(),
     };
 
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         OrdersService,
         {
@@ -36,6 +37,13 @@ describe('OrdersService - System Settings Integration', () => {
     }).compile();
 
     ordersService = module.get<OrdersService>(OrdersService);
+  });
+
+  afterAll(async () => {
+    if (module) {
+      await module.close();
+    }
+    jest.clearAllTimers();
   });
 
   const baseDto = {

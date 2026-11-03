@@ -22,6 +22,7 @@ describe('OrdersService - Refund Workflow & Business Invariants', () => {
   let prisma: any;
   let notificationsService: any;
   let warrantyService: any;
+  let module: TestingModule;
 
   beforeEach(async () => {
     prisma = {
@@ -62,7 +63,7 @@ describe('OrdersService - Refund Workflow & Business Invariants', () => {
       voidWarrantiesForOrder: jest.fn().mockResolvedValue(undefined),
     };
 
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         OrdersService,
         {
@@ -87,6 +88,13 @@ describe('OrdersService - Refund Workflow & Business Invariants', () => {
     }).compile();
 
     ordersService = module.get<OrdersService>(OrdersService);
+  });
+
+  afterAll(async () => {
+    if (module) {
+      await module.close();
+    }
+    jest.clearAllTimers();
   });
 
   const baseOrder = {
