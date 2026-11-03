@@ -25,6 +25,7 @@ import { ProfileSidebar } from './components/ProfileSidebar';
 import type { ProfileTabKey } from './components/ProfileSidebar';
 import { OrdersTab } from './components/OrdersTab';
 import { AddressesTab } from './components/AddressesTab';
+import { WarrantiesTab } from './components/WarrantiesTab';
 
 export const ProfilePage: React.FC = () => {
   const { user, updateUser, fetchProfile, logout } = useAuthStore();
@@ -45,13 +46,14 @@ export const ProfilePage: React.FC = () => {
     const queryTab = searchParams.get('tab') as ProfileTabKey | null;
     const allowedTabs: ProfileTabKey[] = isInternalStaff
       ? ['profile', 'password']
-      : ['profile', 'orders', 'addresses', 'tickets', 'password'];
+      : ['profile', 'orders', 'warranties', 'addresses', 'tickets', 'password'];
 
     if (queryTab && allowedTabs.includes(queryTab)) {
       return queryTab;
     }
     if (!isInternalStaff) {
       if (location.pathname === '/orders' || location.hash === '#orders') return 'orders';
+      if (location.hash === '#warranties' || location.search.includes('tab=warranties')) return 'warranties';
       if (location.hash === '#tickets' || location.search.includes('tab=tickets')) return 'tickets';
       if (location.hash === '#addresses') return 'addresses';
     }
@@ -377,6 +379,11 @@ export const ProfilePage: React.FC = () => {
                   loading={loadingOrders}
                   onCancelOrder={(order) => setCancellingOrder(order)}
                 />
+              )}
+
+              {/* TAB 2.5: Warranties */}
+              {!isInternalStaff && activeTab === 'warranties' && (
+                <WarrantiesTab />
               )}
 
               {/* TAB 3: Addresses */}

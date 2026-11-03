@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import type { User } from '../../../../types';
 
-export type ProfileTabKey = 'profile' | 'orders' | 'addresses' | 'tickets' | 'password';
+export type ProfileTabKey = 'profile' | 'orders' | 'warranties' | 'addresses' | 'tickets' | 'password';
 
 export interface ProfileSidebarProps {
   user: User;
@@ -75,6 +75,11 @@ export const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
           label: 'Đơn hàng của tôi',
           icon: Package,
           badge: orderCount,
+        },
+        {
+          key: 'warranties',
+          label: 'Bảo hành của tôi',
+          icon: ShieldCheck,
         },
         {
           key: 'addresses',

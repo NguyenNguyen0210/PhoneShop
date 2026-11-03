@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Search,
@@ -15,10 +15,16 @@ import {
   Settings,
   Package,
   PhoneCall,
+  Wrench,
+  LogIn,
+  Lock,
 } from 'lucide-react';
 import { warrantyService, type WarrantyLookupResult } from '../../../services/warrantyService';
 import { imeiService } from '../../../services/imeiService';
 import { notifyError } from '../../../utils/notify';
+import { useAuthStore } from '../../../stores/useAuthStore';
+import type { Warranty } from '../../../types';
+import { ClaimWarrantyModal } from '../../../components/storefront/warranty/ClaimWarrantyModal';
 
 type LookupTab = 'imei' | 'phone';
 
@@ -35,6 +41,33 @@ export const WarrantyLookupPage: React.FC = () => {
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<WarrantyLookupResult | null>(null);
+
+  const user = useAuthStore((state) => state.user);
+  const [myWarranties, setMyWarranties] = useState<Warranty[]>([]);
+  const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      warrantyService.getMyWarranties().then(setMyWarranties).catch(() => {});
+    } else {
+      setMyWarranties([]);
+    }
+  }, [user]);
+
+  const isOwner = Boolean(
+    user &&
+      result &&
+      ((result.userId && result.userId === user.id) ||
+        myWarranties.some(
+          (w) =>
+            (result.id && w.id === result.id) ||
+            (w.warrantyCode && w.warrantyCode === result.warrantyCode) ||
+            (result.imeiNumber &&
+              (w.imeiDevice?.imei === result.imeiNumber ||
+                (w as any).imei === result.imeiNumber ||
+                w.deviceInfo?.imeiNumber === result.imeiNumber)),
+        )),
+  );
 
   // Real-time Luhn calculation
   const cleanInput = sanitizeCodeInput(query);
@@ -423,9 +456,98 @@ export const WarrantyLookupPage: React.FC = () => {
                 <p>• Hỗ trợ kỹ thuật và kiểm tra máy chính hãng nhanh chóng.</p>
                 <p>• Vui lòng mang theo mã số này khi đến các trung tâm bảo hành.</p>
               </div>
+
+              {/* Ownership Gate Action Section */}
+              <div className="pt-2">
+                {!user && (
+                  <div className="p-4 sm:p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <LogIn className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900">
+                          Thiết bị gặp sự cố hoặc cần hỗ trợ bảo hành?
+                        </h4>
+                        <p className="text-xs text-slate-500">
+                          Đăng nhập tài khoản PhoneShop đã mua máy để gửi yêu cầu thẩm định trực tuyến.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/login"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition shrink-0"
+                    >
+                      <LogIn className="w-4 h-4" />
+                      <span>Đăng nhập để gửi yêu cầu bảo hành</span>
+                    </Link>
+                  </div>
+                )}
+
+                {user && isOwner && (
+                  <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-blue-50/40 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <Wrench className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                            Thiết bị chính chủ
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-900 mt-0.5">
+                          {result.status === 'CLAIMED'
+                            ? 'Yêu cầu bảo hành đang được xử lý'
+                            : 'Máy gặp sự cố? Bạn có thể gửi yêu cầu bảo hành ngay'}
+                        </h4>
+                        <p className="text-xs text-slate-600">
+                          {result.status === 'CLAIMED'
+                            ? 'Kỹ thuật viên đang xem xét yêu cầu của bạn. Chúng tôi sẽ liên hệ trong thời gian sớm nhất.'
+                            : 'Đội ngũ kỹ thuật PhoneShop sẽ tiếp nhận và liên hệ thẩm định thiết bị.'}
+                        </p>
+                      </div>
+                    </div>
+                    {result.status === 'ACTIVE' &&
+                      !result.isExpired &&
+                      new Date(result.endDate) > new Date() && (
+                        <button
+                          type="button"
+                          onClick={() => setIsClaimModalOpen(true)}
+                          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition cursor-pointer shrink-0"
+                        >
+                          <Wrench className="w-4 h-4" />
+                          <span>Gửi yêu cầu bảo hành cho máy này</span>
+                        </button>
+                      )}
+                  </div>
+                )}
+
+                {user && !isOwner && (
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3 text-slate-500 text-xs">
+                    <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span>
+                      Chỉ chủ sở hữu thiết bị mới có quyền kích hoạt yêu cầu bảo hành trực tuyến cho thiết bị này.
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
+
+        {/* Claim Modal */}
+        <ClaimWarrantyModal
+          visible={isClaimModalOpen}
+          open={isClaimModalOpen}
+          warranty={result}
+          onClose={() => setIsClaimModalOpen(false)}
+          onSuccess={() => {
+            if (result) {
+              setResult({ ...result, status: 'CLAIMED' });
+            }
+          }}
+        />
 
         {/* Guide: How to find IMEI */}
         <div className="bg-slate-50/70 border border-slate-200/60 rounded-3xl p-6 sm:p-7 space-y-4">
