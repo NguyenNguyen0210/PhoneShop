@@ -17,7 +17,8 @@ export async function rollbackFlashSoldCount(
   if (variantIds.length === 0) return;
   // (?. : partial mock tx objects in older specs carry no flashSaleItem —
   // same convention as checkout's tx.flashSaleItem?.findFirst.)
-  const flashItems = (await tx.flashSaleItem?.findMany({
+  if (!tx.flashSaleItem?.findMany) return;
+  const flashItems = (await tx.flashSaleItem.findMany({
     where: {
       variantId: { in: variantIds },
       campaign: { startAt: { lte: orderedAt }, endAt: { gte: orderedAt } },

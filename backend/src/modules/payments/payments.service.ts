@@ -160,7 +160,7 @@ export class PaymentsService {
     };
   }
 
-  async reportTransfer(orderId: string, userId?: string, userRole?: string) {
+  async reportTransfer(orderId: string, userId?: string, userRole?: string | string[]) {
     const order =
       (this.prisma.order.findFirst
         ? await this.prisma.order.findFirst({
@@ -176,10 +176,15 @@ export class PaymentsService {
       }));
     if (!order) throw new NotFoundException('Order not found');
 
+    const roles: string[] = Array.isArray(userRole)
+      ? userRole
+      : userRole
+        ? [userRole]
+        : [];
     const isPrivileged =
-      userRole === Role.ADMIN ||
-      userRole === Role.MANAGER ||
-      userRole === Role.STAFF;
+      roles.includes(Role.ADMIN) ||
+      roles.includes(Role.MANAGER) ||
+      roles.includes(Role.STAFF);
     if (!isPrivileged && userId && order.userId !== userId) {
       throw new BadRequestException('Unauthorized order access');
     }
@@ -631,9 +636,7 @@ export class PaymentsService {
     }
   }
 
-  async handleVnpayIpn(query: Record<string, any>) {
-    this.logger.log(`Received VNPay IPN webhook: ${JSON.stringify(query)}`);
-
+  verifyVnpaySignature(query: Record<string, any>): boolean {
     const secureHash = query['vnp_SecureHash'];
     const hashSecret = this.configService.get<string>(
       'VNPAY_HASH_SECRET',
@@ -648,11 +651,29 @@ export class PaymentsService {
     }
 
     const checkHash = hashVnpayParams(cleanParams, hashSecret);
+    return vnpSignaturesEqual(checkHash, secureHash);
+  }
 
-    // LOW: constant-time comparison — plain !== leaks prefix timing.
-    if (!vnpSignaturesEqual(checkHash, secureHash)) {
-      this.logger.warn(`VNPay IPN: Invalid checksum (expected: ${checkHash}, received: ${secureHash})`);
+  async handleVnpayIpn(query: Record<string, any>) {
+    this.logger.log(`Received VNPay IPN webhook: ${JSON.stringify(query)}`);
+
+    if (!this.verifyVnpaySignature(query)) {
+      this.logger.warn(`VNPay IPN: Invalid checksum`);
       return { RspCode: '97', Message: 'Invalid Checksum' };
+    }
+
+    const txnNo = query['vnp_TransactionNo'];
+    if (txnNo) {
+      const existingTx = await this.prisma.paymentTransaction.findFirst({
+        where: {
+          providerReference: txnNo,
+          status: TransactionStatus.SUCCESS,
+        },
+      });
+      if (existingTx) {
+        this.logger.log(`VNPay IPN: Transaction ${txnNo} already processed as SUCCESS`);
+        return { RspCode: '00', Message: 'Confirm Success' };
+      }
     }
 
     const orderNumber = query['vnp_TxnRef'];
@@ -773,22 +794,7 @@ export class PaymentsService {
   }
 
   async handleVnpayReturn(query: Record<string, any>) {
-    const secureHash = query['vnp_SecureHash'];
-    const hashSecret = this.configService.get<string>(
-      'VNPAY_HASH_SECRET',
-      'SANDBOX_SECRET_KEY_1234567890ABCDEF',
-    );
-
-    const cleanParams: Record<string, string> = {};
-    for (const [key, value] of Object.entries(query)) {
-      if (key !== 'vnp_SecureHash' && key !== 'vnp_SecureHashType' && value !== undefined && value !== null) {
-        cleanParams[key] = String(value);
-      }
-    }
-
-    const checkHash = hashVnpayParams(cleanParams, hashSecret);
-
-    const isValid = vnpSignaturesEqual(checkHash, secureHash);
+    const isValid = this.verifyVnpaySignature(query);
     const isSuccess = isValid && query['vnp_ResponseCode'] === '00';
 
     // Settle on return too (not only IPN): the return params carry the same

@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, UseGuards, Put, UseInterceptors, Qu
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService, QueryOrdersDto } from './orders.service';
 import { CreateOrderDto, CancelOrderDto, ShipOrderDto } from './dto/order.dto';
+import { RefundOrderDto } from './dto/refund-order.dto';
 
 export { QueryOrdersDto };
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -113,7 +114,18 @@ export class OrdersController {
   @Put(':id/cancel')
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Cancel order (STAFF/MANAGER/ADMIN)' })
-  cancel(@Param('id') id: string, @Body() dto: CancelOrderDto) {
-    return this.ordersService.transitionStatus(id, OrderStatus.CANCELLED, undefined, dto?.reason);
+  cancel(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: CancelOrderDto) {
+    return this.ordersService.transitionStatus(id, OrderStatus.CANCELLED, user?.id, dto?.reason);
+  }
+
+  @Post(':id/refund')
+  @Roles(Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Process refund for order (ADMIN/MANAGER)' })
+  refund(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() dto: RefundOrderDto,
+  ) {
+    return this.ordersService.processRefund(id, dto, user?.id);
   }
 }

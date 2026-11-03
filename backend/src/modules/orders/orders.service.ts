@@ -12,6 +12,9 @@ import { EmailService } from '../../infrastructure/email/email.service';
 import { rollbackFlashSoldCount } from './flash-sale-rollback.util';
 import { WarrantyService } from '../warranty/warranty.service';
 import { CreateOrderDto, CancelOrderDto } from './dto/order.dto';
+import { RefundOrderDto } from './dto/refund-order.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { SystemSettingsService } from '../settings/settings.service';
 import {
   OrderStatus,
   VoucherType,
@@ -25,6 +28,8 @@ import {
   ShippingMethod,
   ShippingStatus,
   StockMovementType,
+  NotificationType,
+  AuditAction,
 } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PaginationQueryDto, PaginatedResponse } from '../../common/dto/pagination.dto';
@@ -68,6 +73,8 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     @Optional() private readonly emailService?: EmailService,
     @Optional() private readonly warrantyService?: WarrantyService,
+    @Optional() private readonly notificationsService?: NotificationsService,
+    @Optional() private readonly settingsService?: SystemSettingsService,
   ) {}
 
   private generateOrderNumber(): string {
@@ -146,6 +153,31 @@ export class OrdersService {
   }
 
   async checkout(userId: string, dto: CreateOrderDto) {
+    if (this.settingsService) {
+      const maintenanceMode = await this.settingsService.get('MAINTENANCE_MODE', 'false');
+      if (maintenanceMode === 'true') {
+        throw new BadRequestException('Hệ thống đang trong thời gian bảo trì, vui lòng quay lại sau');
+      }
+
+      const method = dto.paymentMethod ?? PaymentMethod.COD;
+      if (method === PaymentMethod.COD) {
+        const codEnabled = await this.settingsService.get('PAYMENT_COD_ENABLED', 'true');
+        if (codEnabled === 'false') {
+          throw new BadRequestException('Phương thức thanh toán COD hiện đang tạm khóa');
+        }
+      } else if (method === PaymentMethod.VNPAY) {
+        const vnpayEnabled = await this.settingsService.get('PAYMENT_VNPAY_ENABLED', 'true');
+        if (vnpayEnabled === 'false') {
+          throw new BadRequestException('Phương thức thanh toán VNPAY hiện đang tạm khóa');
+        }
+      } else if (method === PaymentMethod.BANK_TRANSFER || (method as any) === 'VIETQR') {
+        const vietqrEnabled = await this.settingsService.get('PAYMENT_VIETQR_ENABLED', 'true');
+        if (vietqrEnabled === 'false') {
+          throw new BadRequestException('Phương thức thanh toán chuyển khoản hiện đang tạm khóa');
+        }
+      }
+    }
+
     // 1. Get cart
     const cart = await this.prisma.cart.findUnique({
       where: { userId },
@@ -210,8 +242,11 @@ export class OrdersService {
 
     // 3. Fresh catalog prices are resolved INSIDE the transaction (M1);
     // subtotal is computed there, never from stale cart snapshots.
+    // COD orders are reserved for fulfillment and do not expire automatically after 15m;
+    // online payment orders (VNPAY, VIETQR) hold stock for 15 minutes awaiting payment.
+    const isCod = (dto.paymentMethod ?? PaymentMethod.COD) === PaymentMethod.COD;
     const holdDurationMs = 15 * 60 * 1000;
-    const holdExpiresAt = new Date(Date.now() + holdDurationMs);
+    const holdExpiresAt = isCod ? null : new Date(Date.now() + holdDurationMs);
 
     // 4. Atomic transaction with IMEI reservation, voucher validation, and inventory deduction.
     // LOW: orderNumber is Date.now()+rand — on the astronomically rare
@@ -651,6 +686,22 @@ export class OrdersService {
       }
     }
 
+    if (this.notificationsService) {
+      this.notificationsService
+        .sendToUser(
+          userId,
+          NotificationType.ORDER,
+          'Đặt hàng thành công',
+          `Đơn hàng #${order.orderNumber} của bạn đã được tạo thành công với tổng giá trị ${Number(order.totalAmount).toLocaleString('vi-VN')}₫.`,
+          { orderId: order.id, orderNumber: order.orderNumber },
+        )
+        .catch((notifErr) =>
+          this.logger.warn(
+            `Failed to send order notification for ${order.id}: ${(notifErr as Error).message}`,
+          ),
+        );
+    }
+
     return order;
   }
 
@@ -911,7 +962,7 @@ export class OrdersService {
   // same transaction as the cancellation so the two can never diverge.
   private async rollbackVoucherUsage(
     tx: any,
-    order: { id: string; voucherCode: string | null },
+    order: { id: string; voucherCode?: string | null },
   ): Promise<void> {
     if (!order.voucherCode) return;
     const voucher = await tx.voucher.findUnique({
@@ -946,6 +997,103 @@ export class OrdersService {
         },
       });
     }
+  }
+
+  /**
+   * Unified release of reserved inventory, IMEIs, flash-sale quotas, vouchers,
+   * and pending payments when an order is cancelled or its hold expires.
+   *
+   * Idempotent: checks status condition atomically inside the transaction.
+   * Returns true if cancelled and released, false if already claimed/cancelled.
+   */
+  async releaseOrderReservation(
+    tx: any,
+    order: {
+      id: string;
+      status?: OrderStatus;
+      voucherCode?: string | null;
+      createdAt: Date;
+      items?: Array<{ variantId: string; quantity: number; imeiDeviceId?: string | null }>;
+    },
+    options?: {
+      reason?: string;
+      allowedCurrentStatuses?: OrderStatus[];
+      userId?: string;
+      skipOrderUpdate?: boolean;
+    },
+  ): Promise<boolean> {
+    await this.assertNoCapturedPayment(tx, order.id);
+
+    if (!options?.skipOrderUpdate) {
+      const allowedStatuses = options?.allowedCurrentStatuses || [
+        OrderStatus.PENDING,
+        OrderStatus.CONFIRMED,
+        OrderStatus.PROCESSING,
+        OrderStatus.PACKED,
+      ];
+
+      const whereClause: any = {
+        id: order.id,
+        status: { in: allowedStatuses },
+      };
+      if (options?.userId) {
+        whereClause.userId = options.userId;
+      }
+
+      const updated = await tx.order.updateMany({
+        where: whereClause,
+        data: {
+          status: OrderStatus.CANCELLED,
+          cancelledAt: new Date(),
+          cancelledReason: options?.reason || 'Order cancelled',
+        },
+      });
+
+      if (updated.count === 0) {
+        return false; // Concurrently transitioned or already cancelled
+      }
+    }
+
+    // Close still-pending payments so the cancelled order never keeps a live PENDING row
+    if (tx.payment?.updateMany) {
+      await tx.payment.updateMany({
+        where: { orderId: order.id, status: PaymentStatus.PENDING },
+        data: { status: PaymentStatus.CANCELLED },
+      });
+    }
+
+    // Roll back voucher usage
+    await this.rollbackVoucherUsage(tx, order);
+
+    // Release reserved IMEIs and restore availableQty
+    const items =
+      order.items && order.items.length > 0
+        ? order.items
+        : await tx.orderItem.findMany({ where: { orderId: order.id } });
+
+    for (const item of items) {
+      if (item.imeiDeviceId) {
+        await tx.imeiDevice.updateMany({
+          where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
+          data: { status: ImeiStatus.AVAILABLE },
+        });
+      }
+      await tx.inventory.updateMany({
+        where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
+        data: {
+          reservedQty: { decrement: item.quantity },
+          availableQty: { increment: item.quantity },
+        },
+      });
+    }
+
+    // Rollback flash-sale slots
+    await rollbackFlashSoldCount(tx, items, order.createdAt);
+
+    // Void warranties if any were tentatively created
+    await this.warrantyService?.voidWarrantiesForOrder(tx, order.id);
+
+    return true;
   }
 
   async transitionStatus(
@@ -1002,39 +1150,10 @@ export class OrdersService {
         newStatus === OrderStatus.CANCELLED &&
         ([OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.PACKED] as OrderStatus[]).includes(order.status)
       ) {
-        // A paid order must never be dissolved into thin air: money was
-        // captured, IMEIs are SOLD, and there is no refund flow. Re-check
-        // INSIDE the transaction so a payment confirming concurrently rolls
-        // the whole cancel back (P2/A1).
-        await this.assertNoCapturedPayment(tx, id);
-        await this.rollbackVoucherUsage(tx, order);
-        // Close still-pending payments so a cancelled order never keeps a
-        // live PENDING row (finance filter + orphan cleanup).
-        if (tx.payment?.updateMany) {
-          await tx.payment.updateMany({
-            where: { orderId: id, status: PaymentStatus.PENDING },
-            data: { status: PaymentStatus.CANCELLED },
-          });
-        }
-        for (const item of order.items) {
-          if (item.imeiDeviceId) {
-            await tx.imeiDevice.updateMany({
-              where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
-              data: { status: ImeiStatus.AVAILABLE },
-            });
-          }
-          await tx.inventory.updateMany({
-            where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
-            data: {
-              reservedQty: { decrement: item.quantity },
-              availableQty: { increment: item.quantity },
-            },
-          });
-        }
-        // Give back the flash-sale slots this order claimed (no-op when none).
-        await rollbackFlashSoldCount(tx, order.items, order.createdAt);
-        // The sale is dead — void its ACTIVE warranties with the same stroke.
-        await this.warrantyService?.voidWarrantiesForOrder(tx, id);
+        await this.releaseOrderReservation(tx, order, {
+          reason: reason || 'Cancelled by staff',
+          skipOrderUpdate: true,
+        });
       }
 
       // RETURNED has real stock side effects. Without this branch a carrier
@@ -1316,6 +1435,20 @@ export class OrdersService {
           `Order status changed concurrently (expected ${oldStatus}); please refresh and retry`,
         );
       }
+
+      if (newStatus === OrderStatus.CANCELLED && staffId && tx.auditLog?.create) {
+        await tx.auditLog.create({
+          data: {
+            action: AuditAction.CANCEL_ORDER,
+            entity: 'Order',
+            entityId: id,
+            userId: staffId,
+            oldData: { status: oldStatus },
+            newData: { status: OrderStatus.CANCELLED, reason },
+          },
+        });
+      }
+
       return { ...order, ...data };
     });
 
@@ -1333,6 +1466,22 @@ export class OrdersService {
             cancelledReason: reason || 'Đơn hàng đã được hủy bởi quản trị viên',
             voucherRestored: Boolean((order as any).voucherCode),
           });
+
+          if (this.notificationsService && (order as any).userId) {
+            await this.notificationsService
+              .sendToUser(
+                (order as any).userId,
+                NotificationType.ORDER,
+                'Đơn hàng đã bị hủy',
+                `Đơn hàng #${order.orderNumber} của bạn đã bị hủy. Lý do: ${reason || 'Đơn hàng đã được hủy bởi quản trị viên'}.`,
+                { orderId: order.id, orderNumber: order.orderNumber, reason },
+              )
+              .catch((notifErr) =>
+                this.logger.warn(
+                  `Failed to send cancel notification for order ${id}: ${(notifErr as Error).message}`,
+                ),
+              );
+          }
         } else if (newStatus === OrderStatus.DELIVERED && oldStatus !== OrderStatus.DELIVERED) {
           const itemIds = (order.items || []).map((it: any) => it.id);
           const warranties = await this.prisma.warranty.findMany({
@@ -1396,55 +1545,14 @@ export class OrdersService {
 
     // Release reserved stock & IMEIs (re-read inside txn to avoid stale snapshot)
     await this.prisma.$transaction(async (tx) => {
-      // P2 (audit A2): the pre-transaction paidPayment check races the payment
-      // confirmation (VNPay IPN can commit between the read and this claim).
-      // Re-check inside the transaction so a concurrently-paid order rolls the
-      // whole cancel back instead of dissolving captured money.
-      await this.assertNoCapturedPayment(tx, id);
-
-      // H2: give the voucher use back together with the stock release
-      const guarded = await tx.order.updateMany({
-        where: { id, userId, status: { in: CANCELLABLE_STATUSES } },
-        data: {
-          status: OrderStatus.CANCELLED,
-          cancelledAt: new Date(),
-          cancelledReason: dto.reason,
-        },
+      const released = await this.releaseOrderReservation(tx, order, {
+        reason: dto.reason || 'Khách hàng yêu cầu hủy đơn hàng',
+        allowedCurrentStatuses: CANCELLABLE_STATUSES,
+        userId,
       });
-      // Another concurrent cancellation (or the hold-expiry job) already took
-      // this order — abort instead of double-releasing inventory (H2/H7).
-      if (guarded.count === 0) {
+      if (!released) {
         throw new BadRequestException('Order cannot be cancelled in its current status');
       }
-
-      // Close still-pending payments so the cancelled order keeps no live rows.
-      await tx.payment.updateMany({
-        where: { orderId: id, status: PaymentStatus.PENDING },
-        data: { status: PaymentStatus.CANCELLED },
-      });
-
-      await this.rollbackVoucherUsage(tx, order);
-
-      const items = await tx.orderItem.findMany({ where: { orderId: id } });
-      for (const item of items) {
-        if (item.imeiDeviceId) {
-          await tx.imeiDevice.updateMany({
-            where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
-            data: { status: ImeiStatus.AVAILABLE },
-          });
-        }
-        await tx.inventory.updateMany({
-          where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
-          data: {
-            reservedQty: { decrement: item.quantity },
-            availableQty: { increment: item.quantity },
-          },
-        });
-      }
-      // Give back the flash-sale slots this order claimed (no-op when none).
-      await rollbackFlashSoldCount(tx, items, order.createdAt);
-      // The sale is dead — void its ACTIVE warranties with the same stroke.
-      await this.warrantyService?.voidWarrantiesForOrder(tx, id);
     });
 
     const updated = await this.prisma.order.findUnique({ where: { id } });
@@ -1469,6 +1577,185 @@ export class OrdersService {
       }
     }
 
+    if (this.notificationsService) {
+      this.notificationsService
+        .sendToUser(
+          userId,
+          NotificationType.ORDER,
+          'Đơn hàng đã bị hủy',
+          `Đơn hàng #${order.orderNumber} của bạn đã được hủy theo yêu cầu.`,
+          { orderId: order.id, orderNumber: order.orderNumber, reason: dto.reason },
+        )
+        .catch((notifErr) =>
+          this.logger.warn(
+            `Failed to send cancel notification for ${id}: ${(notifErr as Error).message}`,
+          ),
+        );
+    }
+
     return updated;
+  }
+
+  async processRefund(orderId: string, dto: RefundOrderDto, actorId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: isUuid(orderId) ? { id: orderId } : { orderNumber: orderId },
+      include: {
+        payments: true,
+        items: {
+          include: {
+            warranty: true,
+            imeiDevice: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    const payment = order.payments?.find((p) => p.status === PaymentStatus.PAID);
+    if (!payment) {
+      throw new BadRequestException('Order does not have a paid payment to refund');
+    }
+
+    if (dto.amount <= 0 || dto.amount > Number(payment.amount)) {
+      throw new BadRequestException('Refund amount cannot exceed paid payment amount');
+    }
+
+    const refundTxCode = `REF-${Date.now()}-${orderId.slice(0, 8)}`;
+    const isFullRefund = dto.amount >= Number(payment.amount);
+    const newPaymentStatus = isFullRefund ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      // 1. Tạo PaymentTransaction
+      const paymentTx = await tx.paymentTransaction.create({
+        data: {
+          paymentId: payment.id,
+          transactionCode: refundTxCode,
+          type: TransactionType.REFUND,
+          status: TransactionStatus.SUCCESS,
+          amount: dto.amount,
+          providerReference: dto.providerReference || null,
+          responseData: {
+            reason: dto.reason,
+            actorId,
+            refundedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      // 2. Cập nhật Payment.status
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { status: newPaymentStatus },
+      });
+
+      // 3. Cập nhật Order.status = RETURNED
+      const updatedOrder = await tx.order.update({
+        where: { id: order.id },
+        data: { status: OrderStatus.RETURNED },
+      });
+
+      // 4. Cập nhật ImeiDevice liên quan sang status: RETURNED
+      const imeiDeviceIds = (order.items || [])
+        .map((item: any) => item.imeiDeviceId)
+        .filter((id: any): id is string => Boolean(id));
+
+      if (imeiDeviceIds.length > 0 && tx.imeiDevice?.updateMany) {
+        await tx.imeiDevice.updateMany({
+          where: { id: { in: imeiDeviceIds } },
+          data: { status: ImeiStatus.RETURNED },
+        });
+      }
+
+      // 5. Cập nhật Inventory & Tạo StockMovement (type: StockMovementType.IMPORT_RETURN)
+      for (const item of (order.items || [])) {
+        if (tx.inventory?.updateMany) {
+          await tx.inventory.updateMany({
+            where: { variantId: item.variantId },
+            data: {
+              quantity: { increment: item.quantity },
+              availableQty: { increment: item.quantity },
+            },
+          });
+        }
+
+        if (tx.stockMovement?.create) {
+          const fresh = tx.inventory?.findUnique
+            ? await tx.inventory.findUnique({ where: { variantId: item.variantId } })
+            : null;
+          const balanceAfter = fresh ? fresh.quantity : item.quantity;
+          const unitPrice = Number(item.unitPrice || 0);
+
+          await tx.stockMovement.create({
+            data: {
+              variantId: item.variantId,
+              type: StockMovementType.IMPORT_RETURN,
+              quantity: item.quantity,
+              balanceBefore: balanceAfter - item.quantity,
+              balanceAfter,
+              unitPrice,
+              totalAmount: item.quantity * unitPrice,
+              referenceType: 'ORDER_REFUND',
+              referenceId: order.id,
+              performedBy: actorId || null,
+              note: `Hoàn tiền đơn hàng: ${dto.reason}`,
+            },
+          });
+        }
+      }
+
+      // 6. Hủy hiệu lực Warranty
+      if (this.warrantyService?.voidWarrantiesForOrder) {
+        await this.warrantyService.voidWarrantiesForOrder(tx, order.id);
+      } else if (tx.warranty?.updateMany) {
+        await tx.warranty.updateMany({
+          where: { orderItem: { orderId: order.id }, status: WarrantyStatus.ACTIVE },
+          data: { status: WarrantyStatus.VOIDED },
+        });
+      }
+
+      // 7. Ghi audit log
+      if (tx.auditLog?.create) {
+        await tx.auditLog.create({
+          data: {
+            action: AuditAction.REFUND,
+            entity: 'Order',
+            entityId: order.id,
+            userId: actorId || null,
+            oldData: { status: order.status, paymentStatus: payment.status },
+            newData: {
+              status: OrderStatus.RETURNED,
+              paymentStatus: newPaymentStatus,
+              refundAmount: dto.amount,
+              reason: dto.reason,
+              providerReference: dto.providerReference,
+            },
+          },
+        });
+      }
+
+      return { order: updatedOrder, paymentTx };
+    });
+
+    // 8. Gửi notification cho khách hàng
+    if (this.notificationsService && order.userId) {
+      await this.notificationsService
+        .sendToUser(
+          order.userId,
+          NotificationType.PAYMENT,
+          'Hoàn tiền đơn hàng thành công',
+          `Đơn hàng #${order.orderNumber} đã được hoàn tiền ${dto.amount.toLocaleString('vi-VN')}₫. Lý do: ${dto.reason}`,
+          { orderId: order.id, amount: dto.amount, reason: dto.reason },
+        )
+        .catch((notifErr) =>
+          this.logger.warn(
+            `Failed to send refund notification for ${order.id}: ${(notifErr as Error).message}`,
+          ),
+        );
+    }
+
+    return result;
   }
 }
