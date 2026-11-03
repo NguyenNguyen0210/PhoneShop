@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { resolveEnvFile } from './config/resolve-env-file';
 
 // Core Infrastructure
@@ -54,6 +55,7 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
     }),
 
     // ----- Infrastructure (Global) -----
+    ScheduleModule.forRoot(),
     PrismaModule,
     RateLimitingModule,
     EmailModule,

@@ -21,6 +21,7 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
 
+    "types": ["node", "jest"],
     "strictPropertyInitialization": false,
     "noImplicitAny": false
   }

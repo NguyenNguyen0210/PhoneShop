@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Put, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Put, Query, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { WarrantyService } from './warranty.service';
 import { CreateWarrantyDto, ClaimWarrantyDto } from './dto/warranty.dto';
@@ -15,6 +15,25 @@ export class WarrantyController {
 
   // ── PUBLIC LOOKUP ─────────────────────────────────────
 
+  @Get('lookup')
+  @ApiOperation({ summary: 'Lookup warranty by IMEI, phone, or code (Public)' })
+  @ApiQuery({ name: 'imei', required: false, type: String })
+  @ApiQuery({ name: 'phone', required: false, type: String })
+  @ApiQuery({ name: 'code', required: false, type: String })
+  @ApiQuery({ name: 'query', required: false, type: String })
+  lookup(
+    @Query('imei') imei?: string,
+    @Query('phone') phone?: string,
+    @Query('code') code?: string,
+    @Query('query') query?: string,
+  ) {
+    const term = imei || phone || code || query;
+    if (!term || !term.trim()) {
+      throw new BadRequestException('Vui lòng cung cấp mã IMEI, số điện thoại hoặc mã bảo hành');
+    }
+    return this.warrantyService.searchByCode(term);
+  }
+
   @Get('check/:code')
   @ApiOperation({ summary: 'Check warranty by code or IMEI (Public)' })
   checkStatus(@Param('code') code: string) {
@@ -22,7 +41,7 @@ export class WarrantyController {
   }
 
   @Get('search/:code')
-  @ApiOperation({ summary: 'Search warranty by code or IMEI (Public)' })
+  @ApiOperation({ summary: 'Search warranty by code, IMEI, or phone (Public)' })
   searchByCode(@Param('code') code: string) {
     return this.warrantyService.searchByCode(code);
   }

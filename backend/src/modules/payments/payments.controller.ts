@@ -41,10 +41,11 @@ export class PaymentsController {
     @Param('orderId') orderId: string,
     @CurrentUser() user: any,
   ) {
+    const roles: string[] = user?.roles ?? (user?.role ? [user.role] : []);
     const isPrivileged =
-      user?.role === Role.ADMIN ||
-      user?.role === Role.MANAGER ||
-      user?.role === Role.STAFF;
+      roles.includes(Role.ADMIN) ||
+      roles.includes(Role.MANAGER) ||
+      roles.includes(Role.STAFF);
     const userId = isPrivileged ? undefined : user?.id;
     return this.paymentsService.generateVietQr(orderId, userId);
   }

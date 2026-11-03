@@ -18,7 +18,7 @@ export const SHIPPING_METHODS: ShippingMethodItem[] = [
     id: 'ECONOMY',
     name: 'Giao tiết kiệm',
     time: '3 - 5 ngày',
-    baseFee: 15000,
+    baseFee: 20000,
     icon: Package,
   },
   {
@@ -27,6 +27,13 @@ export const SHIPPING_METHODS: ShippingMethodItem[] = [
     time: '1 - 2 ngày',
     baseFee: 30000,
     badge: 'Khuyên dùng',
+    icon: Truck,
+  },
+  {
+    id: 'EXPRESS',
+    name: 'Giao nhanh',
+    time: 'Trong vòng 24 giờ',
+    baseFee: 45000,
     icon: Truck,
   },
   {
@@ -52,8 +59,8 @@ export function calculateShippingFee(method: ShippingMethod, subtotal: number): 
   switch (method) {
     case 'ECONOMY':
       return {
-        fee: isFreeThreshold ? 0 : 15000,
-        baseFee: 15000,
+        fee: isFreeThreshold ? 0 : 20000,
+        baseFee: 20000,
         isDiscounted: isFreeThreshold,
         discountTag: isFreeThreshold ? 'Miễn phí' : undefined,
       };
@@ -63,6 +70,13 @@ export function calculateShippingFee(method: ShippingMethod, subtotal: number): 
         baseFee: 30000,
         isDiscounted: isFreeThreshold,
         discountTag: isFreeThreshold ? 'Miễn phí' : undefined,
+      };
+    case 'EXPRESS':
+      return {
+        fee: isFreeThreshold ? 15000 : 45000,
+        baseFee: 45000,
+        isDiscounted: isFreeThreshold,
+        discountTag: isFreeThreshold ? 'Giảm 30.000₫' : undefined,
       };
     case 'EXPRESS_2H':
       return {

@@ -260,7 +260,7 @@ export type OrderStatus =
   | 'RETURNED';
 
 export type PaymentMethod = 'COD' | 'VIETQR' | 'VNPAY' | 'BANK_TRANSFER';
-export type ShippingMethod = 'ECONOMY' | 'STANDARD' | 'EXPRESS_2H';
+export type ShippingMethod = 'ECONOMY' | 'STANDARD' | 'EXPRESS' | 'EXPRESS_2H';
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
 

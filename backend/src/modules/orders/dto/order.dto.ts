@@ -1,17 +1,35 @@
 import {
   IsArray,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
+  Min,
+  ValidateNested,
 } from 'class-validator';
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
-import { PaymentMethod, ShippingMethod } from '@prisma/client';
+import { Type } from 'class-transformer';
+import { OrderStatus, PaymentMethod, ShippingMethod } from '@prisma/client';
+
+export class CreateOrderItemDto {
+  @ApiProperty({ description: 'Variant ID of the product' })
+  @IsUUID()
+  @IsNotEmpty()
+  variantId: string;
+
+  @ApiProperty({ minimum: 1, default: 1 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  quantity: number;
+}
 
 export class CreateOrderDto {
   @ApiProperty()
   @IsUUID()
+  @IsNotEmpty()
   addressId: string;
 
   @ApiPropertyOptional({ type: [String], description: 'Selected CartItem IDs or Variant IDs to checkout' })
@@ -19,6 +37,13 @@ export class CreateOrderDto {
   @IsArray()
   @IsString({ each: true })
   selectedItemIds?: string[];
+
+  @ApiPropertyOptional({ type: [CreateOrderItemDto], description: 'Direct checkout items list (if bypassing cart)' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderItemDto)
+  items?: CreateOrderItemDto[];
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -49,10 +74,9 @@ export class CancelOrderDto {
 }
 
 export class UpdateOrderStatusDto {
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  status: string;
+  @ApiProperty({ enum: OrderStatus })
+  @IsEnum(OrderStatus)
+  status: OrderStatus;
 }
 
 export class ShipOrderDto {

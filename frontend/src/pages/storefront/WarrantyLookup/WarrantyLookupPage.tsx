@@ -6,7 +6,6 @@ import {
   Calendar,
   Clock,
   Smartphone,
-  Info,
   Loader2,
   ShieldCheck,
   AlertTriangle,
@@ -70,7 +69,7 @@ export const WarrantyLookupPage: React.FC = () => {
     }
   };
 
-  const handlePhoneLookup = (e: React.FormEvent) => {
+  const handlePhoneLookup = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = phone.replace(/[\s.]/g, '');
     if (!clean) {
@@ -82,8 +81,15 @@ export const WarrantyLookupPage: React.FC = () => {
       return;
     }
     setPhoneError(null);
-    // Chưa có API xác thực OTP qua SMS/Zalo — giữ số lại và hướng dẫn bước tiếp theo.
-    setPhone(clean);
+    setLoading(true);
+    try {
+      const data = await warrantyService.lookupWarranty(clean);
+      setResult(data);
+    } catch (err: any) {
+      notifyError(err, 'Không tìm thấy thông tin bảo hành cho số điện thoại này.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -269,38 +275,19 @@ export const WarrantyLookupPage: React.FC = () => {
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-3.5 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                  disabled={loading}
+                  className="w-full py-3.5 px-8 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition flex items-center justify-center gap-2 shrink-0 cursor-pointer"
                 >
-                  <span>Tiếp tục tra cứu</span>
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Đang tra cứu...</span>
+                    </>
+                  ) : (
+                    <span>Kiểm tra bảo hành theo số điện thoại</span>
+                  )}
                 </button>
               </form>
-
-              {/* Thông báo sau khi nhập SĐT hợp lệ — OTP SMS/Zalo chưa có API nên hướng luồng thật */}
-              {phone && !phoneError && (
-                <div className="p-4 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2.5 animate-in fade-in duration-200">
-                  <div className="flex items-center gap-2 text-sm font-bold text-blue-800">
-                    <Info className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span>Xác thực OTP cho số {phone} sắp ra mắt</span>
-                  </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Hiện shop chưa hỗ trợ gửi mã OTP qua SMS/Zalo để liệt kê máy theo SĐT. Bạn có thể{' '}
-                    <Link to="/login" className="font-bold text-blue-700 hover:underline">
-                      đăng nhập
-                    </Link>{' '}
-                    để xem toàn bộ bảo hành của mình, hoặc gọi hotline kỹ thuật{' '}
-                    <a href="tel:18006869" className="font-bold text-blue-700 hover:underline">
-                      1800 6869
-                    </a>{' '}
-                    (miễn cước, 8:00 - 21:00) để được kiểm tra giúp.
-                  </p>
-                  <Link
-                    to="/login"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors"
-                  >
-                    Đăng nhập để xem bảo hành của tôi
-                  </Link>
-                </div>
-              )}
             </>
           )}
         </div>
@@ -344,7 +331,7 @@ export const WarrantyLookupPage: React.FC = () => {
 
             {/* Certificate Body */}
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80">
                   <span className="text-xs text-slate-500 font-medium block mb-1">
                     Mã bảo hành
@@ -360,6 +347,15 @@ export const WarrantyLookupPage: React.FC = () => {
                   </span>
                   <span className="font-mono font-bold text-slate-900 text-xs sm:text-sm">
                     {result.imeiNumber || 'Máy chính hãng'}
+                  </span>
+                </div>
+
+                <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80">
+                  <span className="text-xs text-slate-500 font-medium block mb-1">
+                    Thời hạn
+                  </span>
+                  <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                    {result.warrantyMonths || 12} tháng
                   </span>
                 </div>
 

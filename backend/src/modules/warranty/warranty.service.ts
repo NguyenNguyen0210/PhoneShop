@@ -101,40 +101,103 @@ export class WarrantyService {
   }
 
   async searchByCode(codeOrImei: string) {
-    const clean = codeOrImei.trim();
-    // P4: deterministic newest-first + ACTIVE preferred. Previously a bare
-    // findFirst over the OR could return a stale VOIDED/EXPIRED row for a
-    // device that also has a live warranty, misleading staff and customers.
+    const clean = (codeOrImei || '').trim();
+    if (!clean) {
+      throw new BadRequestException('Vui lòng cung cấp mã bảo hành, IMEI hoặc số điện thoại');
+    }
+
+    // P4: deterministic newest-first + ACTIVE preferred.
+    // Supports lookup by warrantyCode, IMEI, Serial, or customer/order Phone number.
+    const orConditions: any[] = [
+      { warrantyCode: { equals: clean, mode: 'insensitive' } },
+      { imeiDevice: { imei: clean } },
+      { imeiDevice: { serialNumber: { equals: clean, mode: 'insensitive' } } },
+    ];
+
+    // Phone number detection & variant expansion
+    const digitsOnly = clean.replace(/\D/g, '');
+    if (digitsOnly.length >= 9 && digitsOnly.length <= 15) {
+      const phoneVariants = new Set<string>();
+      phoneVariants.add(clean);
+      phoneVariants.add(digitsOnly);
+      if (digitsOnly.startsWith('84') && digitsOnly.length >= 11) {
+        phoneVariants.add('0' + digitsOnly.slice(2));
+      } else if (digitsOnly.startsWith('0') && digitsOnly.length >= 10) {
+        phoneVariants.add('+84' + digitsOnly.slice(1));
+        phoneVariants.add('84' + digitsOnly.slice(1));
+      }
+      const phoneList = Array.from(phoneVariants);
+      orConditions.push(
+        { user: { phone: { in: phoneList } } },
+        { orderItem: { order: { address: { phone: { in: phoneList } } } } },
+        { orderItem: { order: { user: { phone: { in: phoneList } } } } },
+      );
+    }
+
     const candidates = await this.prisma.warranty.findMany({
       where: {
-        OR: [
-          { warrantyCode: { equals: clean, mode: 'insensitive' } },
-          { imeiDevice: { imei: clean } },
-          { imeiDevice: { serialNumber: { equals: clean, mode: 'insensitive' } } },
-        ],
+        OR: orConditions,
       },
-      include: { productVariant: { include: { product: true } }, imeiDevice: true },
+      include: {
+        productVariant: { include: { product: true } },
+        imeiDevice: true,
+      },
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
-    if (candidates.length === 0) throw new NotFoundException('Warranty not found');
+    if (candidates.length === 0) {
+      throw new NotFoundException('Không tìm thấy thông tin bảo hành cho mã IMEI hoặc số điện thoại này');
+    }
+
     const now = new Date();
     const live = candidates.filter(
       (w) => w.status === WarrantyStatus.ACTIVE && new Date(w.endDate) >= now,
     );
     const picked = live[0] ?? candidates.find((w) => w.status === WarrantyStatus.ACTIVE) ?? candidates[0];
-    // Public lookup: strip sensitive handset identifiers. Staff detail
-    // paths (findOne/findAll) still return the full imeiDevice.
+
+    const endDate = new Date(picked.endDate);
+    const startDate = new Date(picked.startDate);
+    const isExpired = endDate < now;
+    const daysRemaining = isExpired ? 0 : Math.ceil((endDate.getTime() - now.getTime()) / 86400000);
+    const warrantyMonths = picked.productVariant?.product?.warrantyMonths ?? 12;
+    const variantName = picked.productVariant
+      ? `${picked.productVariant.color || ''} - ${picked.productVariant.storage || ''}`.trim()
+      : '';
+
+    // Public lookup: structured response including activation status, warranty months, and expiry
     return {
-      ...picked,
+      id: picked.id,
+      warrantyCode: picked.warrantyCode,
+      imei: picked.imeiDevice?.imei ?? null,
+      imeiNumber: picked.imeiDevice?.imei ?? null,
+      productName: picked.productVariant?.product?.name || 'Thiết bị di động chính hãng',
+      variantName,
+      variantInfo: variantName,
+      warrantyMonths,
+      startDate: picked.startDate,
+      activatedAt: picked.startDate,
+      endDate: picked.endDate,
+      expiresAt: picked.endDate,
+      status: isExpired && picked.status === WarrantyStatus.ACTIVE ? 'EXPIRED' : picked.status,
+      isActive: picked.status === WarrantyStatus.ACTIVE && !isExpired,
+      isExpired,
+      daysRemaining,
+      notes: picked.notes,
+      claims: picked.status === WarrantyStatus.CLAIMED ? [{ reason: picked.notes, claimedAt: picked.updatedAt }] : [],
+      productVariant: picked.productVariant,
       imeiDevice: picked.imeiDevice
         ? {
             id: picked.imeiDevice.id,
             status: picked.imeiDevice.status,
             variantId: picked.imeiDevice.variantId,
+            imei: picked.imeiDevice.imei,
           }
         : null,
     };
+  }
+
+  async lookup(term: string) {
+    return this.searchByCode(term);
   }
 
   async checkStatus(warrantyCode: string) {

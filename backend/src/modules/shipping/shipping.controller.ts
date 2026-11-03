@@ -1,7 +1,7 @@
 import {
   Controller, Get, Post, Patch, Body, Param, ParseUUIDPipe, UseGuards, Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { ShippingService } from './shipping.service';
 import {
   CreateShippingDto,
@@ -15,6 +15,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ShippingMethod } from '@prisma/client';
 
 // P1: this controller was completely public — anonymous users could create
 // shipping records, flip statuses, and read any order's tracking number.
@@ -24,6 +25,32 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 @Controller('shipping')
 export class ShippingController {
   constructor(private readonly shippingService: ShippingService) {}
+
+  @Get('methods')
+  @Roles(Role.USER, Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Get available shipping methods and rates' })
+  @ApiQuery({ name: 'subtotal', required: false, type: Number })
+  getMethods(@Query('subtotal') subtotal?: string) {
+    const val = subtotal ? Number(subtotal) : 0;
+    return this.shippingService.getShippingMethods(isNaN(val) ? 0 : val);
+  }
+
+  @Get('calculate')
+  @Roles(Role.USER, Role.STAFF, Role.MANAGER, Role.ADMIN)
+  @ApiOperation({ summary: 'Calculate shipping fee by method and subtotal' })
+  @ApiQuery({ name: 'method', required: false, enum: ShippingMethod })
+  @ApiQuery({ name: 'subtotal', required: false, type: Number })
+  calculateFee(
+    @Query('method') method?: ShippingMethod,
+    @Query('subtotal') subtotal?: string,
+  ) {
+    const val = subtotal ? Number(subtotal) : 0;
+    return {
+      method: method || ShippingMethod.STANDARD,
+      subtotal: isNaN(val) ? 0 : val,
+      fee: this.shippingService.calculateFee(method || ShippingMethod.STANDARD, isNaN(val) ? 0 : val),
+    };
+  }
 
   @Post()
   @Roles(Role.STAFF, Role.MANAGER, Role.ADMIN)

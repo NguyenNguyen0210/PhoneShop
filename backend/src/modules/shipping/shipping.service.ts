@@ -10,10 +10,17 @@ import {
   ShippingStatus,
 } from './dto/shipping.dto';
 import { Role } from '../../common/enums/role.enum';
-import { STANDARD_SHIPPING_FEE } from '../../common/constants';
+import {
+  STANDARD_SHIPPING_FEE,
+  EXPRESS_SHIPPING_FEE,
+  EXPRESS_2H_SHIPPING_FEE,
+  ECONOMY_SHIPPING_FEE,
+  FREE_SHIPPING_THRESHOLD,
+  calculateShippingFee,
+} from '../../common/constants';
 import { getPagination, buildPaginatedResponse } from '../../common/utils/pagination.util';
 import { OrdersService } from '../orders/orders.service';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, ShippingMethod } from '@prisma/client';
 
 const STATUS_TRANSITIONS: Partial<Record<ShippingStatus, ShippingStatus[]>> = {
   [ShippingStatus.PENDING]:       [ShippingStatus.READY_TO_SHIP],
@@ -36,11 +43,63 @@ export class ShippingService {
   ) {}
 
   /**
-   * Calculate shipping fee based on address/weight (placeholder logic).
-   * Replace with actual carrier API call.
+   * Calculate shipping fee based on address/weight or method and subtotal.
    */
-  estimateFee(_city?: string, _weight?: number): number {
-    return STANDARD_SHIPPING_FEE;
+  estimateFee(_city?: string, _weight?: number, method: ShippingMethod = ShippingMethod.STANDARD, subtotal: number = 0): number {
+    return calculateShippingFee(method, subtotal);
+  }
+
+  /**
+   * Calculate shipping fee based on method and order subtotal.
+   * Matches shop-wide policy for STANDARD, EXPRESS, EXPRESS_2H, ECONOMY.
+   */
+  calculateFee(method: ShippingMethod | string = ShippingMethod.STANDARD, subtotal: number = 0): number {
+    return calculateShippingFee(method as ShippingMethod, subtotal);
+  }
+
+  /**
+   * Get all 4 supported shipping methods and their calculated fees for a given subtotal.
+   */
+  getShippingMethods(subtotal: number = 0) {
+    const isFreeThreshold = subtotal > FREE_SHIPPING_THRESHOLD;
+    return [
+      {
+        id: ShippingMethod.ECONOMY,
+        name: 'Giao tiết kiệm',
+        estimatedTime: '3 - 5 ngày',
+        baseFee: ECONOMY_SHIPPING_FEE,
+        fee: calculateShippingFee(ShippingMethod.ECONOMY, subtotal),
+        isFree: isFreeThreshold,
+        discountTag: isFreeThreshold ? 'Miễn phí' : undefined,
+      },
+      {
+        id: ShippingMethod.STANDARD,
+        name: 'Giao tiêu chuẩn',
+        estimatedTime: '1 - 2 ngày',
+        baseFee: STANDARD_SHIPPING_FEE,
+        fee: calculateShippingFee(ShippingMethod.STANDARD, subtotal),
+        isFree: isFreeThreshold,
+        discountTag: isFreeThreshold ? 'Miễn phí' : undefined,
+      },
+      {
+        id: ShippingMethod.EXPRESS,
+        name: 'Giao nhanh',
+        estimatedTime: '24 giờ',
+        baseFee: EXPRESS_SHIPPING_FEE,
+        fee: calculateShippingFee(ShippingMethod.EXPRESS, subtotal),
+        isFree: false,
+        discountTag: isFreeThreshold ? 'Giảm 30.000₫' : undefined,
+      },
+      {
+        id: ShippingMethod.EXPRESS_2H,
+        name: 'Giao hỏa tốc 2h',
+        estimatedTime: 'Nhận hàng trong 2 giờ',
+        baseFee: EXPRESS_2H_SHIPPING_FEE,
+        fee: calculateShippingFee(ShippingMethod.EXPRESS_2H, subtotal),
+        isFree: false,
+        discountTag: isFreeThreshold ? 'Giảm 30.000₫' : undefined,
+      },
+    ];
   }
 
   async assign(dto: AssignShippingDto) {
