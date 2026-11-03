@@ -44,11 +44,23 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('User account is not active');
     }
 
-    const roles = user.roles.map((userRole) => userRole.role.name);
+    const roles = (user.roles || [])
+      .map((userRole) => userRole?.role?.name)
+      .filter((name): name is string => Boolean(name));
+    const primaryRole = roles.includes('ADMIN')
+      ? 'ADMIN'
+      : roles.includes('MANAGER')
+        ? 'MANAGER'
+        : roles.includes('STAFF')
+          ? 'STAFF'
+          : roles.includes('USER')
+            ? 'USER'
+            : roles[0] || 'USER';
 
     return { 
       id: user.id, 
       email: user.email, 
+      role: primaryRole,
       roles 
     };
   }

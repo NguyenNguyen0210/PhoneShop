@@ -899,6 +899,7 @@ model Supplier {
 enum ShippingMethod {
   ECONOMY
   STANDARD
+  EXPRESS
   EXPRESS_2H
 }
 

@@ -546,18 +546,14 @@ export class AuthService {
       this.logger.warn(
         `Password reset requested for non-existent email: "${normalizedEmail}".`,
       );
-      throw new NotFoundException(
-        'Địa chỉ email này chưa được đăng ký tài khoản trong hệ thống.',
-      );
+      return genericResponse;
     }
 
     if (user.status !== 'ACTIVE') {
       this.logger.warn(
         `Password reset requested for inactive account: "${normalizedEmail}".`,
       );
-      throw new BadRequestException(
-        'Tài khoản liên kết với email này đã bị khóa hoặc chưa được kích hoạt.',
-      );
+      return genericResponse;
     }
 
     // Invalidate existing unused tokens for this user
