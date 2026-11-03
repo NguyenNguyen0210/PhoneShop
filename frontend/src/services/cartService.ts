@@ -14,6 +14,11 @@ export const cartService = {
     return response.data?.data ?? response.data;
   },
 
+  async validateCart(): Promise<{ valid: boolean; issues?: string[]; cart?: any }> {
+    const response = await apiClient.get('/cart/validate');
+    return response.data?.data ?? response.data;
+  },
+
   async addToCart(variantId: string, quantity = 1): Promise<CartResponse> {
     const response = await apiClient.post('/cart/items', { variantId, quantity });
     return response.data?.data ?? response.data;

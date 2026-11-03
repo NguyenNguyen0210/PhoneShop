@@ -26,6 +26,8 @@ import {
 } from '../../../components/storefront/checkout/ShippingMethodSelector';
 import { CheckoutCouponSection } from '../../../components/storefront/checkout/CheckoutCouponSection';
 import { notifyError } from '../../../utils/notify';
+import { message } from 'antd';
+import { cartService } from '../../../services/cartService';
 import type { PaymentMethod, Address, ShippingMethod } from '../../../types';
 
 export const CheckoutPage: React.FC = () => {
@@ -173,6 +175,7 @@ export const CheckoutPage: React.FC = () => {
   useEffect(() => {
     if (orderPlacedRef.current) return;
     if (checkoutItems.length === 0) {
+      message.warning('Giỏ hàng trống hoặc không hợp lệ');
       navigate('/cart');
       return;
     }
@@ -189,6 +192,32 @@ export const CheckoutPage: React.FC = () => {
 
     return () => clearInterval(timer);
   }, [checkoutItems.length, navigate]);
+
+  // Pre-validate cart on mount to catch URL direct access or stale cart items
+  useEffect(() => {
+    if (orderPlacedRef.current) return;
+    const token = localStorage.getItem('phoneshop_access_token');
+    if (!token) return;
+
+    let isMounted = true;
+    cartService
+      .validateCart()
+      .then((res) => {
+        if (!isMounted || orderPlacedRef.current) return;
+        if (res && (res.valid === false || (res.issues && res.issues.length > 0))) {
+          message.warning('Giỏ hàng trống hoặc không hợp lệ');
+          useCartStore.getState().syncWithBackend().catch(() => {});
+          navigate('/cart');
+        }
+      })
+      .catch((err) => {
+        console.warn('Checkout validateCart check failed:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
 
   const minutes = Math.floor(secondsRemaining / 60);
   const seconds = secondsRemaining % 60;

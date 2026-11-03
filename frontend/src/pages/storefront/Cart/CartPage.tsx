@@ -15,7 +15,10 @@ import {
   Truck,
   Lock,
   X,
+  Loader2,
 } from 'lucide-react';
+import { Modal } from 'antd';
+import { cartService } from '../../../services/cartService';
 import { useCartStore } from '../../../stores/useCartStore';
 import { voucherService, type VoucherInfo } from '../../../services/voucherService';
 import { flashSaleService } from '../../../services/flashSaleService';
@@ -56,6 +59,7 @@ export const CartPage: React.FC = () => {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
 
   const subtotal = selectedSubtotal();
   const selectedCount = selectedTotalCount();
@@ -197,12 +201,55 @@ export const CartPage: React.FC = () => {
     sessionStorage.removeItem('phoneshop_voucher');
   };
 
-  const handleProceedCheckout = () => {
-    if (selectedCount === 0) return;
-    if (appliedVoucher) {
-      sessionStorage.setItem('phoneshop_voucher', JSON.stringify(appliedVoucher));
+  const handleProceedCheckout = async () => {
+    if (selectedCount === 0 || isValidating) return;
+
+    setIsValidating(true);
+    try {
+      const token = localStorage.getItem('phoneshop_access_token');
+      if (token) {
+        const validation = await cartService.validateCart();
+        if (validation && (validation.valid === false || (validation.issues && validation.issues.length > 0))) {
+          Modal.warning({
+            title: 'Giỏ hàng đã có thay đổi',
+            content:
+              'Một số sản phẩm trong giỏ hàng đã thay đổi số lượng tồn kho hoặc giá khuyến mãi. Chúng tôi đã cập nhật lại giỏ hàng mới nhất cho bạn.',
+          });
+          await useCartStore.getState().syncWithBackend();
+          const activeFs = await flashSaleService.getActiveCampaign().catch(() => null);
+          if (activeFs) {
+            useCartStore.getState().reconcileWithFlashSale(activeFs);
+          }
+          return;
+        }
+      }
+
+      if (appliedVoucher) {
+        sessionStorage.setItem('phoneshop_voucher', JSON.stringify(appliedVoucher));
+      }
+      navigate('/checkout');
+    } catch (err: any) {
+      console.warn('Cart validation error:', err);
+      if (err?.response?.status === 401) {
+        if (appliedVoucher) {
+          sessionStorage.setItem('phoneshop_voucher', JSON.stringify(appliedVoucher));
+        }
+        navigate('/checkout');
+      } else {
+        Modal.warning({
+          title: 'Giỏ hàng đã có thay đổi',
+          content:
+            'Một số sản phẩm trong giỏ hàng đã thay đổi số lượng tồn kho hoặc giá khuyến mãi. Chúng tôi đã cập nhật lại giỏ hàng mới nhất cho bạn.',
+        });
+        await useCartStore.getState().syncWithBackend().catch(() => {});
+        const activeFs = await flashSaleService.getActiveCampaign().catch(() => null);
+        if (activeFs) {
+          useCartStore.getState().reconcileWithFlashSale(activeFs);
+        }
+      }
+    } finally {
+      setIsValidating(false);
     }
-    navigate('/checkout');
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -899,10 +946,20 @@ export const CartPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleProceedCheckout}
-                    className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-xl shadow-md shadow-red-500/20 transition uppercase tracking-wide cursor-pointer active:scale-[0.99] flex items-center justify-center gap-2 group"
+                    disabled={isValidating}
+                    className="w-full py-3.5 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-bold text-sm rounded-xl shadow-md shadow-red-500/20 transition uppercase tracking-wide cursor-pointer active:scale-[0.99] flex items-center justify-center gap-2 group"
                   >
-                    <span>Tiến hành đặt hàng ({selectedCount})</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+                    {isValidating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Đang kiểm tra giỏ hàng...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Tiến hành đặt hàng ({selectedCount})</span>
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+                      </>
+                    )}
                   </button>
                 )}
               </div>
