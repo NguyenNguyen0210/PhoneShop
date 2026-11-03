@@ -1048,10 +1048,76 @@ export class PaymentsService {
         },
       });
 
-      return tx.payment.update({
+      const updatedPayment = await tx.payment.update({
         where: { id: paymentId },
         data: { status: PaymentStatus.FAILED },
       });
+
+      if (payment.orderId && tx.order?.findUnique) {
+        const order = await tx.order.findUnique({
+          where: { id: payment.orderId },
+          include: {
+            payments: true,
+            items: true,
+          },
+        });
+
+        if (order && order.status === OrderStatus.PENDING) {
+          const hasOtherValidPayment = order.payments?.some(
+            (p) =>
+              p.id !== paymentId &&
+              (p.status === PaymentStatus.PAID || p.status === PaymentStatus.PENDING),
+          );
+
+          if (!hasOtherValidPayment) {
+            await tx.order.update({
+              where: { id: order.id },
+              data: {
+                status: OrderStatus.CANCELLED,
+                cancelledReason: 'Payment failed',
+                cancelledAt: new Date(),
+              },
+            });
+
+            if (order.items && order.items.length > 0) {
+              for (const item of order.items) {
+                if (item.imeiDeviceId && tx.imeiDevice?.updateMany) {
+                  await tx.imeiDevice.updateMany({
+                    where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
+                    data: { status: ImeiStatus.AVAILABLE },
+                  });
+                }
+                if (item.variantId && tx.inventory?.updateMany) {
+                  await tx.inventory.updateMany({
+                    where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
+                    data: {
+                      reservedQty: { decrement: item.quantity },
+                      availableQty: { increment: item.quantity },
+                    },
+                  });
+                }
+              }
+              await rollbackFlashSoldCount(tx, order.items, order.createdAt);
+            }
+
+            if (order.voucherCode && tx.voucher?.findUnique && tx.voucherUsage?.deleteMany) {
+              const voucher = await tx.voucher.findUnique({
+                where: { code: order.voucherCode },
+                select: { id: true },
+              });
+              if (voucher && tx.voucher?.update) {
+                await tx.voucher.update({
+                  where: { id: voucher.id },
+                  data: { usageCount: { decrement: 1 } },
+                });
+              }
+              await tx.voucherUsage.deleteMany({ where: { orderId: order.id } });
+            }
+          }
+        }
+      }
+
+      return updatedPayment;
     });
   }
 
