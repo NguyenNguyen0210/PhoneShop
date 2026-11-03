@@ -12,7 +12,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 @Controller('wishlist')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
-@Roles(Role.USER, Role.ADMIN)
+@Roles(Role.USER, Role.STAFF, Role.MANAGER, Role.ADMIN)
 export class WishlistController {
   constructor(private readonly wishlistService: WishlistService) {}
 
