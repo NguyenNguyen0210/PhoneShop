@@ -14,7 +14,7 @@ interface AuthState {
 
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   login: (email: string, password: string) => Promise<User>;
-  loginWithGoogle: (code: string, state?: string) => Promise<User>;
+  loginWithGoogle: (code: string, state: string) => Promise<User>;
   loginWithGoogleCredential: (credential: string) => Promise<User>;
   register: (data: {
     email: string;
@@ -77,6 +77,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setAuth: (user: User, accessToken: string, refreshToken: string) => {
     const normalized = normalizeUser(user) || user;
+    const previousUser = get().user;
+    const previousIdentity = previousUser?.id ?? previousUser?.email;
+    const nextIdentity = normalized.id ?? normalized.email;
+    if (previousIdentity && previousIdentity !== nextIdentity) {
+      useCartStore.getState().resetForUserChange();
+      useWishlistStore.getState().clearState();
+      useNotificationStore.getState().clearState();
+    }
     localStorage.setItem('phoneshop_user', JSON.stringify(normalized));
     localStorage.setItem('phoneshop_access_token', accessToken);
     localStorage.setItem('phoneshop_refresh_token', refreshToken);
@@ -103,7 +111,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  loginWithGoogle: async (code: string, state?: string) => {
+  loginWithGoogle: async (code: string, state: string) => {
     set({ isLoading: true, error: null });
     try {
       const res = await authService.googleLogin(code, state);
@@ -223,7 +231,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const nextUser =
       (user as any)?.id ?? (user as any)?.email ?? null;
     if (cur.accessToken === accessToken && sameUser === nextUser) return;
+    if (sameUser !== nextUser) {
+      // An account switch in another browser tab must discard the previous
+      // user's persisted data before we fetch the new account's cart.
+      useCartStore.getState().resetForUserChange();
+      useWishlistStore.getState().clearState();
+      useNotificationStore.getState().clearState();
+    }
     set({ user, accessToken, refreshToken });
+    if (sameUser !== nextUser && accessToken && user) {
+      void useCartStore.getState().syncWithBackend();
+    }
   },
 
   isAdmin: () => {

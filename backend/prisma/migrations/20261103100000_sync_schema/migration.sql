@@ -2,11 +2,32 @@
 -- Purpose: Synchronize schema.prisma with Prisma migrations history safely and idempotently.
 -- Compatible with both fresh database deployments and existing databases.
 
--- 1. DROP OBSOLETE LEGACY TABLES (removed from schema.prisma)
-DROP TABLE IF EXISTS "refunds" CASCADE;
-DROP TABLE IF EXISTS "return_items" CASCADE;
-DROP TABLE IF EXISTS "returns" CASCADE;
-DROP TABLE IF EXISTS "idempotency_records" CASCADE;
+-- 1. Retire obsolete tables only if they contain NO user data.
+-- Hold ACCESS EXCLUSIVE locks through the drops to prevent concurrent writes
+-- between the data check and the DDL. Never CASCADE external dependencies.
+-- If a table contains rows, STOP and archive/migrate those records explicitly.
+BEGIN;
+DO $$
+DECLARE
+    legacy_table text;
+    contains_rows boolean;
+BEGIN
+    FOREACH legacy_table IN ARRAY ARRAY['refunds', 'return_items', 'returns', 'idempotency_records'] LOOP
+        IF to_regclass(format('%I', legacy_table)) IS NOT NULL THEN
+            EXECUTE format('LOCK TABLE %I IN ACCESS EXCLUSIVE MODE', legacy_table);
+            EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I LIMIT 1)', legacy_table)
+                INTO contains_rows;
+            IF contains_rows THEN
+                RAISE EXCEPTION 'Migration blocked: legacy table % contains data. Back up and migrate/archive it before continuing.', legacy_table;
+            END IF;
+        END IF;
+    END LOOP;
+END $$;
+DROP TABLE IF EXISTS "refunds" RESTRICT;
+DROP TABLE IF EXISTS "return_items" RESTRICT;
+DROP TABLE IF EXISTS "returns" RESTRICT;
+DROP TABLE IF EXISTS "idempotency_records" RESTRICT;
+COMMIT;
 
 -- 2. CREATE NEW ENUMS IF NOT EXISTS
 DO $$

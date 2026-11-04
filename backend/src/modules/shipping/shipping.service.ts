@@ -109,7 +109,6 @@ export class ShippingService {
     const existing = await this.prisma.shipping.findUnique({ where: { orderId: dto.orderId } });
 
     if (existing) {
-      const fee = dto.shippingFee ?? Number(existing.shippingFee);
       return this.prisma.$transaction(async (tx) => {
         const updated = await tx.shipping.update({
           where: { id: existing.id },
@@ -126,13 +125,6 @@ export class ShippingService {
                 : existing.status,
           },
         });
-        // Keep the order's charged fee in sync with the shipping record.
-        if (dto.shippingFee !== undefined) {
-          await tx.order.update({
-            where: { id: dto.orderId },
-            data: { shippingFee: fee },
-          });
-        }
         return updated;
       });
     }
@@ -150,18 +142,12 @@ export class ShippingService {
           status: ShippingStatus.READY_TO_SHIP,
         },
       });
-      if (dto.shippingFee !== undefined && Number(dto.shippingFee) !== Number(order.shippingFee)) {
-        await tx.order.update({
-          where: { id: dto.orderId },
-          data: { shippingFee: dto.shippingFee },
-        });
-      }
       return created;
     });
   }
 
   async update(id: string, dto: UpdateShippingDto) {
-    const existing = await this.findOne(id);
+    await this.findOne(id);
     const data: any = {
       ...(dto.providerName && { providerName: dto.providerName }),
       ...(dto.trackingNumber && { trackingNumber: dto.trackingNumber }),
@@ -170,13 +156,6 @@ export class ShippingService {
     };
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.shipping.update({ where: { id }, data });
-      // Keep the order's charged fee in sync with the shipping record.
-      if (dto.shippingFee !== undefined) {
-        await tx.order.update({
-          where: { id: existing.orderId },
-          data: { shippingFee: dto.shippingFee },
-        });
-      }
       return updated;
     });
   }
@@ -202,12 +181,6 @@ export class ShippingService {
           estimatedDeliveryDate: dto.estimatedDeliveryDate ? new Date(dto.estimatedDeliveryDate) : undefined,
         },
       });
-      if (dto.shippingFee !== undefined && Number(dto.shippingFee) !== Number(order.shippingFee)) {
-        await tx.order.update({
-          where: { id: dto.orderId },
-          data: { shippingFee: dto.shippingFee },
-        });
-      }
       return created;
     });
   }
@@ -259,7 +232,6 @@ export class ShippingService {
 
   async updateStatus(id: string, dto: UpdateShippingStatusDto) {
     const shipping = await this.findOne(id);
-
     const allowed = STATUS_TRANSITIONS[shipping.status as ShippingStatus] ?? [];
     if (!allowed.includes(dto.status)) {
       throw new BadRequestException(
@@ -270,79 +242,84 @@ export class ShippingService {
     const data: any = {
       status: dto.status,
       ...(dto.trackingNumber && { trackingNumber: dto.trackingNumber }),
-      ...(dto.estimatedDeliveryDate && { estimatedDeliveryDate: new Date(dto.estimatedDeliveryDate) }),
+      ...(dto.estimatedDeliveryDate && {
+        estimatedDeliveryDate: new Date(dto.estimatedDeliveryDate),
+      }),
     };
-
     if (dto.status === ShippingStatus.PICKED_UP) data.shippedAt = new Date();
     if (dto.status === ShippingStatus.DELIVERED) data.deliveredAt = new Date();
 
-    const updated = await this.prisma.shipping.update({ where: { id }, data });
+    const order = await this.prisma.order.findUnique({
+      where: { id: shipping.orderId },
+      include: { user: { select: { email: true } } },
+    });
+    if (!order) throw new NotFoundException('Order not found for shipment');
+
+    const carrierUpdate = { id, previousStatus: shipping.status as ShippingStatus, data };
+    const updateCarrierOnly = async () => {
+      const changed = await this.prisma.shipping.updateMany({
+        where: { id, status: shipping.status },
+        data,
+      });
+      if (changed.count !== 1) {
+        throw new BadRequestException('Shipping state was changed concurrently');
+      }
+    };
 
     if (dto.status === ShippingStatus.PICKED_UP || dto.status === ShippingStatus.IN_TRANSIT) {
-      try {
-        const order = await this.prisma.order.findUnique({
-          where: { id: shipping.orderId },
-          include: { user: { select: { email: true } } },
-        });
-        if (order && (order.status === OrderStatus.CONFIRMED || order.status === OrderStatus.PROCESSING || order.status === OrderStatus.PACKED)) {
-          if (order.status === OrderStatus.CONFIRMED || order.status === OrderStatus.PROCESSING) {
-            try {
-              await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.PACKED);
-            } catch (err) {
-              this.logger.warn(
-                `Auto-sync order ${shipping.orderId} to PACKED deferred (shipping ${id} is ${dto.status}): ${(err as Error).message}`,
-              );
-            }
-          }
-          await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.SHIPPING);
-        }
-
-        const isFirstShippingNotice =
-          (dto.status === ShippingStatus.PICKED_UP || dto.status === ShippingStatus.IN_TRANSIT) &&
-          shipping.status !== ShippingStatus.PICKED_UP &&
-          shipping.status !== ShippingStatus.IN_TRANSIT;
-
-        if (this.emailService && order?.user?.email && isFirstShippingNotice) {
-          try {
-            await this.emailService.sendShippingNotification(
-              order.user.email,
-              order.orderNumber,
-              updated.trackingNumber || 'Đang cập nhật',
-              updated.providerName || 'Đơn vị vận chuyển',
-            );
-          } catch (e) {
-            this.logger.warn(
-              `Failed to send shipping email for order ${shipping.orderId}: ${(e as Error).message}`,
-            );
-          }
-        }
-      } catch (err) {
-        this.logger.warn(
-          `Auto-sync order ${shipping.orderId} to SHIPPING failed (shipping ${id} is ${dto.status}): ${(err as Error).message}`,
+      if (([
+        OrderStatus.CONFIRMED,
+        OrderStatus.PROCESSING,
+        OrderStatus.PACKED,
+        OrderStatus.SHIPPING,
+      ] as OrderStatus[]).includes(order.status)) {
+        await this.ordersService.transitionStatus(
+          order.id, OrderStatus.SHIPPING, undefined, undefined, undefined, carrierUpdate,
         );
+      } else {
+        throw new BadRequestException('Order cannot be marked as shipping');
       }
     } else if (dto.status === ShippingStatus.DELIVERED) {
-      try {
-        const order = await this.prisma.order.findUnique({ where: { id: shipping.orderId } });
-        if (order && (order.status === OrderStatus.SHIPPING || order.status === OrderStatus.PACKED)) {
-          await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.DELIVERED);
-        }
-      } catch (err) {
-        this.logger.warn(
-          `Auto-sync order ${shipping.orderId} to DELIVERED failed (shipping ${id} is ${dto.status}): ${(err as Error).message}`,
+      if (([OrderStatus.SHIPPING, OrderStatus.PACKED] as OrderStatus[]).includes(order.status)) {
+        await this.ordersService.transitionStatus(
+          order.id, OrderStatus.DELIVERED, undefined, undefined, undefined, carrierUpdate,
         );
+      } else if (([OrderStatus.DELIVERED, OrderStatus.COMPLETED] as OrderStatus[]).includes(order.status)) {
+        await updateCarrierOnly();
+      } else {
+        throw new BadRequestException('Order cannot be marked delivered');
       }
     } else if (dto.status === ShippingStatus.RETURNED) {
-      try {
-        await this.ordersService.transitionStatus(shipping.orderId, OrderStatus.RETURNED);
-      } catch (err) {
-        this.logger.warn(
-          `Auto-sync order ${shipping.orderId} to RETURNED failed (shipping ${id} is ${dto.status}): ${(err as Error).message}`,
+      if (order.status === OrderStatus.SHIPPING) {
+        await this.ordersService.transitionStatus(
+          order.id, OrderStatus.RETURNED, undefined, undefined, undefined, carrierUpdate,
         );
+      } else if (order.status === OrderStatus.RETURNED) {
+        await updateCarrierOnly();
+      } else {
+        throw new BadRequestException('Order cannot be marked returned');
       }
+    } else {
+      await updateCarrierOnly();
     }
 
-    return updated;
+    const result = await this.findOne(id);
+    const firstNotice = (dto.status === ShippingStatus.PICKED_UP ||
+      dto.status === ShippingStatus.IN_TRANSIT) &&
+      shipping.status !== ShippingStatus.PICKED_UP &&
+      shipping.status !== ShippingStatus.IN_TRANSIT;
+    if (firstNotice && this.emailService && order?.user?.email) {
+      try {
+        await this.emailService.sendShippingNotification(
+          order.user.email, order.orderNumber,
+          result.trackingNumber || 'Pending',
+          result.providerName || 'Carrier',
+        );
+      } catch (err) {
+        this.logger.warn(`Shipping notification failed: ${(err as Error).message}`);
+      }
+    }
+    return result;
   }
 
   async findAll(page?: number | string, limit?: number | string) {

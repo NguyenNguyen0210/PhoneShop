@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { safeRequestPath } from '../utils/safe-request-path';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -17,6 +18,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
+    const requestPath = safeRequestPath(request);
 
     const timestamp = new Date().toISOString();
 
@@ -44,19 +46,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
         error = responseObject.error ?? error;
       }
     } else if (exception instanceof Error) {
-      this.logger.error(
-        `Unhandled Exception: ${exception.message} at ${request.method} ${request.url}`,
-        exception.stack,
-      );
+      this.logger.error(`Unhandled ${exception.name} at ${request.method} ${requestPath}`);
+      if (process.env.NODE_ENV !== 'production') this.logger.debug(exception.stack);
     } else {
       this.logger.error(
-        `Unhandled Exception at ${request.method} ${request.url}: ${String(exception)}`,
+        `Unhandled Exception at ${request.method} ${requestPath}`,
       );
     }
 
     if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR && exception instanceof HttpException) {
       this.logger.error(
-        `HTTP ${statusCode} at ${request.method} ${request.url}: ${JSON.stringify(message)}`,
+        `HTTP ${statusCode} at ${request.method} ${requestPath}`,
       );
     }
 
@@ -65,7 +65,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode,
       message,
       error,
-      path: request.url,
+      path: requestPath,
       timestamp,
     });
   }

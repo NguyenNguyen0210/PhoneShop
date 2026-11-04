@@ -208,7 +208,16 @@ export const CartPage: React.FC = () => {
     try {
       const token = localStorage.getItem('phoneshop_access_token');
       if (token) {
-        const validation = await cartService.validateCart();
+        // The server may not yet have a just-added item. Sync first, then
+        // validate only the rows being purchased; invalid unrelated cart
+        // items must not block checkout.
+        await useCartStore.getState().waitForCartWrites();
+        await useCartStore.getState().syncWithBackend();
+        const selectedVariants = useCartStore.getState().selectedItems().map((item) => item.variantId);
+        if (selectedVariants.length === 0) {
+          throw new Error('No selected cart items remain after synchronization');
+        }
+        const validation = await cartService.validateCart(selectedVariants);
         if (validation && (validation.valid === false || (validation.issues && validation.issues.length > 0))) {
           Modal.warning({
             title: 'Giỏ hàng đã có thay đổi',

@@ -77,6 +77,12 @@ export class OrdersService {
     @Optional() private readonly settingsService?: SystemSettingsService,
   ) {}
 
+  private withShippingSnapshot<T extends { address?: any; shippingAddressSnapshot?: any }>(order: T): T {
+    return order.shippingAddressSnapshot
+      ? { ...order, address: order.shippingAddressSnapshot }
+      : order;
+  }
+
   private generateOrderNumber(): string {
     return `ORD-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
   }
@@ -121,7 +127,7 @@ export class OrdersService {
     const paid = await tx.payment?.findFirst?.({
       where: {
         orderId,
-        status: { in: [PaymentStatus.PAID, PaymentStatus.PROCESSING] },
+        status: { in: [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED, PaymentStatus.PROCESSING] },
       },
       select: { id: true },
     });
@@ -199,6 +205,10 @@ export class OrdersService {
       throw new BadRequestException('Cart is empty');
     }
 
+    // An explicitly empty selection must never silently purchase the whole cart.
+    if (dto.selectedItemIds && dto.selectedItemIds.length === 0) {
+      throw new BadRequestException('Select at least one cart item to checkout');
+    }
     let itemsToCheckout = cart.items;
     if (dto.selectedItemIds && dto.selectedItemIds.length > 0) {
       const selectedSet = new Set(dto.selectedItemIds);
@@ -286,6 +296,7 @@ export class OrdersService {
         }
 
         let effectiveUnitPrice = Number(fresh.price);
+        (item as any).flashSaleItemId = null;
 
         // Dynamic Price Engine: Check if variant is in an active flash sale campaign
         const activeFlashItem = tx.flashSaleItem?.findFirst
@@ -334,6 +345,7 @@ export class OrdersService {
 
             if (reserved.count > 0) {
               effectiveUnitPrice = Number(activeFlashItem.flashPrice);
+              (item as any).flashSaleItemId = activeFlashItem.id;
             }
             // count === 0 → quota was exhausted between the cart display and
             // this checkout. Sell at the NORMAL catalog price instead of
@@ -453,6 +465,7 @@ export class OrdersService {
         discountAmount: number;
         totalPrice: number;
         imeiDeviceId: string;
+        flashSaleItemId: string | null;
       }> = [];
 
       for (const item of itemsToCheckout) {
@@ -486,6 +499,7 @@ export class OrdersService {
             discountAmount: 0,
             totalPrice: Number(item.unitPrice),
             imeiDeviceId: imei.id,
+            flashSaleItemId: (item as any).flashSaleItemId ?? null,
           });
         }
 
@@ -511,6 +525,12 @@ export class OrdersService {
           orderNumber: this.generateOrderNumber(),
           userId,
           addressId: dto.addressId,
+          shippingAddressSnapshot: {
+            recipientName: addr.recipientName, phone: addr.phone,
+            addressLine1: addr.addressLine1, addressLine2: addr.addressLine2,
+            ward: addr.ward, district: addr.district, city: addr.city,
+            province: addr.province, postalCode: addr.postalCode, country: addr.country,
+          },
           subtotal,
           discountAmount,
           shippingFee,
@@ -706,6 +726,7 @@ export class OrdersService {
   }
 
   private toClientOrder(o: any) {
+    o = this.withShippingSnapshot(o);
     const customerName =
       o.address?.recipientName ||
       (o.user
@@ -721,6 +742,7 @@ export class OrdersService {
       ?.find((t: any) => t.providerReference === 'CUSTOMER_REPORTED');
     const primaryPayment =
       o.payments?.find((p: any) => p.status === 'PAID') ||
+      o.payments?.find((p: any) => p.status === 'PARTIALLY_REFUNDED') ||
       o.payments?.find((p: any) => p.status === 'PENDING' && (p.method === 'BANK_TRANSFER' || p.method === 'VIETQR')) ||
       o.payments?.[0];
     const discount =
@@ -808,6 +830,8 @@ export class OrdersService {
       const searchTerm = query.search.trim();
       where.OR = [
         { orderNumber: { contains: searchTerm, mode: 'insensitive' } },
+        { shippingAddressSnapshot: { path: ['recipientName'], string_contains: searchTerm, mode: 'insensitive' } },
+        { shippingAddressSnapshot: { path: ['phone'], string_contains: searchTerm } },
         { address: { recipientName: { contains: searchTerm, mode: 'insensitive' } } },
         { address: { phone: { contains: searchTerm, mode: 'insensitive' } } },
         { user: { phone: { contains: searchTerm, mode: 'insensitive' } } },
@@ -848,7 +872,8 @@ export class OrdersService {
       }),
     ]);
 
-    const data = orders.map((o) => {
+    const data = orders.map((raw) => {
+      const o = this.withShippingSnapshot(raw);
       const customerName =
         o.address?.recipientName ||
         (o.user ? `${o.user.lastName || ''} ${o.user.firstName || ''}`.trim() : 'Khách hàng');
@@ -861,6 +886,7 @@ export class OrdersService {
         ?.find((t: any) => t.providerReference === 'CUSTOMER_REPORTED');
       const primaryPayment =
         o.payments?.find((p: any) => p.status === 'PAID') ||
+        o.payments?.find((p: any) => p.status === 'PARTIALLY_REFUNDED') ||
         o.payments?.find((p: any) => p.status === 'PENDING' && (p.method === 'BANK_TRANSFER' || p.method === 'VIETQR')) ||
         o.payments?.[0];
 
@@ -929,6 +955,7 @@ export class OrdersService {
       }));
     if (!order) throw new NotFoundException('Order not found');
 
+    Object.assign(order, this.withShippingSnapshot(order));
     const customerName =
       order.address?.recipientName ||
       (order.user ? `${order.user.lastName || ''} ${order.user.firstName || ''}`.trim() : 'Khách hàng');
@@ -941,6 +968,7 @@ export class OrdersService {
       ?.find((t: any) => t.providerReference === 'CUSTOMER_REPORTED');
     const primaryPayment =
       order.payments?.find((p: any) => p.status === 'PAID') ||
+      order.payments?.find((p: any) => p.status === 'PARTIALLY_REFUNDED') ||
       order.payments?.find((p: any) => p.status === 'PENDING' && (p.method === 'BANK_TRANSFER' || p.method === 'VIETQR')) ||
       order.payments?.[0];
 
@@ -989,13 +1017,21 @@ export class OrdersService {
     items: Array<{ variantId: string; quantity: number }>,
   ): Promise<void> {
     for (const item of items) {
-      await tx.inventory.updateMany({
+      const changed = await tx.inventory.updateMany({
         where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
         data: {
           reservedQty: { decrement: item.quantity },
           quantity: { decrement: item.quantity },
         },
       });
+      if (changed.count !== 1) throw new ConflictException('Inventory reservation is missing');
+      const inv = await tx.inventory.findUnique({ where: { variantId: item.variantId } });
+      await tx.stockMovement.create({ data: {
+        variantId: item.variantId, type: StockMovementType.EXPORT_ORDER,
+        quantity: -item.quantity, balanceBefore: inv.quantity + item.quantity,
+        balanceAfter: inv.quantity, referenceType: 'CARRIER_RETURN',
+        note: 'Quarantine carrier return; restock only after QC',
+      } });
     }
   }
 
@@ -1102,6 +1138,11 @@ export class OrdersService {
     staffId?: string,
     reason?: string,
     shippingInfo?: { providerName?: string; trackingNumber?: string; estimatedDeliveryDate?: string },
+    carrierUpdate?: {
+      id: string;
+      previousStatus: ShippingStatus;
+      data: Prisma.ShippingUpdateManyMutationInput;
+    },
   ) {
     const order = await this.findOne(id);
     // Guarded-transition anchor: the final write re-checks this status so a
@@ -1113,6 +1154,15 @@ export class OrdersService {
     // second request fails with "Cannot transition from X to X" even though
     // the first one already did the job. No side effects run on this path.
     if (oldStatus === newStatus) {
+      if (carrierUpdate) {
+        const changed = await this.prisma.shipping.updateMany({
+          where: { id: carrierUpdate.id, status: carrierUpdate.previousStatus },
+          data: carrierUpdate.data,
+        });
+        if (changed.count !== 1) {
+          throw new ConflictException('Shipping state changed concurrently');
+        }
+      }
       return order;
     }
 
@@ -1134,8 +1184,17 @@ export class OrdersService {
       [OrderStatus.DELIVERED]:  [OrderStatus.COMPLETED],
     };
 
+    // A carrier pickup may advance a confirmed/processing order through
+    // packing directly to shipping. Both milestones must commit alongside the
+    // carrier update; two separate transitions can leave a phantom PACKED
+    // order when the carrier write loses a race.
+    const carrierPickup = Boolean(
+      carrierUpdate &&
+      newStatus === OrderStatus.SHIPPING &&
+      ([OrderStatus.CONFIRMED, OrderStatus.PROCESSING] as OrderStatus[]).includes(oldStatus),
+    );
     const allowed = allowedTransitions[order.status] || [];
-    if (!allowed.includes(newStatus)) {
+    if (!allowed.includes(newStatus) && !carrierPickup) {
       throw new BadRequestException(
         `Cannot transition from ${order.status} to ${newStatus}`,
       );
@@ -1146,6 +1205,7 @@ export class OrdersService {
     if (newStatus === OrderStatus.CONFIRMED)  data.confirmedAt  = now;
     if (newStatus === OrderStatus.PACKED)     data.packedAt     = now;
     if (newStatus === OrderStatus.SHIPPING)   data.shippedAt    = now;
+    if (carrierPickup)                        data.packedAt     = now;
     if (newStatus === OrderStatus.DELIVERED)  data.deliveredAt  = now;
     if (newStatus === OrderStatus.COMPLETED)  data.completedAt  = now;
     if (newStatus === OrderStatus.CANCELLED)  data.cancelledAt  = now;
@@ -1154,6 +1214,15 @@ export class OrdersService {
     if (newStatus === OrderStatus.CANCELLED && reason) data.cancelledReason = reason;
 
     const result = await this.prisma.$transaction(async (tx) => {
+      if ([OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.PACKED,
+        OrderStatus.SHIPPING, OrderStatus.DELIVERED, OrderStatus.COMPLETED].includes(newStatus as any)) {
+        const payments = await tx.payment.findMany({ where: { orderId: id } });
+        const paid = payments.some((p) => [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED].includes(p.status as any));
+        const cod = payments.some((p) => p.method === PaymentMethod.COD && p.status === PaymentStatus.PENDING);
+        if (!paid && !cod) {
+          throw new BadRequestException('Online orders must be paid before fulfillment');
+        }
+      }
       // When transitioning from PENDING, CONFIRMED, PROCESSING, or PACKED to CANCELLED: release reserved IMEIs back to AVAILABLE and restore inventory availableQty
       if (
         newStatus === OrderStatus.CANCELLED &&
@@ -1170,55 +1239,24 @@ export class OrdersService {
       // RESERVED (pre-settlement) or SOLD (post-settlement) forever — dead
       // stock no sweep or cancel path could reach.
       if (newStatus === OrderStatus.RETURNED && order.status === OrderStatus.SHIPPING) {
-        const hasPaidPayment = await tx.payment?.findFirst?.({
-          where: {
-            orderId: id,
-            status: { in: [PaymentStatus.PAID, PaymentStatus.PROCESSING] },
-          },
-          select: { id: true },
-        });
-
-        if (!hasPaidPayment) {
-          // COD / Chưa thanh toán: Hoàn trả IMEI về AVAILABLE, trừ reservedQty
-          await this.rollbackVoucherUsage(tx, order);
-          if (tx.payment?.updateMany) {
-            await tx.payment.updateMany({
-              where: { orderId: id, status: PaymentStatus.PENDING },
-              data: { status: PaymentStatus.CANCELLED },
+        // Carrier returns are quarantined regardless of payment method. Consume
+        // the original hold once; only explicit QC release can restock them.
+        await this.settleInventory(tx, order.items);
+        for (const item of order.items) {
+          if (item.imeiDeviceId) {
+            const changed = await tx.imeiDevice.updateMany({
+              where: { id: item.imeiDeviceId, status: { in: [ImeiStatus.RESERVED, ImeiStatus.SOLD] } },
+              data: { status: ImeiStatus.RETURNED },
             });
+            if (changed.count !== 1) throw new ConflictException('Returned device state changed');
           }
-          for (const item of order.items) {
-            if (item.imeiDeviceId) {
-              await tx.imeiDevice.updateMany({
-                where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
-                data: { status: ImeiStatus.AVAILABLE },
-              });
-            }
-            if (tx.inventory?.updateMany) {
-              await tx.inventory.updateMany({
-                where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
-                data: {
-                  reservedQty: { decrement: item.quantity },
-                  availableQty: { increment: item.quantity },
-                },
-              });
-            }
-          }
-          await rollbackFlashSoldCount(tx, order.items, order.createdAt);
-        } else {
-          // Đã thanh toán (VNPAY/VietQR): Bỏ qua assertNoCapturedPayment
-          // Chuyển IMEI sang RETURNED (chờ kiểm tra), hủy bảo hành
-          for (const item of order.items) {
-            if (item.imeiDeviceId) {
-              await tx.imeiDevice.updateMany({
-                where: { id: item.imeiDeviceId },
-                data: { status: ImeiStatus.RETURNED },
-              });
-            }
-          }
-          await this.rollbackVoucherUsage(tx, order);
-          await rollbackFlashSoldCount(tx, order.items, order.createdAt);
         }
+        await tx.payment.updateMany({
+          where: { orderId: id, status: PaymentStatus.PENDING },
+          data: { status: PaymentStatus.CANCELLED },
+        });
+        await this.rollbackVoucherUsage(tx, order);
+        await rollbackFlashSoldCount(tx, order.items, order.createdAt);
         await this.warrantyService?.voidWarrantiesForOrder(tx, id);
       }
 
@@ -1243,7 +1281,7 @@ export class OrdersService {
                 reservedQty: { decrement: item.quantity },
               },
             });
-            if (settled.count === 0) continue;
+            if (settled.count === 0) throw new ConflictException('Inventory reservation is missing');
 
             const inv = await tx.inventory.findUnique({ where: { variantId: item.variantId } });
             const balanceAfter = inv ? inv.quantity : 0;
@@ -1274,14 +1312,17 @@ export class OrdersService {
           .map((item) => item.imeiDeviceId)
           .filter((imeiId): imeiId is string => Boolean(imeiId));
 
-        if (imeiIds.length > 0) {
-          await tx.imeiDevice.updateMany({
+        if (imeiIds.length > 0 && oldStatus !== OrderStatus.DELIVERED) {
+          const devicesSold = await tx.imeiDevice.updateMany({
             where: { id: { in: imeiIds }, status: ImeiStatus.RESERVED },
             data: {
               status: ImeiStatus.SOLD,
               soldAt: now,
             },
           });
+          if (devicesSold.count !== imeiIds.length) {
+            throw new ConflictException('Assigned devices are no longer reserved');
+          }
         }
 
         // P3: cash is collected at the door — flip pending COD payments to
@@ -1345,8 +1386,9 @@ export class OrdersService {
           const warrantyCode = `WRT-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
           await tx.warranty.upsert({
             where: { orderItemId: item.id },
-            // Never overwrite an existing (e.g. IPN-created) warranty's dates.
-            update: {},
+            // Normalize legacy payment-created warranties on first delivery;
+            // completing an already delivered order never extends coverage.
+            update: newStatus === OrderStatus.DELIVERED ? { startDate, endDate } : {},
             create: {
               userId: order.userId,
               productVariantId: item.variantId,
@@ -1371,6 +1413,7 @@ export class OrdersService {
       // overwritten. updateMany is a no-op for orders without a shipping row.
       if (
         (newStatus === OrderStatus.DELIVERED || newStatus === OrderStatus.COMPLETED) &&
+        !carrierUpdate &&
         tx.shipping?.updateMany
       ) {
         await tx.shipping.updateMany({
@@ -1384,7 +1427,7 @@ export class OrdersService {
         });
       }
 
-      if (newStatus === OrderStatus.SHIPPING && tx.shipping) {
+      if (newStatus === OrderStatus.SHIPPING && tx.shipping && !carrierUpdate) {
         const shippingUpdateData: any = {
           status: ShippingStatus.READY_TO_SHIP,
           shippedAt: now,
@@ -1425,6 +1468,18 @@ export class OrdersService {
         throw new ConflictException(
           `Order status changed concurrently (expected ${oldStatus}); please refresh and retry`,
         );
+      }
+
+      // The carrier row and the corresponding order transition must commit
+      // together. A failed guard rolls back stock, warranty and order writes.
+      if (carrierUpdate) {
+        const changed = await tx.shipping.updateMany({
+          where: { id: carrierUpdate.id, status: carrierUpdate.previousStatus },
+          data: carrierUpdate.data,
+        });
+        if (changed.count !== 1) {
+          throw new ConflictException('Shipping state changed concurrently');
+        }
       }
 
       if (newStatus === OrderStatus.CANCELLED && staffId && tx.auditLog?.create) {
@@ -1525,7 +1580,7 @@ export class OrdersService {
     // P2: a paid order must never be cancelled directly by buyer into thin air.
     // Buyers should contact support.
     const paidPayment = await this.prisma.payment.findFirst({
-      where: { orderId: id, status: PaymentStatus.PAID },
+      where: { orderId: id, status: { in: [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED, PaymentStatus.PROCESSING] } },
       select: { id: true },
     });
     if (paidPayment) {
@@ -1588,182 +1643,209 @@ export class OrdersService {
   }
 
   async processRefund(orderId: string, dto: RefundOrderDto, actorId?: string) {
+    // This records a refund ALREADY COMPLETED with an external provider.
+    // No refund request is sent to VNPay or the bank by this endpoint.
     const order = await this.prisma.order.findUnique({
       where: isUuid(orderId) ? { id: orderId } : { orderNumber: orderId },
-      include: {
-        payments: true,
-        items: {
-          include: {
-            warranty: true,
-            imeiDevice: true,
-          },
-        },
-      },
+      include: { payments: true, items: true },
     });
+    if (!order) throw new NotFoundException('Order not found');
 
-    if (!order) {
-      throw new NotFoundException('Order not found');
+    const refundableStatuses: OrderStatus[] = [
+      OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.PACKED,
+      OrderStatus.CANCELLED,
+      OrderStatus.DELIVERED,
+      OrderStatus.COMPLETED,
+      OrderStatus.RETURNED, // Carrier return may precede financial refund.
+    ];
+    if (!refundableStatuses.includes(order.status)) {
+      throw new BadRequestException('Refund requires an order before dispatch, delivered, or returned');
     }
 
-    if (order.status === OrderStatus.RETURNED) {
-      throw new BadRequestException('Order has already been returned and refunded');
-    }
-
-    const payment = order.payments?.find((p) => p.status === PaymentStatus.PAID);
+    const payment = order.payments.find((p) =>
+      p.status === PaymentStatus.PAID || p.status === PaymentStatus.PARTIALLY_REFUNDED,
+    );
     if (!payment) {
-      throw new BadRequestException('Order does not have a paid payment to refund');
+      throw new BadRequestException('Order has no paid payment eligible for refund');
     }
 
-    const refundAmount = dto.amount !== undefined ? dto.amount : Number(payment.amount);
-
-    if (refundAmount <= 0 || refundAmount > Number(payment.amount)) {
-      throw new BadRequestException('Refund amount cannot exceed paid payment amount');
+    const beforeDispatch = CANCELLABLE_STATUSES.includes(order.status) || order.status === OrderStatus.CANCELLED;
+    const amount = Number(dto.amount);
+    if (!Number.isFinite(amount)) {
+      throw new BadRequestException('Refund amount must be finite');
     }
-
-    const refundTxCode = `REF-${Date.now()}-${orderId.slice(0, 8)}`;
-    const isFullRefund = refundAmount >= Number(payment.amount);
-    const newPaymentStatus = isFullRefund ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED;
+    const requestedAmount = new Prisma.Decimal(amount);
+    const originalAmount = new Prisma.Decimal(payment.amount);
+    if (
+      requestedAmount.decimalPlaces() > 2 ||
+      requestedAmount.lte(0) ||
+      requestedAmount.gt(originalAmount)
+    ) {
+      throw new BadRequestException('Refund must be between zero and the paid amount');
+    }
+    const reference = dto.providerReference?.trim();
+    if (!reference) {
+      throw new BadRequestException('Reference of a completed external refund is required');
+    }
 
     const result = await this.prisma.$transaction(async (tx) => {
-      // 1. Tạo PaymentTransaction
-      const paymentTx = await tx.paymentTransaction.create({
-        data: {
+      // A conditional write locks the payment row for this transaction.
+      // Even an already PARTIALLY_REFUNDED row is updated so concurrent
+      // refunds serialize before querying the successful refund total.
+      const claimed = await tx.payment.updateMany({
+        where: { id: payment.id, status: payment.status },
+        data: { status: PaymentStatus.PARTIALLY_REFUNDED },
+      });
+      if (claimed.count !== 1) {
+        throw new ConflictException('Payment was already refunded or changed');
+      }
+
+      const priorRefunds = await tx.paymentTransaction.aggregate({
+        where: {
           paymentId: payment.id,
-          transactionCode: refundTxCode,
-          type: TransactionType.REFUND,
+          type: { in: [TransactionType.REFUND, TransactionType.PARTIAL_REFUND] },
           status: TransactionStatus.SUCCESS,
-          amount: refundAmount,
-          providerReference: dto.providerReference || null,
-          responseData: {
+        },
+        _sum: { amount: true },
+      });
+      const refundedAmount = new Prisma.Decimal(priorRefunds._sum.amount ?? 0);
+      const remainingAmount = originalAmount.minus(refundedAmount);
+      if (requestedAmount.gt(remainingAmount)) {
+        throw new BadRequestException('Refund exceeds the remaining paid amount');
+      }
+      const fullRefund = requestedAmount.eq(remainingAmount);
+      const nextPaymentStatus = fullRefund
+        ? PaymentStatus.REFUNDED
+        : PaymentStatus.PARTIALLY_REFUNDED;
+      const nextOrderStatus = fullRefund
+        ? (beforeDispatch ? OrderStatus.CANCELLED : OrderStatus.RETURNED)
+        : order.status;
+      if (fullRefund) {
+        await tx.payment.update({
+          where: { id: payment.id },
+          data: { status: PaymentStatus.REFUNDED },
+        });
+      }
+
+      const guardedOrder = await tx.order.updateMany({
+        where: { id: order.id, status: order.status },
+        data: { status: nextOrderStatus,
+          ...(fullRefund && beforeDispatch ? { cancelledAt: new Date(), cancelledReason: dto.reason } : {}),
+        },
+      });
+      if (guardedOrder.count !== 1) {
+        throw new ConflictException('Order changed during refund');
+      }
+      if (fullRefund) {
+        await tx.payment.updateMany({
+          where: { orderId: order.id, status: PaymentStatus.PENDING },
+          data: { status: PaymentStatus.CANCELLED },
+        });
+      }
+
+      const existingReference = await tx.paymentTransaction.findFirst({
+        where: {
+          providerReference: reference,
+          type: { in: [TransactionType.REFUND, TransactionType.PARTIAL_REFUND] },
+          status: TransactionStatus.SUCCESS,
+        },
+        select: { id: true },
+      });
+      if (existingReference) {
+        throw new ConflictException('External refund reference already recorded');
+      }
+
+      let paymentTx;
+      try {
+        paymentTx = await tx.paymentTransaction.create({
+          data: {
+            paymentId: payment.id,
+            transactionCode: `REF-${Date.now()}-${randomBytes(4).toString('hex')}`,
+            type: fullRefund ? TransactionType.REFUND : TransactionType.PARTIAL_REFUND,
+            status: TransactionStatus.SUCCESS,
+            amount,
+            providerReference: reference,
+            responseData: {
+              reason: dto.reason,
+              actorId: actorId ?? null,
+              confirmationType: 'MANUAL_EXTERNAL_REFUND',
+              confirmedAt: new Date().toISOString(),
+            },
+          },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          throw new ConflictException('External refund reference already recorded');
+        }
+        throw error;
+      }
+
+      if (fullRefund && order.status !== OrderStatus.RETURNED) {
+        if (beforeDispatch && order.status !== OrderStatus.CANCELLED) {
+          for (const item of order.items) {
+            if (item.imeiDeviceId) {
+              const changed = await tx.imeiDevice.updateMany({
+                where: { id: item.imeiDeviceId, status: { in: [ImeiStatus.RESERVED, ImeiStatus.SOLD] } },
+                data: { status: ImeiStatus.AVAILABLE, soldAt: null },
+              });
+              if (changed.count !== 1) throw new ConflictException('Reserved device state changed');
+            }
+            const released = await tx.inventory.updateMany({
+              where: { variantId: item.variantId, reservedQty: { gte: item.quantity } },
+              data: { reservedQty: { decrement: item.quantity }, availableQty: { increment: item.quantity } },
+            });
+            if (released.count !== 1) throw new ConflictException('Inventory reservation is missing');
+          }
+        } else if (!beforeDispatch) {
+          const imeiIds = order.items.map((item) => item.imeiDeviceId).filter((id): id is string => Boolean(id));
+          if (imeiIds.length) await tx.imeiDevice.updateMany({
+            where: { id: { in: imeiIds } }, data: { status: ImeiStatus.RETURNED },
+          });
+        }
+        // The returned device must pass physical receipt and QC before
+        // separate inventory import. No available stock is created here.
+        await this.rollbackVoucherUsage(tx, order);
+        await rollbackFlashSoldCount(tx, order.items, order.createdAt);
+        await this.warrantyService?.voidWarrantiesForOrder(tx, order.id);
+      }
+
+      await tx.auditLog.create({
+        data: {
+          action: AuditAction.REFUND,
+          entity: 'Order',
+          entityId: order.id,
+          userId: actorId || null,
+          oldData: { status: order.status, paymentStatus: payment.status },
+          newData: {
+            status: nextOrderStatus,
+            paymentStatus: nextPaymentStatus,
+            amount,
             reason: dto.reason,
-            actorId,
-            refundedAt: new Date().toISOString(),
+            providerReference: reference,
           },
         },
       });
 
-      // 2. Cập nhật Payment.status
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: { status: newPaymentStatus },
-      });
-
-      // 3. Cập nhật Order.status = RETURNED
-      if (tx.order?.updateMany) {
-        await tx.order.updateMany({
-          where: {
-            id: order.id,
-            status: { in: [OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
-          },
-          data: { status: OrderStatus.RETURNED },
-        });
-      }
-      const updatedOrder = tx.order?.update
-        ? await tx.order.update({
-            where: { id: order.id },
-            data: { status: OrderStatus.RETURNED },
-          })
-        : { ...order, status: OrderStatus.RETURNED };
-
-      // 4. Cập nhật ImeiDevice liên quan sang status: RETURNED
-      const imeiDeviceIds = (order.items || [])
-        .map((item: any) => item.imeiDeviceId)
-        .filter((id: any): id is string => Boolean(id));
-
-      if (imeiDeviceIds.length > 0 && tx.imeiDevice?.updateMany) {
-        await tx.imeiDevice.updateMany({
-          where: { id: { in: imeiDeviceIds } },
-          data: { status: ImeiStatus.RETURNED },
-        });
-      }
-
-      // 5. Cập nhật Inventory & Tạo StockMovement (type: StockMovementType.IMPORT_RETURN)
-      for (const item of (order.items || [])) {
-        if (tx.inventory?.updateMany) {
-          await tx.inventory.updateMany({
-            where: { variantId: item.variantId },
-            data: {
-              quantity: { increment: item.quantity },
-              availableQty: { increment: item.quantity },
-            },
-          });
-        }
-
-        if (tx.stockMovement?.create) {
-          const fresh = tx.inventory?.findUnique
-            ? await tx.inventory.findUnique({ where: { variantId: item.variantId } })
-            : null;
-          const balanceAfter = fresh ? fresh.quantity : item.quantity;
-          const unitPrice = Number(item.unitPrice || 0);
-
-          await tx.stockMovement.create({
-            data: {
-              variantId: item.variantId,
-              type: StockMovementType.IMPORT_RETURN,
-              quantity: item.quantity,
-              balanceBefore: balanceAfter - item.quantity,
-              balanceAfter,
-              unitPrice,
-              totalAmount: item.quantity * unitPrice,
-              referenceType: 'ORDER_REFUND',
-              referenceId: order.id,
-              performedBy: actorId || null,
-              note: `Hoàn tiền đơn hàng: ${dto.reason}`,
-            },
-          });
-        }
-      }
-
-      // 6. Hủy hiệu lực Warranty
-      if (this.warrantyService?.voidWarrantiesForOrder) {
-        await this.warrantyService.voidWarrantiesForOrder(tx, order.id);
-      } else if (tx.warranty?.updateMany) {
-        await tx.warranty.updateMany({
-          where: { orderItem: { orderId: order.id }, status: WarrantyStatus.ACTIVE },
-          data: { status: WarrantyStatus.VOIDED },
-        });
-      }
-
-      // 7. Ghi audit log
-      if (tx.auditLog?.create) {
-        await tx.auditLog.create({
-          data: {
-            action: AuditAction.REFUND,
-            entity: 'Order',
-            entityId: order.id,
-            userId: actorId || null,
-            oldData: { status: order.status, paymentStatus: payment.status },
-            newData: {
-              status: OrderStatus.RETURNED,
-              paymentStatus: newPaymentStatus,
-              refundAmount: refundAmount,
-              reason: dto.reason,
-              providerReference: dto.providerReference,
-            },
-          },
-        });
-      }
-
-      return { order: updatedOrder, paymentTx };
+      return {
+        order: { ...order, status: nextOrderStatus },
+        paymentTx,
+      };
     });
 
-    // 8. Gửi notification cho khách hàng
     if (this.notificationsService && order.userId) {
-      await this.notificationsService
-        .sendToUser(
-          order.userId,
-          NotificationType.PAYMENT,
-          'Hoàn tiền đơn hàng thành công',
-          `Đơn hàng #${order.orderNumber} đã được hoàn tiền ${refundAmount.toLocaleString('vi-VN')}₫. Lý do: ${dto.reason}`,
-          { orderId: order.id, amount: refundAmount, reason: dto.reason },
-        )
-        .catch((notifErr) =>
-          this.logger.warn(
-            `Failed to send refund notification for ${order.id}: ${(notifErr as Error).message}`,
-          ),
-        );
+      await this.notificationsService.sendToUser(
+        order.userId,
+        NotificationType.PAYMENT,
+        'Refund confirmed',
+        `Refund of ${amount.toLocaleString('vi-VN')} VND was confirmed for order #${order.orderNumber}.`,
+        { orderId: order.id, amount, reason: dto.reason },
+      ).catch((error) => this.logger.warn(
+        `Refund notification failed for ${order.id}: ${(error as Error).message}`,
+      ));
     }
-
     return result;
   }
 }

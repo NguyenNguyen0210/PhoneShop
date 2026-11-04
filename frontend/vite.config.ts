@@ -14,34 +14,6 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id: string) {
-          const vendorChunks: Record<string, string[]> = {
-            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-            'vendor-antd': ['antd', '@ant-design/icons'],
-            'vendor-charts': ['chart.js', 'react-chartjs-2'],
-            'vendor-utils': ['axios', 'dayjs', 'lucide-react'],
-          };
-          for (const [chunk, pkgs] of Object.entries(vendorChunks)) {
-            if (
-              pkgs.some(
-                (pkg) =>
-                  id.includes(`/node_modules/${pkg}/`) ||
-                  id.includes(`\\node_modules\\${pkg}\\`) ||
-                  (pkg === 'react-router-dom' &&
-                    (id.includes('/node_modules/react-router/') ||
-                      id.includes('\\node_modules\\react-router\\')))
-              )
-            ) {
-              return chunk;
-            }
-          }
-        },
-      },
-    },
-  },
   server: {
     allowedHosts: [
       'localhost',

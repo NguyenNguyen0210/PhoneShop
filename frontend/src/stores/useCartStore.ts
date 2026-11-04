@@ -45,6 +45,57 @@ const CART_SYNC_FAIL_MSG =
 // Single-flight guard: concurrent syncs would double-push pending items (the
 // add API merges quantities) and fire duplicate /cart reads.
 let syncInFlight: Promise<void> | null = null;
+// Ignore server snapshots fetched before the user modified the local cart.
+let cartRevision = 0;
+
+// Checkout must not race with an earlier fire-and-forget add/update/delete.
+// In particular, POST /cart/items increments quantity rather than replacing it.
+const pendingCartWrites = new Set<Promise<unknown>>();
+// Keep cart writes in user-action order. Otherwise a PATCH/DELETE can arrive
+// before the POST that created a row, or an older PATCH can overwrite a newer
+// quantity. Guard queued writes against logout/account changes as well.
+let cartWriteTail: Promise<void> = Promise.resolve();
+const cartToken = () => localStorage.getItem('phoneshop_access_token');
+// Access tokens rotate during refresh; a user's cart session does not.
+// Use the authenticated principal plus a local logout/account-reset epoch.
+let cartSessionEpoch = 0;
+const cartPrincipal = (): string | null => {
+  try {
+    const user = JSON.parse(localStorage.getItem('phoneshop_user') || 'null');
+    return user?.id ?? user?.email ?? null;
+  } catch {
+    return null;
+  }
+};
+const captureCartSession = () => ({ principal: cartPrincipal(), epoch: cartSessionEpoch });
+const isCurrentCartSession = (session: ReturnType<typeof captureCartSession>) =>
+  Boolean(cartToken()) &&
+  session.principal === cartPrincipal() &&
+  session.epoch === cartSessionEpoch;
+const trackCartWrite = <T>(write: () => Promise<T>): Promise<T> => {
+  const session = captureCartSession();
+  const request = cartWriteTail.then(() => {
+    if (!isCurrentCartSession(session)) {
+      throw new Error('Cart session changed before write');
+    }
+    return write();
+  });
+  cartWriteTail = request.then(() => {}, () => {});
+  pendingCartWrites.add(request);
+  void request.then(
+    () => pendingCartWrites.delete(request),
+    () => pendingCartWrites.delete(request),
+  );
+  return request;
+};
+
+const persistAddedQuantity = (variantId: string, quantity: number) => {
+  const session = captureCartSession();
+  // A later successful add does not repair an earlier failed add. Keep any
+  // existing pending marker until a sync sets the absolute local quantity.
+  trackCartWrite(() => cartService.addToCart(variantId, quantity))
+    .catch(() => { if (isCurrentCartSession(session)) markPending(variantId); });
+};
 
 interface CartState {
   items: CartItem[];
@@ -80,11 +131,14 @@ interface CartState {
   selectAll: () => void;
   deselectAll: () => void;
   removeSelectedItems: () => void;
+  /** Checkout already removed purchased rows on the server; only clear local state. */
+  removeCheckedOutItems: () => void;
   selectedItems: () => CartItem[];
   selectedSubtotal: () => number;
   selectedTotalCount: () => number;
   isAllSelected: () => boolean;
   syncWithBackend: () => Promise<void>;
+  waitForCartWrites: () => Promise<void>;
   reconcileWithFlashSale: (campaign: any) => void;
 }
 
@@ -189,13 +243,11 @@ export const useCartStore = create<CartState>()(
         }
 
         set({ items: newItems });
+        cartRevision++;
 
         // Đẩy ngay khi có mạng; thất bại/offline thì đánh dấu pending để sync đẩy 1 lần.
         if (hasAccessToken()) {
-          cartService
-            .addToCart(variant.id, qty)
-            .then(() => clearPending(variant.id))
-            .catch(() => markPending(variant.id));
+          persistAddedQuantity(variant.id, qty);
         } else {
           markPending(variant.id);
         }
@@ -300,12 +352,10 @@ export const useCartStore = create<CartState>()(
         // Checkout only proceeds with selected items — select just this one
         // so /checkout never bounces to /cart on an empty selection.
         set({ items: newItems, selectedItemIds: [targetId] });
+        cartRevision++;
 
         if (hasAccessToken()) {
-          cartService
-            .addToCart(variant.id, qty)
-            .then(() => clearPending(variant.id))
-            .catch(() => markPending(variant.id));
+          persistAddedQuantity(variant.id, qty);
         } else {
           markPending(variant.id);
         }
@@ -313,15 +363,18 @@ export const useCartStore = create<CartState>()(
 
       removeItem: (itemId: string) => {
         const itemToRemove = get().items.find((i) => i.id === itemId);
+        cartRevision++;
         set((state) => ({
           items: state.items.filter((item) => item.id !== itemId),
           selectedItemIds: state.selectedItemIds.filter((id) => id !== itemId),
         }));
 
+        if (itemToRemove) clearPending(itemToRemove.variantId);
+
         if (itemToRemove && hasAccessToken()) {
-          cartService
-            .removeFromCart(itemToRemove.variantId)
-            .catch(() => notifyWarning(CART_SYNC_FAIL_MSG));
+          const session = captureCartSession();
+          trackCartWrite(() => cartService.removeFromCart(itemToRemove.variantId))
+            .catch(() => { if (isCurrentCartSession(session)) notifyWarning(CART_SYNC_FAIL_MSG); });
         }
       },
 
@@ -358,6 +411,7 @@ export const useCartStore = create<CartState>()(
         // The quantity THIS request is setting — used to detect whether a later
         // failure may still roll back (a newer change must win).
         const targetQty = quantity;
+        cartRevision++;
         set((state) => ({
           items: state.items.map((i) =>
             i.id === itemId ? { ...i, quantity } : i
@@ -365,10 +419,21 @@ export const useCartStore = create<CartState>()(
         }));
 
         if (item && hasAccessToken()) {
-          cartService.updateCartItem(item.variantId, quantity).catch((err) => {
+          const session = captureCartSession();
+          trackCartWrite(() => cartService.updateCartItem(item.variantId, quantity)).catch((err) => {
+            if (!isCurrentCartSession(session)) return;
+            // A prior add may have failed, or a network request may have
+            // reached the server without a response. Keep the intended local
+            // quantity for the next absolute-quantity sync instead of losing it.
+            if (readPending().includes(item.variantId) || !err?.response || err.response.status === 404) {
+              markPending(item.variantId);
+              notifyWarning(CART_SYNC_FAIL_MSG);
+              return;
+            }
             // Only restore when the current quantity is still what THIS request
             // set — otherwise a newer update already superseded it.
             if (get().items.find((i) => i.id === itemId)?.quantity === targetQty) {
+              cartRevision++;
               set((state) => ({
                 items: state.items.map((i) =>
                   i.id === itemId ? { ...i, quantity: previousQty } : i
@@ -381,13 +446,21 @@ export const useCartStore = create<CartState>()(
       },
 
       clearCart: () => {
+        cartRevision++;
         set({ items: [], selectedItemIds: [] });
+        if (typeof localStorage !== 'undefined') localStorage.removeItem(PENDING_KEY);
         if (hasAccessToken()) {
-          cartService.clearCart().catch(() => notifyWarning(CART_SYNC_FAIL_MSG));
+          const session = captureCartSession();
+          trackCartWrite(() => cartService.clearCart())
+            .catch(() => { if (isCurrentCartSession(session)) notifyWarning(CART_SYNC_FAIL_MSG); });
         }
       },
 
       resetForUserChange: () => {
+        cartSessionEpoch++;
+        cartRevision++;
+        // A new account must not inherit an old account's in-flight sync.
+        syncInFlight = null;
         set({ items: [], selectedItemIds: [] });
         if (typeof localStorage !== 'undefined') {
           localStorage.removeItem(PENDING_KEY);
@@ -439,12 +512,26 @@ export const useCartStore = create<CartState>()(
         const selectedVariantIds = get()
           .items.filter((i) => selected.includes(i.id))
           .map((i) => i.variantId);
-        const remainingItems = get().items.filter((i) => !selected.includes(i.id));
-        set({ items: remainingItems, selectedItemIds: [] });
+        get().removeCheckedOutItems();
 
         if (selectedVariantIds.length > 0 && hasAccessToken()) {
-          cartService.removeBulk(selectedVariantIds).catch(() => notifyWarning(CART_SYNC_FAIL_MSG));
+          const session = captureCartSession();
+          trackCartWrite(() => cartService.removeBulk(selectedVariantIds))
+            .catch(() => { if (isCurrentCartSession(session)) notifyWarning(CART_SYNC_FAIL_MSG); });
         }
+      },
+
+      removeCheckedOutItems: () => {
+        const selected = new Set(get().selectedItemIds);
+        if (selected.size === 0) return;
+        cartRevision++;
+        const purchased = get().items.filter((i) => selected.has(i.id));
+        set((state) => ({
+          items: state.items.filter((i) => !selected.has(i.id)),
+          selectedItemIds: [],
+        }));
+        // Offline/pending variants must not be re-added on the next login/sync.
+        purchased.forEach((i) => clearPending(i.variantId));
       },
 
       selectedItems: () => {
@@ -467,6 +554,16 @@ export const useCartStore = create<CartState>()(
         return items.length > 0 && items.every((i) => selectedItemIds.includes(i.id));
       },
 
+      waitForCartWrites: async () => {
+        // An existing sync can also push pending offline items to the server.
+        while (pendingCartWrites.size > 0 || syncInFlight) {
+          await Promise.allSettled([
+            ...pendingCartWrites,
+            ...(syncInFlight ? [syncInFlight] : []),
+          ]);
+        }
+      },
+
       syncWithBackend: () => {
         // E4: share one in-flight sync — concurrent callers re-use the same
         // promise instead of duplicating pushes and /cart reads.
@@ -477,24 +574,60 @@ export const useCartStore = create<CartState>()(
           if (!hasAccessToken()) {
             return;
           }
+          const session = captureCartSession();
           try {
-            // Chỉ đẩy những variant còn pending, mỗi variant đúng 1 lần.
-            const failed: string[] = [];
+            // Wait for earlier cart writes before taking the server snapshot.
+            // Sync must not overlap a delayed add that already reached the API.
+            while (pendingCartWrites.size > 0) {
+              await Promise.allSettled([...pendingCartWrites]);
+            }
+            if (!isCurrentCartSession(session)) return;
+
+            const initialRevision = cartRevision;
+            const backendCart = await cartService.getCart();
+            const backendByVariant = new Map<string, any>(
+              (backendCart?.items || []).map((item: any) => [item.variantId, item]),
+            );
+
+            // A previous POST may have reached the server even if the browser
+            // saw a network error. Re-POSTing would double the quantity.
+            // PATCH existing rows to the locally displayed absolute quantity.
             for (const variantId of readPending()) {
+              if (cartRevision !== initialRevision || !isCurrentCartSession(session)) return;
               const item = get().items.find((i) => i.variantId === variantId);
-              if (!item) continue;
+              if (!item) {
+                clearPending(variantId);
+                continue;
+              }
               try {
-                await cartService.addToCart(variantId, item.quantity);
+                const existing = backendByVariant.get(variantId);
+                if (!existing) {
+                  await cartService.addToCart(variantId, item.quantity);
+                } else if (existing.quantity !== item.quantity) {
+                  await cartService.updateCartItem(existing.id, item.quantity);
+                }
+                if (cartRevision === initialRevision && isCurrentCartSession(session)) {
+                  clearPending(variantId);
+                }
               } catch {
-                failed.push(variantId);
+                // Leave this variant pending for the next sync attempt.
               }
             }
-            localStorage.setItem(PENDING_KEY, JSON.stringify(failed));
-            const backendCart = await cartService.getCart();
-            if (backendCart && Array.isArray(backendCart.items)) {
+            const freshCart = await cartService.getCart();
+            if (
+              freshCart && Array.isArray(freshCart.items) &&
+              cartRevision === initialRevision &&
+              isCurrentCartSession(session)
+            ) {
               const prevItems = get().items;
-              const mappedItems: CartItem[] = backendCart.items.map((bItem: any) => {
+              const unresolved = new Set(readPending());
+              const mappedItems: CartItem[] = freshCart.items.map((bItem: any) => {
                 const existing = prevItems.find((i) => i.variantId === bItem.variantId);
+                // A failed push must keep the quantity the buyer selected.
+                // Syncing a stale server quantity here would silently discard it.
+                if (existing && unresolved.has(bItem.variantId)) {
+                  return { ...existing, id: bItem.id };
+                }
                 const isFlashSale = bItem.isFlashSale ?? existing?.isFlashSale ?? false;
                 const flashQuotaLeft = bItem.flashQuotaLeft ?? existing?.flashQuotaLeft;
                 const originalPrice = Number(
@@ -521,6 +654,14 @@ export const useCartStore = create<CartState>()(
                 };
               });
 
+              // Pending local-only variants were not present in the server
+              // response when their POST failed. Keep them for later retry.
+              for (const item of prevItems) {
+                if (unresolved.has(item.variantId) && !mappedItems.some((i) => i.variantId === item.variantId)) {
+                  mappedItems.push(item);
+                }
+              }
+
               const prevSelectedSet = new Set(get().selectedItemIds);
               const prevSelectedVariantIds = new Set(
                 prevItems
@@ -544,9 +685,10 @@ export const useCartStore = create<CartState>()(
             // Keep local state on network error
           }
         };
-        syncInFlight = run().finally(() => {
-          syncInFlight = null;
+        const flight = run().finally(() => {
+          if (syncInFlight === flight) syncInFlight = null;
         });
+        syncInFlight = flight;
         return syncInFlight;
       },
 
@@ -606,6 +748,7 @@ export const useCartStore = create<CartState>()(
         });
 
         if (changed) {
+          cartRevision++;
           set({ items: newItems });
         }
       },

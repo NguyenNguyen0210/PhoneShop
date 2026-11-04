@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class GoogleAuthDto {
   @ApiProperty({ description: 'Google OAuth authorization code' })
@@ -7,9 +7,9 @@ export class GoogleAuthDto {
   @IsNotEmpty()
   code: string;
 
-  @ApiPropertyOptional({ description: 'Signed OAuth state (CSRF protection, issued by GET /auth/google/url)' })
-  @IsOptional()
+  @ApiProperty({ description: 'Signed OAuth state (CSRF protection, issued by GET /auth/google/url)' })
   @IsString()
+  @IsNotEmpty()
   @MaxLength(512)
-  state?: string;
+  state: string;
 }

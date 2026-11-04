@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateWarrantyDto, ClaimWarrantyDto } from './dto/warranty.dto';
-import { WarrantyStatus } from '@prisma/client';
+import { CreateWarrantyDto, ClaimWarrantyDto, RepairWarrantyDto } from './dto/warranty.dto';
+import { WarrantyStatus, WarrantyRepairStage, ImeiStatus, OrderStatus, AuditAction } from '@prisma/client';
 import { randomBytes } from 'crypto';
 
 @Injectable()
@@ -25,7 +25,7 @@ export class WarrantyService {
     const orderItem = await this.prisma.orderItem.findUnique({
       where: { id: dto.orderItemId },
       include: {
-        order: { select: { userId: true } },
+        order: { select: { userId: true, status: true } },
         variant: { include: { product: { select: { warrantyMonths: true } } } },
       },
     });
@@ -35,6 +35,12 @@ export class WarrantyService {
     }
     if (orderItem.variantId !== dto.productVariantId) {
       throw new BadRequestException('Order item does not match this product variant');
+    }
+    if (![OrderStatus.DELIVERED, OrderStatus.COMPLETED].includes(orderItem.order.status as any)) {
+      throw new BadRequestException('Warranty starts only after delivery');
+    }
+    if (dto.imeiDeviceId && dto.imeiDeviceId !== orderItem.imeiDeviceId) {
+      throw new BadRequestException('IMEI does not belong to the order item');
     }
     const months = orderItem.variant?.product?.warrantyMonths ?? 12;
     const startDate = new Date();
@@ -79,6 +85,7 @@ export class WarrantyService {
     return this.prisma.warranty.findMany({
       where,
       include: {
+        user: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } },
         productVariant: { include: { product: true } },
         imeiDevice: true,
       },
@@ -106,41 +113,25 @@ export class WarrantyService {
       throw new BadRequestException('Vui lòng cung cấp mã bảo hành, IMEI hoặc số điện thoại');
     }
 
-    // P4: deterministic newest-first + ACTIVE preferred.
-    // Supports lookup by warrantyCode, IMEI, Serial, or customer/order Phone number.
+    // Public lookup is restricted to an exact warranty code or device identifier.
     const orConditions: any[] = [
       { warrantyCode: { equals: clean, mode: 'insensitive' } },
       { imeiDevice: { imei: clean } },
       { imeiDevice: { serialNumber: { equals: clean, mode: 'insensitive' } } },
     ];
 
-    // Phone number detection & variant expansion
-    const digitsOnly = clean.replace(/\D/g, '');
-    if (digitsOnly.length >= 9 && digitsOnly.length <= 15) {
-      const phoneVariants = new Set<string>();
-      phoneVariants.add(clean);
-      phoneVariants.add(digitsOnly);
-      if (digitsOnly.startsWith('84') && digitsOnly.length >= 11) {
-        phoneVariants.add('0' + digitsOnly.slice(2));
-      } else if (digitsOnly.startsWith('0') && digitsOnly.length >= 10) {
-        phoneVariants.add('+84' + digitsOnly.slice(1));
-        phoneVariants.add('84' + digitsOnly.slice(1));
-      }
-      const phoneList = Array.from(phoneVariants);
-      orConditions.push(
-        { user: { phone: { in: phoneList } } },
-        { orderItem: { order: { address: { phone: { in: phoneList } } } } },
-        { orderItem: { order: { user: { phone: { in: phoneList } } } } },
-      );
-    }
-
     const candidates = await this.prisma.warranty.findMany({
       where: {
         OR: orConditions,
       },
       include: {
-        productVariant: { include: { product: true } },
-        imeiDevice: true,
+        productVariant: {
+          select: {
+            id: true, name: true, sku: true, color: true, storage: true,
+            product: { select: { name: true, warrantyMonths: true } },
+          },
+        },
+        imeiDevice: { select: { id: true, status: true, variantId: true, imei: true } },
       },
       orderBy: { createdAt: 'desc' },
       take: 10,
@@ -182,8 +173,8 @@ export class WarrantyService {
       isActive: picked.status === WarrantyStatus.ACTIVE && !isExpired,
       isExpired,
       daysRemaining,
-      notes: picked.notes,
-      claims: picked.status === WarrantyStatus.CLAIMED ? [{ reason: picked.notes, claimedAt: picked.updatedAt }] : [],
+      notes: null,
+      claims: [],
       productVariant: picked.productVariant,
       imeiDevice: picked.imeiDevice
         ? {
@@ -198,6 +189,24 @@ export class WarrantyService {
 
   async lookup(term: string) {
     return this.searchByCode(term);
+  }
+
+  async lookupMyPhone(userId: string, phone: string) {
+    const normalized = phone.replace(/[\s.]/g, '').replace(/^\+84/, '0');
+    if (!/^0[35789]\d{8}$/.test(normalized)) throw new BadRequestException('Invalid phone number');
+    const record = await this.prisma.warranty.findFirst({
+      where: {
+        userId,
+        OR: [
+          { user: { phone: { in: [normalized, `+84${normalized.slice(1)}`] } } },
+          { orderItem: { order: { shippingAddressSnapshot: { path: ['phone'], equals: normalized } } } },
+          { orderItem: { order: { shippingAddressSnapshot: { path: ['phone'], equals: `+84${normalized.slice(1)}` } } } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!record) throw new NotFoundException('Warranty not found for your account and phone');
+    return this.searchByCode(record.warrantyCode);
   }
 
   async checkStatus(warrantyCode: string) {
@@ -223,14 +232,59 @@ export class WarrantyService {
     const now = new Date();
     if (warranty.endDate < now) throw new BadRequestException('Warranty has expired');
 
-    return this.prisma.warranty.update({
-      where: { id },
-      data: { status: WarrantyStatus.CLAIMED, notes: dto.reason },
+    return this.prisma.$transaction(async (tx) => {
+      const changed = await tx.warranty.updateMany({
+        where: { id, userId, status: WarrantyStatus.ACTIVE, endDate: { gte: now } },
+        data: { status: WarrantyStatus.CLAIMED, repairStage: WarrantyRepairStage.REQUESTED,
+          notes: dto.reason, claimPhone: dto.customerPhone ?? null,
+          claimReturnAddress: dto.returnAddress ?? null },
+      });
+      if (changed.count !== 1) throw new ConflictException('Warranty changed during claim');
+      await tx.auditLog.create({ data: { action: AuditAction.UPDATE, entity: 'Warranty',
+        entityId: id, userId, newData: { repairStage: 'REQUESTED', reason: dto.reason } } });
+      return tx.warranty.findUnique({ where: { id } });
+    });
+  }
+
+  async advanceRepair(id: string, step: 'receive' | 'repair' | 'return', dto: RepairWarrantyDto, actorId: string) {
+    const stages = {
+      receive: [WarrantyRepairStage.REQUESTED, WarrantyRepairStage.RECEIVED],
+      repair: [WarrantyRepairStage.RECEIVED, WarrantyRepairStage.REPAIRED],
+      return: [WarrantyRepairStage.REPAIRED, WarrantyRepairStage.RETURNED],
+    } as const;
+    const [from, to] = stages[step];
+    return this.prisma.$transaction(async (tx) => {
+      const warranty = await tx.warranty.findUnique({ where: { id } });
+      if (!warranty) throw new NotFoundException('Warranty not found');
+      if (warranty.status !== WarrantyStatus.CLAIMED || warranty.repairStage !== from) {
+        throw new ConflictException('Repair stage changed or action is out of order');
+      }
+      const changed = await tx.warranty.updateMany({
+        where: { id, status: WarrantyStatus.CLAIMED, repairStage: from },
+        data: { repairStage: to,
+          ...(step === 'return' ? { status: warranty.endDate < new Date() ? WarrantyStatus.EXPIRED : WarrantyStatus.ACTIVE } : {}),
+        },
+      });
+      if (changed.count !== 1) throw new ConflictException('Repair changed concurrently');
+      if (warranty.imeiDeviceId && step !== 'repair') {
+        const device = await tx.imeiDevice.updateMany({
+          where: { id: warranty.imeiDeviceId, status: step === 'receive' ? ImeiStatus.SOLD : ImeiStatus.WARRANTY },
+          data: { status: step === 'receive' ? ImeiStatus.WARRANTY : ImeiStatus.SOLD },
+        });
+        if (device.count !== 1) throw new ConflictException('Device state does not match repair stage');
+      }
+      await tx.auditLog.create({ data: { action: AuditAction.UPDATE, entity: 'Warranty',
+        entityId: id, userId: actorId, oldData: { repairStage: from },
+        newData: { repairStage: to, notes: dto.notes } } });
+      return tx.warranty.findUnique({ where: { id } });
     });
   }
 
   async voidWarranty(id: string) {
     const warranty = await this.findOne(id);
+    if ([WarrantyRepairStage.RECEIVED, WarrantyRepairStage.REPAIRED].includes(warranty.repairStage as any)) {
+      throw new BadRequestException('Return the customer device before voiding its warranty');
+    }
     // P4: voiding is final — only a live or claimed warranty can be voided,
     // and the handset goes back through inspection (WARRANTY) instead of
     // dangling in whatever status it had.
@@ -248,12 +302,12 @@ export class WarrantyService {
     });
   }
 
-  // Bulk-void ACTIVE warranties when the sale dies (cancel/refund/return).
+  // Bulk-void live/claimed warranties when the sale dies (cancel/refund/return).
   // Runs inside the caller's transaction (tx) so coverage and money move
-  // together. CLAIMED rows (handset under repair) are intentionally kept.
+  // together, including a claim open at the time of a full refund.
   async voidWarrantiesForOrder(tx: any, orderId: string): Promise<void> {
     await tx.warranty.updateMany({
-      where: { orderItem: { orderId }, status: WarrantyStatus.ACTIVE },
+      where: { orderItem: { orderId }, status: { in: [WarrantyStatus.ACTIVE, WarrantyStatus.CLAIMED] } },
       data: { status: WarrantyStatus.VOIDED },
     });
   }

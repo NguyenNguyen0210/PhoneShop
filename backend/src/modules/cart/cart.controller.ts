@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Patch, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CartService } from './cart.service';
 import { AddCartItemDto, BulkDeleteCartItemsDto, UpdateCartItemDto } from './dto/cart.dto';
@@ -64,7 +64,7 @@ export class CartController {
   @Get('validate')
   @Roles(Role.USER, Role.STAFF, Role.MANAGER, Role.ADMIN)
   @ApiOperation({ summary: 'Validate cart before checkout' })
-  validateCart(@CurrentUser() user: any) {
-    return this.cartService.validateCart(user.id);
+  validateCart(@CurrentUser() user: any, @Query('selectedItemIds') selectedItemIds?: string) {
+    return this.cartService.validateCart(user.id, selectedItemIds);
   }
 }

@@ -327,7 +327,7 @@ export class ImeiService {
     [ImeiStatus.SOLD]: [ImeiStatus.WARRANTY, ImeiStatus.RETURNED],
     [ImeiStatus.RETURNED]: [ImeiStatus.AVAILABLE, ImeiStatus.BLOCKED],
     [ImeiStatus.BLOCKED]: [ImeiStatus.AVAILABLE],
-    [ImeiStatus.WARRANTY]: [ImeiStatus.AVAILABLE],
+    [ImeiStatus.WARRANTY]: [], // Customer-owned repairs must return through WarrantyService.
   };
 
   // Order statuses whose IMEI hold is still live — a manual release while
@@ -523,10 +523,10 @@ export class ImeiService {
   // deliberately not inferred here.
   async syncInventoryFromImei(variantId: string) {
     const run = async (tx: any) => {
-      // D5: serialize concurrent rebuilds (and import cycles writing the
-      // same rows) with a transaction-scoped advisory lock.
+      // Reconciliation is rare: block competing IMEI/inventory writes while
+      // rebuilding, including import/checkout paths that take no advisory lock.
       await (tx as any)?.$executeRaw?.(
-        Prisma.sql`SELECT pg_advisory_xact_lock(hashtext('sync_inventory_from_imei'))`,
+        Prisma.sql`LOCK TABLE imei_devices, inventories IN SHARE ROW EXCLUSIVE MODE`,
       );
       const [available, reserved, blocked] = await Promise.all(
         ([ImeiStatus.AVAILABLE, ImeiStatus.RESERVED, ImeiStatus.BLOCKED] as const).map(
@@ -541,7 +541,7 @@ export class ImeiService {
         current &&
         current.quantity === quantity &&
         current.availableQty === available &&
-        current.reservedQty === reserved
+        current.reservedQty === reserved + blocked
       ) {
         return current;
       }
@@ -550,7 +550,7 @@ export class ImeiService {
         data: {
           quantity,
           availableQty: available,
-          reservedQty: reserved,
+          reservedQty: reserved + blocked,
         },
       });
     };

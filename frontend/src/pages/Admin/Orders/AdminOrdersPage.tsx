@@ -14,10 +14,10 @@ import {
   Divider,
   Tabs,
   Input,
+  InputNumber,
   Dropdown,
   Tooltip,
   Form,
-  Checkbox,
   Alert,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -36,6 +36,7 @@ import {
   RollbackOutlined,
 } from '@ant-design/icons';
 import { orderService } from '../../../services/orderService';
+import { useAuthStore } from '../../../stores/useAuthStore';
 import { paymentService } from '../../../services/paymentService';
 import type { Order, OrderStatus, Payment } from '../../../types';
 import { ShippingDispatchModal } from './components/ShippingDispatchModal';
@@ -43,6 +44,12 @@ import { ReconciliationModal } from '../Payments/components/ReconciliationModal'
 import { groupOrderItems } from '../../../utils/orderGroupHelper';
 
 const { Title, Text } = Typography;
+const paidRefundAmount = (order: Order) =>
+  Number(order.payments?.find((p) => p.status === 'PAID' || p.status === 'PARTIALLY_REFUNDED')?.amount ?? order.totalAmount);
+const isRefundable = (order: Order) =>
+  ['PENDING', 'CONFIRMED', 'PROCESSING', 'PACKED', 'CANCELLED', 'DELIVERED', 'COMPLETED', 'RETURNED'].includes(order.status) &&
+  (['PAID', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus) ||
+    order.payments?.some((p) => p.status === 'PAID' || p.status === 'PARTIALLY_REFUNDED'));
 
 const ALLOWED_ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ['CONFIRMED', 'CANCELLED'],
@@ -68,8 +75,16 @@ const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   RETURNED: 'Đổi trả',
 };
 
-const getTransitionOptions = (currentStatus: OrderStatus) => {
-  const allowed = ALLOWED_ORDER_TRANSITIONS[currentStatus] || [];
+const allowedTransitions = (order: Order) => {
+  const options = ALLOWED_ORDER_TRANSITIONS[order.status] || [];
+  const paid = ['PAID', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus);
+  const cod = order.paymentMethod === 'COD' && order.paymentStatus === 'PENDING';
+  return options.filter((state) => state === 'CANCELLED' ? !paid : paid || cod);
+};
+
+const getTransitionOptions = (order: Order) => {
+  const currentStatus = order.status;
+  const allowed = allowedTransitions(order);
   return [
     {
       value: currentStatus,
@@ -120,6 +135,9 @@ const formatOrderDate = (dateStr?: string): string => {
 };
 
 export const AdminOrdersPage: React.FC = () => {
+  const authUser = useAuthStore((state) => state.user);
+  const canRefund = [authUser?.role, ...(((authUser as { roles?: string[] } | null)?.roles) || [])]
+    .some((role) => role === 'ADMIN' || role === 'MANAGER');
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams<{ id?: string }>();
   const navigate = useNavigate();
@@ -238,7 +256,11 @@ export const AdminOrdersPage: React.FC = () => {
     setRefundOrderTarget(order);
     refundForm.resetFields();
     refundForm.setFieldsValue({
-      restockItems: true,
+      // A partially refunded payment needs its actual remaining balance;
+      // require an explicit amount rather than assuming the original total.
+      amount: order.payments?.some((p) => p.status === 'PARTIALLY_REFUNDED')
+        ? undefined
+        : paidRefundAmount(order),
       reason: undefined,
       customReason: '',
       note: '',
@@ -265,12 +287,11 @@ export const AdminOrdersPage: React.FC = () => {
 
       await orderService.refundOrder(refundOrderTarget.id, {
         reason: finalReason,
-        restockItems: values.restockItems ?? true,
-        note: values.note?.trim() || undefined,
-        amount: Number(refundOrderTarget.totalAmount || 0),
+        providerReference: values.providerReference.trim(),
+        amount: Number(values.amount),
       });
 
-      message.success('Đã xử lý hoàn tiền đơn hàng');
+      message.success('Đã ghi nhận giao dịch hoàn tiền đã thực hiện');
       setRefundModalOpen(false);
       setRefundOrderTarget(null);
       refundForm.resetFields();
@@ -282,15 +303,7 @@ export const AdminOrdersPage: React.FC = () => {
           const refreshed = await orderService.getOrderById(refundOrderTarget.id);
           setSelectedOrder(refreshed);
         } catch {
-          setSelectedOrder((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  status: 'RETURNED' as OrderStatus,
-                  paymentStatus: 'REFUNDED',
-                }
-              : null
-          );
+          message.warning('Đã ghi nhận hoàn tiền nhưng chưa tải được trạng thái đơn mới. Vui lòng tải lại.');
         }
       }
     } catch (err: any) {
@@ -521,7 +534,7 @@ export const AdminOrdersPage: React.FC = () => {
   // 1 cột trạng thái duy nhất: trạng thái cuối (COMPLETED/CANCELLED/RETURNED)
   // hiện badge tĩnh; đơn đang xử lý hiện badge bấm được mở menu bước tiếp theo.
   const renderOrderStatusCell = (record: Order) => {
-    const allowed = ALLOWED_ORDER_TRANSITIONS[record.status] || [];
+    const allowed = allowedTransitions(record);
     const isUpdating = updatingOrderIds.has(record.id);
     if (allowed.length === 0) {
       return getStatusTag(record.status);
@@ -551,6 +564,10 @@ export const AdminOrdersPage: React.FC = () => {
     switch (status) {
       case 'PAID':
         return <Tag color="green">ĐÃ THANH TOÁN</Tag>;
+      case 'PARTIALLY_REFUNDED':
+        return <Tag color="cyan">ĐÃ HOÀN MỘT PHẦN</Tag>;
+      case 'REFUNDED':
+        return <Tag color="purple">ĐÃ HOÀN TIỀN</Tag>;
       case 'FAILED':
         return <Tag color="red">THẤT BẠI</Tag>;
       default:
@@ -713,7 +730,7 @@ export const AdminOrdersPage: React.FC = () => {
           >
             Điều phối
           </Button>
-          {(record.status === 'DELIVERED' || record.status === 'COMPLETED') && (
+          {canRefund && isRefundable(record) && (
             <Button
               size="small"
               danger
@@ -892,7 +909,7 @@ export const AdminOrdersPage: React.FC = () => {
         open={isDetailModalOpen}
         onCancel={handleCloseDetailModal}
         footer={[
-          (selectedOrder?.status === 'DELIVERED' || selectedOrder?.status === 'COMPLETED') && (
+          canRefund && selectedOrder && isRefundable(selectedOrder) && (
             <Button
               key="refund"
               danger
@@ -984,9 +1001,9 @@ export const AdminOrdersPage: React.FC = () => {
                     size="small"
                     value={selectedOrder.status}
                     style={{ minWidth: 170 }}
-                    disabled={getTransitionOptions(selectedOrder.status).length <= 1}
+                    disabled={getTransitionOptions(selectedOrder).length <= 1}
                     onChange={(newVal) => handleUpdateStatus(selectedOrder.id, newVal, selectedOrder)}
-                    options={getTransitionOptions(selectedOrder.status)}
+                    options={getTransitionOptions(selectedOrder)}
                   />
                 </Space>
               </Descriptions.Item>
@@ -1336,7 +1353,7 @@ export const AdminOrdersPage: React.FC = () => {
         onCancel={handleCloseRefundModal}
         onOk={handleRefundSubmit}
         confirmLoading={refundLoading}
-        okText="Xác nhận hoàn tiền"
+        okText="Xác nhận đã hoàn tiền"
         okButtonProps={{ danger: true }}
         cancelText="Hủy"
         destroyOnClose
@@ -1349,9 +1366,10 @@ export const AdminOrdersPage: React.FC = () => {
               showIcon
               message={
                 <div>
-                  Hệ thống sẽ chuyển trạng thái đơn hàng sang{' '}
-                  <Tag color="volcano" style={{ fontWeight: 600 }}>ĐỔI TRẢ (RETURNED)</Tag>, cập nhật thanh toán sang{' '}
-                  <Tag color="magenta" style={{ fontWeight: 600 }}>REFUNDED</Tag> và vô hiệu hóa bảo hành đã kích hoạt.
+                  Chỉ xác nhận sau khi ngân hàng/cổng thanh toán đã hoàn tiền thành công.
+                  Hệ thống chỉ ghi nhận giao dịch; không tự chuyển tiền.
+                  Hoàn đủ trước khi giao sẽ hủy đơn và giải phóng hàng. Đơn đã giao sẽ chuyển sang <Tag color="volcano">RETURNED</Tag>,
+                  thanh toán thành <Tag color="magenta">REFUNDED</Tag> và vô hiệu hóa bảo hành.
                 </div>
               }
             />
@@ -1363,9 +1381,9 @@ export const AdminOrdersPage: React.FC = () => {
               <Descriptions.Item label="Khách hàng">
                 <Text strong>{refundOrderTarget.customerName}</Text> ({refundOrderTarget.shippingPhone})
               </Descriptions.Item>
-              <Descriptions.Item label="Số tiền hoàn trả">
+              <Descriptions.Item label="Số tiền thanh toán ban đầu">
                 <Text strong style={{ color: '#dc2626', fontSize: 16 }}>
-                  {formatPrice(refundOrderTarget.totalAmount)}
+                  {formatPrice(paidRefundAmount(refundOrderTarget))}
                 </Text>
               </Descriptions.Item>
             </Descriptions>
@@ -1373,8 +1391,15 @@ export const AdminOrdersPage: React.FC = () => {
             <Form
               form={refundForm}
               layout="vertical"
-              initialValues={{ restockItems: true }}
             >
+              <Form.Item
+                name="amount"
+                label="Số tiền thực tế đã hoàn (VND)"
+                rules={[{ required: true, message: 'Nhập số tiền đã hoàn' }, { type: 'number', min: 1, message: 'Số tiền hoàn phải lớn hơn 0' }]}
+                extra="Nếu đã hoàn một phần trước đó, chỉ nhập giá trị giao dịch hoàn mới; máy chủ sẽ kiểm tra số dư còn được hoàn."
+              >
+                <InputNumber min={1} max={paidRefundAmount(refundOrderTarget)} style={{ width: '100%' }} precision={0} />
+              </Form.Item>
               <Form.Item
                 name="reason"
                 label="Lý do hoàn tiền / đổi trả"
@@ -1410,23 +1435,11 @@ export const AdminOrdersPage: React.FC = () => {
               </Form.Item>
 
               <Form.Item
-                name="restockItems"
-                valuePropName="checked"
-                style={{ marginBottom: 12 }}
+                name="providerReference"
+                label="Mã xác nhận hoàn tiền từ ngân hàng / cổng thanh toán"
+                rules={[{ required: true, whitespace: true, message: 'Nhập mã giao dịch hoàn tiền đã hoàn tất' }]}
               >
-                <Checkbox defaultChecked>
-                  Nhập lại kho vật lý và đổi IMEI sang RETURNED
-                </Checkbox>
-              </Form.Item>
-
-              <Form.Item
-                name="note"
-                label="Ghi chú / Tài khoản thụ hưởng (Tùy chọn)"
-              >
-                <Input.TextArea
-                  rows={3}
-                  placeholder="VD: STK 1903... Techcombank - NGUYEN VAN A. Đã chuyển tiền hoàn vào lúc 10:30..."
-                />
+                <Input placeholder="VD: VNPAY-REF-123456" maxLength={255} />
               </Form.Item>
             </Form>
           </div>

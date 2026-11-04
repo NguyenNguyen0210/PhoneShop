@@ -29,16 +29,17 @@ ENV NODE_ENV=production
 
 # Copy package files and install production dependencies only
 COPY backend/package*.json ./
-RUN npm install --omit=dev
+RUN npm install -g npm@11 && npm ci --omit=dev
 
 # Copy generated Prisma client and compiled dist from builder
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/dist ./dist
 
-# Copy Prisma schema + migrations so `prisma migrate deploy` can run at startup
+# Bundle Prisma schema + migrations for the separate one-shot migration service.
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY backend/scripts/preflight-production-migrations.cjs ./scripts/preflight-production-migrations.cjs
 
 # Expose backend service port
 EXPOSE 3000
@@ -46,5 +47,5 @@ EXPOSE 3000
 # Run container as non-root user
 USER node
 
-# Apply pending migrations, then start NestJS production server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
+# Migrations are run separately after a verified backup, before app rollout.
+CMD ["node", "dist/src/main.js"]

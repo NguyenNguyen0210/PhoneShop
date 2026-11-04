@@ -14,8 +14,10 @@ export const cartService = {
     return response.data?.data ?? response.data;
   },
 
-  async validateCart(): Promise<{ valid: boolean; issues?: string[]; cart?: any }> {
-    const response = await apiClient.get('/cart/validate');
+  async validateCart(selectedItemIds?: string[]): Promise<{ valid: boolean; issues?: string[]; cart?: any }> {
+    const response = await apiClient.get('/cart/validate', {
+      params: selectedItemIds?.length ? { selectedItemIds: selectedItemIds.join(',') } : undefined,
+    });
     return response.data?.data ?? response.data;
   },
 

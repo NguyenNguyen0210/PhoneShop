@@ -8,6 +8,7 @@ import {
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { Request, Response } from 'express';
+import { safeRequestPath } from '../utils/safe-request-path';
 
 /**
  * Standard HTTP request/response logger using NestJS built-in Logger.
@@ -22,7 +23,8 @@ export class LoggingInterceptor implements NestInterceptor {
     const req = ctx.getRequest<Request>();
     const res = ctx.getResponse<Response>();
 
-    const { method, originalUrl } = req;
+    const { method } = req;
+    const requestPath = safeRequestPath(req);
     const start = Date.now();
 
     return next.handle().pipe(
@@ -30,13 +32,13 @@ export class LoggingInterceptor implements NestInterceptor {
         next: () => {
           const duration = Date.now() - start;
           const statusCode = res.statusCode;
-          this.logger.log(`${method} ${originalUrl} ${statusCode} +${duration}ms`);
+          this.logger.log(`${method} ${requestPath} ${statusCode} +${duration}ms`);
         },
         error: (err) => {
           const duration = Date.now() - start;
           const statusCode = err?.status || err?.statusCode || 500;
           this.logger.warn(
-            `${method} ${originalUrl} ${statusCode} +${duration}ms - ${err?.message || err}`,
+            `${method} ${requestPath} ${statusCode} +${duration}ms`,
           );
         },
       }),

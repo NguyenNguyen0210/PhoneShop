@@ -27,7 +27,7 @@ export const authService = {
     return { url: data.url, state: data.state };
   },
 
-  async googleLogin(code: string, state?: string): Promise<AuthResponse> {
+  async googleLogin(code: string, state: string): Promise<AuthResponse> {
     const response = await apiClient.post('/auth/google/callback', { code, state });
     return response.data?.data ?? response.data;
   },

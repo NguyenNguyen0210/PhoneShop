@@ -29,7 +29,7 @@ import { ClaimWarrantyModal } from '../../../components/storefront/warranty/Clai
 type LookupTab = 'imei' | 'phone';
 
 const sanitizeCodeInput = (raw: string): string =>
-  (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  (raw || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
 
 const isValidVnPhone = (raw: string): boolean =>
   /^(0|\+84)(3|5|7|8|9)\d{8}$/.test((raw || '').replace(/[\s.]/g, ''));
@@ -104,6 +104,11 @@ export const WarrantyLookupPage: React.FC = () => {
 
   const handlePhoneLookup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setResult(null);
+    if (!user) {
+      setPhoneError('Vui lòng đăng nhập để tra cứu bảo hành của bạn theo số điện thoại.');
+      return;
+    }
     const clean = phone.replace(/[\s.]/g, '');
     if (!clean) {
       setPhoneError('Bạn nhập số điện thoại mua hàng giúp shop nhé.');
@@ -116,7 +121,7 @@ export const WarrantyLookupPage: React.FC = () => {
     setPhoneError(null);
     setLoading(true);
     try {
-      const data = await warrantyService.lookupWarranty(clean);
+      const data = await warrantyService.lookupMyPhone(clean);
       setResult(data);
     } catch (err: any) {
       notifyError(err, 'Không tìm thấy thông tin bảo hành cho số điện thoại này.');
@@ -302,7 +307,7 @@ export const WarrantyLookupPage: React.FC = () => {
                     <p className="mt-2 text-xs text-rose-600 font-medium">{phoneError}</p>
                   ) : (
                     <p className="mt-2 text-xs text-slate-500">
-                      Dành cho trường hợp máy hỏng, mất nguồn hoặc đã vứt vỏ hộp nên không lấy được IMEI.
+                      Đăng nhập để tra cứu bảo hành thuộc tài khoản của bạn bằng số điện thoại mua hàng.
                     </p>
                   )}
                 </div>

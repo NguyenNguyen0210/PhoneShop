@@ -22,7 +22,6 @@ import {
   PaymentMethod,
   OrderStatus,
   ImeiStatus,
-  WarrantyStatus,
 } from '@prisma/client';
 import { Role } from '../../common/enums/role.enum';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
@@ -189,8 +188,24 @@ export class PaymentsService {
       throw new BadRequestException('Unauthorized order access');
     }
 
-    if (order.status === OrderStatus.CANCELLED) {
-      throw new BadRequestException('Đơn hàng đã bị hủy, không thể báo thanh toán');
+    if (!([OrderStatus.PENDING, OrderStatus.CONFIRMED] as OrderStatus[]).includes(order.status)) {
+      throw new BadRequestException('Only pending unpaid orders can report a transfer');
+    }
+    if (order.holdExpiresAt && new Date(order.holdExpiresAt).getTime() <= Date.now()) {
+      throw new BadRequestException('Order payment hold has expired');
+    }
+    if (order.payments.some((payment) =>
+      ([PaymentStatus.PAID, PaymentStatus.REFUNDED, PaymentStatus.PARTIALLY_REFUNDED] as PaymentStatus[])
+        .includes(payment.status),
+    )) {
+      throw new BadRequestException('Payment was already completed or refunded');
+    }
+    const pending = order.payments.find(
+      (payment) => payment.method === PaymentMethod.BANK_TRANSFER &&
+        payment.status === PaymentStatus.PENDING,
+    );
+    if (!pending) {
+      throw new BadRequestException('Order has no pending bank transfer payment');
     }
 
     // B4: extend hold only once per reporting cycle (first report). A repeated
@@ -216,28 +231,6 @@ export class PaymentsService {
       }
     }
 
-    let pending = order.payments.find(
-      (p) => p.method === PaymentMethod.BANK_TRANSFER && p.status === PaymentStatus.PENDING,
-    );
-    if (!pending) {
-      pending = order.payments.find((p) => p.status === PaymentStatus.PENDING);
-    }
-    if (!pending) {
-      // B4 (audit): derive the method from the order's existing pending payment
-      // row. The old code read `(order as any).paymentMethod` which doesn't
-      // exist on the Order model → isVnpay was always false.
-      const anyPending = order.payments.find((p) => p.status === PaymentStatus.PENDING);
-      const isVnpay = anyPending?.method === PaymentMethod.VNPAY;
-      pending = await this.prisma.payment.create({
-        data: {
-          orderId: order.id,
-          method: isVnpay ? PaymentMethod.VNPAY : PaymentMethod.BANK_TRANSFER,
-          status: PaymentStatus.PENDING,
-          amount: order.totalAmount,
-          provider: isVnpay ? 'VNPAY' : 'VIETQR',
-        },
-      });
-    }
 
     const recent = await this.prisma.paymentTransaction.findFirst({
       where: { paymentId: pending.id, providerReference: 'CUSTOMER_REPORTED' },
@@ -338,53 +331,6 @@ export class PaymentsService {
   // IPN hardcoded 365 days while COD/manual confirms created no warranty at
   // all. Every paid/confirmed order funnels through this helper with a
   // calendar-month end date anchored at the given date.
-  private addWarrantyMonths(date: Date, months: number): Date {
-    // P7: clamp to month-end so Jan 31 + 1 month lands on Feb 28/29,
-    // not Mar 2-3 (native setMonth overflow).
-    const d = new Date(date);
-    const day = d.getDate();
-    d.setMonth(d.getMonth() + months);
-    if (d.getDate() < day) d.setDate(0);
-    return d;
-  }
-
-  private async activateWarranties(
-    tx: any,
-    order: { id: string; userId: string },
-    anchorDate: Date,
-    note: string,
-  ): Promise<void> {
-    const items = await tx.orderItem.findMany({
-      where: { orderId: order.id },
-      include: {
-        variant: { include: { product: { select: { warrantyMonths: true } } } },
-      },
-    });
-    for (const item of items) {
-      if (!item.imeiDeviceId) continue;
-      const months = item.variant?.product?.warrantyMonths ?? 12;
-      const warrantyCode = `WRT-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
-      await tx.warranty.upsert({
-        where: { orderItemId: item.id },
-        // B8 (audit): never overwrite IPN/delivery-anchored dates on repeat
-        // settlement. An empty update branch keeps the existing warranty row
-        // untouched (upsert is a no-op for the update path).
-        update: {},
-        create: {
-          userId: order.userId,
-          productVariantId: item.variantId,
-          orderItemId: item.id,
-          imeiDeviceId: item.imeiDeviceId,
-          warrantyCode,
-          startDate: anchorDate,
-          endDate: this.addWarrantyMonths(anchorDate, months),
-          status: WarrantyStatus.ACTIVE,
-          notes: note,
-        },
-      });
-    }
-  }
-
   private async resolveVnpayConfig(): Promise<{
     tmnCode: string;
     hashSecret: string;
@@ -583,27 +529,9 @@ export class PaymentsService {
       // 3. Order status was already claimed PENDING → CONFIRMED at the top
       // of this transaction (conditional updateMany).
 
-      // 4. Mark reserved IMEIs as SOLD (H6: conditional — never resurrect a
-      // unit that was meanwhile BLOCKED/released) and activate warranties
-      // from product policy instead of a hardcoded 365 days (H8).
-      const paidAt = new Date();
-      for (const item of order.items) {
-        if (item.imeiDeviceId) {
-          await tx.imeiDevice.updateMany({
-            where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
-            data: {
-              status: ImeiStatus.SOLD,
-              soldAt: paidAt,
-            },
-          });
-        }
-      }
-      await this.activateWarranties(
-        tx,
-        order,
-        paidAt,
-        'Tự động kích hoạt khi thanh toán VNPay thành công',
-      );
+      // Payment capture does not deliver a handset. Keep its reservation
+      // and activate warranty only when OrdersService records delivery.
+
     });
 
     // 5. Trigger email notification (outside tx: never block settlement)
@@ -655,7 +583,7 @@ export class PaymentsService {
   }
 
   async handleVnpayIpn(query: Record<string, any>) {
-    this.logger.log(`Received VNPay IPN webhook: ${JSON.stringify(query)}`);
+    this.logger.log('Received VNPay IPN webhook');
 
     if (!this.verifyVnpaySignature(query)) {
       this.logger.warn(`VNPay IPN: Invalid checksum`);
@@ -1006,20 +934,7 @@ export class PaymentsService {
         }
       }
 
-      for (const item of order.items) {
-        if (item.imeiDeviceId) {
-          await tx.imeiDevice.updateMany({
-            where: { id: item.imeiDeviceId, status: ImeiStatus.RESERVED },
-            data: { status: ImeiStatus.SOLD, soldAt: paidAt },
-          });
-        }
-      }
-      await this.activateWarranties(
-        tx,
-        { id: order.id, userId: order.userId },
-        paidAt,
-        'Kích hoạt khi soát chứng từ chuyển khoản thành công',
-      );
+      // Inventory remains RESERVED until delivery or pre-dispatch refund.
 
       return tx.payment.findUnique({ where: { id: paymentId } });
     });

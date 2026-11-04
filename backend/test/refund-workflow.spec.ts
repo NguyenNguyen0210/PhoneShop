@@ -4,17 +4,16 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { WarrantyService } from '../src/modules/warranty/warranty.service';
 import { NotificationsService } from '../src/modules/notifications/notifications.service';
 import { SystemSettingsService } from '../src/modules/settings/settings.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import {
   OrderStatus,
   PaymentStatus,
   TransactionType,
   TransactionStatus,
   ImeiStatus,
-  StockMovementType,
-  WarrantyStatus,
   NotificationType,
   AuditAction,
+  Prisma,
 } from '@prisma/client';
 
 describe('OrdersService - Refund Workflow & Business Invariants', () => {
@@ -28,19 +27,22 @@ describe('OrdersService - Refund Workflow & Business Invariants', () => {
     prisma = {
       order: {
         findUnique: jest.fn(),
-        update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       payment: {
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       paymentTransaction: {
         create: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue(null),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { amount: null } }),
       },
       imeiDevice: {
-        updateMany: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       inventory: {
-        updateMany: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         findUnique: jest.fn(),
       },
       stockMovement: {
@@ -101,7 +103,7 @@ describe('OrdersService - Refund Workflow & Business Invariants', () => {
     id: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
     orderNumber: 'ORD-123456',
     userId: 'user-uuid-1',
-    status: OrderStatus.CONFIRMED,
+    status: OrderStatus.DELIVERED,
     totalAmount: 10000000,
     payments: [
       {
@@ -127,7 +129,7 @@ describe('OrdersService - Refund Workflow & Business Invariants', () => {
     await expect(
       ordersService.processRefund(
         'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
-        { amount: 5000000, reason: 'Customer returned' },
+        { amount: 5000000, reason: 'Customer returned', providerReference: 'REF-NOT-FOUND' },
         'admin-uuid-1',
       ),
     ).rejects.toThrow(NotFoundException);
@@ -142,7 +144,7 @@ describe('OrdersService - Refund Workflow & Business Invariants', () => {
     await expect(
       ordersService.processRefund(
         baseOrder.id,
-        { amount: 5000000, reason: 'Customer returned' },
+        { amount: 5000000, reason: 'Customer returned', providerReference: 'REF-NOT-PAID' },
         'admin-uuid-1',
       ),
     ).rejects.toThrow(BadRequestException);
@@ -154,7 +156,7 @@ describe('OrdersService - Refund Workflow & Business Invariants', () => {
     await expect(
       ordersService.processRefund(
         baseOrder.id,
-        { amount: 15000000, reason: 'Customer returned' }, // 15m > 10m
+        { amount: 15000000, reason: 'Customer returned', providerReference: 'REF-OVER' }, // 15m > 10m
         'admin-uuid-1',
       ),
     ).rejects.toThrow(BadRequestException);
@@ -162,9 +164,7 @@ describe('OrdersService - Refund Workflow & Business Invariants', () => {
 
   it('INVARIANT: Should successfully execute full refund transaction with all side effects', async () => {
     prisma.order.findUnique.mockResolvedValue(baseOrder);
-    prisma.inventory.findUnique.mockResolvedValue({ quantity: 10 });
     prisma.paymentTransaction.create.mockImplementation(({ data }) => Promise.resolve({ id: 'tx-1', ...data }));
-    prisma.order.update.mockResolvedValue({ ...baseOrder, status: OrderStatus.RETURNED });
 
     const result = await ordersService.processRefund(
       baseOrder.id,
@@ -181,20 +181,23 @@ describe('OrdersService - Refund Workflow & Business Invariants', () => {
           status: TransactionStatus.SUCCESS,
           amount: 10000000,
           providerReference: 'VNPAY-REF-999',
-          transactionCode: expect.stringMatching(/^REF-\d+-a1b2c3d4$/),
+          transactionCode: expect.stringMatching(/^REF-\d+-[0-9a-f]{8}$/),
         }),
       }),
     );
 
     // 2. Payment status set to REFUNDED
+    expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+      where: { id: 'payment-uuid-1', status: PaymentStatus.PAID },
+      data: { status: PaymentStatus.PARTIALLY_REFUNDED },
+    });
     expect(prisma.payment.update).toHaveBeenCalledWith({
-      where: { id: 'payment-uuid-1' },
-      data: { status: PaymentStatus.REFUNDED },
+      where: { id: 'payment-uuid-1' }, data: { status: PaymentStatus.REFUNDED },
     });
 
     // 3. Order status set to RETURNED
-    expect(prisma.order.update).toHaveBeenCalledWith({
-      where: { id: baseOrder.id },
+    expect(prisma.order.updateMany).toHaveBeenCalledWith({
+      where: { id: baseOrder.id, status: OrderStatus.DELIVERED },
       data: { status: OrderStatus.RETURNED },
     });
 
@@ -204,18 +207,9 @@ describe('OrdersService - Refund Workflow & Business Invariants', () => {
       data: { status: ImeiStatus.RETURNED },
     });
 
-    // 5. StockMovement created with IMPORT_RETURN
-    expect(prisma.stockMovement.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          variantId: 'variant-uuid-1',
-          type: StockMovementType.IMPORT_RETURN,
-          quantity: 1,
-          referenceType: 'ORDER_REFUND',
-          referenceId: baseOrder.id,
-        }),
-      }),
-    );
+    // Returned stock is quarantined until receipt and quality control.
+    expect(prisma.stockMovement.create).not.toHaveBeenCalled();
+    expect(prisma.inventory.updateMany).not.toHaveBeenCalled();
 
     // 6. Warranties voided
     expect(warrantyService.voidWarrantiesForOrder).toHaveBeenCalledWith(
@@ -249,18 +243,157 @@ describe('OrdersService - Refund Workflow & Business Invariants', () => {
 
   it('INVARIANT: Should set Payment status to PARTIALLY_REFUNDED when amount < paid amount', async () => {
     prisma.order.findUnique.mockResolvedValue(baseOrder);
-    prisma.inventory.findUnique.mockResolvedValue({ quantity: 10 });
-    prisma.order.update.mockResolvedValue({ ...baseOrder, status: OrderStatus.RETURNED });
+    prisma.paymentTransaction.create.mockResolvedValue({ id: 'partial-tx-1' });
 
     await ordersService.processRefund(
       baseOrder.id,
-      { amount: 3000000, reason: 'Partial damage compensation' },
+      { amount: 3000000, reason: 'Partial damage compensation', providerReference: 'REF-PARTIAL-1' },
       'admin-uuid-1',
     );
 
-    expect(prisma.payment.update).toHaveBeenCalledWith({
-      where: { id: 'payment-uuid-1' },
+    expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+      where: { id: 'payment-uuid-1', status: PaymentStatus.PAID },
       data: { status: PaymentStatus.PARTIALLY_REFUNDED },
+    });
+    expect(prisma.payment.update).not.toHaveBeenCalled();
+    expect(prisma.order.updateMany).toHaveBeenCalledWith({
+      where: { id: baseOrder.id, status: OrderStatus.DELIVERED },
+      data: { status: OrderStatus.DELIVERED },
+    });
+    expect(prisma.imeiDevice.updateMany).not.toHaveBeenCalled();
+    expect(warrantyService.voidWarrantiesForOrder).not.toHaveBeenCalled();
+  });
+
+  it('allows a subsequent partial refund up to the unpaid balance', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      ...baseOrder,
+      payments: [{ ...baseOrder.payments[0], status: PaymentStatus.PARTIALLY_REFUNDED }],
+    });
+    prisma.paymentTransaction.aggregate.mockResolvedValue({ _sum: { amount: 3000000 } });
+    prisma.paymentTransaction.create.mockResolvedValue({ id: 'tx-second' });
+
+    const result = await ordersService.processRefund(baseOrder.id, {
+      amount: 2000000, reason: 'Additional compensation', providerReference: 'REF-PARTIAL-2',
+    });
+
+    expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+      where: { id: 'payment-uuid-1', status: PaymentStatus.PARTIALLY_REFUNDED },
+      data: { status: PaymentStatus.PARTIALLY_REFUNDED },
+    });
+    expect(prisma.payment.update).not.toHaveBeenCalled();
+    expect(result.order.status).toBe(OrderStatus.DELIVERED);
+  });
+
+  it('rejects refund amounts exceeding the balance of previous partial refunds', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      ...baseOrder,
+      payments: [{ ...baseOrder.payments[0], status: PaymentStatus.PARTIALLY_REFUNDED }],
+    });
+    prisma.paymentTransaction.aggregate.mockResolvedValue({ _sum: { amount: 8000000 } });
+
+    await expect(ordersService.processRefund(baseOrder.id, {
+      amount: 3000000, reason: 'Over refund', providerReference: 'REF-EXCESS',
+    })).rejects.toThrow(BadRequestException);
+    expect(prisma.paymentTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it('marks the payment refunded when the final partial refund reaches the original amount', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      ...baseOrder,
+      payments: [{ ...baseOrder.payments[0], status: PaymentStatus.PARTIALLY_REFUNDED }],
+    });
+    prisma.paymentTransaction.aggregate.mockResolvedValue({ _sum: { amount: 8000000 } });
+
+    await ordersService.processRefund(baseOrder.id, {
+      amount: 2000000, reason: 'Final refund', providerReference: 'REF-FINAL',
+    });
+
+    expect(prisma.payment.update).toHaveBeenCalledWith({
+      where: { id: 'payment-uuid-1' }, data: { status: PaymentStatus.REFUNDED },
+    });
+    expect(prisma.order.updateMany).toHaveBeenCalledWith({
+      where: { id: baseOrder.id, status: OrderStatus.DELIVERED },
+      data: { status: OrderStatus.RETURNED },
+    });
+  });
+
+  it('uses decimal arithmetic when cents complete a partial refund', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      ...baseOrder,
+      payments: [{
+        ...baseOrder.payments[0],
+        amount: new Prisma.Decimal('0.30'),
+        status: PaymentStatus.PARTIALLY_REFUNDED,
+      }],
+    });
+    prisma.paymentTransaction.aggregate.mockResolvedValue({
+      _sum: { amount: new Prisma.Decimal('0.10') },
+    });
+
+    await ordersService.processRefund(baseOrder.id, {
+      amount: 0.2, reason: 'Final amount', providerReference: 'REF-DECIMAL',
+    });
+
+    expect(prisma.payment.update).toHaveBeenCalledWith({
+      where: { id: 'payment-uuid-1' }, data: { status: PaymentStatus.REFUNDED },
+    });
+    expect(prisma.paymentTransaction.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ type: TransactionType.REFUND, amount: 0.2 }),
+    });
+  });
+
+  it('rejects refund amounts with more than two decimal places', async () => {
+    prisma.order.findUnique.mockResolvedValue(baseOrder);
+
+    await expect(ordersService.processRefund(baseOrder.id, {
+      amount: 0.001, reason: 'Invalid precision', providerReference: 'REF-PRECISION',
+    })).rejects.toThrow(BadRequestException);
+
+    expect(prisma.payment.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('translates a database unique-reference race into a conflict', async () => {
+    prisma.order.findUnique.mockResolvedValue(baseOrder);
+    prisma.paymentTransaction.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Duplicate refund reference', {
+        code: 'P2002', clientVersion: 'test',
+      }),
+    );
+
+    await expect(ordersService.processRefund(baseOrder.id, {
+      amount: 1000000, reason: 'Same reference', providerReference: 'REF-RACE-DB',
+    })).rejects.toThrow(ConflictException);
+  });
+
+  it('rejects an already used external refund reference', async () => {
+    prisma.order.findUnique.mockResolvedValue(baseOrder);
+    prisma.paymentTransaction.findFirst.mockResolvedValue({ id: 'previous-refund' });
+
+    await expect(ordersService.processRefund(baseOrder.id, {
+      amount: 2000000, reason: 'Duplicate reference', providerReference: 'REF-DUPLICATE',
+    })).rejects.toThrow(ConflictException);
+    expect(prisma.paymentTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a concurrent claim that already changed the payment', async () => {
+    prisma.order.findUnique.mockResolvedValue(baseOrder);
+    prisma.payment.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(ordersService.processRefund(baseOrder.id, {
+      amount: 10000000, reason: 'Concurrent request', providerReference: 'REF-RACE',
+    })).rejects.toThrow(ConflictException);
+    expect(prisma.paymentTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it('allows full refunds before delivery and releases reservations', async () => {
+    prisma.order.findUnique.mockResolvedValue({ ...baseOrder, status: OrderStatus.CONFIRMED });
+
+    await expect(ordersService.processRefund(baseOrder.id, {
+      amount: 10000000, reason: 'Early refund', providerReference: 'REF-EARLY',
+    })).resolves.toMatchObject({ order: { status: OrderStatus.CANCELLED } });
+    expect(prisma.inventory.updateMany).toHaveBeenCalledWith({
+      where: { variantId: 'variant-uuid-1', reservedQty: { gte: 1 } },
+      data: { reservedQty: { decrement: 1 }, availableQty: { increment: 1 } },
     });
   });
 });

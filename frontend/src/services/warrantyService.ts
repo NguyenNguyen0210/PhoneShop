@@ -24,6 +24,11 @@ export interface ClaimWarrantyPayload {
 }
 
 export const warrantyService = {
+  async lookupMyPhone(phone: string): Promise<WarrantyLookupResult> {
+    const res = await apiClient.get('/warranty/my/lookup-phone', { params: { phone } });
+    const record = res.data?.data ?? res.data;
+    return this.lookupWarranty(record.warrantyCode);
+  },
   async lookupWarranty(codeOrImei: string): Promise<WarrantyLookupResult> {
     const clean = codeOrImei.trim();
 
@@ -51,7 +56,7 @@ export const warrantyService = {
         warrantyMonths: w.warrantyMonths ?? 12,
         startDate: w.startDate || w.activatedAt,
         endDate: w.endDate || w.expiresAt,
-        status: isExpired ? 'EXPIRED' : w.status || 'ACTIVE',
+        status: isExpired && w.status === 'ACTIVE' ? 'EXPIRED' : w.status || 'ACTIVE',
         isExpired,
         daysRemaining,
         notes: w.notes,
@@ -80,6 +85,11 @@ export const warrantyService = {
     const res = await apiClient.get('/warranty');
     const data = res.data?.data ?? res.data;
     return Array.isArray(data) ? data : data?.items ?? [];
+  },
+
+  async advanceRepair(id: string, step: 'receive' | 'repair' | 'return', notes: string): Promise<any> {
+    const res = await apiClient.put(`/warranty/${id}/repair/${step}`, { notes });
+    return res.data?.data ?? res.data;
   },
 
   async voidWarrantyAdmin(id: string): Promise<any> {

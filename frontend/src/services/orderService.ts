@@ -12,7 +12,17 @@ import { useAuthStore } from '../stores/useAuthStore';
 const normalizeOrder = (raw: any): Order => {
   if (!raw || typeof raw !== 'object') return raw;
   const payments = Array.isArray(raw.payments) ? raw.payments : [];
-  const primaryPayment = payments[0] ?? null;
+  // Prefer a settled payment when an order contains historical failed/pending attempts.
+  const paymentRank: Record<string, number> = {
+    REFUNDED: 5,
+    PARTIALLY_REFUNDED: 4,
+    PAID: 3,
+    PENDING: 2,
+    FAILED: 1,
+  };
+  const primaryPayment = [...payments].sort(
+    (a, b) => (paymentRank[b?.status] ?? 0) - (paymentRank[a?.status] ?? 0),
+  )[0] ?? null;
   const rawMethod: string | undefined =
     raw.paymentMethod ?? primaryPayment?.method ?? undefined;
   const paymentMethod = fromBackendPaymentMethod(rawMethod) as PaymentMethod;
@@ -74,6 +84,9 @@ export interface PaginatedOrders {
 
 export const orderService = {
   async checkout(payload: CheckoutPayload): Promise<Order> {
+    if (payload.selectedItemIds && payload.selectedItemIds.length === 0) {
+      throw new Error('Vui lòng chọn ít nhất một sản phẩm để đặt hàng.');
+    }
     if (payload.paymentMethod && !VALID_PAYMENT_METHODS.includes(payload.paymentMethod)) {
       throw new Error(`Phương thức thanh toán không hợp lệ: ${payload.paymentMethod}`);
     }
@@ -111,19 +124,39 @@ export const orderService = {
 
     // Ensure cart items are synchronized with backend database cart
     try {
-      const token = localStorage.getItem('phoneshop_access_token');
-      if (typeof localStorage !== 'undefined' && token) {
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('phoneshop_access_token')) {
+        // Wait for previous add/update/delete requests to settle before taking
+        // the cart snapshot; a late add can otherwise double the order quantity.
+        await useCartStore.getState().waitForCartWrites();
         const storeItems = useCartStore.getState().items;
+        const selected = payload.selectedItemIds ? new Set(payload.selectedItemIds) : null;
+        const itemsToSync = selected
+          ? storeItems.filter((item) => selected.has(item.id) || selected.has(item.variantId))
+          : storeItems;
+        if (selected && itemsToSync.length !== selected.size) {
+          throw new Error('Giỏ hàng đã thay đổi. Vui lòng kiểm tra lại sản phẩm trước khi đặt hàng.');
+        }
         const backendCart = await cartService.getCart();
-        const existingVariantIds = new Set((backendCart?.items || []).map((i: any) => i.variantId));
-        for (const item of storeItems) {
-          if (!existingVariantIds.has(item.variantId)) {
-            await cartService.addToCart(item.variantId, item.quantity).catch(() => {});
+        const backendItemsByVariant = new Map(
+          (backendCart?.items || []).map((i: any) => [i.variantId, i] as const),
+        );
+        // Only purchased lines need syncing. An unrelated stale or sold-out
+        // item must not block checkout for the products the buyer selected.
+        for (const item of itemsToSync) {
+          const existing = backendItemsByVariant.get(item.variantId);
+          if (!existing) {
+            await cartService.addToCart(item.variantId, item.quantity);
+          } else if (existing.quantity !== item.quantity) {
+            // Cart PATCH sets an absolute quantity. Checkout must use the
+            // quantities the buyer actually reviewed on the local page.
+            await cartService.updateCartItem(existing.id, item.quantity);
           }
         }
       }
-    } catch {
-      // Continue to checkout if pre-sync throws
+    } catch (error) {
+      // A failed cart sync must stop checkout, otherwise selectedItemIds can
+      // point to missing rows and the server may charge for the wrong cart.
+      throw error;
     }
 
     const orderRes = await apiClient.post('/orders/checkout', {
@@ -136,21 +169,6 @@ export const orderService = {
     });
 
     const orderData: Order = orderRes.data?.data ?? orderRes.data;
-
-    // Backend now creates the PENDING payment row atomically inside checkout
-    // for every method (COD / BANK_TRANSFER / VNPAY). The extra
-    // POST is kept as a dedup-safe backstop for orders created before that
-    // fix — PaymentsService.create reuses the pending row instead of stacking.
-    if (backendPaymentMethod && orderData?.id) {
-      try {
-        await apiClient.post('/payments', {
-          orderId: orderData.id,
-          method: backendPaymentMethod,
-        });
-      } catch (paymentErr) {
-        console.warn('Payment record creation deferred or handled elsewhere:', paymentErr);
-      }
-    }
 
     // Keep the storefront label (VIETQR) on the returned object so callers
     // never see the backend BANK_TRANSFER enum.
@@ -250,9 +268,10 @@ export const orderService = {
 
   async refundOrder(
     id: string,
-    payload: { reason: string; restockItems?: boolean; note?: string; amount?: number }
+    payload: { reason: string; providerReference: string; amount: number }
   ): Promise<Order> {
     const response = await apiClient.post(`/orders/${id}/refund`, payload);
-    return normalizeOrder(response.data?.data ?? response.data);
+    const result = response.data?.data ?? response.data;
+    return normalizeOrder(result?.order ?? result);
   },
 };

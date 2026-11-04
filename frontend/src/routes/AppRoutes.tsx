@@ -2,55 +2,55 @@ import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 // Layouts
-import { StorefrontLayout } from '../layouts/StorefrontLayout';
-import { AdminLayout } from '../layouts/AdminLayout';
-import { StaffLayout } from '../layouts/StaffLayout';
+const StorefrontLayout = React.lazy(() => import('../layouts/StorefrontLayout').then((module) => ({ default: module.StorefrontLayout })));
+const AdminLayout = React.lazy(() => import('../layouts/AdminLayout').then((module) => ({ default: module.AdminLayout })));
+const StaffLayout = React.lazy(() => import('../layouts/StaffLayout').then((module) => ({ default: module.StaffLayout })));
 
 // Storefront Pages
-import { HomePage } from '../pages/storefront/Home/HomePage';
-import { ProductDetailPage } from '../pages/storefront/ProductDetail/ProductDetailPage';
-import { CartPage } from '../pages/storefront/Cart/CartPage';
-import { CheckoutPage } from '../pages/storefront/Checkout/CheckoutPage';
-import { OrderSuccessPage } from '../pages/storefront/OrderSuccess/OrderSuccessPage';
-import { VNPayReturnPage } from '../pages/storefront/OrderSuccess/VNPayReturnPage';
-import { OrderDetailPage } from '../pages/storefront/Orders/OrderDetailPage';
-import { WarrantyLookupPage } from '../pages/storefront/WarrantyLookup/WarrantyLookupPage';
-import { ProfilePage } from '../pages/storefront/Profile/ProfilePage';
-import { WishlistPage } from '../pages/storefront/Wishlist/WishlistPage';
-import { NotificationPage } from '../pages/storefront/Notifications/NotificationPage';
+const HomePage = React.lazy(() => import('../pages/storefront/Home/HomePage').then((module) => ({ default: module.HomePage })));
+const ProductDetailPage = React.lazy(() => import('../pages/storefront/ProductDetail/ProductDetailPage').then((module) => ({ default: module.ProductDetailPage })));
+const CartPage = React.lazy(() => import('../pages/storefront/Cart/CartPage').then((module) => ({ default: module.CartPage })));
+const CheckoutPage = React.lazy(() => import('../pages/storefront/Checkout/CheckoutPage').then((module) => ({ default: module.CheckoutPage })));
+const OrderSuccessPage = React.lazy(() => import('../pages/storefront/OrderSuccess/OrderSuccessPage').then((module) => ({ default: module.OrderSuccessPage })));
+const VNPayReturnPage = React.lazy(() => import('../pages/storefront/OrderSuccess/VNPayReturnPage').then((module) => ({ default: module.VNPayReturnPage })));
+const OrderDetailPage = React.lazy(() => import('../pages/storefront/Orders/OrderDetailPage').then((module) => ({ default: module.OrderDetailPage })));
+const WarrantyLookupPage = React.lazy(() => import('../pages/storefront/WarrantyLookup/WarrantyLookupPage').then((module) => ({ default: module.WarrantyLookupPage })));
+const ProfilePage = React.lazy(() => import('../pages/storefront/Profile/ProfilePage').then((module) => ({ default: module.ProfilePage })));
+const WishlistPage = React.lazy(() => import('../pages/storefront/Wishlist/WishlistPage').then((module) => ({ default: module.WishlistPage })));
+const NotificationPage = React.lazy(() => import('../pages/storefront/Notifications/NotificationPage').then((module) => ({ default: module.NotificationPage })));
 
 // Auth Pages
-import { LoginPage } from '../pages/storefront/Auth/LoginPage';
-import { RegisterPage } from '../pages/storefront/Auth/RegisterPage';
-import { OAuthCallbackPage } from '../pages/storefront/Auth/OAuthCallbackPage';
-import { ResetPasswordPage } from '../pages/storefront/Auth/ResetPasswordPage';
+const LoginPage = React.lazy(() => import('../pages/storefront/Auth/LoginPage').then((module) => ({ default: module.LoginPage })));
+const RegisterPage = React.lazy(() => import('../pages/storefront/Auth/RegisterPage').then((module) => ({ default: module.RegisterPage })));
+const OAuthCallbackPage = React.lazy(() => import('../pages/storefront/Auth/OAuthCallbackPage').then((module) => ({ default: module.OAuthCallbackPage })));
+const ResetPasswordPage = React.lazy(() => import('../pages/storefront/Auth/ResetPasswordPage').then((module) => ({ default: module.ResetPasswordPage })));
 
 // Admin Pages
-import { AdminDashboard } from '../pages/Admin/Dashboard/AdminDashboardPage';
-import { AdminProductsPage } from '../pages/Admin/Products/AdminProductsPage';
-import { AdminBrandsPage } from '../pages/Admin/Brands/AdminBrandsPage';
-import { AdminSuppliersPage } from '../pages/Admin/Suppliers/AdminSuppliersPage';
-import { AdminInventoryPage } from '../pages/Admin/Inventory/AdminInventoryPage';
-import { AdminOrdersPage } from '../pages/Admin/Orders/AdminOrdersPage';
-import { AdminPaymentsPage } from '../pages/Admin/Payments/AdminPaymentsPage';
-import { AdminReviewsPage } from '../pages/Admin/Reviews/AdminReviewsPage';
-import { AdminCustomersPage } from '../pages/Admin/Customers/AdminCustomersPage';
-import { AdminCustomer360Page } from '../pages/Admin/Customers/AdminCustomer360Page';
-import { AdminTicketsPage } from '../pages/Admin/Tickets/AdminTicketsPage';
-import { AdminTicketDetailPage } from '../pages/Admin/Tickets/AdminTicketDetailPage';
-import { AdminUsersPage } from '../pages/Admin/Users/AdminUsersPage';
-import { AdminAuditLogsPage } from '../pages/Admin/AuditLogs/AdminAuditLogsPage';
-import { AdminSettingsPage } from '../pages/Admin/Settings/AdminSettingsPage';
-import { AdminPromotionsPage } from '../pages/Admin/Promotions/AdminPromotionsPage';
-import { AdminCategoriesPage } from '../pages/Admin/Categories/AdminCategoriesPage';
-import { AdminWarrantiesPage } from '../pages/Admin/Warranties/AdminWarrantiesPage';
+const AdminDashboard = React.lazy(() => import('../pages/Admin/Dashboard/AdminDashboardPage').then((module) => ({ default: module.AdminDashboard })));
+const AdminProductsPage = React.lazy(() => import('../pages/Admin/Products/AdminProductsPage').then((module) => ({ default: module.AdminProductsPage })));
+const AdminBrandsPage = React.lazy(() => import('../pages/Admin/Brands/AdminBrandsPage').then((module) => ({ default: module.AdminBrandsPage })));
+const AdminSuppliersPage = React.lazy(() => import('../pages/Admin/Suppliers/AdminSuppliersPage').then((module) => ({ default: module.AdminSuppliersPage })));
+const AdminInventoryPage = React.lazy(() => import('../pages/Admin/Inventory/AdminInventoryPage').then((module) => ({ default: module.AdminInventoryPage })));
+const AdminOrdersPage = React.lazy(() => import('../pages/Admin/Orders/AdminOrdersPage').then((module) => ({ default: module.AdminOrdersPage })));
+const AdminPaymentsPage = React.lazy(() => import('../pages/Admin/Payments/AdminPaymentsPage').then((module) => ({ default: module.AdminPaymentsPage })));
+const AdminReviewsPage = React.lazy(() => import('../pages/Admin/Reviews/AdminReviewsPage').then((module) => ({ default: module.AdminReviewsPage })));
+const AdminCustomersPage = React.lazy(() => import('../pages/Admin/Customers/AdminCustomersPage').then((module) => ({ default: module.AdminCustomersPage })));
+const AdminCustomer360Page = React.lazy(() => import('../pages/Admin/Customers/AdminCustomer360Page').then((module) => ({ default: module.AdminCustomer360Page })));
+const AdminTicketsPage = React.lazy(() => import('../pages/Admin/Tickets/AdminTicketsPage').then((module) => ({ default: module.AdminTicketsPage })));
+const AdminTicketDetailPage = React.lazy(() => import('../pages/Admin/Tickets/AdminTicketDetailPage').then((module) => ({ default: module.AdminTicketDetailPage })));
+const AdminUsersPage = React.lazy(() => import('../pages/Admin/Users/AdminUsersPage').then((module) => ({ default: module.AdminUsersPage })));
+const AdminAuditLogsPage = React.lazy(() => import('../pages/Admin/AuditLogs/AdminAuditLogsPage').then((module) => ({ default: module.AdminAuditLogsPage })));
+const AdminSettingsPage = React.lazy(() => import('../pages/Admin/Settings/AdminSettingsPage').then((module) => ({ default: module.AdminSettingsPage })));
+const AdminPromotionsPage = React.lazy(() => import('../pages/Admin/Promotions/AdminPromotionsPage').then((module) => ({ default: module.AdminPromotionsPage })));
+const AdminCategoriesPage = React.lazy(() => import('../pages/Admin/Categories/AdminCategoriesPage').then((module) => ({ default: module.AdminCategoriesPage })));
+const AdminWarrantiesPage = React.lazy(() => import('../pages/Admin/Warranties/AdminWarrantiesPage').then((module) => ({ default: module.AdminWarrantiesPage })));
 
 // Staff Operational Pages
-import { StaffDashboardPage } from '../pages/Staff/Dashboard/StaffDashboardPage';
-import { StaffCustomersPage } from '../pages/Staff/Customers/StaffCustomersPage';
-import { StaffCustomer360Page } from '../pages/Staff/Customers/StaffCustomer360Page';
-import { StaffInventoryPage } from '../pages/Staff/Inventory/StaffInventoryPage';
-import { StaffLiveChatPage } from '../pages/Staff/Chat/StaffLiveChatPage';
+const StaffDashboardPage = React.lazy(() => import('../pages/Staff/Dashboard/StaffDashboardPage').then((module) => ({ default: module.StaffDashboardPage })));
+const StaffCustomersPage = React.lazy(() => import('../pages/Staff/Customers/StaffCustomersPage').then((module) => ({ default: module.StaffCustomersPage })));
+const StaffCustomer360Page = React.lazy(() => import('../pages/Staff/Customers/StaffCustomer360Page').then((module) => ({ default: module.StaffCustomer360Page })));
+const StaffInventoryPage = React.lazy(() => import('../pages/Staff/Inventory/StaffInventoryPage').then((module) => ({ default: module.StaffInventoryPage })));
+const StaffLiveChatPage = React.lazy(() => import('../pages/Staff/Chat/StaffLiveChatPage').then((module) => ({ default: module.StaffLiveChatPage })));
 
 // Route Guards
 import { AdminRoute } from './AdminRoute';
@@ -66,6 +66,7 @@ export const ProductsRedirect: React.FC = () => {
 
 export const AppRoutes: React.FC = () => {
   return (
+    <React.Suspense fallback={<div role="status" className="p-8 text-center">Đang tải...</div>}>
     <Routes>
       {/* Customer Storefront Routes */}
       <Route element={<StorefrontLayout />}>
@@ -216,5 +217,6 @@ export const AppRoutes: React.FC = () => {
       {/* Catch-all redirect to Home */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </React.Suspense>
   );
 };

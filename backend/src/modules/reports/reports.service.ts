@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus, TransactionStatus, TransactionType, Prisma } from '@prisma/client';
 
 export interface BrandSalesItem {
   brandId: string;
@@ -50,90 +50,65 @@ export class ReportsService {
     return vnDayFormatter.format(d);
   }
 
+  private async cashflow(from?: Date, to?: Date) {
+    const transactions = await this.prisma.paymentTransaction.findMany({
+      where: {
+        status: TransactionStatus.SUCCESS,
+        type: { in: [TransactionType.PAYMENT, TransactionType.REFUND, TransactionType.PARTIAL_REFUND] },
+        ...(from && to ? { createdAt: { gte: from, lte: to } } : {}),
+      },
+      select: { amount: true, type: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    let gross = new Prisma.Decimal(0);
+    let refunds = new Prisma.Decimal(0);
+    let paymentCount = 0;
+    const days = new Map<string, { gross: Prisma.Decimal; refunds: Prisma.Decimal }>();
+    for (const row of transactions) {
+      const day = this.vnDay(row.createdAt);
+      const bucket = days.get(day) ?? { gross: new Prisma.Decimal(0), refunds: new Prisma.Decimal(0) };
+      if (row.type === TransactionType.PAYMENT) {
+        gross = gross.plus(row.amount); bucket.gross = bucket.gross.plus(row.amount); paymentCount++;
+      } else {
+        refunds = refunds.plus(row.amount); bucket.refunds = bucket.refunds.plus(row.amount);
+      }
+      days.set(day, bucket);
+    }
+    return {
+      totalRevenue: gross.toNumber(), refundedTotal: refunds.toNumber(),
+      netRevenue: gross.minus(refunds).toNumber(), paymentCount,
+      dailyBreakdown: [...days].map(([date, bucket]) => ({
+        date, revenue: bucket.gross.minus(bucket.refunds).toNumber(),
+        grossRevenue: bucket.gross.toNumber(), refundedTotal: bucket.refunds.toNumber(),
+        netRevenue: bucket.gross.minus(bucket.refunds).toNumber(),
+      })),
+    };
+  }
+
   async getDashboardSummary() {
-    const [
-      totalOrders,
-      pendingOrders,
-      totalRevenue,
-      totalUsers,
-      totalProducts,
-      inventories,
-    ] = await Promise.all([
+    const [totalOrders, pendingOrders, money, totalUsers, totalProducts, inventories] = await Promise.all([
       this.prisma.order.count(),
       this.prisma.order.count({ where: { status: OrderStatus.PENDING } }),
-      this.prisma.payment.aggregate({
-        _sum: { amount: true },
-        where: { status: PaymentStatus.PAID },
-      }),
-      this.prisma.user.count(),
-      this.prisma.product.count(),
-      // M11/M20: Prisma cannot compare two columns in `where`, so the
-      // previous `lte: fields.reorderLevel` filter was invalid — filter the
-      // fetched rows in code instead (same as getLowStockReport).
-      this.prisma.inventory.findMany({
-        select: { availableQty: true, reorderLevel: true },
-      }),
+      this.cashflow(), this.prisma.user.count(), this.prisma.product.count(),
+      this.prisma.inventory.findMany({ select: { availableQty: true, reorderLevel: true } }),
     ]);
-
-    const revenue = Number(totalRevenue._sum.amount ?? 0);
-
     return {
-      totalOrders,
-      pendingOrders,
-      totalRevenue: revenue,
-      refundedTotal: 0,
-      netRevenue: revenue,
-      totalUsers,
-      totalProducts,
+      totalOrders, pendingOrders, totalRevenue: money.totalRevenue,
+      refundedTotal: money.refundedTotal, netRevenue: money.netRevenue,
+      totalUsers, totalProducts,
       totalLowStock: inventories.filter((i) => i.availableQty <= i.reorderLevel).length,
     };
   }
 
   async getRevenueReport(fromInput: string, toInput: string) {
-    // M11: interpret the range as Ho_Chi_Minh calendar days (the old code
-    // parsed YYYY-MM-DD as UTC midnight = 07:00 local, silently dropping a
-    // day-boundary slice) and validate it.
     const from = new Date(`${fromInput}T00:00:00+07:00`);
     const to = new Date(`${toInput}T23:59:59.999+07:00`);
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
-      throw new BadRequestException('Invalid date range (expected YYYY-MM-DD)');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fromInput) || !/^\d{4}-\d{2}-\d{2}$/.test(toInput) ||
+      isNaN(from.getTime()) || isNaN(to.getTime()) ||
+      this.vnDay(from) !== fromInput || this.vnDay(to) !== toInput || from > to) {
+      throw new BadRequestException('Invalid date range (expected valid YYYY-MM-DD days, from <= to)');
     }
-    if (from > to) {
-      throw new BadRequestException('"from" must not be after "to"');
-    }
-
-    const payments = await this.prisma.payment.findMany({
-      where: {
-        status: PaymentStatus.PAID,
-        paidAt: { gte: from, lte: to },
-      },
-      select: {
-        amount: true,
-        paidAt: true,
-        method: true,
-      },
-      orderBy: { paidAt: 'asc' },
-    });
-
-    // Group by VN-local date
-    const byDate: Record<string, number> = {};
-    for (const p of payments) {
-      const day = p.paidAt ? this.vnDay(p.paidAt) : 'unknown';
-      byDate[day] = (byDate[day] ?? 0) + Number(p.amount);
-    }
-
-    const totalRevenue = payments.reduce((acc, p) => acc + Number(p.amount), 0);
-
-    return {
-      from: fromInput,
-      to: toInput,
-      timeZone: VN_TIME_ZONE,
-      totalRevenue,
-      refundedTotal: 0,
-      netRevenue: totalRevenue,
-      dailyBreakdown: Object.entries(byDate).map(([date, revenue]) => ({ date, revenue })),
-      paymentCount: payments.length,
-    };
+    return { from: fromInput, to: toInput, timeZone: VN_TIME_ZONE, ...await this.cashflow(from, to) };
   }
 
   async getBrandSalesReport(fromInput?: string, toInput?: string): Promise<BrandSalesReport> {

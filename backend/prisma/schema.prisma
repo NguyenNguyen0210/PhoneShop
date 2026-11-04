@@ -119,6 +119,13 @@ enum ReviewStatus {
   REJECTED
 }
 
+enum WarrantyRepairStage {
+  REQUESTED
+  RECEIVED
+  REPAIRED
+  RETURNED
+}
+
 enum WarrantyStatus {
   ACTIVE
   EXPIRED
@@ -492,6 +499,7 @@ model Order {
   orderNumber     String      @unique @map("order_number") @db.VarChar(50)
   userId          String      @map("user_id") @db.Uuid
   addressId       String?     @map("address_id") @db.Uuid
+  shippingAddressSnapshot Json? @map("shipping_address_snapshot")
   status          OrderStatus @default(PENDING)
   subtotal        Decimal     @db.Decimal(15, 2)
   discountAmount  Decimal     @default(0) @map("discount_amount") @db.Decimal(15, 2)
@@ -531,6 +539,7 @@ model OrderItem {
   orderId        String   @map("order_id") @db.Uuid
   variantId      String   @map("variant_id") @db.Uuid
   imeiDeviceId   String?  @unique @map("imei_device_id") @db.Uuid
+  flashSaleItemId String?  @map("flash_sale_item_id") @db.Uuid
   productName    String   @map("product_name") @db.VarChar(255)
   sku            String   @db.VarChar(100)
   quantity       Int
@@ -542,10 +551,12 @@ model OrderItem {
   order      Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   variant    ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
   imeiDevice ImeiDevice?    @relation(fields: [imeiDeviceId], references: [id], onDelete: SetNull)
+  flashSaleItem FlashSaleItem? @relation(fields: [flashSaleItemId], references: [id], onDelete: SetNull)
   warranty   Warranty?
 
   @@index([orderId])
   @@index([variantId])
+  @@index([flashSaleItemId])
   @@map("order_items")
 }
 
@@ -673,6 +684,7 @@ model FlashSaleItem {
 
   campaign    FlashSaleCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   variant     ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  orderItems  OrderItem[]
 
   @@unique([campaignId, variantId])
   @@index([campaignId])
@@ -767,6 +779,9 @@ model Warranty {
   productVariantId String         @map("product_variant_id") @db.Uuid
   orderItemId      String         @unique @map("order_item_id") @db.Uuid
   imeiDeviceId     String?        @unique @map("imei_device_id") @db.Uuid
+  repairStage WarrantyRepairStage? @map("repair_stage")
+  claimPhone String? @map("claim_phone") @db.VarChar(30)
+  claimReturnAddress String? @map("claim_return_address") @db.Text
   warrantyCode     String         @unique @map("warranty_code") @db.VarChar(100)
   startDate        DateTime       @map("start_date")
   endDate          DateTime       @map("end_date")

@@ -196,6 +196,9 @@ export class AuthService {
   getGoogleAuthUrl(): { url: string; state: string } {
     const clientId =
       this.configService.get<string>('GOOGLE_CLIENT_ID') || '';
+    if (!clientId) {
+      throw new BadRequestException('Google OAuth is not configured properly on the server');
+    }
     const frontendUrl =
       this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
     const redirectUri =
@@ -221,14 +224,10 @@ export class AuthService {
     const options = {
       redirect_uri: redirectUri,
       client_id: clientId,
-      access_type: 'offline',
       response_type: 'code',
-      prompt: 'consent',
       state,
-      scope: [
-        'https://www.googleapis.com/auth/userinfo.profile',
-        'https://www.googleapis.com/auth/userinfo.email',
-      ].join(' '),
+      // Basic OpenID Connect sign-in only: no sensitive API access or refresh token.
+      scope: 'openid email profile',
     };
 
     const qs = new URLSearchParams(options);
@@ -387,6 +386,11 @@ export class AuthService {
       throw new BadRequestException('Thiếu credential token từ Google');
     }
 
+    const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+    if (!clientId) {
+      throw new BadRequestException('Google OAuth is not configured properly on the server');
+    }
+
     let tokenInfo: any;
     try {
       const res = await fetch(
@@ -403,9 +407,24 @@ export class AuthService {
       );
     }
 
-    const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
-    if (clientId && tokenInfo.aud !== clientId) {
+    if (tokenInfo.aud !== clientId) {
       throw new UnauthorizedException('Google ID Token không khớp với Client ID của ứng dụng');
+    }
+
+    if (
+      tokenInfo.iss !== 'accounts.google.com' &&
+      tokenInfo.iss !== 'https://accounts.google.com'
+    ) {
+      throw new UnauthorizedException('Google ID Token có issuer không hợp lệ');
+    }
+
+    if (
+      typeof tokenInfo.sub !== 'string' ||
+      !tokenInfo.sub ||
+      !Number.isFinite(Number(tokenInfo.exp)) ||
+      Number(tokenInfo.exp) <= Math.floor(Date.now() / 1000)
+    ) {
+      throw new UnauthorizedException('Google ID Token đã hết hạn hoặc không hợp lệ');
     }
 
     if (!tokenInfo.email) {

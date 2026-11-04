@@ -18,23 +18,30 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const isProduction = process.env.NODE_ENV === 'production';
 
   // ============================================================
   // SECURITY (HELMET & CORS)
   // ============================================================
 
-  app.use(helmet({
-    contentSecurityPolicy: false,
-  }));
+  // API responses use Helmet's default CSP in production. Swagger's interactive
+  // UI uses inline resources and is only available in non-production.
+  app.use(helmet({ contentSecurityPolicy: isProduction ? undefined : false }));
 
-  const allowedOrigins: (string | RegExp)[] = [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://app.tutorhub.id.vn',
-    process.env.FRONTEND_URL || '',
-    /^https:\/\/phoneshop(-[a-z0-9-]+)?\.vercel\.app$/,
-    /^https:\/\/phoneshop(-[a-z0-9-]+)?\.pages\.dev$/,
-  ].filter(Boolean);
+  const frontendOrigin = (process.env.FRONTEND_URL ?? '').trim().replace(/\/+$/, '');
+  if (isProduction && (!frontendOrigin.startsWith('https://') || new URL(frontendOrigin).origin !== frontendOrigin)) {
+    throw new Error('Production FRONTEND_URL must be a single HTTPS origin (for example https://phoneshop-blond.vercel.app).');
+  }
+
+  const allowedOrigins: (string | RegExp)[] = isProduction
+    ? [frontendOrigin]
+    : [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        frontendOrigin,
+        /^https:\/\/phoneshop(-[a-z0-9-]+)?\.vercel\.app$/,
+        /^https:\/\/phoneshop(-[a-z0-9-]+)?\.pages\.dev$/,
+      ].filter(Boolean);
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -106,7 +113,8 @@ async function bootstrap() {
   // SWAGGER
   // ============================================================
 
-  const swaggerConfig = new DocumentBuilder()
+  if (!isProduction) {
+    const swaggerConfig = new DocumentBuilder()
     .setTitle('Phone Shop API')
     .setDescription(
       'Backend API for Phone Shop - Mobile Phone E-Commerce System',
@@ -123,9 +131,9 @@ async function bootstrap() {
     )
     .build();
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-
-  SwaggerModule.setup('api/docs', app, document);
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   // ============================================================
   // SERVER
@@ -141,9 +149,9 @@ async function bootstrap() {
     `🚀 Phone Shop API running on http://localhost:${port}/api`,
   );
 
-  console.log(
-    `📚 Swagger documentation: http://localhost:${port}/api/docs`,
-  );
+  if (!isProduction) {
+    console.log(`📚 Swagger documentation: http://localhost:${port}/api/docs`);
+  }
 }
 
 bootstrap();

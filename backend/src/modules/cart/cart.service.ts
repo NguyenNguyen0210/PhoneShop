@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AddCartItemDto, UpdateCartItemDto } from './dto/cart.dto';
 
@@ -108,18 +108,30 @@ export class CartService {
     variant: { price: any },
     flash: { flashPrice: number; quotaLeft: number } | null,
   ) {
-    const newQty = existing.quantity + dto.quantity;
-    if (!inventory || inventory.availableQty < newQty) {
-      throw new BadRequestException('Insufficient stock for requested quantity');
+    // The old read-then-update lost increments when two requests added the
+    // same variant concurrently (including requests from different tabs).
+    // Retry against the latest quantity if another writer won the race.
+    let current = existing;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const newQty = current.quantity + dto.quantity;
+      if (!inventory || inventory.availableQty < newQty) {
+        throw new BadRequestException('Insufficient stock for requested quantity');
+      }
+      if (flash && newQty > flash.quotaLeft) {
+        throw new BadRequestException(`Flash Sale chỉ còn ${flash.quotaLeft} suất cho phiên bản này`);
+      }
+      const updated = await this.prisma.cartItem.updateMany({
+        where: { id: current.id, quantity: current.quantity },
+        data: { quantity: newQty, unitPrice: flash ? flash.flashPrice : variant.price },
+      });
+      if (updated.count === 1) {
+        return this.prisma.cartItem.findUnique({ where: { id: current.id } });
+      }
+      const latest = await this.prisma.cartItem.findUnique({ where: { id: current.id } });
+      if (!latest) throw new ConflictException('Cart item changed or was removed');
+      current = latest;
     }
-    if (flash && newQty > flash.quotaLeft) {
-      throw new BadRequestException(`Flash Sale chỉ còn ${flash.quotaLeft} suất cho phiên bản này`);
-    }
-    const unitPrice = flash ? flash.flashPrice : variant.price;
-    return this.prisma.cartItem.update({
-      where: { id: existing.id },
-      data: { quantity: newQty, unitPrice },
-    });
+    throw new ConflictException('Cart item changed concurrently; please retry');
   }
 
   async addItem(userId: string, dto: AddCartItemDto) {
@@ -262,11 +274,25 @@ export class CartService {
     return { success: true };
   }
 
-  async validateCart(userId: string) {
+  async validateCart(userId: string, selectedItemIds?: string) {
     const cart = await this.getOrCreateCart(userId);
     const issues: string[] = [];
+    const requested = selectedItemIds
+      ? new Set(selectedItemIds.split(',').map((id) => id.trim()).filter(Boolean))
+      : null;
+    const items = requested
+      ? cart.items.filter((item) => requested.has(item.id) || requested.has(item.variantId))
+      : cart.items;
 
-    for (const item of cart.items) {
+    if (requested) {
+      for (const token of requested) {
+        if (!items.some((item) => item.id === token || item.variantId === token)) {
+          issues.push(`Selected cart item ${token} was not found`);
+        }
+      }
+    }
+
+    for (const item of items) {
       if (!item.variant.isActive) {
         issues.push(`Variant ${item.variant.name} is no longer available`);
       }

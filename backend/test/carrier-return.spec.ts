@@ -26,7 +26,9 @@ describe('OrdersService - Carrier Return (PR #1)', () => {
       },
       inventory: {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUnique: jest.fn().mockResolvedValue({ quantity: 0 }),
       },
+      stockMovement: { create: jest.fn() },
       voucher: {
         update: jest.fn().mockResolvedValue({ count: 1 }),
       },
@@ -65,7 +67,7 @@ describe('OrdersService - Carrier Return (PR #1)', () => {
     ).resolves.toBeDefined();
 
     expect(prisma.imeiDevice.updateMany).toHaveBeenCalledWith({
-      where: { id: 'imei-1' },
+      where: { id: 'imei-1', status: { in: [ImeiStatus.RESERVED, ImeiStatus.SOLD] } },
       data: { status: ImeiStatus.RETURNED },
     });
     expect(warrantyService.voidWarrantiesForOrder).toHaveBeenCalled();
@@ -85,8 +87,8 @@ describe('OrdersService - Carrier Return (PR #1)', () => {
     await ordersService.transitionStatus('order-cod-1', OrderStatus.RETURNED);
 
     expect(prisma.imeiDevice.updateMany).toHaveBeenCalledWith({
-      where: { id: 'imei-cod-1', status: ImeiStatus.RESERVED },
-      data: { status: ImeiStatus.AVAILABLE },
+      where: { id: 'imei-cod-1', status: { in: [ImeiStatus.RESERVED, ImeiStatus.SOLD] } },
+      data: { status: ImeiStatus.RETURNED },
     });
     expect(prisma.inventory.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({

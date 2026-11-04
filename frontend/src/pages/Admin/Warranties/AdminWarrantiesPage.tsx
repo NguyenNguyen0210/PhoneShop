@@ -33,6 +33,7 @@ import {
   CloseCircleOutlined,
 } from '@ant-design/icons';
 import { warrantyService } from '../../../services/warrantyService';
+import { useAuthStore } from '../../../stores/useAuthStore';
 
 const { Title, Text } = Typography;
 
@@ -74,6 +75,7 @@ export interface AdminWarrantyItem {
   startDate: string;
   endDate: string;
   status: 'ACTIVE' | 'EXPIRED' | 'CLAIMED' | 'VOIDED';
+  repairStage?: 'REQUESTED' | 'RECEIVED' | 'REPAIRED' | 'RETURNED';
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -82,6 +84,9 @@ export interface AdminWarrantyItem {
 type StatusFilterType = 'ALL' | 'ACTIVE' | 'CLAIMED' | 'EXPIRED' | 'VOIDED';
 
 export const AdminWarrantiesPage: React.FC = () => {
+  const authUser = useAuthStore((state) => state.user);
+  const canManageWarranty = [authUser?.role, ...((authUser as { roles?: string[] } | null)?.roles || [])]
+    .some((role) => role === 'ADMIN' || role === 'MANAGER');
   const [warranties, setWarranties] = useState<AdminWarrantyItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilterType>('ALL');
@@ -124,6 +129,26 @@ export const AdminWarrantiesPage: React.FC = () => {
     } finally {
       setVoidingId(null);
     }
+  };
+
+  const [repairTarget, setRepairTarget] = useState<AdminWarrantyItem | null>(null);
+  const [repairNotes, setRepairNotes] = useState('');
+  const [repairLoading, setRepairLoading] = useState(false);
+  const repairAction = (w: AdminWarrantyItem) =>
+    w.repairStage === 'RECEIVED' ? 'repair' : w.repairStage === 'REPAIRED' ? 'return' : 'receive';
+  const repairLabel = (w: AdminWarrantyItem) =>
+    w.repairStage === 'RECEIVED' ? 'Xác nhận sửa xong' : w.repairStage === 'REPAIRED' ? 'Trả máy cho khách' : 'Tiếp nhận máy';
+  const handleRepair = async () => {
+    if (!repairTarget || !repairNotes.trim()) return;
+    setRepairLoading(true);
+    try {
+      await warrantyService.advanceRepair(repairTarget.id, repairAction(repairTarget), repairNotes.trim());
+      setRepairTarget(null); setRepairNotes('');
+      message.success('Đã cập nhật xử lý bảo hành');
+      await fetchWarranties();
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || 'Không thể cập nhật bảo hành');
+    } finally { setRepairLoading(false); }
   };
 
   const getStatusTag = (status: string, endDateStr: string) => {
@@ -327,7 +352,13 @@ export const AdminWarrantiesPage: React.FC = () => {
       title: 'Trạng thái',
       key: 'status',
       width: 170,
-      render: (_, record) => getStatusTag(record.status, record.endDate),
+      render: (_, record) => <Space direction="vertical" size={2}>
+        {getStatusTag(record.status, record.endDate)}
+        {record.status === 'CLAIMED' && <Text type="secondary">{
+          record.repairStage === 'RECEIVED' ? 'Đã nhận máy, đang sửa' :
+          record.repairStage === 'REPAIRED' ? 'Sửa xong, chờ trả máy' : 'Chờ tiếp nhận máy'
+        }</Text>}
+      </Space>,
     },
     {
       title: 'Thao tác',
@@ -335,10 +366,15 @@ export const AdminWarrantiesPage: React.FC = () => {
       width: 170,
       align: 'right',
       render: (_, record) => {
-        const canVoid = record.status === 'ACTIVE' || record.status === 'CLAIMED';
+        const canVoid = canManageWarranty && (record.status === 'ACTIVE' || (record.status === 'CLAIMED' && !['RECEIVED', 'REPAIRED'].includes(record.repairStage || '')));
 
         return (
-          <Space size="small">
+          <Space size="small" wrap>
+            {record.status === 'CLAIMED' && (
+              <Button size="small" onClick={() => { setRepairTarget(record); setRepairNotes(''); }}>
+                {repairLabel(record)}
+              </Button>
+            )}
             <Tooltip title="Xem thông tin chi tiết">
               <Button
                 type="text"
@@ -674,6 +710,14 @@ export const AdminWarrantiesPage: React.FC = () => {
             </Descriptions>
           </div>
         )}
+      </Modal>
+      <Modal title={repairTarget ? repairLabel(repairTarget) : 'Xử lý bảo hành'}
+        open={Boolean(repairTarget)} onCancel={() => setRepairTarget(null)}
+        onOk={handleRepair} confirmLoading={repairLoading}
+        okButtonProps={{ disabled: !repairNotes.trim() }} okText="Xác nhận" cancelText="Hủy">
+        <label htmlFor="repair-notes">Ghi chú xử lý / biên bản bàn giao</label>
+        <Input.TextArea id="repair-notes" value={repairNotes} maxLength={2000}
+          onChange={(e) => setRepairNotes(e.target.value)} rows={4} />
       </Modal>
     </div>
   );

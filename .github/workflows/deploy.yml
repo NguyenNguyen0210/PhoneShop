@@ -1,73 +1,92 @@
-name: Deploy Backend
+name: Deploy Backend (manual production release)
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'backend/**'
-      - 'infrastructure/docker/backend.Dockerfile'
-      - 'docker-compose*.yml'
-      - '.github/workflows/deploy.yml'
   workflow_dispatch:
+    inputs:
+      backup_reference:
+        description: 'ID/path of a verified and restorable database backup'
+        required: true
+        type: string
+
+permissions:
+  contents: read
 
 jobs:
-  build-and-verify:
-    name: Build & Verify Docker Image
+  verify:
     runs-on: ubuntu-latest
-
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: mobilecommerce_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mobilecommerce_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres_ci_only@localhost:5432/mobilecommerce_ci
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Backend Docker Image
-        uses: docker/build-push-action@v6
+      - name: Require the main branch for production
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: test "$RELEASE_REF" = 'refs/heads/main'
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          context: .
-          file: ./infrastructure/docker/backend.Dockerfile
-          push: false
-          tags: phoneshop-backend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Deployment Notification
-        run: |
-          echo "Backend Docker container image successfully built and verified for deployment."
-          echo "Ready for production rollout via Docker Compose / Container Registry."
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm install -g npm@11
+      - run: npm ci
+        working-directory: backend
+      - run: npm audit --omit=dev --audit-level=high
+        working-directory: backend
+      - run: npx prisma generate && npx prisma migrate deploy
+        working-directory: backend
+      - run: npm run build && npm test
+        working-directory: backend
+      - name: Verify production Docker image
+        run: docker build -f infrastructure/docker/backend.Dockerfile -t phoneshop-backend:release .
 
   deploy:
-    name: Deploy to Production
-    needs: build-and-verify
+    needs: verify
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
+    environment: production
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Check Deployment Credentials
-        id: check_credentials
-        run: |
-          if [ -n "${{ secrets.SSH_HOST }}" ]; then
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "Notice: SSH_HOST secret is not configured. Skipping remote server SSH rollout."
-          fi
-
-      - name: Deploy via SSH
-        if: steps.check_credentials.outputs.configured == 'true'
+      - name: Validate deployment configuration
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          BACKUP_REFERENCE: ${{ inputs.backup_reference }}
+        shell: bash
         run: |
-          echo "Executing automated remote deployment to $SSH_HOST..."
-          mkdir -p ~/.ssh
-          echo "$SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          set -euo pipefail
+          for var in SSH_HOST SSH_USER SSH_KEY SSH_KNOWN_HOSTS BACKUP_REFERENCE; do
+            test -n "${!var}" || { echo "Missing $var" >&2; exit 1; }
+          done
+          [[ "$BACKUP_REFERENCE" =~ ^[a-zA-Z0-9._:/-]{3,200}$ ]] || {
+            echo 'Backup reference contains unsupported characters' >&2; exit 1;
+          }
+      - name: Deploy pinned commit over SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          BACKUP_REFERENCE: ${{ inputs.backup_reference }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" "cd /app/phoneshop && git pull origin main && test -f backend/.env.production || (echo 'MISSING backend/.env.production on server' && exit 1) && docker compose -f docker-compose.prod.yml up -d --build"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i ~/.ssh/id_rsa \
+            "$SSH_USER@$SSH_HOST" \
+            "cd /app/phoneshop && git diff --quiet && git diff --cached --quiet && git fetch origin main && git checkout --detach '$GITHUB_SHA' && PRODUCTION_BACKUP_REFERENCE='$BACKUP_REFERENCE' bash infrastructure/deploy-production.sh"

@@ -42,29 +42,9 @@ export const FlashSaleSection: React.FC<FlashSaleSectionProps> = ({ campaign }) 
     return () => clearInterval(timer);
   }, [campaign?.endAt]);
 
-  if (!campaign || !campaign.items || campaign.items.length === 0) {
-    return null;
-  }
-
-  // If campaign has expired and totalMs is 0 after checking
-  const endTime = new Date(campaign.endAt).getTime();
-  if (endTime <= Date.now()) {
-    return null;
-  }
-
-  const padZero = (num: number) => num.toString().padStart(2, '0');
-
-  // Fallback thân thiện nếu DB còn sót mô tả kỹ thuật cũ chứa từ "variant"
-  const friendlyDescription = (() => {
-    const raw = (campaign.description || '').trim();
-    if (!raw) return 'Săn deal công nghệ chớp nhoáng — 8 dòng điện thoại giảm sâu nhất tuần';
-    if (/variant/i.test(raw)) return 'Săn deal công nghệ chớp nhoáng — 8 dòng điện thoại giảm sâu nhất tuần';
-    return raw;
-  })();
-
   // Slider 1 hàng: hiển thị toàn bộ items, lướt ngang thay vì chia lưới
   // Lọc bỏ item hết hàng thật (availableQty=0) dù quota flash còn — tránh phi logic như PDP
-  const visibleItems = (campaign.items || []).filter((item) => {
+  const visibleItems = (campaign?.items || []).filter((item) => {
     const quotaLeft = Number(item.stockLimit) - Number(item.soldCount);
     if (quotaLeft <= 0) return false;
     const inv = (item as any)?.variant?.inventory;
@@ -90,13 +70,32 @@ export const FlashSaleSection: React.FC<FlashSaleSectionProps> = ({ campaign }) 
     updateNavState();
     window.addEventListener('resize', updateNavState);
     return () => window.removeEventListener('resize', updateNavState);
-  }, [campaign.id, visibleItems.length]);
+  }, [campaign?.id, visibleItems.length]);
 
   const scrollByPage = (dir: 1 | -1) => {
     const el = trackRef.current;
     if (!el) return;
     el.scrollBy({ left: dir * el.clientWidth * 0.85, behavior: 'smooth' });
   };
+
+  // Keep all Hooks above the early return, including when campaigns expire.
+  if (!campaign || !campaign.items || campaign.items.length === 0) {
+    return null;
+  }
+
+  if (new Date(campaign.endAt).getTime() <= Date.now()) {
+    return null;
+  }
+
+  const padZero = (num: number) => num.toString().padStart(2, '0');
+
+  const friendlyDescription = (() => {
+    const raw = (campaign.description || '').trim();
+    if (!raw || /variant/i.test(raw)) {
+      return 'Săn deal công nghệ chớp nhoáng — 8 dòng điện thoại giảm sâu nhất tuần';
+    }
+    return raw;
+  })();
 
   const TimeBox: React.FC<{ value: string; label?: string }> = ({ value, label }) => (
     <div className="flex flex-col items-center gap-0.5">

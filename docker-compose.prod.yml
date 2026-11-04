@@ -1,21 +1,39 @@
-version: '3.8'
-
 services:
-  # ==========================================
-  # Backend - NestJS (Production Container)
-  # ==========================================
   backend:
+    image: phoneshop-backend:release
     build:
       context: .
       dockerfile: infrastructure/docker/backend.Dockerfile
     container_name: phoneshop_backend_prod
-    restart: always
+    restart: unless-stopped
+    init: true
     ports:
-      - "3000:3000"
+      # Reverse proxy on the host should terminate TLS and forward to localhost.
+      - "127.0.0.1:3000:3000"
     env_file:
       - ./backend/.env.production
     environment:
       - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - internal_network
+
+  migrate:
+    profiles: ["migration"]
+    image: phoneshop-backend:release
+    env_file:
+      - ./backend/.env.production
+    environment:
+      NODE_ENV: production
+      PRODUCTION_BACKUP_REFERENCE: ${PRODUCTION_BACKUP_REFERENCE:-}
+    entrypoint: ["sh", "-c"]
+    command:
+      - "node scripts/preflight-production-migrations.cjs && ./node_modules/.bin/prisma migrate deploy"
     networks:
       - internal_network
 

@@ -27,12 +27,11 @@ import {
 import { CheckoutCouponSection } from '../../../components/storefront/checkout/CheckoutCouponSection';
 import { notifyError } from '../../../utils/notify';
 import { message } from 'antd';
-import { cartService } from '../../../services/cartService';
 import type { PaymentMethod, Address, ShippingMethod } from '../../../types';
 
 export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
-  const { selectedItems, selectedSubtotal, removeSelectedItems } = useCartStore();
+  const { selectedItems, selectedSubtotal, removeCheckedOutItems } = useCartStore();
   const checkoutItems = selectedItems();
   const { user } = useAuthStore();
 
@@ -73,7 +72,7 @@ export const CheckoutPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
 
-  // Guard: sau khi đặt hàng thành công, removeSelectedItems() làm
+  // Guard: sau khi đặt hàng thành công, removeCheckedOutItems() làm
   // checkoutItems rỗng — effect bên dưới sẽ bắn navigate('/cart') và đè lên
   // navigate('/order-success/:id'). Ref này chặn redirect đó.
   const orderPlacedRef = useRef(false);
@@ -193,32 +192,6 @@ export const CheckoutPage: React.FC = () => {
     return () => clearInterval(timer);
   }, [checkoutItems.length, navigate]);
 
-  // Pre-validate cart on mount to catch URL direct access or stale cart items
-  useEffect(() => {
-    if (orderPlacedRef.current) return;
-    const token = localStorage.getItem('phoneshop_access_token');
-    if (!token) return;
-
-    let isMounted = true;
-    cartService
-      .validateCart()
-      .then((res) => {
-        if (!isMounted || orderPlacedRef.current) return;
-        if (res && (res.valid === false || (res.issues && res.issues.length > 0))) {
-          message.warning('Giỏ hàng trống hoặc không hợp lệ');
-          useCartStore.getState().syncWithBackend().catch(() => {});
-          navigate('/cart');
-        }
-      })
-      .catch((err) => {
-        console.warn('Checkout validateCart check failed:', err);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [navigate]);
-
   const minutes = Math.floor(secondsRemaining / 60);
   const seconds = secondsRemaining % 60;
   const timeFormatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
@@ -297,7 +270,7 @@ export const CheckoutPage: React.FC = () => {
       // Clear ONLY selected items from cart.
       // Đặt flag TRƯỚC khi xóa để guard effect không bắn về /cart.
       orderPlacedRef.current = true;
-      removeSelectedItems();
+      removeCheckedOutItems();
       sessionStorage.removeItem('phoneshop_voucher');
 
       navigate(`/order-success/${orderId}`);

@@ -3,7 +3,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RefundOrderDto {
   @ApiProperty({ description: 'Refund amount in VND', example: 500000 })
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
   amount: number;
 
@@ -12,8 +12,8 @@ export class RefundOrderDto {
   @IsNotEmpty()
   reason: string;
 
-  @ApiPropertyOptional({ description: 'External provider transaction reference', example: 'VNPAY-REF-123456' })
-  @IsOptional()
+  @ApiProperty({ description: 'Reference proving that the external refund has already succeeded', example: 'VNPAY-REF-123456' })
   @IsString()
-  providerReference?: string;
+  @IsNotEmpty()
+  providerReference: string;
 }

@@ -262,9 +262,9 @@ export type OrderStatus =
 export type PaymentMethod = 'COD' | 'VIETQR' | 'VNPAY' | 'BANK_TRANSFER';
 export type ShippingMethod = 'ECONOMY' | 'STANDARD' | 'EXPRESS' | 'EXPRESS_2H';
 
-export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+export type PaymentStatus = 'PENDING' | 'PAID' | 'PARTIALLY_REFUNDED' | 'FAILED' | 'REFUNDED';
 
-export type TransactionType = 'PAYMENT' | 'REFUND';
+export type TransactionType = 'PAYMENT' | 'REFUND' | 'PARTIAL_REFUND';
 export type TransactionStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
 
 export interface PaymentTransaction {

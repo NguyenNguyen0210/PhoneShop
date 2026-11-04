@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateWarrantyDto {
@@ -35,7 +35,27 @@ export class CreateWarrantyDto {
   notes?: string;
 }
 
+export class RepairWarrantyDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  notes: string;
+}
+
 export class ClaimWarrantyDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  customerPhone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  returnAddress?: string;
+
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
