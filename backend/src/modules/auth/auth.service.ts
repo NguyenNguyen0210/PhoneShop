@@ -83,7 +83,7 @@ export class AuthService {
     });
 
     // Tạm thời tắt gửi email chào mừng khi đăng ký tài khoản (tránh lỗi/treo do SMTP trên cloud)
-    // Sẽ bật lại khi hoàn tất tích hợp Brevo HTTP API
+    // Chỉ bật lại sau khi xác minh cấu hình SMTP và domain gửi trên môi trường triển khai.
     /*
     try {
       await this.emailService.sendWelcomeEmail(

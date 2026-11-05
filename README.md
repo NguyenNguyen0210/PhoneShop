@@ -75,7 +75,7 @@ Các quy tắc nghiệp vụ đáng chú ý:
 | Database | PostgreSQL, Prisma ORM 7, PostgreSQL driver adapter |
 | Authentication | Passport, JWT access/refresh token, bcrypt, Google OAuth |
 | Validation & HTTP security | class-validator, class-transformer, Helmet, throttling, CORS |
-| File & email | Cloudflare R2, AWS S3 SDK, Sharp, Brevo, Nodemailer |
+| File & email | Cloudflare R2, AWS S3 SDK, Sharp, Resend SMTP, Nodemailer |
 | Testing | Jest, NestJS Testing, Python Playwright, Oxlint |
 | Hosting & CI | Render, Vercel, GitHub Actions; Docker cho môi trường phát triển |
 
@@ -93,7 +93,7 @@ flowchart LR
     Prisma --> DB[(PostgreSQL)]
     Domain --> Payment[VNPay / VietQR]
     Domain --> Storage[Cloudflare R2]
-    Domain --> Email[Brevo / SMTP]
+    Domain --> Email[Resend SMTP]
 ```
 
 Trong mỗi module, **controller** tiếp nhận request, **DTO** mô tả và kiểm tra đầu vào, **service** xử lý nghiệp vụ, **PrismaService** truy cập dữ liệu. Các tác vụ liên quan tới đơn hàng, tồn kho và thanh toán sử dụng transaction khi cần đảm bảo tính nhất quán.
@@ -253,7 +253,7 @@ Tham khảo [backend/.env.example](backend/.env.example) và [frontend/.env.exam
 | VNPay | `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_URL`, `VNPAY_RETURN_URL` | Thanh toán và URL trả về |
 | VietQR | `VIETQR_BANK_ID`, `VIETQR_ACCOUNT_NO`, `VIETQR_ACCOUNT_NAME` | Thông tin tài khoản nhận tiền |
 | Storage | `CLOUDFLARE_R2_ACCOUNT_ID`, `CLOUDFLARE_R2_BUCKET`, `CLOUDFLARE_R2_ACCESS_KEY_ID`, `CLOUDFLARE_R2_SECRET_ACCESS_KEY`, `CLOUDFLARE_R2_PUBLIC_URL` | Lưu trữ và truy cập media |
-| Email | `EMAIL_PROVIDER`, `EMAIL_FROM`, `BREVO_API_KEY` hoặc nhóm `EMAIL_*` cho SMTP | Gửi email |
+| Email | `EMAIL_FROM`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_SECURE`, `EMAIL_USER`, `EMAIL_PASS` | Gửi email qua Resend SMTP |
 | Chatbot | `CHATBOT_ENABLED`, `CHATBOT_PROVIDER` và credential của provider trong file mẫu | Bật và cấu hình chatbot |
 | Frontend | `VITE_API_URL` | API base URL, bao gồm `/api` |
 | Frontend | `VITE_GOOGLE_CLIENT_ID` | Cùng client ID với backend |
@@ -264,6 +264,23 @@ Backend đọc `.env.production` khi `NODE_ENV=production`, nếu không sẽ đ
 Trong production, `FRONTEND_URL` phải là một HTTPS origin duy nhất. Backend yêu cầu credential VNPay và từ chối các giá trị mặc định sandbox được hard-code. Đăng ký đúng origin và redirect URI trên Google Cloud nếu bật Google sign-in.
 
 Biến `VITE_*` được đưa vào frontend bundle và có thể được người dùng đọc. Chỉ đặt cấu hình công khai tại đây; lưu database URL, JWT secret và credential tích hợp ở backend. Không commit file môi trường chứa secret.
+
+### Resend SMTP
+
+Xác minh domain `tutorhub.id.vn` trong [Resend Domains](https://resend.com/domains), thêm các DNS record mà Resend cung cấp và chờ trạng thái verified. Tạo API key có quyền gửi cho domain này tại [Resend API Keys](https://resend.com/api-keys), rồi cấu hình trên backend/Render:
+
+```dotenv
+EMAIL_HOST=smtp.resend.com
+EMAIL_PORT=2465
+EMAIL_SECURE=true
+EMAIL_USER=resend
+EMAIL_PASS=<Resend API key bắt đầu bằng re_>
+EMAIL_FROM="PhoneShop <no-reply@tutorhub.id.vn>"
+```
+
+Theo [tài liệu Resend SMTP](https://resend.com/docs/send-with-smtp), password SMTP là API key; cổng `2465` dùng TLS ngay khi kết nối. [Render Free](https://render.com/docs/free) chặn các cổng `25`, `465`, `587`; cấu hình trên dùng cổng SMTP thay thế do Resend hỗ trợ. Cần kiểm tra kết nối thực tế trên service sau khi deploy.
+
+Email nghiệp vụ và chức năng gửi email kiểm tra của admin dùng chung cấu hình SMTP. Không cần Resend SDK, `RESEND_API_KEY`, `EMAIL_PROVIDER` hoặc `BREVO_API_KEY`; đặt API key vào `EMAIL_PASS`. Khi thiếu password, development chỉ ghi log mock; production báo lỗi gửi thay vì giả lập thành công. Email chào mừng khi đăng ký vẫn đang tắt trong code; migration này giữ nguyên hành vi đó.
 
 ## API Documentation
 

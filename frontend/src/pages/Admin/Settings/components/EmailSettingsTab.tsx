@@ -38,7 +38,7 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({ form }) => {
   }>({ status: 'idle', message: '' });
 
   const handleOpenModal = () => {
-    const defaultTarget = currentUser?.email || form.getFieldValue('EMAIL_USER') || '';
+    const defaultTarget = currentUser?.email || '';
     setRecipientEmail(defaultTarget);
     setModalOpen(true);
   };
@@ -68,12 +68,12 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({ form }) => {
     }
   };
 
-  const host = form.getFieldValue('EMAIL_HOST') || 'smtp.gmail.com';
-  const port = form.getFieldValue('EMAIL_PORT') || '587';
+  const host = form.getFieldValue('EMAIL_HOST') || 'smtp.resend.com';
+  const port = form.getFieldValue('EMAIL_PORT') || '2465';
   const secure = form.getFieldValue('EMAIL_SECURE');
   const user = form.getFieldValue('EMAIL_USER') || 'Được nạp từ .env';
   const from = form.getFieldValue('EMAIL_FROM') || 'Phone Shop <no-reply@phoneshop.vn>';
-  const provider = form.getFieldValue('EMAIL_PROVIDER') || 'brevo';
+  const provider = form.getFieldValue('EMAIL_PROVIDER') || 'smtp';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -106,7 +106,7 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({ form }) => {
                   Dịch vụ Gửi thư Điện tử (Email Service)
                 </Title>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  Máy chủ SMTP / Brevo API gửi email xác nhận đặt hàng, thông báo mã OTP và biên lai thanh toán
+                  Resend SMTP gửi email đặt hàng, đặt lại mật khẩu và thông báo giao hàng
                 </Text>
               </div>
             </Space>
@@ -138,7 +138,7 @@ export const EmailSettingsTab: React.FC<EmailSettingsTabProps> = ({ form }) => {
             <Text code>{port}</Text>
           </Descriptions.Item>
           <Descriptions.Item label="Phương thức mã hóa">
-            <Text>{secure || port === 465 || port === '465' ? 'TLS / SSL (Cổng 465)' : 'STARTTLS (Cổng 587)'}</Text>
+            <Text>{String(secure) === 'true' || [465, 2465].includes(Number(port)) ? 'TLS / SSL' : 'STARTTLS'}</Text>
           </Descriptions.Item>
           <Descriptions.Item label="Tài khoản gửi (Username)">
             <Text code>{user}</Text>

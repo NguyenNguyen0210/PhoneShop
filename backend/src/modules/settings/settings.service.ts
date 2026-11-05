@@ -5,6 +5,7 @@ import { SettingItemDto, TestEmailDto, TestStorageDto, TestVietQrDto } from './d
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import * as nodemailer from 'nodemailer';
 import { buildTestDiagnosticEmail } from '../../infrastructure/email/email-template.builder';
+import { resolveSmtpConfig, smtpTransportOptions } from '../../infrastructure/email/smtp.config';
 
 export const MASKED_SECRET = '••••••••••••';
 
@@ -106,13 +107,14 @@ export class SystemSettingsService {
       ? 'Đã cấu hình qua .env'
       : 'Chưa cấu hình .env';
 
-    groups.email['EMAIL_HOST'] = this.config.get<string>('EMAIL_HOST', 'smtp.gmail.com') || '';
-    groups.email['EMAIL_PORT'] = String(this.config.get<string>('EMAIL_PORT', '587')) || '587';
-    groups.email['EMAIL_SECURE'] = String(this.config.get<string>('EMAIL_SECURE', 'false')) || 'false';
-    groups.email['EMAIL_USER'] = this.config.get<string>('EMAIL_USER', '') || '';
-    groups.email['EMAIL_FROM'] = this.config.get<string>('EMAIL_FROM', 'Phone Shop <no-reply@phoneshop.vn>') || '';
-    groups.email['EMAIL_PROVIDER'] = this.config.get<string>('EMAIL_PROVIDER', 'brevo') || '';
-    groups.email['EMAIL_STATUS'] = (this.config.get<string>('BREVO_API_KEY') || this.config.get<string>('EMAIL_PASS'))
+    const smtp = resolveSmtpConfig(this.config);
+    groups.email['EMAIL_HOST'] = smtp.host;
+    groups.email['EMAIL_PORT'] = String(smtp.port);
+    groups.email['EMAIL_SECURE'] = String(smtp.secure);
+    groups.email['EMAIL_USER'] = smtp.user;
+    groups.email['EMAIL_FROM'] = smtp.from;
+    groups.email['EMAIL_PROVIDER'] = 'smtp';
+    groups.email['EMAIL_STATUS'] = smtp.pass
       ? 'Đã cấu hình qua .env'
       : 'Chưa cấu hình .env';
 
@@ -249,21 +251,17 @@ export class SystemSettingsService {
   }
 
   async testEmail(dto: TestEmailDto, adminEmail?: string): Promise<{ success: boolean; message: string }> {
-    const rawHost = dto.host || this.config.get<string>('EMAIL_HOST');
-    const rawPort = dto.port !== undefined ? String(dto.port) : this.config.get<string>('EMAIL_PORT', '587');
-    const port = Number(rawPort?.replace(/^["']|["']$/g, '')) || 587;
-    const rawSecure = dto.secure !== undefined ? String(dto.secure) : this.config.get<string>('EMAIL_SECURE', 'false');
-    const secure = rawSecure === 'true' || port === 465;
-    const rawUser = dto.user || this.config.get<string>('EMAIL_USER');
-    const passCandidate = dto.pass && dto.pass !== MASKED_SECRET ? dto.pass : this.config.get<string>('EMAIL_PASS');
-    const rawFrom = dto.from || this.config.get<string>('EMAIL_FROM', 'Phone Shop <no-reply@phoneshop.vn>');
+    const smtp = resolveSmtpConfig(this.config, {
+      host: dto.host,
+      port: dto.port,
+      secure: dto.secure,
+      user: dto.user,
+      pass: dto.pass !== MASKED_SECRET ? dto.pass : undefined,
+      from: dto.from,
+    });
+    const { host, port, secure, user, pass, from } = smtp;
 
-    const host = rawHost?.replace(/^["']|["']$/g, '').trim();
-    const user = rawUser?.replace(/^["']|["']$/g, '').trim();
-    const pass = passCandidate?.replace(/^["']|["']$/g, '').trim();
-    const from = rawFrom?.replace(/^["']|["']$/g, '').trim() || 'Phone Shop <no-reply@phoneshop.vn>';
-
-    const targetEmail = dto.toEmail || adminEmail || user;
+    const targetEmail = dto.toEmail || adminEmail || (user.includes('@') ? user : undefined);
     if (!targetEmail) {
       throw new Error('Không có email nhận kiểm thử');
     }
@@ -271,12 +269,7 @@ export class SystemSettingsService {
       throw new Error('Thông số SMTP (EMAIL_HOST, EMAIL_USER, EMAIL_PASS) chưa được cấu hình trong .env');
     }
 
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth: { user, pass },
-    });
+    const transporter = nodemailer.createTransport(smtpTransportOptions(smtp));
 
     const startTime = Date.now();
     await transporter.sendMail({

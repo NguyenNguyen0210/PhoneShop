@@ -1,8 +1,8 @@
-import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
-import { BrevoService } from './brevo.service';
+import { resolveSmtpConfig, smtpTransportOptions } from './smtp.config';
 import {
   OrderItemSummary,
   OrderCancelledOptions,
@@ -53,28 +53,10 @@ export class EmailService implements OnModuleInit {
   private transporter: Transporter | null = null;
   public isMock = true;
 
-  constructor(
-    private readonly config: ConfigService,
-    @Optional() private readonly brevo?: BrevoService,
-  ) {}
-
-  private clean(val?: string | null): string {
-    return (val ?? '').trim().replace(/^["']|["']$/g, '');
-  }
+  constructor(private readonly config: ConfigService) {}
 
   getResolvedConfig() {
-    const host = this.clean(this.config.get<string>('EMAIL_HOST'));
-    const user = this.clean(this.config.get<string>('EMAIL_USER'));
-    const pass = this.clean(this.config.get<string>('EMAIL_PASS'));
-    const rawPort = this.clean(String(this.config.get('EMAIL_PORT', 587)));
-    const port = Number(rawPort) || 587;
-    const rawSecure = this.clean(String(this.config.get('EMAIL_SECURE', 'false')));
-    const secure = rawSecure === 'true' || port === 465;
-    const from =
-      this.clean(this.config.get<string>('EMAIL_FROM')) ||
-      'Phone Shop <no-reply@phoneshop.vn>';
-
-    return { host, user, pass, port, secure, from };
+    return resolveSmtpConfig(this.config);
   }
 
   async onModuleInit() {
@@ -97,6 +79,9 @@ export class EmailService implements OnModuleInit {
     this.isMock = isMock;
 
     if (isMock) {
+      if (this.config.get<string>('NODE_ENV') === 'production') {
+        throw new Error('SMTP is not configured: set EMAIL_PASS to your Resend API key.');
+      }
       this.logger.warn(
         'EMAIL credentials not set (EMAIL_HOST / EMAIL_USER / EMAIL_PASS). ' +
           'Running without SMTP — emails will only be logged to console, nothing is sent.',
@@ -106,16 +91,7 @@ export class EmailService implements OnModuleInit {
     }
 
     if (!this.transporter) {
-      this.transporter = nodemailer.createTransport({
-        host: cfg.host,
-        port: cfg.port,
-        secure: cfg.secure,
-        auth: { user: cfg.user, pass: cfg.pass },
-        // Fail fast instead of hanging register/forgot-password for 30s+ on bad network.
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 15000,
-      });
+      this.transporter = nodemailer.createTransport(smtpTransportOptions(cfg));
       this.logger.log(
         `Email transporter initialized (host=${cfg.host}, port=${cfg.port}, user=${cfg.user})`,
       );
@@ -125,16 +101,6 @@ export class EmailService implements OnModuleInit {
   }
 
   async send(options: SendEmailOptions): Promise<void> {
-    // Brevo API path (default). Raw SMTP remains available via opt-out.
-    const provider = this.clean(this.config.get<string>('EMAIL_PROVIDER', 'brevo')).toLowerCase();
-    if (provider === 'brevo') {
-      if (!this.brevo) {
-        throw new Error('EMAIL_PROVIDER=brevo but BrevoService is not available');
-      }
-      await this.brevo.send(options);
-      return;
-    }
-
     const { transporter, from, isMock } = await this.initTransporter();
 
     if (isMock || !transporter) {
