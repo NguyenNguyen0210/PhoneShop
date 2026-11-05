@@ -1,0 +1,17 @@
+node_modules
+dist
+build
+coverage
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+*.backup-local
+**/*.backup-local
+scripts/r2-mapping.json
+test_artifacts
+test-results
+.git
+.vscode
+.idea

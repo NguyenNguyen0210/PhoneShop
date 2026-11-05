@@ -102,8 +102,10 @@ Trong mỗi module, **controller** tiếp nhận request, **DTO** mô tả và k
 
 ```text
 PhoneShop/
-├── .github/workflows/       # CI frontend/backend và workflow deploy cũ
+├── .github/workflows/       # CI frontend/backend
 ├── backend/
+│   ├── Dockerfile          # Build NestJS/Prisma và tạo image production
+│   ├── .dockerignore       # Loại trừ secrets, dependencies và build local
 │   ├── prisma/
 │   │   ├── migrations/     # Lịch sử thay đổi schema
 │   │   ├── seed_modules/   # Các nhóm dữ liệu mẫu
@@ -135,7 +137,7 @@ PhoneShop/
 │       ├── types/          # Kiểu dữ liệu TypeScript
 │       └── utils/          # Hàm hỗ trợ
 ├── docker-compose.yml      # Backend development
-├── docker-compose.prod.yml # Cấu hình cũ, thiếu Dockerfile được tham chiếu
+├── docker-compose.prod.yml # Backend production và service migration riêng
 └── README.md
 ```
 
@@ -374,6 +376,17 @@ Build chỉ generate Prisma Client và biên dịch ứng dụng; **không tự 
 
 Đặt `VITE_API_URL=https://phoneshop-api.onrender.com/api`, `VITE_GOOGLE_CLIENT_ID` và `VITE_R2_PUBLIC_URL` theo môi trường thực tế. Sau khi đổi biến môi trường, tạo deployment mới. [frontend/vercel.json](frontend/vercel.json) đã cấu hình rewrite về `index.html` cho SPA routing.
 
+### Docker backend
+
+Từ thư mục gốc repository:
+
+```powershell
+docker build -t phoneshop-backend:local ./backend
+docker run --rm --init --env-file backend/.env.production -p 3000:3000 phoneshop-backend:local
+```
+
+Image dùng Node 22, chỉ cài dependencies production trong runtime và chạy bằng user `node`. File môi trường được truyền lúc chạy, không được đưa vào image. Cần cấu hình database mà container truy cập được cùng các biến production trong phần Configuration. Image có Prisma CLI và migrations để chạy migration riêng; không tự migrate hoặc seed khi khởi động.
+
 ### CI/CD và Docker
 
 - [Backend CI](.github/workflows/backend-ci.yml): audit dependencies, generate Prisma Client, build, thử migration và chạy kiểm thử với PostgreSQL riêng.
@@ -381,7 +394,7 @@ Build chỉ generate Prisma Client và biên dịch ứng dụng; **không tự 
 - Hai CI workflow chạy khi push hoặc mở pull request tới `main` và `develop`.
 - CD do Render/Vercel đảm nhiệm khi đã kết nối Git và bật tự động triển khai. Trên Render có thể chọn **After CI Checks Pass** để chờ CI đạt.
 - [docker-compose.yml](docker-compose.yml) chạy backend development; không tạo frontend hoặc PostgreSQL. Cần database mà container truy cập được; `127.0.0.1` bên trong container là chính container đó.
-- `docker-compose.prod.yml` và workflow deploy thủ công `.github/workflows/deploy.yml` còn tham chiếu tới thư mục `infrastructure/` đã xóa. Luồng Docker production cũ hiện chưa sử dụng được; triển khai Render/Vercel bên trên dùng cấu hình riêng.
+- [docker-compose.prod.yml](docker-compose.prod.yml) dùng `backend/Dockerfile`, với service migration riêng. Cần chuẩn bị `backend/.env.production` trước khi dùng; chạy migration sau khi hoàn thành các bước kiểm tra database ở trên.
 
 Tài liệu nền tảng: [Render deploys](https://render.com/docs/deploys), [Vite trên Vercel](https://vercel.com/docs/frameworks/frontend/vite), [Vercel environment variables](https://vercel.com/docs/environment-variables).
 
@@ -393,7 +406,6 @@ Các hạng mục **đề xuất cho giai đoạn tiếp theo**, chưa thể hi�
 - [ ] Thống nhất cách đặt tên thư mục frontend và tách types theo nghiệp vụ.
 - [ ] Mở rộng browser tests cho luồng mua hàng và phân quyền.
 - [ ] Xử lý các lint warnings còn lại.
-- [ ] Đồng bộ hoặc loại bỏ cấu hình Docker production và workflow deploy cũ.
 - [ ] Chuẩn hóa quy trình staging, migration và giám sát sau deploy.
 - [ ] Bổ sung LICENSE áp dụng cho toàn repository.
 
