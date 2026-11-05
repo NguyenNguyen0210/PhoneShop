@@ -575,22 +575,21 @@ export class AuthService {
       return genericResponse;
     }
 
-    // Invalidate existing unused tokens for this user
-    await this.prisma.passwordResetToken.updateMany({
-      where: { userId: user.id, usedAt: null },
-      data: { usedAt: new Date() },
-    });
-
     // Generate cryptographically secure random token (32 bytes hex)
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = this.hashToken(rawToken);
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-    await this.prisma.passwordResetToken.create({
+    // Keep this token inactive until SMTP accepts the message. A failed delivery
+    // must not revoke the user's existing working link.
+    const pendingToken = await this.prisma.passwordResetToken.create({
       data: {
         userId: user.id,
         tokenHash,
         expiresAt,
+        // Epoch is an inactive/pending marker. Resetting a password overwrites
+        // it so an email still in flight cannot reactivate a pre-reset link.
+        usedAt: new Date(0),
       },
     });
 
@@ -601,13 +600,59 @@ export class AuthService {
       ? `${user.firstName} ${user.lastName || ''}`.trim()
       : undefined;
 
-    await this.emailService.sendPasswordResetEmail(user.email, resetLink, recipientName);
+    try {
+      await this.emailService.sendPasswordResetEmail(user.email, resetLink, recipientName);
+    } catch {
+      this.logger.error('Password reset email delivery failed');
+      await this.prisma.passwordResetToken.deleteMany({
+        where: { id: pendingToken.id, usedAt: { not: null } },
+      });
+      return genericResponse;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Serialize rotation and password resets for this account, across servers.
+      // Never hold a database lock while waiting for SMTP.
+      const users = await tx.$queryRaw<{ status: string }[]>`
+        SELECT status FROM users WHERE id = ${user.id}::uuid FOR UPDATE
+      `;
+      if (users[0]?.status !== 'ACTIVE') return;
+
+      // Delivery can complete out of order. An older request cannot supersede
+      // a newer successfully activated link. ID breaks timestamp ties.
+      const newerToken = await tx.passwordResetToken.findFirst({
+        where: {
+          userId: user.id,
+          usedAt: null,
+          OR: [
+            { createdAt: { gt: pendingToken.createdAt } },
+            { createdAt: pendingToken.createdAt, id: { gt: pendingToken.id } },
+          ],
+        },
+      });
+      if (newerToken) return;
+
+      const activated = await tx.passwordResetToken.updateMany({
+        where: {
+          id: pendingToken.id,
+          usedAt: pendingToken.usedAt,
+          expiresAt: { gt: new Date() },
+        },
+        data: { usedAt: null },
+      });
+      if (!activated.count) return;
+
+      await tx.passwordResetToken.updateMany({
+        where: { userId: user.id, id: { not: pendingToken.id }, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+    });
 
     return genericResponse;
   }
 
   async verifyResetToken(token: string) {
-    if (!token || typeof token !== 'string') {
+    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) {
       throw new BadRequestException('Token không hợp lệ');
     }
 
@@ -623,7 +668,7 @@ export class AuthService {
       },
     });
 
-    if (!resetTokenRecord || !resetTokenRecord.user) {
+    if (!resetTokenRecord || resetTokenRecord.user?.status !== 'ACTIVE') {
       throw new BadRequestException(
         'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn',
       );
@@ -637,7 +682,7 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    if (!dto.token || typeof dto.token !== 'string') {
+    if (typeof dto.token !== 'string' || !/^[a-f0-9]{64}$/.test(dto.token)) {
       throw new BadRequestException('Token không hợp lệ');
     }
 
@@ -657,9 +702,15 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.newPassword, 10);
 
     await this.prisma.$transaction(async (tx) => {
+      const users = await tx.$queryRaw<{ status: string }[]>`
+        SELECT status FROM users WHERE id = ${resetTokenRecord.userId}::uuid FOR UPDATE
+      `;
+      if (users[0]?.status !== 'ACTIVE') {
+        throw new BadRequestException('Liên kết đã hết hạn hoặc không hợp lệ');
+      }
       // Guarded single-use write
       const updatedToken = await tx.passwordResetToken.updateMany({
-        where: { id: resetTokenRecord.id, usedAt: null },
+        where: { id: resetTokenRecord.id, usedAt: null, expiresAt: { gt: new Date() } },
         data: { usedAt: new Date() },
       });
       if (updatedToken.count === 0) {
@@ -670,6 +721,12 @@ export class AuthService {
       await tx.user.update({
         where: { id: resetTokenRecord.userId },
         data: { passwordHash },
+      });
+
+      // Invalidate every other link, including requests still waiting for SMTP.
+      await tx.passwordResetToken.updateMany({
+        where: { userId: resetTokenRecord.userId },
+        data: { usedAt: new Date() },
       });
 
       // Revoke all active refresh tokens for the user

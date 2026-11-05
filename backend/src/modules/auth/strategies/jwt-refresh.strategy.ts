@@ -44,7 +44,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
       },
     });
 
-    if (!user) {
+    if (!user || user.status !== 'ACTIVE') {
       throw new UnauthorizedException();
     }
 

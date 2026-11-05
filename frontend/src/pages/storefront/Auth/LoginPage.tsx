@@ -32,6 +32,7 @@ export const LoginPage: React.FC = () => {
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
 
@@ -131,12 +132,18 @@ export const LoginPage: React.FC = () => {
       notifyError('Vui lòng nhập địa chỉ email của bạn.');
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail.trim())) {
+      setForgotError('Email không đúng định dạng.');
+      return;
+    }
+    if (forgotLoading) return;
     setForgotLoading(true);
     setForgotError(null);
     try {
-      await authService.forgotPassword(forgotEmail.trim());
+      const result = await authService.forgotPassword(forgotEmail.trim());
+      setForgotMessage(result.message);
       setForgotSubmitted(true);
-      notifySuccess('Đã gửi email khôi phục. Vui lòng kiểm tra hộp thư của bạn.');
+      notifySuccess(result.message);
     } catch (err: any) {
       const msg = getErrorMessage(err) || 'Không thể gửi email khôi phục. Vui lòng kiểm tra lại địa chỉ email hoặc thử lại sau.';
       setForgotError(msg);
@@ -325,10 +332,10 @@ export const LoginPage: React.FC = () => {
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900">
-                  Đã gửi email khôi phục!
+                  Đã tiếp nhận yêu cầu
                 </h3>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Chúng tôi đã gửi liên kết đặt lại mật khẩu đến <strong>{forgotEmail}</strong>. Vui lòng kiểm tra hộp thư đến (và thư mục Spam/Quảng cáo).
+                  {forgotMessage} Vui lòng kiểm tra cả thư mục Spam/Quảng cáo.
                 </p>
                 <button
                   type="button"

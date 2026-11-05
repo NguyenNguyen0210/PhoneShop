@@ -1,3 +1,4 @@
+import { IsSafePassword } from '../../../common/validators/password.validator';
 import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength, IsArray, ArrayMinSize } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Role } from '../../../common/enums/role.enum';
@@ -12,6 +13,7 @@ export class CreateUserDto {
   @ApiProperty()
   @IsString()
   @MinLength(6)
+  @IsSafePassword()
   password: string;
 
   @ApiProperty()
