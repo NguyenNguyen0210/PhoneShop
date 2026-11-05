@@ -219,7 +219,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS "flash_sale_items_campaign_id_variant_id_key" 
 CREATE UNIQUE INDEX IF NOT EXISTS "password_reset_tokens_token_hash_key" ON "password_reset_tokens"("token_hash");
 CREATE INDEX IF NOT EXISTS "password_reset_tokens_user_id_idx" ON "password_reset_tokens"("user_id");
 CREATE UNIQUE INDEX IF NOT EXISTS "shippings_order_id_key" ON "shippings"("order_id");
-CREATE UNIQUE INDEX IF NOT EXISTS "tickets_ticket_number_key" ON "tickets"("ticket_number");
+-- Existing deployments may already use the runtime column name `code`.
+-- Index the column that exists instead of assuming the legacy name.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'tickets' AND column_name = 'ticket_number') THEN
+        CREATE UNIQUE INDEX IF NOT EXISTS "tickets_ticket_number_key" ON "tickets"("ticket_number");
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'tickets' AND column_name = 'code') THEN
+        CREATE UNIQUE INDEX IF NOT EXISTS "tickets_code_key" ON "tickets"("code");
+    END IF;
+END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS "system_settings_key_key" ON "system_settings"("key");
 CREATE INDEX IF NOT EXISTS "stock_movements_variant_id_idx" ON "stock_movements"("variant_id");
 CREATE INDEX IF NOT EXISTS "stock_movements_created_at_idx" ON "stock_movements"("created_at");
