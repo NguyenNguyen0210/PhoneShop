@@ -1,184 +1,194 @@
 # PhoneShop
 
-**A full-stack e-commerce platform for mobile phones and accessories, with device-level inventory tracking and operational workflows.**
-
 <p align="center">
   <img src="frontend/public/logo-horizontal.png" alt="PhoneShop" width="320" />
 </p>
 
-PhoneShop brings together a customer storefront, staff workspace, and administration portal. Built with React, NestJS, and PostgreSQL, it covers the order lifecycle from checkout and IMEI reservation to payment, fulfillment, returns, and after-sales support.
+<p align="center">
+  Nền tảng thương mại điện tử điện thoại và phụ kiện, kết nối mua sắm trực tuyến với quản lý kho theo IMEI, thanh toán và chăm sóc sau bán hàng.
+</p>
 
-[Live application](https://phoneshop-blond.vercel.app) · [Backend health](https://phoneshop-api.onrender.com/api/health) · [Source code](https://github.com/NguyenNguyen0210/PhoneShop)
+<p align="center">
+  <a href="https://github.com/NguyenNguyen0210/PhoneShop/actions/workflows/backend-ci.yml"><img src="https://github.com/NguyenNguyen0210/PhoneShop/actions/workflows/backend-ci.yml/badge.svg" alt="Backend CI" /></a>
+  <a href="https://github.com/NguyenNguyen0210/PhoneShop/actions/workflows/frontend-ci.yml"><img src="https://github.com/NguyenNguyen0210/PhoneShop/actions/workflows/frontend-ci.yml/badge.svg" alt="Frontend CI" /></a>
+  <img src="https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white" alt="React 19" />
+  <img src="https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white" alt="NestJS 11" />
+  <img src="https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL 17 in CI" />
+</p>
 
-The hosted application may differ from the current checkout. Interactive Swagger documentation is available locally at `/api/docs` in non-production environments.
+## Overview
 
-## Contents
+Một cửa hàng điện thoại cần quản lý cả sản phẩm trên website lẫn từng thiết bị thực tế trong kho. Khi thông tin đơn hàng, thanh toán và IMEI không đồng bộ, cửa hàng có thể bán trùng thiết bị, xử lý sai tồn kho hoặc khó truy vết bảo hành.
 
-- [Features](#features)
-- [Technology stack](#technology-stack)
-- [Architecture](#architecture)
-- [Business workflows](#business-workflows)
-- [Getting started](#getting-started)
-- [Configuration](#configuration)
-- [Testing and quality checks](#testing-and-quality-checks)
-- [Deployment](#deployment)
-- [Repository structure](#repository-structure)
-- [Further documentation](#further-documentation)
+PhoneShop cung cấp ba không gian làm việc trên cùng một hệ thống:
 
-## Features
+- **Khách hàng:** tìm sản phẩm, chọn cấu hình, mua hàng và theo dõi đơn hàng.
+- **Nhân viên:** xử lý đơn, hỗ trợ khách hàng, quản lý kho và bảo hành theo quyền được cấp.
+- **Quản trị:** quản lý danh mục, tài khoản, khuyến mãi, thanh toán và báo cáo.
 
-| Area | Capabilities |
+Dự án sử dụng React cho giao diện, NestJS cho REST API và PostgreSQL cho dữ liệu nghiệp vụ. Các quyền được định nghĩa gồm `USER`, `STAFF`, `MANAGER` và `ADMIN`.
+
+## Demo & Screenshots
+
+| Tài nguyên | Địa chỉ |
 | --- | --- |
-| Customer storefront | Product discovery, variant selection, cart, wishlist, checkout, order tracking, reviews, and notifications |
-| Identity and access | Email/password authentication, JWT access and refresh tokens, Google sign-in, password reset, and role-based authorization |
-| Store operations | Product and variant management, brands, categories, suppliers, inventory adjustments, IMEI tracking, and stock movement history |
-| Orders and payments | VNPay, VietQR bank transfers, cash on delivery, reservation expiration, fulfillment transitions, and refund recording |
-| Promotions | Vouchers with global and per-user limits, flash-sale pricing, atomic quota claims, and quota restoration |
-| After-sales support | Warranty lookup, repair intake and handover, support tickets, customer history, and audit logs |
-| Administration | Sales analytics, cashflow reporting, payment reconciliation, and configurable store and payment settings |
+| Website demo | [phoneshop-blond.vercel.app](https://phoneshop-blond.vercel.app) |
+| Backend health | [phoneshop-api.onrender.com/api/health](https://phoneshop-api.onrender.com/api/health) |
+| Source code | [NguyenNguyen0210/PhoneShop](https://github.com/NguyenNguyen0210/PhoneShop) |
 
-The application defines four roles: `USER`, `STAFF`, `MANAGER`, and `ADMIN`. API guards enforce authorization; frontend route guards adapt the available portals and actions to the signed-in user.
+Các địa chỉ trên là môi trường demo được cấu hình cho dự án; phiên bản đang chạy có thể khác checkout hiện tại.
 
-## Technology stack
+**Screenshots:** repository hiện chưa có bộ ảnh chụp giao diện được lưu để trình bày tại đây. Có thể trải nghiệm trang chủ, chi tiết sản phẩm, giỏ hàng và đăng nhập qua website demo. Giao diện nhân viên và quản trị yêu cầu tài khoản phù hợp.
 
-| Layer | Technologies |
+## Key Features
+
+| Nhóm chức năng | Nội dung |
 | --- | --- |
-| Frontend | React 19, TypeScript, Vite, React Router, Tailwind CSS, Ant Design |
-| State and data fetching | Zustand, TanStack Query, Axios |
-| Charts and icons | Recharts, Lucide, Ant Design Icons |
-| Backend | NestJS 11, TypeScript, REST APIs, Swagger/OpenAPI, scheduled jobs |
+| Mua sắm | Tìm kiếm, lọc và sắp xếp sản phẩm; chọn biến thể màu sắc, dung lượng; giỏ hàng và danh sách yêu thích |
+| Tài khoản | Đăng ký, đăng nhập, Google sign-in, refresh token, quên mật khẩu và quản lý địa chỉ |
+| Đơn hàng | Checkout, giữ thiết bị theo IMEI, theo dõi trạng thái, hủy đơn và xử lý giao hàng |
+| Thanh toán | COD, VNPay, chuyển khoản VietQR, xác nhận thanh toán và ghi nhận hoàn tiền |
+| Kho hàng | Quản lý IMEI, nhập kho, điều chỉnh tồn, lịch sử biến động và cảnh báo tồn thấp |
+| Danh mục | Quản lý sản phẩm, biến thể, thông số kỹ thuật, thương hiệu, danh mục và nhà cung cấp |
+| Khuyến mãi | Voucher với giới hạn sử dụng; Flash Sale với thời gian và hạn mức theo biến thể |
+| Sau bán hàng | Tra cứu bảo hành, tiếp nhận sửa chữa, bàn giao thiết bị, đánh giá và phản hồi |
+| Hỗ trợ | Ticket, giao diện hỗ trợ trực tiếp, chatbot và thông báo |
+| Quản trị | Dashboard, báo cáo doanh thu và dòng tiền, đối soát thanh toán, phân quyền và nhật ký thao tác |
+
+Các quy tắc nghiệp vụ đáng chú ý:
+
+- Checkout phân bổ IMEI trong transaction để xử lý các yêu cầu mua đồng thời.
+- Đơn thanh toán trực tuyến chưa trả tiền được giữ hàng trong 15 phút; tác vụ định kỳ giải phóng đặt giữ hết hạn. COD không áp dụng thời hạn này.
+- Đơn hàng lưu bản chụp địa chỉ giao nhận; thay đổi địa chỉ tài khoản không sửa lịch sử đơn.
+- Bảo hành bắt đầu khi giao hàng thành công.
+- Chức năng hoàn tiền ghi nhận khoản tiền đã được hoàn bên ngoài hệ thống, không tự chuyển tiền qua ngân hàng hoặc cổng thanh toán.
+
+## Tech Stack
+
+| Layer | Công nghệ |
+| --- | --- |
+| Frontend | React 19, TypeScript, Vite, React Router |
+| UI | Tailwind CSS, Ant Design, Lucide, Ant Design Icons |
+| State & HTTP | Zustand, TanStack Query, Axios |
+| Biểu đồ | Recharts |
+| Backend | NestJS 11, TypeScript, REST API, Swagger, scheduled jobs |
 | Database | PostgreSQL, Prisma ORM 7, PostgreSQL driver adapter |
-| Authentication and validation | Passport.js, JWT, bcrypt, Google OAuth 2.0, class-validator, class-transformer |
-| HTTP security | Helmet, request throttling, CORS configuration, ownership checks |
-| Payments | VNPay, VietQR, cash on delivery |
-| Media and email | Cloudflare R2 through the S3-compatible SDK, Sharp, Brevo, Nodemailer/SMTP |
-| Quality and delivery | Jest, NestJS Testing, Python Playwright, Oxlint, Docker, GitHub Actions |
-
-Frontend pages and layouts are loaded through route-level dynamic imports. PostgreSQL 17 is used in the backend CI service and integration-test setup.
+| Authentication | Passport, JWT access/refresh token, bcrypt, Google OAuth |
+| Validation & HTTP security | class-validator, class-transformer, Helmet, throttling, CORS |
+| File & email | Cloudflare R2, AWS S3 SDK, Sharp, Brevo, Nodemailer |
+| Testing | Jest, NestJS Testing, Python Playwright, Oxlint |
+| Hosting & CI | Render, Vercel, GitHub Actions; Docker cho môi trường phát triển |
 
 ## Architecture
 
-The backend is organized as a **modular monolith**. Domain modules contain controllers, DTOs, and services; shared infrastructure provides database access, email, storage, and request throttling.
+Backend được tổ chức theo **modular monolith**: các module nghiệp vụ dùng chung database và chạy trong một ứng dụng NestJS. Frontend gọi API qua Axios; route guard điều chỉnh giao diện theo vai trò, còn backend kiểm tra quyền truy cập và quyền sở hữu dữ liệu.
 
 ```mermaid
 flowchart LR
-    Browser[Customer / Staff / Admin] --> UI[React application]
-    UI -->|REST API| API[NestJS controllers and guards]
-    API --> Domain[Domain services]
-    Scheduler[Reservation expiry scheduler] --> Domain
-    Domain --> ORM[Prisma transactions]
-    ORM --> DB[(PostgreSQL)]
-    Domain --> Payments[VNPay / VietQR]
-    Domain --> Email[Brevo / SMTP]
+    User[Khách hàng / Nhân viên / Quản trị] --> Web[React - Vercel]
+    Web -->|REST API / JWT| API[NestJS - Render]
+    API --> Domain[Module nghiệp vụ]
+    Jobs[Tác vụ định kỳ] --> Domain
+    Domain --> Prisma[Prisma ORM]
+    Prisma --> DB[(PostgreSQL)]
+    Domain --> Payment[VNPay / VietQR]
     Domain --> Storage[Cloudflare R2]
+    Domain --> Email[Brevo / SMTP]
 ```
 
-Key implementation decisions:
+Trong mỗi module, **controller** tiếp nhận request, **DTO** mô tả và kiểm tra đầu vào, **service** xử lý nghiệp vụ, **PrismaService** truy cập dữ liệu. Các tác vụ liên quan tới đơn hàng, tồn kho và thanh toán sử dụng transaction khi cần đảm bảo tính nhất quán.
 
-- **Transactional checkout:** IMEI allocation uses `FOR UPDATE SKIP LOCKED`, together with guarded inventory updates, to handle competing purchases.
-- **Explicit state transitions:** Order, shipment, payment, and repair workflows validate their current state before applying related changes.
-- **Immutable delivery details:** Orders retain a shipping address snapshot so that editing or deleting a saved address does not rewrite order history.
-- **Traceable financial changes:** Successful payments and refunds are recorded as transactions; refund confirmation also records the actor, reference, amount, and reason.
-- **Separation of payment and delivery:** Capturing payment does not sell the reserved device or start warranty coverage. Those changes occur at delivery.
-
-## Business workflows
-
-### Checkout and fulfillment
-
-1. Checkout validates the selected cart items, current prices, shipping address, promotions, and available inventory.
-2. Selected devices move from `AVAILABLE` to `RESERVED`; available stock decreases and reserved stock increases in the checkout transaction.
-3. Unpaid online orders receive a **15-minute reservation**. A scheduled job releases expired reservations and restores applicable promotion quotas. COD orders do not use this timeout.
-4. Online orders require a paid or partially refunded payment before fulfillment. VNPay uses signed callbacks; bank-transfer confirmation requires a transaction reference.
-5. Successful delivery changes the assigned devices to `SOLD`, settles inventory, records a stock movement, and activates warranty coverage. COD payments are recorded as paid at this step.
-
-The standard fulfillment path is:
+## Project Structure
 
 ```text
-PENDING -> CONFIRMED -> PROCESSING -> PACKED -> SHIPPING -> DELIVERED -> COMPLETED
+PhoneShop/
+├── .github/workflows/       # CI frontend/backend và workflow deploy cũ
+├── backend/
+│   ├── prisma/
+│   │   ├── migrations/     # Lịch sử thay đổi schema
+│   │   ├── seed_modules/   # Các nhóm dữ liệu mẫu
+│   │   ├── scripts/        # Công cụ bảo trì dữ liệu
+│   │   ├── schema.prisma   # Mô hình dữ liệu
+│   │   └── seed.ts
+│   ├── scripts/            # Preflight migration, công cụ media, fixture smoke test
+│   ├── src/
+│   │   ├── common/         # Guard, decorator, filter, interceptor, utility
+│   │   ├── config/         # Cấu hình môi trường
+│   │   ├── health/         # Health endpoint
+│   │   ├── infrastructure/ # Email, storage, rate limiting trong ứng dụng
+│   │   ├── modules/        # Các module nghiệp vụ
+│   │   ├── prisma/         # Database module và service
+│   │   ├── app.module.ts
+│   │   └── main.ts
+│   └── test/
+│       └── integration/    # Kiểm thử với PostgreSQL thật
+├── frontend/
+│   ├── e2e/                # Browser smoke test
+│   ├── public/             # Logo, favicon, ảnh và biểu tượng thương hiệu
+│   └── src/
+│       ├── components/     # Component dùng chung và theo nghiệp vụ
+│       ├── layouts/        # Storefront, Staff, Admin
+│       ├── pages/          # Các trang giao diện
+│       ├── routes/         # Router và route guard
+│       ├── services/       # API client và service
+│       ├── stores/         # Zustand stores
+│       ├── types/          # Kiểu dữ liệu TypeScript
+│       └── utils/          # Hàm hỗ trợ
+├── docker-compose.yml      # Backend development
+├── docker-compose.prod.yml # Cấu hình cũ, thiếu Dockerfile được tham chiếu
+└── README.md
 ```
 
-Some operations allow intermediate steps to be skipped. The backend transition rules remain authoritative.
+## Getting Started
 
-### Returns and refund recording
+### Yêu cầu
 
-**The refund API records a refund already completed outside the application; it does not send money through a bank or payment provider.** A completed refund must have a unique provider reference.
+- Node.js 22.12+ trên nhánh 22 hoặc phiên bản tương thích với dependencies. CI hiện dùng Node 22; checkout đã được kiểm tra bằng Node 24.14.1.
+- npm 11 cho backend, tương ứng cấu hình CI.
+- PostgreSQL; CI và ví dụ bên dưới sử dụng PostgreSQL 17.
+- Docker nếu muốn chạy database bằng container.
 
-| Scenario | Result |
-| --- | --- |
-| Partial refund | Records the amount against the remaining paid balance; keeps the current order and inventory state |
-| Full refund before dispatch | Cancels the order and releases the reserved devices and stock |
-| Carrier return | Marks the order and devices as returned, settles the original reservation, and quarantines the devices |
-| Full refund after delivery | Marks the order as returned and voids applicable warranties without adding sellable stock |
-| Accepted return after inspection | An explicit IMEI release restores the device to available inventory |
+Các lệnh bên dưới dùng **PowerShell**, bắt đầu từ thư mục gốc repository.
 
-Orders in transit must complete the return workflow before refund confirmation. A partial refund does not allow the remaining captured payment to be bypassed through ordinary order cancellation.
-
-### Warranty and reporting
-
-Warranty coverage begins at delivery and follows the product's configured duration. Repair handling follows:
-
-```text
-REQUESTED -> RECEIVED -> REPAIRED -> RETURNED
-```
-
-A device under repair remains customer-owned and is not added to sellable stock. Staff actions require notes and produce audit entries. Public warranty lookup accepts a warranty code, IMEI, or serial; phone lookup requires authentication and is limited to the current account.
-
-Cashflow reports calculate gross receipts, refunds, and net receipts from successful payment transactions. Daily totals use transaction recording time in `Asia/Ho_Chi_Minh`. Brand and category charts describe delivered-item sales and are distinct from cashflow reconciliation.
-
-## Getting started
-
-### Prerequisites
-
-- Node.js **22.12 or later on the Node 22 release line**, matching the CI runtime and Vite requirements.
-- npm; the backend CI installs npm 11.
-- A PostgreSQL database. Docker is optional for running a local instance.
-- Python and Playwright only if you intend to run browser tests.
-
-The examples below use **PowerShell**, with commands run from the repository root unless stated otherwise.
-
-### 1. Clone the repository
+### 1. Clone repository
 
 ```powershell
 git clone https://github.com/NguyenNguyen0210/PhoneShop.git
 cd PhoneShop
 ```
 
-### 2. Start a local database
+### 2. Chuẩn bị database phát triển
 
-Use an existing development database, or create an isolated local instance:
+Có thể dùng database development sẵn có hoặc tạo container riêng:
 
 ```powershell
 docker run --detach --name phoneshop-postgres -e POSTGRES_USER=phoneshop -e POSTGRES_PASSWORD=local_dev_only -e POSTGRES_DB=phoneshop_dev -p 127.0.0.1:55432:5432 postgres:17
 ```
 
-For this container, the connection string is:
+Connection string cho container trên:
 
-```text
-postgresql://phoneshop:local_dev_only@127.0.0.1:55432/phoneshop_dev
+```dotenv
+DATABASE_URL=postgresql://phoneshop:local_dev_only@127.0.0.1:55432/phoneshop_dev
 ```
 
-### 3. Configure and start the backend
+### 3. Cài đặt backend
 
 ```powershell
 cd backend
+npm install -g npm@11
 npm ci
 Copy-Item .env.example .env.development
 ```
 
-Edit `.env.development` before proceeding:
+Chỉnh `.env.development`: đặt `DATABASE_URL`, tạo hai secret JWT riêng và giữ `FRONTEND_URL=http://localhost:5173`. Xóa hoặc để trống các credential mẫu của tích hợp chưa sử dụng.
 
-- Set `DATABASE_URL` to the development database above.
-- Replace `JWT_SECRET` and `JWT_REFRESH_SECRET` with separate generated secrets.
-- Keep `FRONTEND_URL=http://localhost:5173` for the default local frontend.
-- Remove placeholder credentials for integrations you are not configuring. Leave email credentials blank for console/mock delivery; missing R2 credentials disable uploads.
-
-Generate a secret with:
+Tạo từng secret bằng lệnh sau, chạy hai lần:
 
 ```powershell
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-The application loads `.env.development` by default. Prisma CLI and the seed script use `dotenv/config`, so explicitly point them to the same file:
+Khởi tạo schema trên database phát triển và chạy API:
 
 ```powershell
 $env:DOTENV_CONFIG_PATH = '.env.development'
@@ -187,87 +197,122 @@ npx prisma migrate deploy
 npm run start:dev
 ```
 
-On Bash, the corresponding environment assignment is `export DOTENV_CONFIG_PATH=.env.development`. Variables already present in your shell take precedence over file values.
+Ứng dụng tự đọc `.env.development`; `DOTENV_CONFIG_PATH` giúp Prisma CLI đọc cùng file. Chỉ dùng database phát triển cho quy trình cài đặt này.
 
-| Local endpoint | Purpose |
-| --- | --- |
-| `http://localhost:3000/api` | REST API base URL |
-| `http://localhost:3000/api/health` | Database-backed health check |
-| `http://localhost:3000/api/docs` | Interactive Swagger documentation, outside production |
+### 4. Cài đặt frontend
 
-### 4. Start the frontend
-
-In a second terminal, from the repository root:
+Mở terminal thứ hai từ gốc repository:
 
 ```powershell
 cd frontend
 npm ci
+```
+
+Kiểm tra file `.env.development` hiện có. Nếu chưa có file, tạo từ mẫu:
+
+```powershell
 Copy-Item .env.example .env.development
+```
+
+Đặt `VITE_API_URL=http://localhost:3000/api`, sau đó chạy:
+
+```powershell
 npm run dev
 ```
 
-Set `VITE_API_URL=http://localhost:3000/api` in the frontend environment file. Open `http://localhost:5173`.
+| Dịch vụ | Địa chỉ local |
+| --- | --- |
+| Frontend | http://localhost:5173 |
+| REST API | http://localhost:3000/api |
+| Health | http://localhost:3000/api/health |
+| Swagger | http://localhost:3000/api/docs |
 
-### 5. Optional demo data
+### 5. Dữ liệu mẫu — tùy chọn
 
-The seed script populates catalog, customer, order, and after-sales examples. **It clears existing transactional and demo customer data and resets seeded accounts. Run it only against a disposable development database.**
-
-From `backend/`, with `DOTENV_CONFIG_PATH` set as above:
+Từ `backend/`, với `DOTENV_CONFIG_PATH` đã đặt:
 
 ```powershell
 npm run prisma:seed
 ```
 
-Account setup is defined in [`backend/prisma/seed.ts`](backend/prisma/seed.ts). These seeded accounts are for local evaluation, not deployment credentials.
+**Seed xóa dữ liệu giao dịch, khách hàng mẫu cũ và đặt lại tài khoản được seed. Chỉ chạy trên database phát triển có thể bỏ đi.** Tài khoản và dữ liệu mẫu được định nghĩa trong [seed.ts](backend/prisma/seed.ts).
 
 ## Configuration
 
-Use [`backend/.env.example`](backend/.env.example) and [`frontend/.env.example`](frontend/.env.example) as configuration references.
+Tham khảo [backend/.env.example](backend/.env.example) và [frontend/.env.example](frontend/.env.example) để xem tên biến và định dạng.
 
-| Integration | Configuration |
-| --- | --- |
-| Database | `DATABASE_URL` |
-| Authentication | `JWT_SECRET`, `JWT_REFRESH_SECRET`, token expiry settings |
-| Frontend/API connection | Backend `FRONTEND_URL`; frontend `VITE_API_URL` |
-| Google sign-in | Backend `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`; matching frontend `VITE_GOOGLE_CLIENT_ID` |
-| VNPay | `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_URL`, `VNPAY_RETURN_URL` |
-| VietQR | `VIETQR_BANK_ID`, `VIETQR_ACCOUNT_NO`, `VIETQR_ACCOUNT_NAME` |
-| Media uploads | `CLOUDFLARE_R2_*` credentials, bucket, and public URL |
-| Email | `EMAIL_PROVIDER`, `EMAIL_FROM`, and either `BREVO_API_KEY` or SMTP credentials |
+| Phạm vi | Biến | Mục đích |
+| --- | --- | --- |
+| Backend | `NODE_ENV`, `PORT` | Chế độ chạy và cổng API |
+| Database | `DATABASE_URL` | Kết nối PostgreSQL |
+| JWT | `JWT_SECRET`, `JWT_REFRESH_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN` | Ký token và thời hạn phiên |
+| CORS | `FRONTEND_URL` | Origin frontend được backend chấp nhận |
+| Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` | Đăng nhập Google |
+| VNPay | `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_URL`, `VNPAY_RETURN_URL` | Thanh toán và URL trả về |
+| VietQR | `VIETQR_BANK_ID`, `VIETQR_ACCOUNT_NO`, `VIETQR_ACCOUNT_NAME` | Thông tin tài khoản nhận tiền |
+| Storage | `CLOUDFLARE_R2_ACCOUNT_ID`, `CLOUDFLARE_R2_BUCKET`, `CLOUDFLARE_R2_ACCESS_KEY_ID`, `CLOUDFLARE_R2_SECRET_ACCESS_KEY`, `CLOUDFLARE_R2_PUBLIC_URL` | Lưu trữ và truy cập media |
+| Email | `EMAIL_PROVIDER`, `EMAIL_FROM`, `BREVO_API_KEY` hoặc nhóm `EMAIL_*` cho SMTP | Gửi email |
+| Chatbot | `CHATBOT_ENABLED`, `CHATBOT_PROVIDER` và credential của provider trong file mẫu | Bật và cấu hình chatbot |
+| Frontend | `VITE_API_URL` | API base URL, bao gồm `/api` |
+| Frontend | `VITE_GOOGLE_CLIENT_ID` | Cùng client ID với backend |
+| Frontend | `VITE_R2_PUBLIC_URL` | URL public dùng cho ảnh fallback |
 
-Only expose public configuration through `VITE_*` variables: those values are included in the browser bundle. Keep payment signing secrets, Google client secrets, database credentials, and storage credentials on the backend.
+Backend đọc `.env.production` khi `NODE_ENV=production`, nếu không sẽ đọc `.env.development`; có thể ghi đè đường dẫn bằng `DOTENV_FILE`. Prisma CLI dùng `DOTENV_CONFIG_PATH` khi cần chọn file khác `.env`.
 
-Register Google redirect URIs and VNPay callback URLs for the intended environment. Production startup requires configured VNPay credentials and a single HTTPS `FRONTEND_URL`. See the [Google OAuth setup guide](infrastructure/GOOGLE_OAUTH_SETUP.md) and [production runbook](infrastructure/PRODUCTION_RUNBOOK.md).
+Trong production, `FRONTEND_URL` phải là một HTTPS origin duy nhất. Backend yêu cầu credential VNPay và từ chối các giá trị mặc định sandbox được hard-code. Đăng ký đúng origin và redirect URI trên Google Cloud nếu bật Google sign-in.
 
-## Testing and quality checks
+Biến `VITE_*` được đưa vào frontend bundle và có thể được người dùng đọc. Chỉ đặt cấu hình công khai tại đây; lưu database URL, JWT secret và credential tích hợp ở backend. Không commit file môi trường chứa secret.
 
-### Service tests and builds
+## API Documentation
 
-From `backend/`, after installing dependencies, configuring the CLI environment, and generating Prisma Client:
+Swagger được bật khi backend **không chạy production**, tại [localhost:3000/api/docs](http://localhost:3000/api/docs). API sử dụng prefix `/api`.
+
+Một số endpoint tiêu biểu:
+
+| Method | Endpoint | Chức năng |
+| --- | --- | --- |
+| GET | `/api/health` | Kiểm tra dịch vụ và kết nối database |
+| POST | `/api/auth/register` | Đăng ký |
+| POST | `/api/auth/login` | Đăng nhập |
+| POST | `/api/auth/refresh-token` | Làm mới token |
+| POST | `/api/auth/logout` | Đăng xuất và thu hồi refresh token |
+| GET | `/api/products` | Danh sách sản phẩm |
+| GET | `/api/products/:id` | Chi tiết sản phẩm |
+| GET | `/api/cart` | Giỏ hàng của tài khoản |
+| POST | `/api/orders/checkout` | Tạo đơn hàng |
+| GET | `/api/orders/my` | Đơn hàng của tài khoản |
+| GET | `/api/warranty/lookup` | Tra cứu bảo hành theo đầu vào được hỗ trợ |
+
+Các endpoint được bảo vệ yêu cầu header:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Đăng nhập để lấy access token và refresh token. Khi gọi `/api/auth/refresh-token`, gửi refresh token qua Bearer header và trường `refreshToken` trong JSON body. Trong Swagger, chọn **Authorize** với scheme `access-token` cho endpoint sử dụng access token. Các thao tác nhân viên và quản trị còn được kiểm tra vai trò; xem DTO và controller để biết request schema cụ thể.
+
+## Testing
+
+### Backend: service tests và build
+
+Từ `backend/`, sau khi cài dependencies và generate Prisma Client:
 
 ```powershell
 npm test -- --runInBand
 npm run build
 ```
 
-From `frontend/`:
+Các service tests sử dụng dependency doubles. Integration suite được bỏ qua nếu chưa đặt `TEST_DATABASE_URL`.
 
-```powershell
-npm run lint
-npm run build
-```
+### Integration tests với PostgreSQL
 
-Service tests use dependency doubles. Database integration tests are skipped unless `TEST_DATABASE_URL` is set explicitly.
-
-### PostgreSQL integration tests
-
-Create a separate disposable database:
+Tạo database kiểm thử riêng:
 
 ```powershell
 docker run --detach --rm --name phoneshop-tests -e POSTGRES_USER=tester -e POSTGRES_PASSWORD=local_test_only -e POSTGRES_DB=phoneshop_test -p 127.0.0.1:55439:5432 postgres:17
 ```
 
-From `backend/`, after PostgreSQL is ready:
+Trong một terminal riêng, từ `backend/`, sau khi database sẵn sàng:
 
 ```powershell
 $env:DATABASE_URL = 'postgresql://tester:local_test_only@127.0.0.1:55439/phoneshop_test'
@@ -276,80 +321,86 @@ npx prisma migrate deploy
 npm run test:integration
 ```
 
-The integration suite accepts only `localhost` or `127.0.0.1`, with a database name ending in `_test`, `_ci`, or `_audit`. It creates fixture data in that database.
+Suite chỉ chấp nhận database ở `localhost` hoặc `127.0.0.1`, với tên kết thúc bằng `_test`, `_ci` hoặc `_audit`. Kiểm thử tạo fixture trong database đó, bao gồm checkout đồng thời, thanh toán, hoàn tiền, tồn kho, bảo hành và báo cáo.
 
-Coverage includes competing checkouts for the last device, signed VNPay callbacks, concurrent refunds, transaction rollback, pre-dispatch cancellation, carrier returns and restocking, address snapshots, blocked-device reconciliation, warranty repairs, and timezone-aware cashflow reporting.
-
-After testing:
+Sau khi chạy, dừng container và đóng terminal kiểm thử để không giữ các biến môi trường trên:
 
 ```powershell
 docker stop phoneshop-tests
-Remove-Item Env:TEST_DATABASE_URL
-Remove-Item Env:DATABASE_URL
 ```
 
-The last recorded local validation of this checkout passed **91 tests across 17 suites**, including **16 tests against PostgreSQL**. Counts describe that validation run, not a coverage percentage or a guarantee about a hosted release.
+### Frontend
 
-### Browser tests
+Từ `frontend/`:
 
-[`frontend/e2e/business-smoke.py`](frontend/e2e/business-smoke.py) exercises login, the unpaid-order guard, pre-dispatch refunds, repair intake/completion/handover, and the anonymous phone-lookup restriction.
+```powershell
+npm run lint
+npm run build
+```
 
-It uses a disposable local database, fixture data, the API on port `3101`, and the frontend on port `5175`. Setup and fixture generation are described in [Business rules and verification](infrastructure/BUSINESS_RULES.md).
+Browser smoke test nằm tại [frontend/e2e/business-smoke.py](frontend/e2e/business-smoke.py), sử dụng Python Playwright, fixture từ [seed-business-smoke.cjs](backend/scripts/seed-business-smoke.cjs), backend ở cổng `3101` và frontend ở cổng `5175`. Cần chuẩn bị database và fixture local riêng trước khi chạy.
 
-### Continuous integration
-
-- [Backend CI](.github/workflows/backend-ci.yml): dependency audit, Prisma Client generation, build, migration rehearsal, service tests, and PostgreSQL integration tests.
-- [Frontend CI](.github/workflows/frontend-ci.yml): dependency installation, lint, and production build.
+Kết quả kiểm tra sau đợt dọn file ngày **05/11/2026**: frontend/backend build thành công; **75 test đạt, 16 integration test được bỏ qua** vì chưa cấu hình database kiểm thử. Frontend lint không có lỗi nhưng còn cảnh báo. Đây là kết quả của lần kiểm tra đó, không phải cam kết về trạng thái mọi commit hoặc môi trường demo.
 
 ## Deployment
 
-The frontend can be deployed as a static Vite application; the backend runs as a Node.js service with PostgreSQL and optional external integrations.
+### Backend trên Render
 
-For backend image preparation:
+Dùng Web Service kết nối repository và cấu hình:
 
-```powershell
-docker compose -f docker-compose.prod.yml build backend
-```
+| Thiết lập | Giá trị |
+| --- | --- |
+| Runtime | Node |
+| Branch | `main` |
+| Root Directory | `backend` |
+| Build Command | `npm install -g npm@11 && npm ci --include=dev && npx prisma generate && npm run build` |
+| Start Command | `npm run start:prod` |
+| Health Check Path | `/api/health` |
 
-The production Compose configuration expects `backend/.env.production`, binds the API to host loopback, and includes a separate migration service. Follow the [production release runbook](infrastructure/PRODUCTION_RUNBOOK.md) for backup verification, migration preflight, release, and recovery.
+Đặt biến môi trường trên Render, bao gồm `NODE_ENV=production`, database URL, JWT secrets và cấu hình tích hợp cần dùng. Ví dụ origin frontend: `FRONTEND_URL=https://phoneshop-blond.vercel.app`. Backend sử dụng biến `PORT` do nền tảng cung cấp.
 
-The development `docker-compose.yml` runs **only the backend**; it does not provision PostgreSQL or the frontend. If using it, provide a database address reachable from the container, rather than the host-only `127.0.0.1` connection string.
+Build chỉ generate Prisma Client và biên dịch ứng dụng; **không tự áp dụng migration**. Với database đang có dữ liệu, xác minh backup có thể khôi phục, thử migration trên staging và chạy công cụ [preflight-production-migrations.cjs](backend/scripts/preflight-production-migrations.cjs) trước khi áp dụng migration. Preflight production yêu cầu `PRODUCTION_BACKUP_REFERENCE`; script này không thay thế backup. Không chạy seed hoặc reset trên database production.
 
-The included manual deployment workflow targets an SSH-managed Docker host. The linked API uses a Render hostname, so confirm the actual hosting target before using that workflow. The backend workflow does not deploy the frontend.
+### Frontend trên Vercel
 
-## Repository structure
+| Thiết lập | Giá trị |
+| --- | --- |
+| Framework | Vite |
+| Production Branch | `main` |
+| Root Directory | `frontend` |
+| Install Command | `npm ci` |
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
 
-```text
-.
-|-- backend/
-|   |-- prisma/               # Schema, migrations, and demo-data seed
-|   |-- scripts/              # Migration preflight and local smoke fixtures
-|   |-- src/
-|   |   |-- common/           # Guards, DTOs, filters, and shared utilities
-|   |   |-- infrastructure/   # Email, storage, and request throttling
-|   |   |-- modules/          # Domain modules
-|   |   `-- prisma/           # Database service
-|   `-- test/
-|       `-- integration/      # Real PostgreSQL lifecycle tests
-|-- frontend/
-|   |-- e2e/                  # Playwright browser smoke test
-|   |-- public/               # Public assets
-|   `-- src/
-|       |-- components/
-|       |-- layouts/
-|       |-- pages/            # Storefront, staff, and admin views
-|       |-- routes/
-|       |-- services/
-|       `-- stores/
-|-- infrastructure/           # Docker image and operational guides
-|-- .github/workflows/        # CI and manual backend deployment
-|-- docker-compose.yml
-`-- docker-compose.prod.yml
-```
+Đặt `VITE_API_URL=https://phoneshop-api.onrender.com/api`, `VITE_GOOGLE_CLIENT_ID` và `VITE_R2_PUBLIC_URL` theo môi trường thực tế. Sau khi đổi biến môi trường, tạo deployment mới. [frontend/vercel.json](frontend/vercel.json) đã cấu hình rewrite về `index.html` cho SPA routing.
 
-## Further documentation
+### CI/CD và Docker
 
-- [Business rules and verification](infrastructure/BUSINESS_RULES.md) - detailed order, inventory, refund, and repair behavior; test setup.
-- [Production release runbook](infrastructure/PRODUCTION_RUNBOOK.md) - environment preparation, backup verification, migration rehearsal, and recovery.
-- [Google OAuth setup](infrastructure/GOOGLE_OAUTH_SETUP.md) - Google sign-in configuration and validation.
-- [Prisma schema](backend/prisma/schema.prisma) - data models, relations, and enums.
+- [Backend CI](.github/workflows/backend-ci.yml): audit dependencies, generate Prisma Client, build, thử migration và chạy kiểm thử với PostgreSQL riêng.
+- [Frontend CI](.github/workflows/frontend-ci.yml): cài dependencies, lint và build.
+- Hai CI workflow chạy khi push hoặc mở pull request tới `main` và `develop`.
+- CD do Render/Vercel đảm nhiệm khi đã kết nối Git và bật tự động triển khai. Trên Render có thể chọn **After CI Checks Pass** để chờ CI đạt.
+- [docker-compose.yml](docker-compose.yml) chạy backend development; không tạo frontend hoặc PostgreSQL. Cần database mà container truy cập được; `127.0.0.1` bên trong container là chính container đó.
+- `docker-compose.prod.yml` và workflow deploy thủ công `.github/workflows/deploy.yml` còn tham chiếu tới thư mục `infrastructure/` đã xóa. Luồng Docker production cũ hiện chưa sử dụng được; triển khai Render/Vercel bên trên dùng cấu hình riêng.
+
+Tài liệu nền tảng: [Render deploys](https://render.com/docs/deploys), [Vite trên Vercel](https://vercel.com/docs/frameworks/frontend/vite), [Vercel environment variables](https://vercel.com/docs/environment-variables).
+
+## Roadmap
+
+Các hạng mục **đề xuất cho giai đoạn tiếp theo**, chưa thể hiện cam kết tiến độ:
+
+- [ ] Bổ sung screenshots cho storefront, trang chi tiết sản phẩm và dashboard.
+- [ ] Thống nhất cách đặt tên thư mục frontend và tách types theo nghiệp vụ.
+- [ ] Mở rộng browser tests cho luồng mua hàng và phân quyền.
+- [ ] Xử lý các lint warnings còn lại.
+- [ ] Đồng bộ hoặc loại bỏ cấu hình Docker production và workflow deploy cũ.
+- [ ] Chuẩn hóa quy trình staging, migration và giám sát sau deploy.
+- [ ] Bổ sung LICENSE áp dụng cho toàn repository.
+
+## License & Author
+
+**Tác giả:** [NguyenNguyen0210](https://github.com/NguyenNguyen0210)
+
+**Repository:** [PhoneShop](https://github.com/NguyenNguyen0210/PhoneShop)
+
+Repository hiện chưa có file `LICENSE` ở cấp dự án. `backend/package.json` khai báo `ISC`, nhưng cần bổ sung văn bản giấy phép và xác định phạm vi áp dụng trước khi công bố giấy phép chung cho toàn bộ source code.
